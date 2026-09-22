@@ -1,1572 +1,327 @@
-
 <!DOCTYPE html>
 <html lang="pt-BR">
-
 <head>
-
-    <meta charset="UTF-8">
-
-    <meta
-        name="viewport"
-        content="width=device-width, initial-scale=1.0"
-    >
-
-    <title>Portal do Aluno — Matemática</title>
-
-    <style>
-
-        * {
-            box-sizing: border-box;
-            margin: 0;
-            padding: 0;
-        }
-
-        body {
-
-            font-family:
-                Arial,
-                Helvetica,
-                sans-serif;
-
-            background:
-                linear-gradient(
-                    135deg,
-                    #f4f7fb,
-                    #e9eef6
-                );
-
-            min-height: 100vh;
-
-            color: #1f2937;
-
-            padding: 30px 15px;
-
-        }
-
-        .container {
-
-            width: 100%;
-
-            max-width: 900px;
-
-            margin: auto;
-
-        }
-
-        header {
-
-            text-align: center;
-
-            margin-bottom: 30px;
-
-        }
-
-        header h1 {
-
-            font-size: 32px;
-
-            color: #172554;
-
-            margin-bottom: 8px;
-
-        }
-
-        header p {
-
-            color: #64748b;
-
-            font-size: 16px;
-
-        }
-
-        .professor {
-
-            margin-top: 6px;
-
-            color: #2563eb;
-
-            font-size: 15px;
-
-            font-weight: bold;
-
-        }
-
-        .consulta {
-
-            background: white;
-
-            padding: 30px;
-
-            border-radius: 18px;
-
-            box-shadow:
-                0 10px 30px
-                rgba(0,0,0,0.08);
-
-            margin-bottom: 25px;
-
-        }
-
-        .consulta h2 {
-
-            text-align: center;
-
-            margin-bottom: 20px;
-
-            color: #172554;
-
-        }
-
-        .campo {
-
-            display: flex;
-
-            gap: 10px;
-
-        }
-
-        .campo input {
-
-            flex: 1;
-
-            padding: 15px;
-
-            border: 2px solid #dbe3ef;
-
-            border-radius: 10px;
-
-            font-size: 16px;
-
-            outline: none;
-
-            transition: 0.2s;
-
-        }
-
-        .campo input:focus {
-
-            border-color: #2563eb;
-
-        }
-
-        .campo button {
-
-            border: none;
-
-            padding: 0 25px;
-
-            border-radius: 10px;
-
-            background: #2563eb;
-
-            color: white;
-
-            font-size: 16px;
-
-            font-weight: bold;
-
-            cursor: pointer;
-
-            transition: 0.2s;
-
-        }
-
-        .campo button:hover {
-
-            background: #1d4ed8;
-
-            transform: translateY(-1px);
-
-        }
-
-        .resultado {
-
-            display: none;
-
-        }
-
-        .aluno {
-
-            background: white;
-
-            padding: 25px;
-
-            border-radius: 18px;
-
-            box-shadow:
-                0 10px 30px
-                rgba(0,0,0,0.08);
-
-            margin-bottom: 20px;
-
-        }
-
-        .aluno-topo {
-
-            display: flex;
-
-            justify-content:
-                space-between;
-
-            align-items: center;
-
-            gap: 20px;
-
-        }
-
-        .aluno h2 {
-
-            color: #172554;
-
-            margin-bottom: 6px;
-
-        }
-
-        .aluno p {
-
-            color: #64748b;
-
-            margin-bottom: 5px;
-
-        }
-
-        .atualizacao {
-
-            font-size: 13px;
-
-            color: #64748b;
-
-        }
-
-        .codigo {
-
-            background: #eff6ff;
-
-            color: #1d4ed8;
-
-            padding: 8px 12px;
-
-            border-radius: 8px;
-
-            font-weight: bold;
-
-            font-size: 14px;
-
-        }
-
-        /* ABAS */
-
-        .abas {
-
-            display: flex;
-
-            gap: 8px;
-
-            overflow-x: auto;
-
-            margin-bottom: 20px;
-
-            padding-bottom: 4px;
-
-        }
-
-        .aba {
-
-            flex: 1;
-
-            min-width: 110px;
-
-            border: none;
-
-            padding: 13px 10px;
-
-            border-radius: 10px;
-
-            background: white;
-
-            color: #475569;
-
-            font-weight: bold;
-
-            cursor: pointer;
-
-            box-shadow:
-                0 5px 15px
-                rgba(0,0,0,0.05);
-
-            transition: 0.2s;
-
-        }
-
-        .aba:hover {
-
-            background: #eff6ff;
-
-        }
-
-        .aba.ativa {
-
-            background: #2563eb;
-
-            color: white;
-
-        }
-
-        /* BIMESTRES */
-
-        .bimestre {
-
-            display: none;
-
-        }
-
-        .bimestre.ativo {
-
-            display: block;
-
-        }
-
-        .status {
-
-            display: inline-block;
-
-            padding: 8px 13px;
-
-            border-radius: 20px;
-
-            font-size: 13px;
-
-            font-weight: bold;
-
-            margin-bottom: 18px;
-
-        }
-
-        .concluido {
-
-            background: #dcfce7;
-
-            color: #166534;
-
-        }
-
-        .andamento {
-
-            background: #fef3c7;
-
-            color: #92400e;
-
-        }
-
-        .nao-iniciado {
-
-            background: #f1f5f9;
-
-            color: #64748b;
-
-        }
-
-        /* RESUMO */
-
-        .resumo {
-
-            display: grid;
-
-            grid-template-columns:
-                repeat(2, 1fr);
-
-            gap: 15px;
-
-            margin-bottom: 20px;
-
-        }
-
-        .card {
-
-            background: white;
-
-            padding: 22px;
-
-            border-radius: 16px;
-
-            text-align: center;
-
-            box-shadow:
-                0 8px 25px
-                rgba(0,0,0,0.07);
-
-        }
-
-        .card span {
-
-            display: block;
-
-            color: #64748b;
-
-            font-size: 14px;
-
-            margin-bottom: 8px;
-
-        }
-
-        .card strong {
-
-            font-size: 28px;
-
-            color: #172554;
-
-        }
-
-        /* AVALIAÇÕES */
-
-        .avaliacoes {
-
-            background: white;
-
-            padding: 25px;
-
-            border-radius: 18px;
-
-            box-shadow:
-                0 10px 30px
-                rgba(0,0,0,0.08);
-
-        }
-
-        .avaliacoes h3 {
-
-            color: #172554;
-
-            margin-bottom: 18px;
-
-        }
-
-        table {
-
-            width: 100%;
-
-            border-collapse: collapse;
-
-        }
-
-        th,
-        td {
-
-            padding: 14px 10px;
-
-            text-align: left;
-
-            border-bottom:
-                1px solid #e5e7eb;
-
-        }
-
-        th {
-
-            color: #64748b;
-
-            font-size: 14px;
-
-        }
-
-        td:last-child,
-        th:last-child {
-
-            text-align: right;
-
-        }
-
-        .nota {
-
-            font-weight: bold;
-
-            color: #172554;
-
-        }
-
-        /* RESULTADO FINAL */
-
-        .resultado-final {
-
-            display: none;
-
-        }
-
-        .resultado-final.ativo {
-
-            display: block;
-
-        }
-
-        .resultado-box {
-
-            background: white;
-
-            padding: 25px;
-
-            border-radius: 18px;
-
-            box-shadow:
-                0 10px 30px
-                rgba(0,0,0,0.08);
-
-        }
-
-        .resultado-box h3 {
-
-            color: #172554;
-
-            margin-bottom: 20px;
-
-        }
-
-        .media-final {
-
-            margin-top: 20px;
-
-            padding: 20px;
-
-            background: #eff6ff;
-
-            border-radius: 12px;
-
-            text-align: center;
-
-        }
-
-        .media-final span {
-
-            display: block;
-
-            color: #475569;
-
-            margin-bottom: 5px;
-
-        }
-
-        .media-final strong {
-
-            font-size: 34px;
-
-            color: #172554;
-
-        }
-
-        /* ERRO */
-
-        .erro {
-
-            display: none;
-
-            margin-top: 15px;
-
-            padding: 12px;
-
-            background: #fef2f2;
-
-            color: #b91c1c;
-
-            border-radius: 8px;
-
-            text-align: center;
-
-        }
-
-        footer {
-
-            text-align: center;
-
-            margin-top: 30px;
-
-            color: #94a3b8;
-
-            font-size: 14px;
-
-        }
-
-        @media (max-width: 600px) {
-
-            body {
-
-                padding: 20px 12px;
-
-            }
-
-            header h1 {
-
-                font-size: 26px;
-
-            }
-
-            .consulta {
-
-                padding: 20px;
-
-            }
-
-            .campo {
-
-                flex-direction: column;
-
-            }
-
-            .campo button {
-
-                height: 50px;
-
-            }
-
-            .aluno-topo {
-
-                flex-direction: column;
-
-                align-items: flex-start;
-
-            }
-
-            .resumo {
-
-                grid-template-columns: 1fr;
-
-            }
-
-            .aba {
-
-                min-width: 95px;
-
-                font-size: 12px;
-
-            }
-
-            table {
-
-                font-size: 14px;
-
-            }
-
-        }
-
-    </style>
-
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Portal do Aluno — Matemática</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:Arial,Helvetica,sans-serif;background:linear-gradient(135deg,#f4f7fb,#e9eef6);min-height:100vh;color:#1f2937;padding:30px 15px}
+.container{width:100%;max-width:900px;margin:auto}
+header{text-align:center;margin-bottom:30px}
+header h1{font-size:32px;color:#172554;margin-bottom:8px}
+header p{color:#64748b;font-size:16px}
+.professor{margin-top:6px;color:#2563eb;font-size:15px;font-weight:bold}
+.consulta,.aluno,.avaliacoes,.resultado-box{background:#fff;border-radius:18px;box-shadow:0 10px 30px rgba(0,0,0,.08)}
+.consulta{padding:30px;margin-bottom:25px}
+.consulta h2{text-align:center;margin-bottom:20px;color:#172554}
+.campo{display:flex;gap:10px}
+.campo input{flex:1;padding:15px;border:2px solid #dbe3ef;border-radius:10px;font-size:16px;outline:none;text-transform:uppercase}
+.campo input:focus{border-color:#2563eb}
+.campo button{border:0;padding:0 25px;border-radius:10px;background:#2563eb;color:#fff;font-size:16px;font-weight:bold;cursor:pointer}
+.campo button:hover{background:#1d4ed8}
+.resultado{display:none}
+.aluno{padding:25px;margin-bottom:20px}
+.aluno-topo{display:flex;justify-content:space-between;align-items:center;gap:20px}
+.aluno h2{color:#172554;margin-bottom:6px}
+.aluno p{color:#64748b;margin-bottom:5px}
+.atualizacao{font-size:13px}
+.codigo{background:#eff6ff;color:#1d4ed8;padding:8px 12px;border-radius:8px;font-weight:bold;font-size:14px;white-space:nowrap}
+.ano{display:inline-block;margin-top:8px;background:#eef2ff;color:#3730a3;padding:6px 10px;border-radius:8px;font-size:13px;font-weight:bold}
+.abas{display:flex;gap:8px;overflow-x:auto;margin-bottom:20px;padding-bottom:4px}
+.aba{flex:1;min-width:110px;border:0;padding:13px 10px;border-radius:10px;background:#fff;color:#475569;font-weight:bold;cursor:pointer;box-shadow:0 5px 15px rgba(0,0,0,.05)}
+.aba.ativa{background:#2563eb;color:#fff}
+.bimestre,.resultado-final{display:none}
+.bimestre.ativo,.resultado-final.ativo{display:block}
+.status{display:inline-block;padding:8px 13px;border-radius:20px;font-size:13px;font-weight:bold;margin-bottom:18px}
+.concluido{background:#dcfce7;color:#166534}
+.andamento{background:#fef3c7;color:#92400e}
+.nao-iniciado{background:#f1f5f9;color:#64748b}
+.resumo{display:grid;grid-template-columns:repeat(2,1fr);gap:15px;margin-bottom:20px}
+.card{background:#fff;padding:22px;border-radius:16px;text-align:center;box-shadow:0 8px 25px rgba(0,0,0,.07)}
+.card span{display:block;color:#64748b;font-size:14px;margin-bottom:8px}
+.card strong{font-size:28px;color:#172554}
+.avaliacoes{padding:25px}
+.avaliacoes h3{color:#172554;margin-bottom:18px}
+table{width:100%;border-collapse:collapse}
+th,td{padding:14px 10px;text-align:left;border-bottom:1px solid #e5e7eb}
+th{color:#64748b;font-size:14px}
+td:last-child,th:last-child{text-align:right}
+.nota{font-weight:bold;color:#172554}
+.resultado-box{padding:25px}
+.resultado-box h3{color:#172554;margin-bottom:20px}
+.media-final{margin-top:20px;padding:20px;background:#eff6ff;border-radius:12px;text-align:center}
+.media-final span{display:block;color:#475569;margin-bottom:5px}
+.media-final strong{font-size:34px;color:#172554}
+.erro,.carregando{display:none;margin-top:15px;padding:12px;border-radius:8px;text-align:center}
+.erro{background:#fef2f2;color:#b91c1c}
+.carregando{background:#eff6ff;color:#1d4ed8}
+footer{text-align:center;margin-top:30px;color:#94a3b8;font-size:14px}
+@media(max-width:600px){body{padding:20px 12px}header h1{font-size:26px}.consulta{padding:20px}.campo{flex-direction:column}.campo button{height:50px}.aluno-topo{flex-direction:column;align-items:flex-start}.resumo{grid-template-columns:1fr}.aba{min-width:95px;font-size:12px}table{font-size:14px}}
+</style>
 </head>
-
-
 <body>
-
-
 <div class="container">
-
-
-    <header>
-
-        <h1>
-            📚 Portal do Aluno
-        </h1>
-
-        <p>
-            Matemática
-        </p>
-
-        <div class="professor">
-            Prof. Dannyel Moisés
-        </div>
-
-    </header>
-
-
-    <!-- CONSULTA -->
-
-    <section class="consulta">
-
-        <h2>
-            Consulte suas informações
-        </h2>
-
-
-        <div class="campo">
-
-            <input
-                type="text"
-                id="codigo"
-                placeholder="Digite seu código"
-                maxlength="8"
-                autocomplete="off"
-            >
-
-
-            <button
-                onclick="consultarAluno()"
-            >
-                Consultar
-            </button>
-
-        </div>
-
-
-        <div
-            class="erro"
-            id="erro"
-        >
-            Código não encontrado.
-        </div>
-
-    </section>
-
-
-    <!-- RESULTADO -->
-
-    <section
-        class="resultado"
-        id="resultado"
-    >
-
-
-        <!-- IDENTIFICAÇÃO -->
-
-        <div class="aluno">
-
-            <div class="aluno-topo">
-
-                <div>
-
-                    <h2 id="nomeAluno">
-                        -
-                    </h2>
-
-                    <p id="turmaAluno">
-                        -
-                    </p>
-
-                    <p class="atualizacao">
-
-                        Última atualização:
-                        <strong id="ultimaAtualizacao">
-                            -
-                        </strong>
-
-                    </p>
-
-                </div>
-
-
-                <div
-                    class="codigo"
-                    id="codigoAluno"
-                >
-                    -
-                </div>
-
-            </div>
-
-        </div>
-
-
-        <!-- ABAS -->
-
-        <div class="abas">
-
-            <button
-                class="aba ativa"
-                onclick="mostrarAba('bim1', this)"
-            >
-                1º Bimestre
-            </button>
-
-
-            <button
-                class="aba"
-                onclick="mostrarAba('bim2', this)"
-            >
-                2º Bimestre
-            </button>
-
-
-            <button
-                class="aba"
-                onclick="mostrarAba('bim3', this)"
-            >
-                3º Bimestre
-            </button>
-
-
-            <button
-                class="aba"
-                onclick="mostrarAba('bim4', this)"
-            >
-                4º Bimestre
-            </button>
-
-
-            <button
-                class="aba"
-                onclick="mostrarAba('final', this)"
-            >
-                Resultado Final
-            </button>
-
-        </div>
-
-
-        <!-- BIMESTRES -->
-
-        <div
-            class="bimestre ativo"
-            id="bim1"
-        >
-
-            <div id="conteudoBim1"></div>
-
-        </div>
-
-
-        <div
-            class="bimestre"
-            id="bim2"
-        >
-
-            <div id="conteudoBim2"></div>
-
-        </div>
-
-
-        <div
-            class="bimestre"
-            id="bim3"
-        >
-
-            <div id="conteudoBim3"></div>
-
-        </div>
-
-
-        <div
-            class="bimestre"
-            id="bim4"
-        >
-
-            <div id="conteudoBim4"></div>
-
-        </div>
-
-
-        <!-- RESULTADO FINAL -->
-
-        <div
-            class="resultado-final"
-            id="final"
-        >
-
-            <div class="resultado-box">
-
-                <h3>
-                    🏆 Resultado Final
-                </h3>
-
-
-                <table>
-
-                    <thead>
-
-                        <tr>
-
-                            <th>
-                                Bimestre
-                            </th>
-
-                            <th>
-                                Média
-                            </th>
-
-                        </tr>
-
-                    </thead>
-
-
-                    <tbody>
-
-                        <tr>
-
-                            <td>
-                                1º Bimestre
-                            </td>
-
-                            <td
-                                class="nota"
-                                id="mediaFinalBim1"
-                            >
-                                —
-                            </td>
-
-                        </tr>
-
-
-                        <tr>
-
-                            <td>
-                                2º Bimestre
-                            </td>
-
-                            <td
-                                class="nota"
-                                id="mediaFinalBim2"
-                            >
-                                —
-                            </td>
-
-                        </tr>
-
-
-                        <tr>
-
-                            <td>
-                                3º Bimestre
-                            </td>
-
-                            <td
-                                class="nota"
-                                id="mediaFinalBim3"
-                            >
-                                —
-                            </td>
-
-                        </tr>
-
-
-                        <tr>
-
-                            <td>
-                                4º Bimestre
-                            </td>
-
-                            <td
-                                class="nota"
-                                id="mediaFinalBim4"
-                            >
-                                —
-                            </td>
-
-                        </tr>
-
-                    </tbody>
-
-                </table>
-
-
-                <div class="media-final">
-
-                    <span>
-                        Média anual
-                    </span>
-
-                    <strong
-                        id="mediaAnual"
-                    >
-                        —
-                    </strong>
-
-
-                    <p
-                        style="
-                            margin-top:8px;
-                            font-size:13px;
-                            color:#64748b;
-                        "
-                    >
-                        Cálculo considerando os 4 bimestres.
-                    </p>
-
-                </div>
-
-            </div>
-
-        </div>
-
-    </section>
-
-
-    <footer>
-
-        Portal do Aluno • 2026
-
-    </footer>
-
-
+<header>
+<h1>📚 Portal do Aluno</h1>
+<p>Matemática</p>
+<div class="professor">Prof. Dannyel Moisés</div>
+</header>
+
+<section class="consulta">
+<h2>Consulte suas informações</h2>
+<div class="campo">
+<input type="text" id="codigo" placeholder="Digite seu código" maxlength="8" autocomplete="off">
+<button onclick="consultarAluno()">Consultar</button>
+</div>
+<div class="carregando" id="carregando">Consultando suas informações...</div>
+<div class="erro" id="erro">Código não encontrado.</div>
+</section>
+
+<section class="resultado" id="resultado">
+<div class="aluno">
+<div class="aluno-topo">
+<div>
+<h2 id="nomeAluno">-</h2>
+<p id="turmaAluno">-</p>
+<p class="atualizacao">Última atualização: <strong id="ultimaAtualizacao">-</strong></p>
+<div class="ano" id="anoAluno">Ano letivo: -</div>
+</div>
+<div class="codigo" id="codigoAluno">-</div>
+</div>
 </div>
 
+<div class="abas" id="abas"></div>
+<div id="conteudosBimestres"></div>
 
-<script src="dados.js"></script>
+<div class="resultado-final" id="final">
+<div class="resultado-box">
+<h3>🏆 Resultado Final</h3>
+<table>
+<thead><tr><th>Bimestre</th><th>Média</th></tr></thead>
+<tbody id="tabelaResultadoFinal"></tbody>
+</table>
+<div class="media-final">
+<span>Média final</span>
+<strong id="mediaAnual">—</strong>
+<p id="textoMediaFinal" style="margin-top:8px;font-size:13px;color:#64748b">—</p>
+</div>
+</div>
+</div>
+</section>
 
+<footer id="rodape">Portal do Aluno</footer>
+</div>
 
 <script>
+const API_URL='https://portal-aluno-api.dannyel-moises.workers.dev';
 
-
-/*
-    ==========================================
-    MOSTRAR BIMESTRE
-    ==========================================
-*/
-
-function mostrarBimestre(
-    numero,
-    dados
-) {
-
-    const elemento =
-        document.getElementById(
-            "conteudoBim" + numero
-        );
-
-
-    let statusTexto;
-    let statusClasse;
-
-
-    if (
-        dados.status === "concluido"
-    ) {
-
-        statusTexto =
-            "✓ Bimestre concluído";
-
-        statusClasse =
-            "concluido";
-
-    }
-
-    else if (
-        dados.status === "andamento"
-    ) {
-
-        statusTexto =
-            "⏳ Bimestre em andamento";
-
-        statusClasse =
-            "andamento";
-
-    }
-
-    else {
-
-        statusTexto =
-            "○ Bimestre não iniciado";
-
-        statusClasse =
-            "nao-iniciado";
-
-    }
-
-
-    let media =
-        dados.media !== null
-            ? dados.media.toFixed(1)
-            : "—";
-
-
-    let vistos =
-        dados.vistos !== null
-            ? dados.vistos
-            : "—";
-
-
-    let avaliacoesHTML = "";
-
-
-    if (
-        dados.avaliacoes &&
-        dados.avaliacoes.length > 0
-    ) {
-
-        dados.avaliacoes.forEach(
-            function(avaliacao) {
-
-                avaliacoesHTML += `
-
-                    <tr>
-
-                        <td>
-                            ${avaliacao.nome}
-                        </td>
-
-                        <td class="nota">
-                            ${avaliacao.pontos.toFixed(1)}
-                        </td>
-
-                    </tr>
-
-                `;
-
-            }
-        );
-
-    }
-
-    else {
-
-        avaliacoesHTML = `
-
-            <tr>
-
-                <td
-                    colspan="2"
-                    style="
-                        text-align:center;
-                        color:#64748b;
-                    "
-                >
-
-                    Nenhuma avaliação registrada.
-
-                </td>
-
-            </tr>
-
-        `;
-
-    }
-
-
-    let mensagemVazia = "";
-
-
-    if (
-        dados.status === "nao_iniciado"
-    ) {
-
-        mensagemVazia = `
-
-            <p
-                style="
-                    color:#64748b;
-                    text-align:center;
-                    padding:20px;
-                "
-            >
-
-                Este bimestre ainda não foi iniciado.
-
-            </p>
-
-        `;
-
-    }
-
-
-    elemento.innerHTML = `
-
-        <span
-            class="status ${statusClasse}"
-        >
-
-            ${statusTexto}
-
-        </span>
-
-
-        <div class="resumo">
-
-            <div class="card">
-
-                <span>
-                    Média Bimestral
-                </span>
-
-                <strong>
-                    ${media}
-                </strong>
-
-            </div>
-
-
-            <div class="card">
-
-                <span>
-                    Vistos
-                </span>
-
-                <strong>
-                    ${vistos}
-                </strong>
-
-            </div>
-
-        </div>
-
-
-        <div class="avaliacoes">
-
-            <h3>
-
-                📝 Avaliações do
-                ${numero}º Bimestre
-
-            </h3>
-
-
-            ${
-                dados.status === "nao_iniciado"
-
-                ?
-
-                mensagemVazia
-
-                :
-
-                `
-
-                <table>
-
-                    <thead>
-
-                        <tr>
-
-                            <th>
-                                Avaliação
-                            </th>
-
-                            <th>
-                                Pontos
-                            </th>
-
-                        </tr>
-
-                    </thead>
-
-
-                    <tbody>
-
-                        ${avaliacoesHTML}
-
-                    </tbody>
-
-                </table>
-
-                `
-
-            }
-
-        </div>
-
-    `;
-
+function identificarSegmento(turma){
+    return String(turma||'').toUpperCase().includes('EJA')?'EJA':'REGULAR';
 }
 
-
-/*
-    ==========================================
-    RESULTADO FINAL
-    ==========================================
-*/
-
-function mostrarResultadoFinal(aluno) {
-
-    const bimestres = [
-
-        aluno.bimestres.bimestre1,
-        aluno.bimestres.bimestre2,
-        aluno.bimestres.bimestre3,
-        aluno.bimestres.bimestre4
-
-    ];
-
-
-    let soma = 0;
-
-
-    bimestres.forEach(
-        function(bimestre, indice) {
-
-            const media =
-                bimestre.media !== null
-                    ? bimestre.media
-                    : 0;
-
-
-            soma += media;
-
-
-            const elemento =
-                document.getElementById(
-                    "mediaFinalBim" +
-                    (indice + 1)
-                );
-
-
-            if (elemento) {
-
-                if (
-                    bimestre.media !== null
-                ) {
-
-                    elemento.textContent =
-                        bimestre.media
-                            .toFixed(1)
-                            .replace(".", ",");
-
-                }
-
-                else {
-
-                    elemento.textContent =
-                        "—";
-
-                }
-
-            }
-
-        }
-    );
-
-
-    const mediaAnual =
-        soma / 4;
-
-
-    const elementoMediaAnual =
-        document.getElementById(
-            "mediaAnual"
-        );
-
-
-    if (elementoMediaAnual) {
-
-        elementoMediaAnual.textContent =
-            mediaAnual
-                .toFixed(2)
-                .replace(".", ",");
-
-    }
-
+function quantidadeBimestres(segmento){
+    return segmento==='EJA'?2:4;
 }
 
+function extrairAno(data){
+    const m=String(data||'').match(/\\b(20\\d{2})\\b/);
+    return m?m[1]:'';
+}
 
-/*
-    ==========================================
-    CONSULTAR ALUNO
-    ==========================================
-*/
+function formatarNumero(valor,casas){
+    if(valor===null||valor===undefined||valor==='') return '—';
+    const n=Number(valor);
+    return Number.isFinite(n)?n.toFixed(casas||1).replace('.',','):'—';
+}
 
-function consultarAluno() {
+function normalizarAvaliacoes(valor){
+    if(typeof valor==='string'){
+        try{valor=JSON.parse(valor)}catch(e){return []}
+    }
+    return Array.isArray(valor)?valor:[];
+}
 
+function obterBimestre(aluno,numero){
+    return {
+        status:aluno['bimestre'+numero+'_status']||'nao_iniciado',
+        media:aluno['bimestre'+numero+'_media'],
+        vistos:aluno['bimestre'+numero+'_vistos'],
+        avaliacoes:aluno['bimestre'+numero+'_avaliacoes']
+    };
+}
 
-    const campo =
-        document.getElementById(
-            "codigo"
-        );
+function mostrarBimestre(numero,dados){
+    const el=document.getElementById('conteudoBim'+numero);
+    if(!el)return;
 
+    let statusTexto='○ Bimestre não iniciado';
+    let statusClasse='nao-iniciado';
 
-    const codigo =
-        campo.value
-            .trim()
-            .toUpperCase();
-
-
-    const aluno =
-        alunos[codigo];
-
-
-    const resultado =
-        document.getElementById(
-            "resultado"
-        );
-
-
-    const erro =
-        document.getElementById(
-            "erro"
-        );
-
-
-    if (!aluno) {
-
-        resultado.style.display =
-            "none";
-
-        erro.style.display =
-            "block";
-
-        return;
-
+    if(dados.status==='concluido'){
+        statusTexto='✓ Bimestre concluído';
+        statusClasse='concluido';
+    }else if(dados.status==='andamento'){
+        statusTexto='⏳ Bimestre em andamento';
+        statusClasse='andamento';
     }
 
+    const avaliacoes=normalizarAvaliacoes(dados.avaliacoes);
+    let rows='';
 
-    erro.style.display =
-        "none";
-
-
-    document.getElementById(
-        "nomeAluno"
-    ).textContent =
-        aluno.nome;
-
-
-    document.getElementById(
-        "turmaAluno"
-    ).textContent =
-        aluno.turma;
-
-
-    document.getElementById(
-        "codigoAluno"
-    ).textContent =
-        codigo;
-
-
-    document.getElementById(
-        "ultimaAtualizacao"
-    ).textContent =
-        aluno.ultimaAtualizacao;
-
-
-    mostrarBimestre(
-        1,
-        aluno.bimestres.bimestre1
-    );
-
-
-    mostrarBimestre(
-        2,
-        aluno.bimestres.bimestre2
-    );
-
-
-    mostrarBimestre(
-        3,
-        aluno.bimestres.bimestre3
-    );
-
-
-    mostrarBimestre(
-        4,
-        aluno.bimestres.bimestre4
-    );
-
-
-    mostrarResultadoFinal(
-        aluno
-    );
-
-
-    resultado.style.display =
-        "block";
-
-
-    mostrarAba(
-        "bim1",
-        document.querySelector(
-            ".aba"
-        )
-    );
-
-
-    resultado.scrollIntoView({
-
-        behavior:
-            "smooth"
-
+    avaliacoes.forEach(a=>{
+        rows+='<tr><td>'+String(a.nome||'Avaliação')+'</td><td class="nota">'+formatarNumero(a.pontos,1)+'</td></tr>';
     });
 
-}
-
-
-/*
-    ==========================================
-    TROCAR DE ABA
-    ==========================================
-*/
-
-function mostrarAba(
-    id,
-    botao
-) {
-
-
-    const conteudos =
-        document.querySelectorAll(
-            ".bimestre, .resultado-final"
-        );
-
-
-    conteudos.forEach(
-        function(conteudo) {
-
-            conteudo.classList.remove(
-                "ativo"
-            );
-
-        }
-    );
-
-
-    const abas =
-        document.querySelectorAll(
-            ".aba"
-        );
-
-
-    abas.forEach(
-        function(aba) {
-
-            aba.classList.remove(
-                "ativa"
-            );
-
-        }
-    );
-
-
-    const selecionado =
-        document.getElementById(
-            id
-        );
-
-
-    if (selecionado) {
-
-        selecionado.classList.add(
-            "ativo"
-        );
-
+    if(!rows){
+        rows='<tr><td colspan="2" style="text-align:center;color:#64748b">Nenhuma avaliação registrada.</td></tr>';
     }
 
+    let corpo='';
 
-    if (botao) {
-
-        botao.classList.add(
-            "ativa"
-        );
-
+    if(dados.status==='nao_iniciado'){
+        corpo='<p style="color:#64748b;text-align:center;padding:20px">Este bimestre ainda não foi iniciado.</p>';
+    }else{
+        corpo='<table><thead><tr><th>Avaliação</th><th>Pontos</th></tr></thead><tbody>'+rows+'</tbody></table>';
     }
 
+    el.innerHTML=
+        '<span class="status '+statusClasse+'">'+statusTexto+'</span>'+
+        '<div class="resumo">'+
+            '<div class="card"><span>Média Bimestral</span><strong>'+formatarNumero(dados.media,1)+'</strong></div>'+
+            '<div class="card"><span>Vistos</span><strong>'+((dados.vistos!==null&&dados.vistos!==undefined)?dados.vistos:'—')+'</strong></div>'+
+        '</div>'+
+        '<div class="avaliacoes"><h3>📝 Avaliações do '+numero+'º Bimestre</h3>'+corpo+'</div>';
 }
 
+function criarAbas(quantidade){
+    const abas=document.getElementById('abas');
+    abas.innerHTML='';
 
-/*
-    ==========================================
-    ENTER NO CAMPO DE CÓDIGO
-    ==========================================
-*/
+    for(let i=1;i<=quantidade;i++){
+        abas.innerHTML+=
+            '<button class="aba" data-bimestre="'+i+'" onclick="mostrarAba(\\'bim'+i+'\\',this)">'+i+'º Bimestre</button>';
+    }
 
-document
-    .getElementById("codigo")
-    .addEventListener(
-        "keydown",
-        function(event) {
+    abas.innerHTML+=
+        '<button class="aba" onclick="mostrarAba(\\'final\\',this)">Resultado Final</button>';
+}
 
-            if (
-                event.key === "Enter"
-            ) {
+function criarConteudos(aluno,quantidade){
+    const container=document.getElementById('conteudosBimestres');
+    container.innerHTML='';
 
-                consultarAluno();
+    for(let i=1;i<=quantidade;i++){
+        container.innerHTML+=
+            '<div class="bimestre" id="bim'+i+'"><div id="conteudoBim'+i+'"></div></div>';
 
-            }
+        mostrarBimestre(i,obterBimestre(aluno,i));
+    }
+}
 
+function encontrarBimestreVigente(aluno,quantidade){
+    for(let i=1;i<=quantidade;i++){
+        if(aluno['bimestre'+i+'_status']==='andamento') return i;
+    }
+    return 1;
+}
+
+function mostrarResultadoFinal(aluno,quantidade){
+    const tabela=document.getElementById('tabelaResultadoFinal');
+    tabela.innerHTML='';
+    let soma=0;
+
+    for(let i=1;i<=quantidade;i++){
+        const d=obterBimestre(aluno,i);
+        const media=(d.media===null||d.media===undefined||d.media==='')?0:Number(d.media);
+
+        if(Number.isFinite(media)) soma+=media;
+
+        tabela.innerHTML+=
+            '<tr><td>'+i+'º Bimestre</td><td class="nota">'+
+            ((d.media===null||d.media===undefined||d.media==='')?'—':formatarNumero(d.media,1))+
+            '</td></tr>';
+    }
+
+    const final=soma/quantidade;
+    document.getElementById('mediaAnual').textContent=formatarNumero(final,2);
+
+    document.getElementById('textoMediaFinal').textContent=
+        quantidade===2
+        ?'Cálculo considerando os 2 bimestres da EJA.'
+        :'Cálculo considerando os 4 bimestres do Ensino Regular.';
+}
+
+async function consultarAluno(){
+    const codigo=document.getElementById('codigo').value.trim().toUpperCase();
+    const resultado=document.getElementById('resultado');
+    const erro=document.getElementById('erro');
+    const carregando=document.getElementById('carregando');
+
+    resultado.style.display='none';
+    erro.style.display='none';
+
+    if(!codigo){
+        erro.textContent='Digite seu código.';
+        erro.style.display='block';
+        return;
+    }
+
+    carregando.style.display='block';
+
+    try{
+        const resposta=await fetch(API_URL+'?codigo='+encodeURIComponent(codigo));
+
+        if(!resposta.ok){
+            if(resposta.status===404) throw new Error('Código não encontrado.');
+            throw new Error('Não foi possível consultar suas informações.');
         }
-    );
 
+        const aluno=await resposta.json();
+        const segmento=identificarSegmento(aluno.turma);
+        const quantidade=quantidadeBimestres(segmento);
+        const ano=extrairAno(aluno.ultima_atualizacao);
 
+        document.getElementById('nomeAluno').textContent=aluno.nome||'—';
+        document.getElementById('turmaAluno').textContent=aluno.turma||'—';
+        document.getElementById('codigoAluno').textContent=codigo;
+        document.getElementById('ultimaAtualizacao').textContent=aluno.ultima_atualizacao||'—';
+        document.getElementById('anoAluno').textContent=ano?'Ano letivo: '+ano:'Ano letivo';
+        document.getElementById('rodape').textContent=ano?'Portal do Aluno • '+ano:'Portal do Aluno';
+
+        criarAbas(quantidade);
+        criarConteudos(aluno,quantidade);
+        mostrarResultadoFinal(aluno,quantidade);
+
+        const vigente=encontrarBimestreVigente(aluno,quantidade);
+        const aba=document.querySelector('#abas .aba[data-bimestre="'+vigente+'"]');
+
+        resultado.style.display='block';
+        mostrarAba('bim'+vigente,aba);
+
+        resultado.scrollIntoView({behavior:'smooth'});
+
+    }catch(e){
+        resultado.style.display='none';
+        erro.textContent=e.message||'Não foi possível consultar suas informações.';
+        erro.style.display='block';
+    }finally{
+        carregando.style.display='none';
+    }
+}
+
+function mostrarAba(id,botao){
+    document.querySelectorAll('.bimestre,.resultado-final').forEach(el=>el.classList.remove('ativo'));
+    document.querySelectorAll('.aba').forEach(el=>el.classList.remove('ativa'));
+
+    const selecionado=document.getElementById(id);
+    if(selecionado)selecionado.classList.add('ativo');
+    if(botao)botao.classList.add('ativa');
+}
+
+document.getElementById('codigo').addEventListener('keydown',function(event){
+    if(event.key==='Enter')consultarAluno();
+});
 </script>
-
-
 </body>
-
 </html>
