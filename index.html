@@ -125,7 +125,7 @@ function quantidadeBimestres(segmento){
 }
 
 function extrairAno(data){
-    const m=String(data||'').match(/\\b(20\\d{2})\\b/);
+    const m=String(data||'').match(/\b(20\d{2})\b/);
     return m?m[1]:'';
 }
 
