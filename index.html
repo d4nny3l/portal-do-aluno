@@ -200,11 +200,11 @@ function criarAbas(quantidade){
 
     for(let i=1;i<=quantidade;i++){
         abas.innerHTML+=
-            '<button class="aba" data-bimestre="'+i+'" onclick="mostrarAba(\\'bim'+i+'\\',this)">'+i+'º Bimestre</button>';
+            '<button class="aba" data-bimestre="'+i+'" onclick="mostrarAba(\'bim'+i+'\',this)">'+i+'º Bimestre</button>';
     }
 
     abas.innerHTML+=
-        '<button class="aba" onclick="mostrarAba(\\'final\\',this)">Resultado Final</button>';
+        '<button class="aba" onclick="mostrarAba(\'final\',this)">Resultado Final</button>';
 }
 
 function criarConteudos(aluno,quantidade){
