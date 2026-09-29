@@ -58,20 +58,123 @@ body::before{
 </section>
 </div></main>
 <script>
-const USER_HASH="5b99f1ce8bbca0e3186fa294c4dbf0f82e1738f336f52bf6cc9c9c427133b444";
-const PASS_HASH="355f04e4f91cd8f435af858bdf7f096cea6b82ac32e0cbb77070945b59b67e09";
-async function hash(v){const b=await crypto.subtle.digest("SHA-256",new TextEncoder().encode(v));return [...new Uint8Array(b)].map(x=>x.toString(16).padStart(2,"0")).join("")}
-async function abrir(){
-document.getElementById("loginBox").style.display="none";document.getElementById("painel").style.display="block";
+const AUTH_API_URL = "https://salta-auth.dannyel-moises.workers.dev";
+const SESSION_KEY = "saltaProfessorSession";
+
+function mostrarPainel(){
+    document.getElementById("loginBox").style.display="none";
+    document.getElementById("painel").style.display="block";
 }
-function sair(){sessionStorage.removeItem("professorAuth");location.reload()}
-(async()=>{if(sessionStorage.getItem("professorAuth")==="1")await abrir()})();
-document.getElementById("loginForm").addEventListener("submit",async e=>{
-e.preventDefault();
-const u=await hash(document.getElementById("usuario").value.trim().toLowerCase()),p=await hash(document.getElementById("senha").value);
-if(u===USER_HASH&&p===PASS_HASH){sessionStorage.setItem("professorAuth","1");await abrir()}else document.getElementById("erro").style.display="block";
+
+function mostrarLogin(mensagem=""){
+    document.getElementById("loginBox").style.display="block";
+    document.getElementById("painel").style.display="none";
+    const erro=document.getElementById("erro");
+    erro.textContent=mensagem || "Usuário ou senha incorretos.";
+    erro.style.display=mensagem ? "block" : "none";
+}
+
+function salvarToken(token){
+    if(token) sessionStorage.setItem(SESSION_KEY,token);
+}
+
+function obterToken(){
+    return sessionStorage.getItem(SESSION_KEY) || "";
+}
+
+async function verificarSessao(){
+    const token=obterToken();
+    const headers={};
+    if(token) headers.Authorization="Bearer "+token;
+
+    try{
+        const resposta=await fetch(AUTH_API_URL+"/session",{
+            method:"GET",
+            headers,
+            credentials:"include"
+        });
+
+        if(!resposta.ok){
+            sessionStorage.removeItem(SESSION_KEY);
+            mostrarLogin();
+            return;
+        }
+
+        const dados=await resposta.json();
+
+        if(dados.authenticated){
+            mostrarPainel();
+        }else{
+            sessionStorage.removeItem(SESSION_KEY);
+            mostrarLogin();
+        }
+    }catch(e){
+        // Não libera o ambiente quando o servidor de autenticação não está disponível.
+        mostrarLogin("Não foi possível verificar a sessão. Tente novamente.");
+    }
+}
+
+document.getElementById("loginForm").addEventListener("submit",async event=>{
+    event.preventDefault();
+
+    const usuario=document.getElementById("usuario").value.trim().toLowerCase();
+    const senha=document.getElementById("senha").value;
+    const botao=document.querySelector("#loginForm button");
+    const erro=document.getElementById("erro");
+
+    if(!usuario || !senha){
+        mostrarLogin("Preencha usuário e senha.");
+        return;
+    }
+
+    erro.style.display="none";
+    botao.disabled=true;
+    botao.textContent="Entrando...";
+
+    try{
+        const resposta=await fetch(AUTH_API_URL+"/login",{
+            method:"POST",
+            headers:{"Content-Type":"application/json"},
+            credentials:"include",
+            body:JSON.stringify({username:usuario,password:senha})
+        });
+
+        const dados=await resposta.json().catch(()=>({}));
+
+        if(!resposta.ok || !dados.ok){
+            mostrarLogin(dados.error || "Usuário ou senha incorretos.");
+            return;
+        }
+
+        salvarToken(dados.token);
+        mostrarPainel();
+    }catch(e){
+        mostrarLogin("Não foi possível conectar ao servidor de autenticação.");
+    }finally{
+        botao.disabled=false;
+        botao.textContent="Entrar";
+    }
 });
-document.getElementById("sair").addEventListener("click",sair);
+
+document.getElementById("sair").addEventListener("click",async()=>{
+    const token=obterToken();
+    try{
+        const headers={};
+        if(token) headers.Authorization="Bearer "+token;
+        await fetch(AUTH_API_URL+"/logout",{
+            method:"POST",
+            headers,
+            credentials:"include"
+        });
+    }catch(e){
+        // Mesmo que a rede falhe, encerramos a sessão local.
+    }
+
+    sessionStorage.removeItem(SESSION_KEY);
+    location.reload();
+});
+
+verificarSessao();
 </script>
 </body>
 </html>
