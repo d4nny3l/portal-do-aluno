@@ -66,7 +66,7 @@ body.auth-check{visibility:hidden}
   async function check() {
     const token = sessionStorage.getItem(SESSION_KEY);
     if (!token) {
-      window.location.replace("../professor.html");
+      window.location.replace("../plataforma/professor.html");
       return;
     }
 
@@ -80,14 +80,14 @@ body.auth-check{visibility:hidden}
 
       if (!response.ok) {
         sessionStorage.removeItem(SESSION_KEY);
-        window.location.replace("../professor.html");
+        window.location.replace("../plataforma/professor.html");
         return;
       }
 
       const data = await response.json();
       if (!data.authenticated) {
         sessionStorage.removeItem(SESSION_KEY);
-        window.location.replace("../professor.html");
+        window.location.replace("../plataforma/professor.html");
         return;
       }
 
