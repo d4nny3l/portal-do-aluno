@@ -19,6 +19,23 @@ button{width:100%;border:0;border-radius:14px;padding:14px 16px;background:#111;
 .cards{display:grid;grid-template-columns:repeat(3,1fr);gap:16px}.panelcard{min-height:190px;padding:24px;border-radius:25px;background:var(--card);border:1px solid var(--line);box-shadow:0 15px 40px rgba(0,0,0,.06)}.panelcard span{font-size:12px;color:var(--muted)}.panelcard h2{font-size:21px;margin:12px 0 8px}.panelcard p{font-size:14px;line-height:1.5;color:var(--muted);margin:0}
 @media(max-width:700px){.cards{grid-template-columns:1fr}.panelhead{align-items:flex-start;flex-direction:column}.panelhead h1{font-size:34px}.logout{width:100%}}@media(max-width:520px){main{padding:35px 0}.login{padding:28px;border-radius:26px}}
 </style>
+<style id="salta-grid-global">
+/* SALTA — identidade visual global */
+html{background:#f5f5f7}
+body{position:relative;isolation:isolate}
+body::before{
+  content:"";
+  position:fixed;
+  inset:0;
+  pointer-events:none;
+  z-index:-1;
+  background-image:
+    linear-gradient(rgba(90,90,100,.055) 1px,transparent 1px),
+    linear-gradient(90deg,rgba(90,90,100,.055) 1px,transparent 1px);
+  background-size:32px 32px;
+  background-position:0 0;
+}
+</style>
 </head>
 <body>
 <nav><div class="wrap"><div class="brand"><div class="mark">D</div><span>Área do Professor</span></div><a class="back" href="./">← Plataforma</a></div></nav>
