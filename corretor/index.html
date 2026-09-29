@@ -136,8 +136,8 @@ function detectGrid(src){
  // exposição e perspectiva.
  const candidates=[];
  const params=[
-   [1.15,22,75,16,38],[1.25,24,90,15,40],[1.05,20,60,14,42],
-   [1.35,28,100,17,38]
+   [1.15,22,75,16,10,32],[1.25,24,90,15,10,34],[1.05,20,60,14,9,35],
+   [1.35,28,100,17,10,32]
  ];
  for(const [dp,minDist,p1,p2,minR,maxR] of params){
    const circles=new cv.Mat();
