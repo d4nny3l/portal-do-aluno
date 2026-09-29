@@ -1,0 +1,40 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>SALTA — Corretor de Avaliações</title>
+<style>
+*{box-sizing:border-box}html{scroll-behavior:smooth}body{margin:0;background:#f5f5f7;color:#171717;font-family:-apple-system,BlinkMacSystemFont,"SF Pro Display","SF Pro Text",Arial,sans-serif}
+header{background:#111;color:#fff;padding:42px 20px 52px}.wrap{max-width:900px;margin:auto}.brand{font-size:48px;font-weight:700;letter-spacing:-2px}.sub{color:#aaa;margin-top:6px;font-size:16px}
+main{max-width:900px;margin:-24px auto 55px;padding:0 15px}.card{background:#fff;border:1px solid #e5e5e5;border-radius:24px;padding:25px;margin-bottom:16px;box-shadow:0 8px 30px #0000000b}
+h2{margin:0 0 7px;font-size:22px;letter-spacing:-.5px}.help{color:#707070;line-height:1.5;margin:0 0 20px}
+.grid{display:grid;grid-template-columns:repeat(5,1fr);gap:9px}.q{background:#fafafa;border:1px solid #e7e7e7;border-radius:13px;padding:9px}.q label{display:block;font-size:12px;color:#777;margin-bottom:6px}
+select{width:100%;border:0;background:#fff;border-radius:8px;padding:9px;font-size:16px}button,.file{display:inline-block;border:0;border-radius:13px;padding:13px 17px;font-weight:600;font-size:15px;cursor:pointer;background:#111;color:#fff}.secondary{background:#eee;color:#111}.actions{display:flex;gap:9px;flex-wrap:wrap;margin-top:16px}.file input{display:none}
+.preview{display:none;margin-top:18px;text-align:center}.preview img{max-width:100%;max-height:600px;border-radius:15px;border:1px solid #ddd}
+.status{display:none;margin-top:15px;padding:13px 15px;background:#f1f1f1;border-radius:13px;color:#333}.show{display:block}
+.results{display:none}.top{display:flex;justify-content:space-between;align-items:end;gap:15px;flex-wrap:wrap}.score{font-size:46px;font-weight:700;letter-spacing:-2px}
+table{width:100%;border-collapse:collapse;margin-top:18px}th,td{text-align:left;padding:11px 7px;border-bottom:1px solid #eee}th{font-size:11px;color:#777}.ok{font-weight:700}.err{font-weight:700}.warn{font-weight:700;color:#a66a00}
+footer{text-align:center;color:#777;font-size:13px;padding:10px 10px 45px}@media(max-width:650px){.grid{grid-template-columns:repeat(2,1fr)}.card{padding:20px}.brand{font-size:42px}}
+</style>
+</head>
+<body>
+<header><div class="wrap"><div class="brand">SALTA</div><div class="sub">Corretor de Avaliações</div></div></header>
+<main>
+<section class="card"><h2>1. Monte o gabarito</h2><p class="help">Escolha a alternativa correta para cada uma das 20 questões.</p>
+<div id="grid" class="grid"></div><div class="actions"><button onclick="saveKey()">Salvar gabarito</button><button class="secondary" onclick="clearKey()">Limpar</button></div></section>
+<section class="card"><h2>2. Fotografe a folha-resposta</h2><p class="help">Envie uma foto da folha-resposta SALTA. A versão atual é o protótipo da leitura automática.</p>
+<div class="actions"><label class="file">Escolher foto<input id="photo" type="file" accept="image/*" capture="environment"></label><button class="secondary" onclick="demo()">Testar correção</button></div>
+<div id="preview" class="preview"><img id="img"></div><div id="status" class="status"></div></section>
+<section id="results" class="card results"><div class="top"><div><h2>Resultado</h2><p class="help">Confira as leituras antes de registrar a nota.</p></div><div id="score" class="score">—</div></div>
+<table><thead><tr><th>Questão</th><th>Leitura</th><th>Gabarito</th><th>Situação</th></tr></thead><tbody id="body"></tbody></table></section>
+</main>
+<footer>SALTA — Ferramenta Educacional<br>Desenvolvido por Prof. Dannyel Moisés</footer>
+<script>
+const L=["A","B","C","D","E"],g=document.getElementById("grid");for(let i=1;i<=20;i++)g.innerHTML+=`<div class="q"><label>Questão ${i}</label><select id="q${i}"><option value="">—</option>${L.map(x=>"<option>"+x+"</option>").join("")}</select></div>`;
+let key=JSON.parse(localStorage.getItem("saltaKey")||"null")||[];key.forEach((x,i)=>document.getElementById("q"+(i+1)).value=x);
+function status(t){let s=document.getElementById("status");s.textContent=t;s.classList.add("show")}
+function saveKey(){key=Array.from({length:20},(_,i)=>document.getElementById("q"+(i+1)).value);if(key.some(x=>!x)){status("Preencha as 20 respostas.");return}localStorage.setItem("saltaKey",JSON.stringify(key));status("Gabarito salvo. Agora envie a folha-resposta.")}
+function clearKey(){key=[];localStorage.removeItem("saltaKey");for(let i=1;i<=20;i++)document.getElementById("q"+i).value="";status("Gabarito limpo.")}
+document.getElementById("photo").onchange=e=>{let f=e.target.files[0];if(!f)return;document.getElementById("img").src=URL.createObjectURL(f);document.getElementById("preview").style.display="block";status("Foto carregada. A leitura automática da folha será integrada na próxima etapa.")}
+function demo(){if(key.length!==20){status("Salve o gabarito primeiro.");return}let r=key.map((x,i)=>i===6?"?":i===11?(L.find(a=>a!==x)||"A"):x),hits=r.filter((x,i)=>x===key[i]).length;document.getElementById("score").textContent=(hits/2).toFixed(1)+"/10";document.getElementById("body").innerHTML=r.map((x,i)=>`<tr><td>${i+1}</td><td>${x}</td><td>${key[i]}</td><td class="${x==="?"?"warn":x===key[i]?"ok":"err"}">${x==="?"?"⚠ Revisar":x===key[i]?"✓ Acerto":"✕ Erro"}</td></tr>`).join("");document.getElementById("results").style.display="block";document.getElementById("results").scrollIntoView({behavior:"smooth"});status("Teste concluído. A questão 7 foi deixada inconclusiva de propósito.");}
+</script></body></html>
