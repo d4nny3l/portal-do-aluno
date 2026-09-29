@@ -1,0 +1,4497 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+
+<head>
+
+<meta charset="UTF-8">
+
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+<title>SALTA — Solucionador de Equações</title>
+
+
+<!-- =====================================================
+     MATHJAX
+     ===================================================== -->
+
+<script>
+
+window.MathJax = {
+
+    tex: {
+
+        inlineMath: [
+            ['\\(', '\\)']
+        ],
+
+        displayMath: [
+            ['\\[', '\\]']
+        ]
+
+    },
+
+    svg: {
+
+        fontCache: 'global'
+
+    }
+
+};
+
+</script>
+
+
+<script
+src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-svg.js"
+async>
+</script>
+
+
+<!-- =====================================================
+     ESTILO
+     ===================================================== -->
+
+<style>
+
+* {
+
+    box-sizing: border-box;
+
+    margin: 0;
+
+    padding: 0;
+
+}
+
+
+body {
+
+    font-family:
+        Arial,
+        Helvetica,
+        sans-serif;
+
+    background: #f4f6f8;
+
+    color: #1f2937;
+
+    min-height: 100vh;
+
+}
+
+
+header {
+
+    background: #111827;
+
+    color: white;
+
+    padding: 30px 20px;
+
+    text-align: center;
+
+}
+
+
+header h1 {
+
+    font-size: 2.5rem;
+
+    letter-spacing: 2px;
+
+    margin-bottom: 8px;
+
+}
+
+
+header p {
+
+    color: #d1d5db;
+
+    font-size: 1rem;
+
+}
+
+
+main {
+
+    width: 92%;
+
+    max-width: 900px;
+
+    margin: 32px auto;
+
+}
+
+
+.card {
+
+    background: white;
+
+    border-radius: 18px;
+
+    padding: 30px;
+
+    margin-bottom: 22px;
+
+    box-shadow:
+        0 6px 24px
+        rgba(0, 0, 0, 0.08);
+
+}
+
+
+.card h2 {
+
+    margin-bottom: 20px;
+
+    color: #111827;
+
+}
+
+
+.descricao {
+
+    margin-bottom: 24px;
+
+    color: #4b5563;
+
+    line-height: 1.6;
+
+}
+
+
+.inputs {
+
+    display: flex;
+
+    gap: 16px;
+
+    flex-wrap: wrap;
+
+}
+
+
+.campo {
+
+    flex: 1;
+
+    min-width: 180px;
+
+}
+
+
+.campo label {
+
+    display: block;
+
+    font-weight: bold;
+
+    margin-bottom: 8px;
+
+}
+
+
+.campo input {
+
+    width: 100%;
+
+    padding: 14px;
+
+    font-size: 1.1rem;
+
+    border:
+        2px solid
+        #d1d5db;
+
+    border-radius: 10px;
+
+    outline: none;
+
+    transition: 0.2s;
+
+}
+
+
+.campo input:focus {
+
+    border-color: #2563eb;
+
+    box-shadow:
+        0 0 0 3px
+        rgba(37, 99, 235, 0.12);
+
+}
+
+
+.botoes {
+
+    display: flex;
+
+    gap: 12px;
+
+    margin-top: 24px;
+
+}
+
+
+button {
+
+    border: none;
+
+    border-radius: 10px;
+
+    padding: 14px 22px;
+
+    font-size: 1rem;
+
+    font-weight: bold;
+
+    cursor: pointer;
+
+    transition: 0.2s;
+
+}
+
+
+#resolver {
+
+    background: #2563eb;
+
+    color: white;
+
+    flex: 1;
+
+}
+
+
+#resolver:hover {
+
+    background: #1d4ed8;
+
+    transform:
+        translateY(-1px);
+
+}
+
+
+#limpar {
+
+    background: #e5e7eb;
+
+    color: #111827;
+
+}
+
+
+#limpar:hover {
+
+    background: #d1d5db;
+
+}
+
+
+.equacao {
+
+    background: #f3f4f6;
+
+    padding: 22px;
+
+    border-radius: 12px;
+
+    text-align: center;
+
+    font-size: 1.45rem;
+
+    font-weight: bold;
+
+    margin-bottom: 28px;
+
+    overflow-x: auto;
+
+}
+
+
+.passo {
+
+    border-left:
+        4px solid
+        #2563eb;
+
+    padding:
+        18px 20px;
+
+    margin:
+        18px 0;
+
+    background: #f8fafc;
+
+    border-radius:
+        0 12px
+        12px 0;
+
+}
+
+
+.passo h3 {
+
+    margin-bottom: 15px;
+
+    color: #1d4ed8;
+
+}
+
+
+.matematica {
+
+    font-size: 1.22rem;
+
+    line-height: 2;
+
+    overflow-x: auto;
+
+    padding: 5px;
+
+}
+
+
+.resultado {
+
+    margin-top: 28px;
+
+    padding: 24px;
+
+    border-radius: 14px;
+
+    background: #ecfdf5;
+
+    border:
+        2px solid
+        #10b981;
+
+}
+
+
+.resultado h2 {
+
+    color: #047857;
+
+    margin-bottom: 16px;
+
+}
+
+
+.raizes {
+
+    display: flex;
+
+    gap: 16px;
+
+    flex-wrap: wrap;
+
+    margin-top: 20px;
+
+}
+
+
+.raiz {
+
+    flex: 1;
+
+    min-width: 220px;
+
+    background: white;
+
+    border-radius: 12px;
+
+    padding: 20px;
+
+    text-align: center;
+
+    font-size: 1.3rem;
+
+    font-weight: bold;
+
+    box-shadow:
+        0 3px 10px
+        rgba(0, 0, 0, 0.05);
+
+}
+
+
+.aproximacao {
+
+    margin-top: 10px;
+
+    font-size: 1rem;
+
+    font-weight: normal;
+
+    color: #4b5563;
+
+}
+
+
+.mensagem {
+
+    padding: 22px;
+
+    border-radius: 12px;
+
+    font-size: 1.1rem;
+
+    line-height: 1.6;
+
+    margin-top: 20px;
+
+}
+
+
+.erro {
+
+    background: #fef2f2;
+
+    border:
+        2px solid
+        #ef4444;
+
+    color: #b91c1c;
+
+}
+
+
+.info {
+
+    background: #eff6ff;
+
+    border:
+        2px solid
+        #3b82f6;
+
+    color: #1e40af;
+
+}
+
+
+.aviso {
+
+    background: #fffbeb;
+
+    border:
+        2px solid
+        #f59e0b;
+
+    color: #92400e;
+
+}
+
+
+.metodo {
+
+    display: inline-block;
+
+    background: #e0e7ff;
+
+    color: #3730a3;
+
+    padding:
+        7px 12px;
+
+    border-radius: 20px;
+
+    font-size: 0.85rem;
+
+    font-weight: bold;
+
+    margin-bottom: 15px;
+
+}
+
+
+.botao-complexas {
+
+    background: #7c3aed;
+
+    color: white;
+
+    padding:
+        15px 25px;
+
+    border-radius: 10px;
+
+    font-weight: bold;
+
+    cursor: pointer;
+
+    border: none;
+
+    font-size: 1rem;
+
+}
+
+
+.botao-complexas:hover {
+
+    background: #6d28d9;
+
+    transform:
+        translateY(-1px);
+
+}
+
+
+footer {
+
+    text-align: center;
+
+    padding:
+        35px 20px;
+
+    color: #6b7280;
+
+    line-height: 1.7;
+
+}
+
+
+footer strong {
+
+    color: #111827;
+
+}
+
+
+.escondido {
+
+    display: none;
+
+}
+
+
+@media (max-width: 600px) {
+
+    header h1 {
+
+        font-size: 2rem;
+
+    }
+
+
+    .card {
+
+        padding: 21px;
+
+    }
+
+
+    .botoes {
+
+        flex-direction: column;
+
+    }
+
+
+    #limpar {
+
+        width: 100%;
+
+    }
+
+
+    .equacao {
+
+        font-size: 1.15rem;
+
+    }
+
+
+    .matematica {
+
+        font-size: 1.05rem;
+
+    }
+
+}
+
+</style>
+
+</head>
+
+
+<body>
+
+
+<!-- =====================================================
+     CABEÇALHO
+     ===================================================== -->
+
+<header>
+
+<h1>SALTA</h1>
+
+<p>
+Solucionador de Equações — Passo a Passo
+</p>
+
+</header>
+
+
+<!-- =====================================================
+     CONTEÚDO
+     ===================================================== -->
+
+<main>
+
+<section class="card">
+
+<h2>
+Equação do 2º grau
+</h2>
+
+
+<p class="descricao">
+
+Digite os valores dos coeficientes
+<strong>a</strong>,
+<strong>b</strong> e
+<strong>c</strong>
+da equação
+\(ax^2 + bx + c = 0\).
+
+</p>
+
+
+<div class="inputs">
+
+
+<div class="campo">
+
+<label for="a">
+Coeficiente a
+</label>
+
+<input
+type="number"
+id="a"
+placeholder="Ex.: 2"
+step="any">
+
+</div>
+
+
+<div class="campo">
+
+<label for="b">
+Coeficiente b
+</label>
+
+<input
+type="number"
+id="b"
+placeholder="Ex.: 5"
+step="any">
+
+</div>
+
+
+<div class="campo">
+
+<label for="c">
+Coeficiente c
+</label>
+
+<input
+type="number"
+id="c"
+placeholder="Ex.: -3"
+step="any">
+
+</div>
+
+
+</div>
+
+
+<div class="botoes">
+
+<button
+id="resolver"
+onclick="resolverEquacao()">
+
+Resolver Equação
+
+</button>
+
+
+<button
+id="limpar"
+onclick="limparTudo()">
+
+Limpar
+
+</button>
+
+</div>
+
+</section>
+
+
+<section
+id="resultado"
+class="card escondido">
+
+
+<h2>
+Resolução
+</h2>
+
+
+<div
+id="equacao"
+class="equacao">
+</div>
+
+
+<div id="passos"></div>
+
+
+<div id="resultadoFinal"></div>
+
+
+</section>
+
+</main>
+
+
+<!-- =====================================================
+     RODAPÉ
+     ===================================================== -->
+
+<footer>
+
+<div>
+
+SALTA — Ferramenta Educacional de Matemática
+
+</div>
+
+
+<div>
+
+Desenvolvido por
+<strong>
+Prof. Dannyel Moisés
+</strong>
+
+</div>
+
+</footer>
+
+
+<script>
+
+
+/* =========================================================
+   FUNÇÕES BÁSICAS
+   ========================================================= */
+
+
+function numeroMath(numero) {
+
+    if (Object.is(numero, -0)) {
+
+        numero = 0;
+
+    }
+
+
+    if (Number.isInteger(numero)) {
+
+        return numero.toString();
+
+    }
+
+
+    return numero
+        .toFixed(10)
+        .replace(/\.?0+$/, '');
+
+}
+
+
+function numeroBR(numero) {
+
+    return numeroMath(numero)
+        .replace('.', ',');
+
+}
+
+
+/* =========================================================
+   MDC
+   ========================================================= */
+
+
+function mdc(a, b) {
+
+    a = Math.abs(
+        Math.round(a)
+    );
+
+    b = Math.abs(
+        Math.round(b)
+    );
+
+
+    while (b !== 0) {
+
+        const resto = a % b;
+
+        a = b;
+
+        b = resto;
+
+    }
+
+
+    return a;
+
+}
+
+
+/* =========================================================
+   QUADRADO PERFEITO
+   ========================================================= */
+
+
+function ehQuadradoPerfeito(numero) {
+
+    if (numero < 0) {
+
+        return false;
+
+    }
+
+
+    return Number.isInteger(
+        Math.sqrt(numero)
+    );
+
+}
+
+function mdc(a, b) {
+    a = Math.abs(Math.round(a));
+    b = Math.abs(Math.round(b));
+
+    while (b !== 0) {
+        let resto = a % b;
+        a = b;
+        b = resto;
+    }
+
+    return a;
+}
+
+
+function ehInteiro(numero) {
+    return Math.abs(numero - Math.round(numero)) < 1e-10;
+}
+
+function decimalParaFracao(numero) {
+
+    /*
+        Trabalhamos com o valor decimal
+        em uma representação controlada,
+        evitando os erros de ponto flutuante
+        do JavaScript.
+    */
+
+    if (Number.isInteger(numero)) {
+
+        return {
+            numerador: numero,
+            denominador: 1
+        };
+
+    }
+
+
+    let texto =
+        Math.abs(numero)
+            .toFixed(10);
+
+
+    /*
+        Remove zeros desnecessários.
+    */
+
+    texto =
+        texto.replace(
+            /0+$/,
+            ''
+        );
+
+
+    texto =
+        texto.replace(
+            /\.$/,
+            ''
+        );
+
+
+    let partes =
+        texto.split(".");
+
+
+    let casas =
+        partes[1]
+            ? partes[1].length
+            : 0;
+
+
+    let denominador =
+        Math.pow(
+            10,
+            casas
+        );
+
+
+    let numerador =
+        parseInt(
+            partes[0] +
+            (
+                partes[1]
+                || ''
+            )
+        );
+
+
+    if (numero < 0) {
+
+        numerador =
+            -numerador;
+
+    }
+
+
+    /*
+        Simplificação da fração.
+    */
+
+    let divisor =
+        mdc(
+            Math.abs(numerador),
+            denominador
+        );
+
+
+    numerador /=
+        divisor;
+
+
+    denominador /=
+        divisor;
+
+
+    return {
+
+        numerador:
+            numerador,
+        denominador:
+            denominador
+
+    };
+
+}
+
+function fracaoLatex(numerador, denominador) {
+
+    if (denominador === 1) {
+        return `${numerador}`;
+    }
+
+    if (numerador < 0) {
+        return `-\\frac{${Math.abs(numerador)}}{${denominador}}`;
+    }
+
+    return `\\frac{${numerador}}{${denominador}}`;
+}
+
+/* =========================================================
+   SIMPLIFICA RADICAL
+   ========================================================= */
+
+
+function simplificarRadical(numero) {
+
+    /*
+        Se o número for inteiro,
+        mantém exatamente a lógica original.
+    */
+
+    if (Number.isInteger(numero)) {
+
+        let fator = 1;
+
+        let radicando = numero;
+
+        for (
+            let i =
+                Math.floor(
+                    Math.sqrt(numero)
+                );
+
+            i >= 2;
+
+            i--
+        ) {
+
+            const quadrado =
+                i * i;
+
+            if (
+                numero % quadrado === 0
+            ) {
+
+                fator = i;
+
+                radicando =
+                    numero / quadrado;
+
+                break;
+            }
+        }
+
+        return {
+            fator: fator,
+            radicando: radicando
+        };
+    }
+
+
+    /*
+        Se for decimal,
+        transforma em fração.
+    */
+
+    const texto =
+        numero.toString();
+
+    const partes =
+        texto.split(".");
+
+
+    const casas =
+        partes[1]
+            ? partes[1].length
+            : 0;
+
+
+    let denominador =
+        Math.pow(
+            10,
+            casas
+        );
+
+
+    let numerador =
+        Math.round(
+            numero * denominador
+        );
+
+
+    /*
+        Simplifica a fração pelo MDC.
+    */
+
+    const divisor =
+        mdc(
+            Math.abs(numerador),
+            denominador
+        );
+
+
+    numerador /=
+        divisor;
+
+
+    denominador /=
+        divisor;
+
+
+    /*
+        Verifica se o numerador
+        é um quadrado perfeito.
+    */
+
+    const raizNumerador =
+        Math.sqrt(
+            Math.abs(numerador)
+        );
+
+
+    const raizDenominador =
+        Math.sqrt(
+            denominador
+        );
+
+
+    /*
+        Exemplo:
+
+        2,25 = 9/4
+
+        √(9/4) = 3/2
+    */
+
+    if (
+        Number.isInteger(raizNumerador) &&
+        Number.isInteger(raizDenominador)
+    ) {
+
+        return {
+
+    fator:
+        raizNumerador,
+
+    radicando:
+        1,
+
+    fracao:
+        true,
+
+    raizExata:
+        true,
+
+    numerador:
+        raizNumerador,
+
+    denominador:
+        raizDenominador
+
+};
+    }
+
+
+    /*
+        Se o numerador tiver
+        um quadrado perfeito,
+        simplifica somente essa parte.
+
+        Exemplo:
+
+        18/25
+
+        √(18/25)
+
+        = 3√2 / 5
+    */
+
+    let fator =
+        1;
+
+    let novoNumerador =
+        numerador;
+
+
+    for (
+        let i =
+            Math.floor(
+                Math.sqrt(
+                    Math.abs(numerador)
+                )
+            );
+
+        i >= 2;
+
+        i--
+    ) {
+
+        const quadrado =
+            i * i;
+
+
+        if (
+            numerador % quadrado === 0
+        ) {
+
+            fator = i;
+
+            novoNumerador =
+                numerador /
+                quadrado;
+
+            break;
+        }
+    }
+
+
+    return {
+
+        fator:
+            fator,
+
+        radicando:
+            novoNumerador,
+
+        fracao:
+            true,
+
+        numerador:
+            novoNumerador,
+
+        denominador:
+            denominador
+
+    };
+
+}
+
+
+/* =========================================================
+   FRAÇÃO
+   ========================================================= */
+
+
+function fracao(
+    numerador,
+    denominador
+) {
+
+    return '\\frac{' +
+        numerador +
+        '}{' +
+        denominador +
+        '}';
+
+}
+
+
+/* =========================================================
+   TERMO DA EQUAÇÃO
+   ========================================================= */
+
+
+function termoMath(
+    valor,
+    variavel,
+    primeiro = false
+) {
+
+
+    if (valor === 0) {
+
+        return '';
+
+    }
+
+
+    const absoluto =
+        Math.abs(valor);
+
+
+    let coeficiente = '';
+
+
+    if (
+        absoluto !== 1 ||
+        variavel === ''
+    ) {
+
+        coeficiente =
+            numeroMath(absoluto);
+
+    }
+
+
+    const termo =
+        coeficiente +
+        variavel;
+
+
+    if (primeiro) {
+
+        if (valor < 0) {
+
+            return '-' + termo;
+
+        }
+
+
+        return termo;
+
+    }
+
+
+    if (valor < 0) {
+
+        return ' - ' + termo;
+
+    }
+
+
+    return ' + ' + termo;
+
+}
+
+
+/* =========================================================
+   MONTA EQUAÇÃO
+   ========================================================= */
+
+
+function montarEquacao(
+    a,
+    b,
+    c
+) {
+
+
+    let equacao = '';
+
+
+    equacao +=
+        termoMath(
+            a,
+            'x^2',
+            true
+        );
+
+
+    if (b !== 0) {
+
+        equacao +=
+            termoMath(
+                b,
+                'x'
+            );
+
+    }
+
+
+    if (c !== 0) {
+
+        equacao +=
+            termoMath(
+                c,
+                ''
+            );
+
+    }
+
+
+    if (equacao === '') {
+
+        equacao = '0';
+
+    }
+
+
+    return '\\(' +
+        equacao +
+        ' = 0\\)';
+
+}
+
+
+/* =========================================================
+   RAIZ RACIONAL
+   ========================================================= */
+
+
+function raizRacional(
+    b,
+    a,
+    sinal,
+    raizDelta
+) {
+
+
+    let numerador =
+        -b +
+        sinal * raizDelta;
+
+
+    let denominador =
+        2 * a;
+
+
+    const divisor =
+        mdc(
+            numerador,
+            denominador
+        );
+
+
+    if (divisor !== 0) {
+
+        numerador /=
+            divisor;
+
+        denominador /=
+            divisor;
+
+    }
+
+
+    if (denominador < 0) {
+
+        numerador *= -1;
+
+        denominador *= -1;
+
+    }
+
+
+    if (denominador === 1) {
+
+        return numeroMath(
+            numerador
+        );
+
+    }
+
+
+    return fracao(
+        numeroMath(numerador),
+        numeroMath(denominador)
+    );
+
+}
+
+
+/* =========================================================
+   RAIZ IRRACIONAL
+   ========================================================= */
+
+
+
+function raizIrracional(
+    b,
+    a,
+    sinal,
+    delta
+) {
+
+    const radical =
+        simplificarRadical(
+            delta
+        );
+
+
+    /*
+        CASO 1:
+        A raiz do Delta é uma fração exata.
+
+        Exemplo:
+
+        √(9/25) = 3/5
+    */
+
+    if (
+        radical.fracao &&
+        radical.raizExata
+    ) {
+
+        let raizNumerador =
+            radical.numerador;
+
+        let raizDenominador =
+            radical.denominador;
+
+
+        let constante =
+            -b;
+
+        let denominador =
+            2 * a;
+
+
+        /*
+            x = (-b ± raiz) / 2a
+
+            raiz = raizNumerador / raizDenominador
+
+            Então:
+
+            x =
+            (-b ± 3/5) / 2a
+
+            Colocamos tudo no mesmo denominador.
+        */
+
+        let novoNumerador =
+            constante *
+            raizDenominador;
+
+        let parteRaiz =
+            sinal *
+            raizNumerador;
+
+
+        let novoDenominador =
+            denominador *
+            raizDenominador;
+
+
+        /*
+            Simplifica os termos quando
+            possível.
+        */
+
+        let divisor =
+            mdc(
+                mdc(
+                    Math.abs(
+                        novoNumerador
+                    ),
+                    Math.abs(
+                        parteRaiz
+                    )
+                ),
+                Math.abs(
+                    novoDenominador
+                )
+            );
+
+
+        if (
+            divisor !== 0 &&
+            divisor !== 1
+        ) {
+
+            novoNumerador /=
+                divisor;
+
+            parteRaiz /=
+                divisor;
+
+            novoDenominador /=
+                divisor;
+
+        }
+
+
+        /*
+            Monta o numerador final.
+        */
+
+        let numeradorFinal;
+
+
+        if (
+            novoNumerador === 0
+        ) {
+
+            numeradorFinal =
+                numeroMath(
+                    parteRaiz
+                );
+
+        }
+
+        else {
+
+            if (
+                parteRaiz > 0
+            ) {
+
+                numeradorFinal =
+                    numeroMath(
+                        novoNumerador
+                    ) +
+                    ' + ' +
+                    numeroMath(
+                        parteRaiz
+                    );
+
+            }
+
+            else {
+
+                numeradorFinal =
+                    numeroMath(
+                        novoNumerador
+                    ) +
+                    ' - ' +
+                    numeroMath(
+                        Math.abs(
+                            parteRaiz
+                        )
+                    );
+
+            }
+
+        }
+
+
+        if (
+            novoDenominador === 1
+        ) {
+
+            return numeradorFinal;
+
+        }
+
+
+        return fracao(
+            numeradorFinal,
+            numeroMath(
+                novoDenominador
+            )
+        );
+
+    }
+
+
+    /*
+        CASO 2:
+        Comportamento antigo.
+
+        Continua funcionando normalmente
+        para Delta inteiro e raiz irracional.
+    */
+
+    let constante =
+        -b;
+
+
+    let radicalCoef =
+        sinal *
+        radical.fator;
+
+
+    let denominador =
+        2 * a;
+
+
+    let divisor =
+        mdc(
+            mdc(
+                constante,
+                radicalCoef
+            ),
+            denominador
+        );
+
+
+    if (
+        divisor !== 0
+    ) {
+
+        constante /=
+            divisor;
+
+        radicalCoef /=
+            divisor;
+
+        denominador /=
+            divisor;
+
+    }
+
+
+    if (
+        denominador < 0
+    ) {
+
+        constante *= -1;
+
+        radicalCoef *= -1;
+
+        denominador *= -1;
+
+    }
+
+
+    let radicalTexto;
+
+
+    if (
+        Math.abs(
+            radicalCoef
+        ) === 1
+    ) {
+
+        radicalTexto =
+            '\\sqrt{' +
+            numeroMath(
+                radical.radicando
+            ) +
+            '}';
+
+    }
+
+    else {
+
+        radicalTexto =
+            numeroMath(
+                Math.abs(
+                    radicalCoef
+                )
+            ) +
+            '\\sqrt{' +
+            numeroMath(
+                radical.radicando
+            ) +
+            '}';
+
+    }
+
+
+    let numerador = '';
+
+
+    if (
+        constante !== 0
+    ) {
+
+        numerador +=
+            numeroMath(
+                constante
+            );
+
+
+        if (
+            radicalCoef > 0
+        ) {
+
+            numerador +=
+                ' + ' +
+                radicalTexto;
+
+        }
+
+        else {
+
+            numerador +=
+                ' - ' +
+                radicalTexto;
+
+        }
+
+    }
+
+    else {
+
+        if (
+            radicalCoef < 0
+        ) {
+
+            numerador +=
+                '-';
+
+        }
+
+
+        numerador +=
+            radicalTexto;
+
+    }
+
+
+    if (
+        denominador === 1
+    ) {
+
+        return numerador;
+
+    }
+
+
+    return fracao(
+        numerador,
+        numeroMath(
+            denominador
+        )
+    );
+
+}
+
+/* =========================================================
+   RESULTADO PADRÃO
+   ========================================================= */
+
+
+function resultadoCaixa(
+    texto,
+    mensagem
+) {
+
+    return `
+
+        <div class="resultado">
+
+            <h2>
+                Resultado
+            </h2>
+
+            <p>
+                ${mensagem}
+            </p>
+
+
+            <div class="raizes">
+
+                <div class="raiz">
+
+                    \\[
+                    ${texto}
+                    \\]
+
+                </div>
+
+            </div>
+
+        </div>
+
+    `;
+
+}
+
+
+/* =========================================================
+   RESOLUÇÃO PRINCIPAL
+   ========================================================= */
+
+
+function resolverEquacao() {
+
+
+    const a =
+        parseFloat(
+            document.getElementById(
+                'a'
+            ).value
+        );
+
+
+    const b =
+        parseFloat(
+            document.getElementById(
+                'b'
+            ).value
+        );
+
+
+    const c =
+        parseFloat(
+            document.getElementById(
+                'c'
+            ).value
+        );
+
+
+    const resultado =
+        document.getElementById(
+            'resultado'
+        );
+
+
+    const equacao =
+        document.getElementById(
+            'equacao'
+        );
+
+
+    const passos =
+        document.getElementById(
+            'passos'
+        );
+
+
+    const resultadoFinal =
+        document.getElementById(
+            'resultadoFinal'
+        );
+
+
+    resultado
+        .classList
+        .remove(
+            'escondido'
+        );
+
+
+    passos.innerHTML = '';
+
+    resultadoFinal.innerHTML = '';
+
+
+    /* =====================================================
+       CAMPOS VAZIOS
+       ===================================================== */
+
+
+    if (
+        Number.isNaN(a) ||
+        Number.isNaN(b) ||
+        Number.isNaN(c)
+    ) {
+
+
+        equacao.innerHTML = '';
+
+
+        passos.innerHTML = `
+
+            <div class="mensagem erro">
+
+                <strong>
+                    Atenção!
+                </strong>
+
+                <br><br>
+
+                Preencha os três coeficientes:
+                <strong>a</strong>,
+                <strong>b</strong> e
+                <strong>c</strong>.
+
+            </div>
+
+        `;
+
+
+        return;
+
+    }
+
+
+    equacao.innerHTML =
+        montarEquacao(
+            a,
+            b,
+            c
+        );
+
+
+    /* =====================================================
+       a = 0
+       ===================================================== */
+
+
+    if (a === 0) {
+
+
+        if (
+            b === 0 &&
+            c === 0
+        ) {
+
+
+            passos.innerHTML = `
+
+                <div class="mensagem info">
+
+                    <strong>
+                        Identidade Matemática
+                    </strong>
+
+                    <br><br>
+
+                    \\[
+                    0 = 0
+                    \\]
+
+                    Todos os números reais
+                    satisfazem a igualdade.
+                    \\[
+                    \\boxed{
+                    S = \\mathbb{R}
+                    }
+                    \\]
+
+                </div>
+
+            `;
+
+
+        }
+
+        else if (b === 0) {
+
+
+            passos.innerHTML = `
+
+                <div class="mensagem erro">
+
+                    <strong>
+                        Não existe solução.
+                    </strong>
+
+                    <br><br>
+
+                    A igualdade fica:
+
+                    \\[
+                    ${numeroMath(c)}
+                    =0
+                    \\]
+
+                    o que é impossível,
+                    pois
+                    \\(
+                    c\\neq0
+                    \\).
+
+                </div>
+
+            `;
+
+
+        }
+
+        else {
+
+
+            const x =
+                -c / b;
+
+
+            passos.innerHTML = `
+
+                <div class="passo">
+
+                    <span class="metodo">
+                        Equação do 1º grau
+                    </span>
+
+                    <h3>
+                        Resolução Simplificada
+                    </h3>
+
+                    <div class="matematica">
+
+                        \\[
+                        ${numeroMath(b)}x
+                        ${c >= 0 ? '+' : '-'}
+                        ${numeroMath(
+                            Math.abs(c)
+                        )}
+                        =0
+                        \\]
+
+                        \\[
+                        ${numeroMath(b)}x
+                        =
+                        ${numeroMath(-c)}
+                        \\]
+
+                        \\[
+                        x =
+                        ${fracao(
+                            numeroMath(-c),
+                            numeroMath(b)
+                        )}
+                        \\]
+
+                        \\[
+                        \\boxed{
+                        x =
+                        ${numeroMath(x)}
+                        }
+                        \\]
+
+                    </div>
+
+                </div>
+
+            `;
+
+
+        }
+
+
+        MathJax.typesetPromise();
+
+        return;
+
+    }
+
+
+    /* =====================================================
+       b = 0 E c = 0
+       ===================================================== */
+
+
+    if (
+        b === 0 &&
+        c === 0
+    ) {
+
+
+        passos.innerHTML = `
+
+            <div class="passo">
+
+                <span class="metodo">
+                    Resolução Simplificada
+                </span>
+
+                <h3>
+                    1. Observando a Equação
+                </h3>
+
+                <div class="matematica">
+
+                    \\[
+                    ${numeroMath(a)}
+                    x^2 = 0
+                    \\]
+
+                    Dividindo os dois lados por
+                    \\(
+                    ${numeroMath(a)}
+                    \\):
+
+                    \\[
+                    x^2=0
+                    \\]
+
+                    Portanto:
+
+                    \\[
+                    \\boxed{
+                    x=0
+                    }
+                    \\]
+
+                </div>
+
+            </div>
+
+        `;
+
+
+        mostrarBhaskara(
+            a,
+            b,
+            c,
+            0,
+            passos
+        );
+
+
+        resultadoFinal.innerHTML = `
+
+            <div class="resultado">
+
+                <h2>
+                    Resultado
+                </h2>
+
+                <div class="raizes">
+
+                    <div class="raiz">
+
+                        \\[
+                        x=0
+                        \\]
+
+                    </div>
+
+                </div>
+
+            </div>
+
+        `;
+
+
+        MathJax.typesetPromise();
+
+        return;
+
+    }
+
+
+    /* =====================================================
+       c = 0
+       ===================================================== */
+
+
+    if (c === 0) {
+
+
+        const segundaRaiz =
+            -b / a;
+
+
+        passos.innerHTML = `
+
+            <div class="passo">
+
+                <span class="metodo">
+                    Resolução Simplificada
+                </span>
+
+                <h3>
+                    1. Colocando x em Evidência
+                </h3>
+
+                <div class="matematica">
+
+                    \\[
+                    ${numeroMath(a)}x^2
+                    ${b >= 0 ? '+' : '-'}
+                    ${numeroMath(
+                        Math.abs(b)
+                    )}x
+                    =0
+                    \\]
+
+                    \\[
+                    x
+                    \\left(
+                    ${numeroMath(a)}x
+                    ${b >= 0 ? '+' : '-'}
+                    ${numeroMath(
+                        Math.abs(b)
+                    )}
+                    \\right)
+                    =0
+                    \\]
+
+                    Pelo princípio do produto nulo:
+
+                    \\[
+                    x=0
+                    \\]
+
+                    ou
+
+                    \\[
+                    ${numeroMath(a)}x
+                    ${b >= 0 ? '+' : '-'}
+                    ${numeroMath(
+                        Math.abs(b)
+                    )}
+                    =0
+                    \\]
+
+                    \\[
+                    x =
+                    ${fracao(
+                        numeroMath(-b),
+                        numeroMath(a)
+                    )}
+                    \\]
+
+                    \\[
+                    \\boxed{
+                    x =
+                    ${numeroMath(
+                        segundaRaiz
+                    )}
+                    }
+                    \\]
+
+                </div>
+
+            </div>
+
+        `;
+
+
+        mostrarBhaskara(
+            a,
+            b,
+            c,
+            b * b,
+            passos
+        );
+
+
+        resultadoFinal.innerHTML = `
+
+            <div class="resultado">
+
+                <h2>
+                    Resultado
+                </h2>
+
+                <p>
+                    A equação possui duas raízes reais:
+                </p>
+
+
+                <div class="raizes">
+
+
+                    <div class="raiz">
+
+                        \\[
+                        x_1=0
+                        \\]
+
+                    </div>
+
+
+                    <div class="raiz">
+
+                        \\[
+                        x_2=
+                        ${numeroMath(
+                            segundaRaiz
+                        )}
+                        \\]
+
+                    </div>
+
+
+                </div>
+
+            </div>
+
+        `;
+
+
+        MathJax.typesetPromise();
+
+        return;
+
+    }
+
+
+    /* =====================================================
+       b = 0
+       ===================================================== */
+
+
+    if (b === 0) {
+
+
+        const valor =
+            -c / a;
+
+
+        /* -------------------------------------------------
+           x² = número negativo
+           ------------------------------------------------- */
+
+
+        if (valor < 0) {
+
+
+            passos.innerHTML += `
+
+                <div class="passo">
+
+                    <span class="metodo">
+                        Resolução Simplificada
+                    </span>
+
+                    <h3>
+                        1. Isolando x²
+                    </h3>
+
+                    <div class="matematica">
+
+                        \\[
+                        ${numeroMath(a)}x^2
+                        ${c >= 0 ? '+' : '-'}
+                        ${numeroMath(
+                            Math.abs(c)
+                        )}
+                        =0
+                        \\]
+
+                        \\[
+                        ${numeroMath(a)}x^2
+                        =
+                        ${numeroMath(-c)}
+                        \\]
+
+                        \\[
+                        x^2=
+                        ${numeroMath(valor)}
+                        \\]
+
+                    </div>
+
+                </div>
+
+
+                <div class="mensagem info">
+
+                    Como:
+
+                    \\[
+                    x^2<0
+                    \\]
+
+                    não existem raízes reais.
+
+                    Podemos, porém, obter as
+                    <strong>raízes complexas</strong>.
+
+                </div>
+
+
+                <div style="
+                    text-align:center;
+                    margin-top:25px;
+                ">
+
+                    <button
+                        class="botao-complexas"
+                        onclick="obterRaizesComplexasIncompleta()">
+
+                        Obter Raízes Complexas
+
+                    </button>
+
+                </div>
+
+
+                <div id="complexasIncompleta"></div>
+
+            `;
+
+
+            MathJax.typesetPromise();
+
+            return;
+
+        }
+
+
+        /* -------------------------------------------------
+           x² = número positivo
+           ------------------------------------------------- */
+
+
+        const raiz =
+            Math.sqrt(valor);
+
+
+        let formaSimplificada;
+
+
+        if (
+            Number.isInteger(valor) &&
+            valor > 0
+        ) {
+
+
+            const simplificacao =
+                simplificarRadical(
+                    valor
+                );
+
+
+            if (
+                simplificacao.fator === 1
+            ) {
+
+                formaSimplificada =
+                    '\\sqrt{' +
+                    numeroMath(
+                        simplificacao.radicando
+                    ) +
+                    '}';
+
+            }
+
+            else {
+
+                formaSimplificada =
+                    numeroMath(
+                        simplificacao.fator
+                    ) +
+                    '\\sqrt{' +
+                    numeroMath(
+                        simplificacao.radicando
+                    ) +
+                    '}';
+
+            }
+
+
+            if (
+                simplificacao.fator !== 1
+            ) {
+
+
+                passos.innerHTML += `
+
+                    <div class="passo">
+
+                        <h3>
+                            2. Simplificando a Raiz
+                        </h3>
+
+                        <div class="matematica">
+
+                            \\[
+                            x=
+                            \\pm
+                            \\sqrt{
+                            ${numeroMath(valor)}
+                            }
+                            \\]
+
+                            \\[
+                            ${numeroMath(valor)}
+                            =
+                            ${numeroMath(
+                                simplificacao.fator
+                            )}^2
+                            \\cdot
+                            ${numeroMath(
+                                simplificacao.radicando
+                            )}
+                            \\]
+
+                            \\[
+                            \\sqrt{
+                            ${numeroMath(valor)}
+                            }
+                            =
+                            ${formaSimplificada}
+                            \\]
+
+                        </div>
+
+                    </div>
+
+                `;
+
+            }
+
+        }
+
+        else {
+
+
+            formaSimplificada =
+                '\\sqrt{' +
+                numeroMath(valor) +
+                '}';
+
+        }
+
+
+        passos.innerHTML += `
+
+            <div class="passo">
+
+                <span class="metodo">
+                    Resolução Simplificada
+                </span>
+
+                <h3>
+                    1. Isolando x²
+                </h3>
+
+                <div class="matematica">
+
+                    \\[
+                    ${numeroMath(a)}x^2
+                    ${c >= 0 ? '+' : '-'}
+                    ${numeroMath(
+                        Math.abs(c)
+                    )}
+                    =0
+                    \\]
+
+                    \\[
+                    ${numeroMath(a)}x^2
+                    =
+                    ${numeroMath(-c)}
+                    \\]
+
+                    \\[
+                    x^2=
+                    ${fracao(
+                        numeroMath(-c),
+                        numeroMath(a)
+                    )}
+                    \\]
+
+                    \\[
+                    x=
+                    \\pm
+                    ${formaSimplificada}
+                    \\]
+
+                </div>
+
+            </div>
+
+        `;
+
+
+        mostrarBhaskara(
+            a,
+            b,
+            c,
+            b * b - 4 * a * c,
+            passos
+        );
+
+
+        resultadoFinal.innerHTML = `
+
+            <div class="resultado">
+
+                <h2>
+                    Resultado
+                </h2>
+
+                <div class="raizes">
+
+
+                    <div class="raiz">
+
+                        \\[
+                        x_1=
+                        ${numeroMath(
+                            raiz
+                        )}
+                        \\]
+
+                    </div>
+
+
+                    <div class="raiz">
+
+                        \\[
+                        x_2=
+                        ${numeroMath(
+                            -raiz
+                        )}
+                        \\]
+
+                    </div>
+
+
+                </div>
+
+            </div>
+
+        `;
+
+
+        MathJax.typesetPromise();
+
+        return;
+
+    }
+
+
+    /* =====================================================
+       CASO GERAL
+       ===================================================== */
+
+
+    const delta =
+        b * b -
+        4 * a * c;
+
+const deltaFracao = !Number.isInteger(delta)
+    ? decimalParaFracao(delta)
+    : null;
+    
+    passos.innerHTML += `
+
+        <div class="passo">
+
+            <span class="metodo">
+                Fórmula Resolutiva
+            </span>
+
+            <h3>
+                1. Identificando os Coeficientes
+            </h3>
+
+            <div class="matematica">
+
+                \\[
+                a=${numeroMath(a)}
+                \\]
+
+                \\[
+                b=${numeroMath(b)}
+                \\]
+
+                \\[
+                c=${numeroMath(c)}
+                \\]
+
+            </div>
+
+        </div>
+
+
+        <div class="passo">
+
+            <h3>
+                2. Calculando o Discriminante (Δ)
+            </h3>
+
+            <div class="matematica">
+
+                \\[
+                \\Delta=b^2-4ac
+                \\]
+
+                \\[
+                \\Delta=
+                (${numeroMath(b)})^2
+                -
+                4\\cdot
+                (${numeroMath(a)})
+                \\cdot
+                (${numeroMath(c)})
+                \\]
+
+                \\[
+                \\Delta=
+                ${numeroMath(
+                    b*b
+                )}
+                -
+                ${numeroMath(
+                    4*a*c
+                )}
+                \\]
+
+                \\[
+                \\boxed{
+                \\Delta=
+                ${numeroMath(delta)}
+                }
+                \\]
+
+            </div>
+
+        </div>
+
+    `;
+
+
+    /* =====================================================
+       DELTA NEGATIVO
+       ===================================================== */
+
+
+    if (delta < 0) {
+
+
+        passos.innerHTML += `
+
+            <div class="mensagem info">
+
+                <strong>
+                    Δ &lt; 0
+                </strong>
+
+                <br><br>
+
+                Como:
+
+                \\[
+                \\Delta=
+                ${numeroMath(delta)}
+                \\]
+
+                o discriminante é negativo.
+
+                <br><br>
+
+                Portanto,
+                <strong>
+                não existem raízes reais
+                </strong>.
+
+            </div>
+
+
+            <div style="
+                text-align:center;
+                margin-top:25px;
+            ">
+
+                <button
+                    class="botao-complexas"
+                    onclick="obterRaizesComplexas()">
+
+                    Obter Raízes Complexas
+
+                </button>
+
+            </div>
+
+
+            <div id="complexas"></div>
+
+        `;
+
+
+        MathJax.typesetPromise();
+
+        return;
+
+    }
+
+
+    /* =====================================================
+       DELTA = 0
+       ===================================================== */
+
+
+    if (delta === 0) {
+
+
+        const x =
+            -b /
+            (2*a);
+
+
+        passos.innerHTML += `
+
+            <div class="passo">
+
+                <h3>
+                    3. Aplicando a Fórmula Resolutiva
+                </h3>
+
+                <div class="matematica">
+
+                    \\[
+                    x=
+                    \\frac{
+                    -b\\pm\\sqrt{\\Delta}
+                    }{
+                    2a
+                    }
+                    \\]
+
+                    \\[
+                    x=
+                    \\frac{
+                    -(${numeroMath(b)})
+                    \\pm
+                    \\sqrt{0}
+                    }{
+                    2(${numeroMath(a)})
+                    }
+                    \\]
+
+                    \\[
+                    x=
+                    \\frac{
+                    ${numeroMath(-b)}
+                    }{
+                    ${numeroMath(2*a)}
+                    }
+                    \\]
+
+                    \\[
+                    \\boxed{
+                    x=
+                    ${numeroMath(x)}
+                    }
+                    \\]
+
+                </div>
+
+            </div>
+
+        `;
+
+
+        resultadoFinal.innerHTML = `
+
+            <div class="resultado">
+
+                <h2>
+                    Resultado
+                </h2>
+
+                <div class="raizes">
+
+                    <div class="raiz">
+
+                        \\[
+                        x=
+                        ${numeroMath(x)}
+                        \\]
+
+                    </div>
+
+                </div>
+
+            </div>
+
+        `;
+
+
+        MathJax.typesetPromise();
+
+        return;
+
+    }
+
+
+    /* =====================================================
+       DELTA POSITIVO
+       ===================================================== */
+
+
+    const raizDelta =
+        Math.sqrt(delta);
+
+
+    const x1 =
+        (-b + raizDelta) /
+        (2*a);
+
+
+    const x2 =
+        (-b - raizDelta) /
+        (2*a);
+
+
+    /* =====================================================
+       DELTA QUADRADO PERFEITO
+       ===================================================== */
+
+
+    if (
+        Number.isInteger(delta) &&
+        ehQuadradoPerfeito(delta)
+    ) {
+
+
+        const formaX1 =
+            raizRacional(
+                b,
+                a,
+                1,
+                raizDelta
+            );
+
+
+        const formaX2 =
+            raizRacional(
+                b,
+                a,
+                -1,
+                raizDelta
+            );
+
+
+        passos.innerHTML += `
+
+            <div class="passo">
+
+                <h3>
+                    3. Aplicando a Fórmula Resolutiva
+                </h3>
+
+                <div class="matematica">
+
+                    \\[
+                    x=
+                    \\frac{                    -b\\pm\\sqrt{\\Delta}
+                    }{
+                    2a
+                    }
+                    \\]
+
+                    \\[
+                    x_1=
+                    \\frac{
+                    -(${numeroMath(b)})
+                    +
+                    \\sqrt{
+                    ${numeroMath(delta)}
+                    }
+                    }{
+                    2(${numeroMath(a)})
+                    }
+                    \\]
+
+                    \\[
+                    x_1=
+                    ${formaX1}
+                    \\]
+
+                    \\[
+                    x_2=
+                    \\frac{
+                    -(${numeroMath(b)})
+                    -
+                    \\sqrt{
+                    ${numeroMath(delta)}
+                    }
+                    }{
+                    2(${numeroMath(a)})
+                    }
+                    \\]
+
+                    \\[
+                    x_2=
+                    ${formaX2}
+                    \\]
+
+                </div>
+
+            </div>
+
+        `;
+
+
+        resultadoFinal.innerHTML = `
+
+            <div class="resultado">
+
+                <h2>
+                    Resultado
+                </h2>
+
+                <div class="raizes">
+
+
+                    <div class="raiz">
+
+                        \\[
+                        x_1=
+                        ${formaX1}
+                        \\]
+
+                        <div class="aproximacao">
+
+                            Aproximação:
+
+                            \\[
+                            x_1\\approx
+                            ${numeroBR(x1)}
+                            \\]
+
+                        </div>
+
+                    </div>
+
+
+                    <div class="raiz">
+
+                        \\[
+                        x_2=
+                        ${formaX2}
+                        \\]
+
+                        <div class="aproximacao">
+
+                            Aproximação:
+
+                            \\[
+                            x_2\\approx
+                            ${numeroBR(x2)}
+                            \\]
+
+                        </div>
+
+                    </div>
+
+
+                </div>
+
+            </div>
+
+        `;
+
+
+        MathJax.typesetPromise();
+
+        return;
+
+    }
+
+
+    /* =====================================================
+       DELTA IRRACIONAL
+       ===================================================== */
+
+
+    const simplificacao =
+    simplificarRadical(
+        delta
+    );
+
+
+let radicalSimplificado;
+
+
+/*
+    Quando o Delta é decimal,
+    ele agora pode estar representado
+    como uma fração.
+*/
+
+if (
+    simplificacao.fracao
+) {
+    if (simplificacao.raizExata) {
+
+    radicalSimplificado =
+        '\\frac{' +
+        numeroMath(
+            simplificacao.numerador
+        ) +
+        '}{' +
+        numeroMath(
+            simplificacao.denominador
+        ) +
+        '}';
+
+}
+
+    if (
+        simplificacao.denominador !== undefined
+    ) {
+
+        if (
+            simplificacao.fator === 1
+        ) {
+
+            radicalSimplificado =
+                '\\sqrt{\\frac{' +
+                numeroMath(
+                    simplificacao.numerador
+                ) +
+                '}{' +
+                numeroMath(
+                    simplificacao.denominador
+                ) +
+                '}}';
+
+        }
+
+        else {
+
+            radicalSimplificado =
+                numeroMath(
+                    simplificacao.fator
+                ) +
+                '\\sqrt{\\frac{' +
+                numeroMath(
+                    simplificacao.radicando
+                ) +
+                '}{' +
+                numeroMath(
+                    simplificacao.denominador
+                ) +
+                '}}';
+
+        }
+
+    }
+
+}
+
+
+/*
+    Quando o Delta é inteiro,
+    mantém exatamente o comportamento
+    antigo do SALTA.
+*/
+
+else {
+
+    if (
+        simplificacao.fator === 1
+    ) {
+
+        radicalSimplificado =
+            '\\sqrt{' +
+            numeroMath(
+                simplificacao.radicando
+            ) +
+            '}';
+
+    }
+
+    else {
+
+        radicalSimplificado =
+            numeroMath(
+                simplificacao.fator
+            ) +
+            '\\sqrt{' +
+            numeroMath(
+                simplificacao.radicando
+            ) +
+            '}';
+
+    }
+
+}
+
+console.log("Delta:", delta);
+console.log("Simplificação:", simplificacao);
+
+    passos.innerHTML += `
+
+    
+        <div class="passo">
+
+            <h3>
+                3. Simplificando a Raiz
+            </h3>
+
+            <div class="matematica">
+
+                ${
+                    simplificacao.fator !== 1
+
+                    ?
+
+                    `
+
+                    \\[
+                    ${numeroMath(delta)}
+                    =
+                    ${numeroMath(
+                        simplificacao.fator
+                    )}^2
+                    \\cdot
+                    ${numeroMath(
+                        simplificacao.radicando
+                    )}
+                    \\]
+
+                    \\[
+                    \\sqrt{
+                    ${numeroMath(delta)}
+                    }
+                    =
+                    ${radicalSimplificado}
+                    \\]
+
+                    \\[
+                    \\boxed{
+                    \\sqrt{
+                    ${numeroMath(delta)}
+                    }
+                    =
+                    ${radicalSimplificado}
+                    }
+                    \\]
+
+                    `
+
+                    :
+
+                    `
+
+                    \\[
+                    \\sqrt{
+                    ${numeroMath(delta)}
+                    }
+                    =
+                    ${radicalSimplificado}
+                    \\]
+
+                    `
+                }
+
+            </div>
+
+        </div>
+
+
+        <div class="passo">
+
+            <h3>
+                4. Substituindo na Fórmula Resolutiva
+            </h3>
+
+            <div class="matematica">
+
+                \\[
+                x=
+                \\frac{
+                -b\\pm\\sqrt{\\Delta}
+                }{
+                2a
+                }
+                \\]
+
+                \\[
+                x=
+                \\frac{
+                -(${numeroMath(b)})
+                \\pm
+                ${radicalSimplificado}
+                }{
+                2(${numeroMath(a)})
+                }
+                \\]
+
+                \\[
+                x_1=
+                ${raizIrracional(
+                    b,
+                    a,
+                    1,
+                    delta
+                )}
+                \\]
+
+                \\[
+                x_2=
+                ${raizIrracional(
+                    b,
+                    a,
+                    -1,
+                    delta
+                )}
+                \\]
+
+            </div>
+
+        </div>
+
+    `;
+
+
+    const formaX1 =
+        raizIrracional(
+            b,
+            a,
+            1,
+            delta
+        );
+
+
+    const formaX2 =
+        raizIrracional(
+            b,
+            a,
+            -1,
+            delta
+        );
+
+
+    resultadoFinal.innerHTML = `
+
+        <div class="resultado">
+
+            <h2>
+                Resultado
+            </h2>
+
+            <div class="raizes">
+
+
+                <div class="raiz">
+
+                    \\[
+                    x_1=
+                    ${formaX1}
+                    \\]
+
+                    <div class="aproximacao">
+
+                        Aproximação:
+
+                        \\[
+                        x_1\\approx
+                        ${numeroBR(x1)}
+                        \\]
+
+                    </div>
+
+                </div>
+
+
+                <div class="raiz">
+
+                    \\[
+                    x_2=
+                    ${formaX2}
+                    \\]
+
+                    <div class="aproximacao">
+
+                        Aproximação:
+
+                        \\[
+                        x_2\\approx
+                        ${numeroBR(x2)}
+                        \\]
+
+                    </div>
+
+                </div>
+
+
+            </div>
+
+        </div>
+
+    `;
+
+
+    MathJax.typesetPromise();
+
+}
+
+
+/* =========================================================
+   BHASKARA — CONFERÊNCIA
+   ========================================================= */
+
+
+function mostrarBhaskara(
+    a,
+    b,
+    c,
+    delta,
+    passos
+) {
+
+
+    if (delta < 0) {
+
+        return;
+
+    }
+
+
+    const raizDelta =
+        Math.sqrt(delta);
+
+
+    const x1 =
+        (-b + raizDelta) /
+        (2*a);
+
+
+    const x2 =
+        (-b - raizDelta) /
+        (2*a);
+
+
+    let resultadoX1;
+
+    let resultadoX2;
+
+
+    if (
+        Number.isInteger(delta) &&
+        ehQuadradoPerfeito(delta)
+    ) {
+
+
+        resultadoX1 =
+            raizRacional(
+                b,
+                a,
+                1,
+                raizDelta
+            );
+
+
+        resultadoX2 =
+            raizRacional(
+                b,
+                a,
+                -1,
+                raizDelta
+            );
+
+    }
+
+    else if (delta > 0) {
+
+
+        resultadoX1 =
+            raizIrracional(
+                b,
+                a,
+                1,
+                delta
+            );
+
+
+        resultadoX2 =
+            raizIrracional(
+                b,
+                a,
+                -1,
+                delta
+            );
+
+    }
+
+    else {
+
+        return;
+
+    }
+
+
+    passos.innerHTML += `
+
+        <div class="passo">
+
+            <span class="metodo">
+                Conferência pela Fórmula Resolutiva
+            </span>
+
+            <div class="matematica">
+
+                \\[
+                x=
+                \\frac{
+                -b\\pm\\sqrt{\\Delta}
+                }{
+                2a
+                }
+                \\]
+
+                \\[
+                \\Delta=
+                ${numeroMath(delta)}
+                \\]
+
+                \\[
+                x_1=
+                ${resultadoX1}
+                \\]
+
+                \\[
+                x_2=
+                ${resultadoX2}
+                \\]
+
+            </div>
+
+        </div>
+
+    `;
+
+}
+
+
+/* =========================================================
+   RAÍZES COMPLEXAS — CASO GERAL
+   ========================================================= */
+
+
+function obterRaizesComplexas() {
+
+
+    const a =
+        parseFloat(
+            document.getElementById(
+                'a'
+            ).value
+        );
+
+
+    const b =
+        parseFloat(
+            document.getElementById(
+                'b'
+            ).value
+        );
+
+
+    const c =
+        parseFloat(
+            document.getElementById(
+                'c'
+            ).value
+        );
+
+
+    const delta =
+        b*b -
+        4*a*c;
+
+
+    const moduloDelta =
+        Math.abs(delta);
+
+
+    const simplificacao =
+        simplificarRadical(
+            moduloDelta
+        );
+
+
+    const fator =
+        simplificacao.fator;
+
+
+    const radicando =
+        simplificacao.radicando;
+
+
+    let raizSimplificada;
+
+
+    if (fator === 1) {
+
+        raizSimplificada =
+            '\\sqrt{' +
+            numeroMath(
+                radicando
+            ) +
+            '}';
+
+    }
+
+    else {
+
+        raizSimplificada =
+            numeroMath(fator) +
+            '\\sqrt{' +
+            numeroMath(
+                radicando
+            ) +
+            '}';
+
+    }
+
+
+    let denominador =
+        2*a;
+
+
+    let real =
+        -b;
+
+
+    let imagCoef =
+        fator;
+
+
+    let divisor =
+        mdc(
+            mdc(
+                Math.abs(real),
+                Math.abs(imagCoef)
+            ),
+            Math.abs(denominador)
+        );
+
+
+    if (divisor === 0) {
+
+        divisor = 1;
+
+    }
+
+
+    real /=
+        divisor;
+
+
+    imagCoef /=
+        divisor;
+
+
+    denominador /=
+        divisor;
+
+
+    if (denominador < 0) {
+
+        real *= -1;
+
+        imagCoef *= -1;
+
+        denominador *= -1;
+
+    }
+
+
+    let parteReal = '';
+
+
+    if (real !== 0) {
+
+        parteReal =
+            numeroMath(real);
+
+    }
+
+
+    let parteImag;
+
+
+    if (
+        Math.abs(imagCoef) === 1
+    ) {
+
+        parteImag =
+            'i\\sqrt{' +
+            numeroMath(
+                radicando
+            ) +
+            '}';
+
+    }
+
+    else {
+
+        parteImag =
+            numeroMath(
+                Math.abs(imagCoef)
+            ) +
+            'i\\sqrt{' +
+            numeroMath(
+                radicando
+            ) +
+            '}';
+
+    }
+
+
+    let x1Numerador = '';
+
+    let x2Numerador = '';
+
+
+    if (parteReal !== '') {
+
+        x1Numerador +=
+            parteReal +
+            ' + ';
+
+        x2Numerador +=
+            parteReal +
+            ' - ';
+
+    }
+
+
+    x1Numerador +=
+        parteImag;
+
+
+    x2Numerador +=
+        parteImag;
+
+
+    let x1Final;
+
+    let x2Final;
+
+
+    if (denominador === 1) {
+
+        x1Final =
+            x1Numerador;
+
+        x2Final =
+            x2Numerador;
+
+    }
+
+    else {
+
+        x1Final =
+            fracao(
+                x1Numerador,
+                numeroMath(
+                    denominador
+                )
+            );
+
+        x2Final =
+            fracao(
+                x2Numerador,
+                numeroMath(
+                    denominador
+                )
+            );
+
+    }
+
+
+    const realDecimal =
+        -b /
+        (2*a);
+
+
+    const imagDecimal =
+        Math.sqrt(
+            moduloDelta
+        ) /
+        (2*a);
+
+
+    document
+        .getElementById(
+            'complexas'
+        )
+        .innerHTML = `
+
+
+        <div class="passo">
+
+            <span
+                class="metodo"
+                style="
+                    background:#ede9fe;
+                    color:#6d28d9;
+                ">
+
+                Números Complexos
+
+            </span>
+
+
+            <h3>
+                3. Reescrevendo o Discriminante
+            </h3>
+
+
+            <div class="matematica">
+
+                \\[
+                \\Delta=
+                ${numeroMath(delta)}
+                \\]
+
+                Como
+                \\(
+                \\Delta<0
+                \\):
+
+                \\[
+                \\sqrt{\\Delta}
+                =
+                \\sqrt{
+                -${numeroMath(
+                    moduloDelta
+                )}
+                }
+                \\]
+
+                Como:
+
+                \\[
+                \\sqrt{-1}=i
+                \\]
+
+                temos:
+
+                \\[
+                \\sqrt{\\Delta}
+                =
+                i\\sqrt{
+                ${numeroMath(
+                    moduloDelta
+                )}
+                }
+                \\]
+
+            </div>
+
+        </div>
+
+
+        <div class="passo">
+
+            <h3>
+                4. Simplificando a Raiz
+            </h3>
+
+
+            <div class="matematica">
+
+                ${
+                    fator !== 1
+
+                    ?
+
+                    `
+
+                    \\[
+                    ${numeroMath(
+                        moduloDelta
+                    )}
+                    =
+                    ${numeroMath(fator)}^2
+                    \\cdot
+                    ${numeroMath(radicando)}
+                    \\]
+
+                    \\[
+                    \\sqrt{
+                    ${numeroMath(moduloDelta)}
+                    }
+                    =
+                    ${raizSimplificada}
+                    \\]
+
+                    \\[
+                    \\boxed{
+                    \\sqrt{\\Delta}
+                    =
+                    i${raizSimplificada}
+                    }
+                    \\]
+
+                    `
+
+                    :
+
+                    `
+
+                    \\[
+                    \\boxed{
+                    \\sqrt{\\Delta}
+                    =
+                    i${raizSimplificada}
+                    }
+                    \\]
+
+                    `
+                }
+
+            </div>
+
+        </div>
+
+
+        <div class="passo">
+
+            <h3>
+                5. Substituindo na Fórmula Resolutiva
+            </h3>
+
+
+            <div class="matematica">
+
+                \\[
+                x=
+                \\frac{
+                -b\\pm\\sqrt{\\Delta}
+                }{
+                2a
+                }
+                \\]
+
+                \\[
+                x=
+                \\frac{
+                -(${numeroMath(b)})
+                \\pm
+                i${raizSimplificada}
+                }{
+                2(${numeroMath(a)})
+                }
+                \\]
+
+            </div>
+
+        </div>
+
+        <div
+            class="resultado"
+            style="
+                background:#f5f3ff;
+                border-color:#8b5cf6;
+            "
+        >
+
+            <h2
+                style="
+                    color:#6d28d9;
+                "
+            >
+
+                Raízes Complexas
+
+            </h2>
+
+
+            <div class="raizes">
+
+
+                <div class="raiz">
+
+                    \\[
+                    x_1=
+                    ${x1Final}
+                    \\]
+
+
+                    <div class="aproximacao">
+
+                        Aproximação:
+
+                        \\[
+                        x_1\\approx
+                        ${numeroBR(realDecimal)}
+                        +
+                        ${numeroBR(
+                            Math.abs(
+                                imagDecimal
+                            )
+                        )}i
+                        \\]
+
+                    </div>
+
+                </div>
+
+
+                <div class="raiz">
+
+                    \\[
+                    x_2=
+                    ${x2Final}
+                    \\]
+
+
+                    <div class="aproximacao">
+
+                        Aproximação:
+
+                        \\[
+                        x_2\\approx
+                        ${numeroBR(realDecimal)}
+                        -
+                        ${numeroBR(
+                            Math.abs(
+                                imagDecimal
+                            )
+                        )}i
+                        \\]
+
+                    </div>
+
+                </div>
+
+
+            </div>
+
+        </div>
+
+    `;
+
+
+    MathJax.typesetPromise();
+
+}
+
+
+/* =========================================================
+   RAÍZES COMPLEXAS — EQUAÇÃO INCOMPLETA b = 0
+   ========================================================= */
+
+
+function obterRaizesComplexasIncompleta() {
+
+
+    const a =
+        parseFloat(
+            document.getElementById(
+                'a'
+            ).value
+        );
+
+
+    const b =
+        parseFloat(
+            document.getElementById(
+                'b'
+            ).value
+        );
+
+
+    const c =
+        parseFloat(
+            document.getElementById(
+                'c'
+            ).value
+        );
+
+
+    const valor =
+        -c / a;
+
+
+    const modulo =
+        Math.abs(valor);
+
+
+    const raiz =
+        Math.sqrt(modulo);
+
+
+    let forma;
+
+
+    if (
+        Number.isInteger(modulo)
+    ) {
+
+
+        const simplificacao =
+            simplificarRadical(
+                modulo
+            );
+
+
+        if (
+            simplificacao.fator === 1
+        ) {
+
+            forma =
+                '\\sqrt{' +
+                numeroMath(
+                    simplificacao.radicando
+                ) +
+                '}';
+
+        }
+
+        else {
+
+            forma =
+                numeroMath(
+                    simplificacao.fator
+                ) +
+                '\\sqrt{' +
+                numeroMath(
+                    simplificacao.radicando
+                ) +
+                '}';
+
+        }
+
+    }
+
+    else {
+
+        forma =
+            '\\sqrt{' +
+            numeroMath(modulo) +
+            '}';
+
+    }
+
+
+    const x1 =
+        'i' + forma;
+
+
+    const x2 =
+        '-i' + forma;
+
+
+    const complexo =
+        document.getElementById(
+            'complexasIncompleta'
+        );
+
+
+    complexo.innerHTML = `
+
+        <div class="passo">
+
+            <span
+                class="metodo"
+                style="
+                    background:#ede9fe;
+                    color:#6d28d9;
+                ">
+
+                Números Complexos
+
+            </span>
+
+
+            <h3>
+                2. Utilizando a Unidade Imaginária
+            </h3>
+
+
+            <div class="matematica">
+
+                Como:
+
+                \\[
+                x^2=
+                ${numeroMath(valor)}
+                \\]
+
+                podemos escrever:
+
+                \\[
+                x^2=
+                -${numeroMath(modulo)}
+                \\]
+
+                Como:
+
+                \\[
+                i^2=-1
+                \\]
+
+                então:
+
+                \\[
+                x=
+                \\pm
+                i
+                \\sqrt{
+                ${numeroMath(modulo)}
+                }
+                \\]
+
+            </div>
+
+        </div>
+
+
+        ${
+            (
+                Number.isInteger(modulo) &&
+                simplificarRadical(modulo).fator !== 1
+            )
+
+            ?
+
+            `
+
+            <div class="passo">
+
+                <h3>
+                    3. Simplificando a Raiz
+                </h3>
+
+                <div class="matematica">
+
+                    \\[
+                    ${numeroMath(modulo)}
+                    =
+                    ${numeroMath(
+                        simplificarRadical(
+                            modulo
+                        ).fator
+                    )}^2
+                    \\cdot
+                    ${numeroMath(
+                        simplificarRadical(
+                            modulo
+                        ).radicando
+                    )}
+                    \\]
+
+                    \\[
+                    \\sqrt{
+                    ${numeroMath(modulo)}
+                    }
+                    =
+                    ${forma}
+                    \\]
+
+                </div>
+
+            </div>
+
+            `
+
+            :
+
+            ''
+
+        }
+
+
+        <div class="passo">
+
+            <h3>
+                4. Resultado
+            </h3>
+
+            <div class="matematica">
+
+                \\[
+                \\boxed{
+                x_1=
+                ${x1}
+                }
+                \\]
+
+                \\[
+                \\boxed{
+                x_2=
+                ${x2}
+                }
+                \\]
+
+            </div>
+
+        </div>
+
+
+        <div
+            class="resultado"
+            style="
+                background:#f5f3ff;
+                border-color:#8b5cf6;
+            "
+        >
+
+            <h2
+                style="
+                    color:#6d28d9;
+                "
+            >
+
+                Raízes Complexas
+
+            </h2>
+
+
+            <div class="raizes">
+
+
+                <div class="raiz">
+
+                    \\[
+                    x_1=
+                    ${x1}
+                    \\]
+
+                    <div class="aproximacao">
+
+                        Aproximação:
+
+                        \\[
+                        x_1\\approx
+                        ${numeroBR(raiz)}i
+                        \\]
+
+                    </div>
+
+                </div>
+
+
+                <div class="raiz">
+
+                    \\[
+                    x_2=
+                    ${x2}
+                    \\]
+
+                    <div class="aproximacao">
+
+                        Aproximação:
+
+                        \\[
+                        x_2\\approx
+                        -${numeroBR(raiz)}i
+                        \\]
+
+                    </div>
+
+                </div>
+
+
+            </div>
+
+        </div>
+
+    `;
+
+
+    MathJax.typesetPromise();
+
+}
+
+
+/* =========================================================
+   LIMPAR
+   ========================================================= */
+
+
+function limparTudo() {
+
+
+    document.getElementById(
+        'a'
+    ).value = '';
+
+
+    document.getElementById(
+        'b'
+    ).value = '';
+
+
+    document.getElementById(
+        'c'
+    ).value = '';
+
+
+    document
+        .getElementById(
+            'resultado'
+        )
+        .classList
+        .add(
+            'escondido'
+        );
+
+
+    document.getElementById(
+        'equacao'
+    ).innerHTML = '';
+
+
+    document.getElementById(
+        'passos'
+    ).innerHTML = '';
+
+
+    document.getElementById(
+        'resultadoFinal'
+    ).innerHTML = '';
+
+
+    document.getElementById(
+        'a'
+    ).focus();
+
+}
+
+
+/* =========================================================
+   ENTER
+   ========================================================= */
+
+
+document.addEventListener(
+    'keydown',
+    function(event) {
+
+        if (
+            event.key === 'Enter'
+        ) {
+
+            resolverEquacao();
+
+        }
+
+    }
+);
+
+
+</script>
+
+</body>
+
+</html>
