@@ -1,0 +1,60 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#f5f5f7">
+<title>Área do Professor — Prof. Dannyel Moisés</title>
+<style>
+:root{--bg:#f5f5f7;--text:#1d1d1f;--muted:#6e6e73;--line:rgba(0,0,0,.09);--blue:#0071e3;--card:rgba(255,255,255,.82);--shadow:0 25px 70px rgba(0,0,0,.1)}
+*{box-sizing:border-box}html{scroll-behavior:smooth}body{margin:0;min-height:100vh;background:radial-gradient(circle at 50% -5%,#fff 0,#f5f5f7 52%,#efeff1 100%);font-family:-apple-system,BlinkMacSystemFont,"SF Pro Display","SF Pro Text",Inter,Arial,sans-serif;color:var(--text);-webkit-font-smoothing:antialiased}
+a{text-decoration:none;color:inherit}.wrap{width:min(1060px,calc(100% - 32px));margin:auto}
+nav{height:68px;display:flex;align-items:center;background:rgba(245,245,247,.78);backdrop-filter:saturate(180%) blur(22px);border-bottom:1px solid rgba(0,0,0,.05)}nav .wrap{display:flex;justify-content:space-between;align-items:center}.brand{display:flex;align-items:center;gap:11px;font-weight:650}.mark{width:30px;height:30px;border-radius:9px;background:#111;color:#fff;display:grid;place-items:center;font-weight:700}.back{font-size:13px;color:var(--muted)}
+main{min-height:calc(100vh - 68px);display:grid;place-items:center;padding:60px 0}.login{width:min(460px,100%);padding:38px;border-radius:32px;background:var(--card);border:1px solid var(--line);box-shadow:var(--shadow);backdrop-filter:blur(24px)}
+.lock{width:56px;height:56px;border-radius:18px;background:#111;color:#fff;display:grid;place-items:center;font-size:22px;margin-bottom:25px}.eyebrow{font-size:12px;font-weight:700;letter-spacing:.08em;color:var(--blue);margin-bottom:12px}.login h1{font-size:34px;letter-spacing:-1.5px;margin:0 0 10px}.login>p{font-size:15px;color:var(--muted);line-height:1.5;margin:0 0 28px}
+.field{margin-bottom:15px}.field label{display:block;font-size:13px;font-weight:600;margin:0 0 7px}.field input{width:100%;border:1px solid #d7d7dc;background:rgba(255,255,255,.82);border-radius:13px;padding:14px 15px;font-size:16px;outline:none;transition:border .2s,box-shadow .2s}.field input:focus{border-color:var(--blue);box-shadow:0 0 0 4px rgba(0,113,227,.12)}
+button{width:100%;border:0;border-radius:14px;padding:14px 16px;background:#111;color:#fff;font-size:15px;font-weight:650;cursor:pointer;margin-top:5px;transition:transform .2s,opacity .2s}button:hover{transform:translateY(-1px)}button:active{transform:translateY(0);opacity:.9}
+.error{display:none;margin-top:14px;padding:11px 13px;border-radius:12px;background:#fff0f0;color:#b42318;font-size:13px}.hint{margin-top:20px;font-size:12px;color:#8a8a8f;text-align:center}
+#painel{display:none;width:min(900px,100%)}.panelhead{display:flex;justify-content:space-between;align-items:center;gap:20px;margin-bottom:25px}.panelhead h1{font-size:40px;letter-spacing:-2px;margin:0}.logout{width:auto;margin:0;padding:10px 15px;background:#fff;color:#222;border:1px solid var(--line)}
+.cards{display:grid;grid-template-columns:repeat(3,1fr);gap:16px}.panelcard{min-height:190px;padding:24px;border-radius:25px;background:var(--card);border:1px solid var(--line);box-shadow:0 15px 40px rgba(0,0,0,.06)}.panelcard span{font-size:12px;color:var(--muted)}.panelcard h2{font-size:21px;margin:12px 0 8px}.panelcard p{font-size:14px;line-height:1.5;color:var(--muted);margin:0}
+@media(max-width:700px){.cards{grid-template-columns:1fr}.panelhead{align-items:flex-start;flex-direction:column}.panelhead h1{font-size:34px}.logout{width:100%}}@media(max-width:520px){main{padding:35px 0}.login{padding:28px;border-radius:26px}}
+</style>
+</head>
+<body>
+<nav><div class="wrap"><div class="brand"><div class="mark">D</div><span>Área do Professor</span></div><a class="back" href="./">← Plataforma</a></div></nav>
+<main><div class="wrap">
+<section class="login" id="loginBox">
+<div class="lock">⌾</div><div class="eyebrow">ACESSO RESTRITO</div><h1>Área do Professor</h1><p>Entre para acessar o ambiente administrativo da plataforma.</p>
+<form id="loginForm" autocomplete="off">
+<div class="field"><label for="usuario">Usuário</label><input id="usuario" type="text" autocomplete="username" autocapitalize="none" spellcheck="false" placeholder="Digite seu usuário" required></div>
+<div class="field"><label for="senha">Senha</label><input id="senha" type="password" autocomplete="current-password" placeholder="Digite sua senha" required></div>
+<button type="submit">Entrar</button><div class="error" id="erro">Usuário ou senha incorretos.</div>
+</form><div class="hint">Ambiente administrativo da Plataforma Educacional</div>
+</section>
+<section id="painel">
+<div class="panelhead"><div><div class="eyebrow">AMBIENTE DO PROFESSOR</div><h1>Olá, Professor.</h1></div><button class="logout" id="sair">Sair</button></div>
+<div class="cards">
+<div class="panelcard"><span>ÁREA DO ALUNO</span><h2>Portal</h2><p>Gerencie futuramente turmas, alunos e atualizações do acompanhamento escolar.</p></div>
+<div class="panelcard"><span>AVALIAÇÕES</span><h2>Correção</h2><p>Central para as ferramentas de correção automática e cartões de respostas.</p></div>
+<div class="panelcard"><span>MATEMÁTICA</span><h2>SALTA</h2><p>Acesso futuro às ferramentas matemáticas e aos recursos didáticos.</p></div>
+</div>
+</section>
+</div></main>
+<script>
+const USER_HASH="5b99f1ce8bbca0e3186fa294c4dbf0f82e1738f336f52bf6cc9c9c427133b444";
+const PASS_HASH="355f04e4f91cd8f435af858bdf7f096cea6b82ac32e0cbb77070945b59b67e09";
+async function hash(v){const b=await crypto.subtle.digest("SHA-256",new TextEncoder().encode(v));return [...new Uint8Array(b)].map(x=>x.toString(16).padStart(2,"0")).join("")}
+async function abrir(){
+document.getElementById("loginBox").style.display="none";document.getElementById("painel").style.display="block";
+}
+function sair(){sessionStorage.removeItem("professorAuth");location.reload()}
+(async()=>{if(sessionStorage.getItem("professorAuth")==="1")await abrir()})();
+document.getElementById("loginForm").addEventListener("submit",async e=>{
+e.preventDefault();
+const u=await hash(document.getElementById("usuario").value.trim().toLowerCase()),p=await hash(document.getElementById("senha").value);
+if(u===USER_HASH&&p===PASS_HASH){sessionStorage.setItem("professorAuth","1");await abrir()}else document.getElementById("erro").style.display="block";
+});
+document.getElementById("sair").addEventListener("click",sair);
+</script>
+</body>
+</html>
