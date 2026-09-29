@@ -6,42 +6,220 @@
 <script async src="https://docs.opencv.org/4.x/opencv.js"></script>
 <style>
 *{box-sizing:border-box}html{scroll-behavior:smooth}body{margin:0;background:#f5f5f7;color:#171717;font-family:-apple-system,BlinkMacSystemFont,"SF Pro Display","SF Pro Text",Arial,sans-serif}
-header{background:#111;color:#fff;padding:42px 20px 52px}.wrap{max-width:900px;margin:auto}.brand{font-size:48px;font-weight:700;letter-spacing:-2px}.sub{color:#aaa;margin-top:6px;font-size:16px}
-main{max-width:900px;margin:-24px auto 55px;padding:0 15px}.card{background:#fff;border:1px solid #e5e5e5;border-radius:24px;padding:25px;margin-bottom:16px;box-shadow:0 8px 30px #0000000b}
+header{background:#111;color:#fff;padding:42px 20px 52px}.wrap{max-width:940px;margin:auto}.brand{font-size:48px;font-weight:700;letter-spacing:-2px}.sub{color:#aaa;margin-top:6px;font-size:16px}
+main{max-width:940px;margin:-24px auto 55px;padding:0 15px}.card{background:#fff;border:1px solid #e5e5e5;border-radius:24px;padding:25px;margin-bottom:16px;box-shadow:0 8px 30px #0000000b}
 h2{margin:0 0 7px;font-size:22px;letter-spacing:-.5px}.help{color:#707070;line-height:1.5;margin:0 0 20px}
 .grid{display:grid;grid-template-columns:repeat(5,1fr);gap:9px}.q{background:#fafafa;border:1px solid #e7e7e7;border-radius:13px;padding:9px}.q label{display:block;font-size:12px;color:#777;margin-bottom:6px}
 select{width:100%;border:0;background:#fff;border-radius:8px;padding:9px;font-size:16px}button,.file{display:inline-block;border:0;border-radius:13px;padding:13px 17px;font-weight:600;font-size:15px;cursor:pointer;background:#111;color:#fff}.secondary{background:#eee;color:#111}.actions{display:flex;gap:9px;flex-wrap:wrap;margin-top:16px}.file input{display:none}
-.preview{display:none;margin-top:18px;text-align:center}.preview img{max-width:100%;max-height:600px;border-radius:15px;border:1px solid #ddd}
+.preview{display:none;margin-top:18px;text-align:center}.preview img,.preview canvas{max-width:100%;max-height:600px;border-radius:15px;border:1px solid #ddd}
 .status{display:none;margin-top:15px;padding:13px 15px;background:#f1f1f1;border-radius:13px;color:#333}.show{display:block}
 .results{display:none}.top{display:flex;justify-content:space-between;align-items:end;gap:15px;flex-wrap:wrap}.score{font-size:46px;font-weight:700;letter-spacing:-2px}
 table{width:100%;border-collapse:collapse;margin-top:18px}th,td{text-align:left;padding:11px 7px;border-bottom:1px solid #eee}th{font-size:11px;color:#777}.ok{font-weight:700}.err{font-weight:700}.warn{font-weight:700;color:#a66a00}
+.badge{display:inline-block;padding:5px 9px;border-radius:999px;background:#eee;font-size:12px;color:#555;margin-bottom:12px}
 footer{text-align:center;color:#777;font-size:13px;padding:10px 10px 45px}@media(max-width:650px){.grid{grid-template-columns:repeat(2,1fr)}.card{padding:20px}.brand{font-size:42px}}
 </style>
 </head>
 <body>
 <header><div class="wrap"><div class="brand">SALTA</div><div class="sub">Corretor de Avaliações</div></div></header>
 <main>
-<section class="card"><h2>1. Monte o gabarito</h2><p class="help">Escolha a alternativa correta para cada uma das 20 questões.</p>
-<div id="grid" class="grid"></div><div class="actions"><button onclick="saveKey()">Salvar gabarito</button><button class="secondary" onclick="clearKey()">Limpar</button></div></section>
-<section class="card"><h2>2. Fotografe a folha-resposta</h2><p class="help">Envie uma foto da folha-resposta SALTA. Use a folha oficial SALTA, fotografe a página inteira e mantenha os quatro marcadores dos cantos visíveis.</p>
-<div class="actions"><label class="file">Escolher foto<input id="photo" type="file" accept="image/*" capture="environment"></label><button class="secondary" onclick="scan()">Ler folha</button></div>
-<div id="preview" class="preview"><canvas id="canvas"></canvas></div><div id="status" class="status"></div></section>
-<section id="results" class="card results"><div class="top"><div><h2>Resultado</h2><p class="help">Confira as leituras antes de registrar a nota.</p></div><div id="score" class="score">—</div></div>
-<table><thead><tr><th>Questão</th><th>Leitura</th><th>Gabarito</th><th>Situação</th></tr></thead><tbody id="body"></tbody></table></section>
+
+<section class="card">
+<span class="badge">GABARITO</span>
+<h2>1. Informe o gabarito</h2>
+<p class="help">Você pode preencher manualmente ou simplesmente fotografar seu gabarito preenchido. O SALTA reconhece o mesmo cartão de respostas que você já usa.</p>
+<div id="grid" class="grid"></div>
+<div class="actions">
+<button onclick="saveKey()">Salvar gabarito</button>
+<button class="secondary" onclick="clearKey()">Limpar</button>
+<label class="file secondary">Ler gabarito por foto<input id="keyPhoto" type="file" accept="image/*" capture="environment"></label>
+</div>
+<div id="keyStatus" class="status"></div>
+</section>
+
+<section class="card">
+<span class="badge">CORREÇÃO</span>
+<h2>2. Fotografe a folha do aluno</h2>
+<p class="help">Use o seu cartão padrão: 20 questões, duas colunas de 10 e alternativas A–E. Não é necessário colocar marcadores pretos nos cantos.</p>
+<div class="actions">
+<label class="file">Escolher foto<input id="photo" type="file" accept="image/*" capture="environment"></label>
+<button class="secondary" onclick="scanStudent()">Corrigir folha</button>
+</div>
+<div id="preview" class="preview"><canvas id="canvas"></canvas></div>
+<div id="status" class="status"></div>
+</section>
+
+<section id="results" class="card results">
+<div class="top"><div><h2>Resultado</h2><p class="help">Confira as leituras antes de registrar a nota.</p></div><div id="score" class="score">—</div></div>
+<table><thead><tr><th>Questão</th><th>Leitura</th><th>Gabarito</th><th>Situação</th></tr></thead><tbody id="body"></tbody></table>
+</section>
 </main>
 <footer>SALTA — Ferramenta Educacional<br>Desenvolvido por Prof. Dannyel Moisés</footer>
+
 <script>
-const L=["A","B","C","D","E"],g=document.getElementById("grid");for(let i=1;i<=20;i++)g.innerHTML+=`<div class="q"><label>Questão ${i}</label><select id="q${i}"><option value="">—</option>${L.map(x=>"<option>"+x+"</option>").join("")}</select></div>`;
-let key=JSON.parse(localStorage.getItem("saltaKey")||"null")||[];key.forEach((x,i)=>document.getElementById("q"+(i+1)).value=x);
-function status(t){let s=document.getElementById("status");s.textContent=t;s.classList.add("show")}
-function saveKey(){key=Array.from({length:20},(_,i)=>document.getElementById("q"+(i+1)).value);if(key.some(x=>!x)){status("Preencha as 20 respostas.");return}localStorage.setItem("saltaKey",JSON.stringify(key));status("Gabarito salvo. Agora envie a folha-resposta.")}
-function clearKey(){key=[];localStorage.removeItem("saltaKey");for(let i=1;i<=20;i++)document.getElementById("q"+i).value="";status("Gabarito limpo.")}
-let image=null;
-document.getElementById("photo").onchange=e=>{let f=e.target.files[0];if(!f)return;let im=new Image();im.onload=()=>{image=im;document.getElementById("preview").style.display="block";let c=document.getElementById("canvas"),sc=Math.min(1,900/im.width);c.width=im.width*sc;c.height=im.height*sc;c.getContext("2d").drawImage(im,0,0,c.width,c.height);status("Foto carregada. Toque em “Ler folha”.")};im.src=URL.createObjectURL(f)}
-function matFromImage(im){let c=document.createElement("canvas"),sc=Math.min(1,1800/im.width);c.width=Math.round(im.width*sc);c.height=Math.round(im.height*sc);c.getContext("2d").drawImage(im,0,0,c.width,c.height);return cv.imread(c)}
-function detectCorners(src){let g=new cv.Mat(),b=new cv.Mat(),cs=new cv.MatVector(),h=new cv.Mat(),out=[];cv.cvtColor(src,g,cv.COLOR_RGBA2GRAY);cv.threshold(g,b,90,255,cv.THRESH_BINARY_INV);cv.findContours(b,cs,h,cv.RETR_LIST,cv.CHAIN_APPROX_SIMPLE);for(let i=0;i<cs.size();i++){let c=cs.get(i),a=new cv.Mat(),p=cv.arcLength(c,true);cv.approxPolyDP(c,a,.04*p,true);let ar=cv.contourArea(a);if(a.rows===4&&ar>src.cols*src.rows*.002&&ar<src.cols*src.rows*.12){let ps=[];for(let j=0;j<4;j++){let q=a.intPtr(j,0);ps.push({x:q[0],y:q[1]})}let xs=ps.map(q=>q.x),ys=ps.map(q=>q.y);if(Math.max(...xs)-Math.min(...xs)<Math.sqrt(ar)*1.8&&Math.max(...ys)-Math.min(...ys)<Math.sqrt(ar)*1.8)out.push({ar,ps})}a.delete();c.delete()}g.delete();b.delete();cs.delete();h.delete();out.sort((a,b)=>b.ar-a.ar);return out.slice(0,4).flatMap(x=>x.ps)}
-function orderPts(p){p.sort((a,b)=>a.y-b.y);let t=p.slice(0,2).sort((a,b)=>a.x-b.x),z=p.slice(2).sort((a,b)=>a.x-b.x);return[t[0],t[1],z[1],z[0]]}
-function warp(src,p){let q=orderPts(p),sp=cv.matFromArray(4,1,cv.CV_32FC2,q.flatMap(x=>[x.x,x.y])),dp=cv.matFromArray(4,1,cv.CV_32FC2,[50,50,950,50,950,1350,50,1350]),m=cv.getPerspectiveTransform(sp,dp),d=new cv.Mat();cv.warpPerspective(src,d,m,new cv.Size(1000,1400));sp.delete();dp.delete();m.delete();return d}
-function readBubbles(w){let g=new cv.Mat();cv.cvtColor(w,g,cv.COLOR_RGBA2GRAY);let xs=[300,400,500,600,700],vals=[];for(let r=0;r<20;r++){let row=[];for(let c=0;c<5;c++){let x=xs[c],y=180+r*54,sum=0,n=0;for(let yy=-11;yy<=11;yy++)for(let xx=-11;xx<=11;xx++)if(xx*xx+yy*yy<=121){sum+=g.ucharPtr(y+yy,x+xx)[0];n++}row.push(sum/n)}vals.push(row)}g.delete();return vals}
-function scan(){if(!key.length||key.length!==20){status("Salve o gabarito completo antes de corrigir.");return}if(!image){status("Escolha uma foto primeiro.");return}if(typeof cv==="undefined"||!cv.Mat){status("O leitor ainda está carregando. Tente novamente em alguns segundos.");return}try{status("Lendo a folha...");let src=matFromImage(image),p=detectCorners(src);if(p.length<16){src.delete();status("Não encontrei os quatro marcadores. Use a folha SALTA inteira e não corte os cantos.");return}let w=warp(src,p),v=readBubbles(w),r=[];for(let i=0;i<20;i++){let a=v[i],ord=[...a].sort((x,y)=>x-y),spread=ord[1]-ord[0],idx=a.indexOf(ord[0]);r.push(spread<8?"?":L[idx])}let c=document.getElementById("canvas");c.width=500;c.height=700;cv.imshow(c,w);showResult(r);src.delete();w.delete()}catch(e){console.error(e);status("Não consegui interpretar a foto. Tente boa iluminação e a folha inteira.")}}
-function showResult(r){let hits=0,valid=0;document.getElementById("body").innerHTML=r.map((x,i)=>{let cl=x==="?"?"warn":x===key[i]?"ok":"err";if(x!=="?"){valid++;if(x===key[i])hits++}return`<tr><td>${i+1}</td><td>${x}</td><td>${key[i]}</td><td class="${cl}">${x==="?"?"⚠ Revisar":x===key[i]?"✓ Acerto":"✕ Erro"}</td></tr>`}).join("");document.getElementById("score").textContent=((hits/20)*10).toFixed(1)+"/10";document.getElementById("results").style.display="block";document.getElementById("results").scrollIntoView({behavior:"smooth"});status(valid===20?"Folha lida com sucesso.":"Folha lida; confira as questões marcadas como Revisar.")}>
+const L=["A","B","C","D","E"],g=document.getElementById("grid");
+for(let i=1;i<=20;i++)g.innerHTML+=`<div class="q"><label>Questão ${i}</label><select id="q${i}"><option value="">—</option>${L.map(x=>"<option>"+x+"</option>").join("")}</select></div>`;
+
+let key=JSON.parse(localStorage.getItem("saltaKey")||"null")||[];
+key.forEach((x,i)=>{if(x)document.getElementById("q"+(i+1)).value=x;});
+
+function msg(t,id="status"){const s=document.getElementById(id);s.textContent=t;s.classList.add("show");}
+function saveKey(){
+ key=Array.from({length:20},(_,i)=>document.getElementById("q"+(i+1)).value);
+ if(key.some(x=>!x)){msg("Preencha as 20 respostas antes de salvar.","keyStatus");return}
+ localStorage.setItem("saltaKey",JSON.stringify(key));msg("Gabarito salvo com sucesso.","keyStatus");
+}
+function clearKey(){
+ key=[];localStorage.removeItem("saltaKey");
+ for(let i=1;i<=20;i++)document.getElementById("q"+i).value="";
+ msg("Gabarito limpo.","keyStatus");
+}
+
+let studentImage=null,keyImage=null;
+function loadFile(input,kind){
+ const f=input.files[0];if(!f)return;
+ const im=new Image();
+ im.onload=()=>{
+   if(kind==="student"){
+     studentImage=im;drawPreview(im);msg("Foto carregada. Toque em “Corrigir folha”.");
+   }else{
+     keyImage=im;msg("Gabarito carregado. Toque novamente em “Ler gabarito por foto”.","keyStatus");
+     readKeyPhoto();
+   }
+ };
+ im.src=URL.createObjectURL(f);
+}
+document.getElementById("photo").onchange=e=>loadFile(e.target,"student");
+document.getElementById("keyPhoto").onchange=e=>loadFile(e.target,"key");
+
+function drawPreview(im){
+ const c=document.getElementById("canvas"),sc=Math.min(1,900/im.width);
+ c.width=Math.round(im.width*sc);c.height=Math.round(im.height*sc);
+ c.getContext("2d").drawImage(im,0,0,c.width,c.height);
+ document.getElementById("preview").style.display="block";
+}
+
+function matFromImage(im){
+ const c=document.createElement("canvas"),sc=Math.min(1,1800/im.width);
+ c.width=Math.round(im.width*sc);c.height=Math.round(im.height*sc);
+ c.getContext("2d").drawImage(im,0,0,c.width,c.height);
+ return cv.imread(c);
+}
+
+/* Detecta a grade real da folha: 2 blocos x 10 questões x 5 linhas.
+   Não depende de quatro marcadores nos cantos. */
+function cluster1D(values,k){
+ const data=cv.matFromArray(values.length,1,cv.CV_32F,values);
+ const labels=new cv.Mat(),centers=new cv.Mat();
+ const crit=new cv.TermCriteria(cv.TERM_CRITERIA_EPS+cv.TERM_CRITERIA_MAX_ITER,100,0.1);
+ cv.kmeans(data,k,labels,crit,15,cv.KMEANS_PP_CENTERS,centers);
+ const out=[];
+ for(let i=0;i<k;i++)out.push(centers.floatAt(i,0));
+ data.delete();labels.delete();centers.delete();
+ return out.sort((a,b)=>a-b);
+}
+
+function detectGrid(src){
+ const gray=new cv.Mat(),blur=new cv.Mat(),circles=new cv.Mat();
+ cv.cvtColor(src,gray,cv.COLOR_RGBA2GRAY);
+ cv.GaussianBlur(gray,blur,new cv.Size(5,5),1.2,1.2,cv.BORDER_DEFAULT);
+ cv.HoughCircles(blur,circles,cv.HOUGH_GRADIENT,1.2,25,100,22,10,32);
+ const pts=[];
+ for(let i=0;i<circles.cols;i++){
+   const x=circles.data32F[i*3],y=circles.data32F[i*3+1],r=circles.data32F[i*3+2];
+   if(y>src.rows*.325&&y<src.rows*.47&&r>10&&r<32)pts.push({x,y,r});
+ }
+ if(pts.length<45){gray.delete();blur.delete();circles.delete();throw new Error("grade");}
+ const left=pts.filter(p=>p.x<src.cols*.52);
+ const right=pts.filter(p=>p.x>src.cols*.55);
+ if(left.length<20||right.length<20)throw new Error("grade");
+ const xsL=cluster1D(left.map(p=>p.x),10);
+ const xsR=cluster1D(right.map(p=>p.x),10);
+ const ys=cluster1D(pts.map(p=>p.y),5);
+ gray.delete();blur.delete();circles.delete();
+ return {xs:[...xsL,...xsR],ys};
+}
+
+function sampleAt(src,x,y){
+ const rgb=new cv.Mat();
+ cv.cvtColor(src,rgb,cv.COLOR_RGBA2RGB);
+ const hsv=new cv.Mat();
+ cv.cvtColor(rgb,hsv,cv.COLOR_RGB2HSV);
+ let dark=0,colored=0,total=0,innerSum=0,ringSum=0,innerN=0,ringN=0;
+ for(let yy=Math.max(0,Math.round(y-14));yy<Math.min(src.rows,Math.round(y+15));yy++){
+   for(let xx=Math.max(0,Math.round(x-14));xx<Math.min(src.cols,Math.round(x+15));xx++){
+     const dx=xx-x,dy=yy-y,d2=dx*dx+dy*dy;
+     const grayv=src.ucharPtr(yy,xx)[0];
+     if(d2<=11*11){
+       innerSum+=grayv;innerN++;
+       const h=hsv.ucharPtr(yy,xx)[0],s=hsv.ucharPtr(yy,xx)[1],v=hsv.ucharPtr(yy,xx)[2];
+       if(grayv<120)dark++;
+       if(s>55&&h>80&&h<145&&v<220)colored++;
+     }else if(d2<=17*17){ringSum+=grayv;ringN++;}
+     total++;
+   }
+ }
+ const inner=innerSum/Math.max(1,innerN),ring=ringSum/Math.max(1,ringN);
+ rgb.delete();hsv.delete();
+ return (colored/Math.max(1,innerN))*2.4 + (dark/Math.max(1,innerN))*1.5 + Math.max(0,(ring-inner)/55);
+}
+
+function readSheet(im){
+ const src=matFromImage(im);
+ let grid;
+ try{grid=detectGrid(src);}catch(e){src.delete();throw e;}
+ const scores=[];
+ for(let q=0;q<20;q++){
+   const x=grid.xs[q];
+   const s=[];
+   for(let r=0;r<5;r++)s.push(sampleAt(src,x,grid.ys[r]));
+   const sorted=[...s].sort((a,b)=>b-a);
+   const best=s.indexOf(sorted[0]),margin=sorted[0]-sorted[1];
+   scores.push({answer:margin<.35||sorted[0]<.55?"?":L[best],values:s,confidence:margin});
+ }
+ src.delete();
+ return scores;
+}
+
+function readKeyPhoto(){
+ if(!keyImage)return;
+ if(typeof cv==="undefined"||!cv.Mat){msg("O leitor ainda está carregando. Tente novamente.","keyStatus");return}
+ try{
+   msg("Lendo o gabarito...","keyStatus");
+   const r=readSheet(keyImage);
+   const found=r.map(x=>x.answer);
+   if(found.some(x=>x==="?")){
+     msg("Consegui ler a folha, mas há marcações ambíguas. Confira e salve manualmente.","keyStatus");
+   }else{
+     found.forEach((x,i)=>document.getElementById("q"+(i+1)).value=x);
+     key=found;localStorage.setItem("saltaKey",JSON.stringify(key));
+     msg("Gabarito lido e salvo automaticamente. Confira as 20 respostas antes de corrigir.","keyStatus");
+   }
+ }catch(e){msg("Não consegui localizar a grade 20×5. Fotografe a folha inteira, de frente e com boa iluminação.","keyStatus");}
+}
+
+function scanStudent(){
+ if(!key.length||key.length!==20||key.some(x=>!x)){msg("Primeiro informe e salve o gabarito completo.");return}
+ if(!studentImage){msg("Escolha uma foto primeiro.");return}
+ if(typeof cv==="undefined"||!cv.Mat){msg("O leitor ainda está carregando. Tente novamente em alguns segundos.");return}
+ try{
+   msg("Lendo a folha...");
+   const r=readSheet(studentImage).map(x=>x.answer);
+   showResult(r);
+   msg(r.some(x=>x==="?")?"Folha lida. Confira as questões com Revisar.":"Folha lida com sucesso.");
+ }catch(e){console.error(e);msg("Não consegui localizar a grade. Use a folha inteira, sem cortar a região das respostas, e tente com boa iluminação.")}
+}
+
+function showResult(r){
+ let hits=0;
+ document.getElementById("body").innerHTML=r.map((x,i)=>{
+   const cl=x==="?"?"warn":x===key[i]?"ok":"err";
+   if(x===key[i])hits++;
+   return `<tr><td>${i+1}</td><td>${x}</td><td>${key[i]}</td><td class="${cl}">${x==="?"?"⚠ Revisar":x===key[i]?"✓ Acerto":"✕ Erro"}</td></tr>`;
+ }).join("");
+ document.getElementById("score").textContent=((hits/20)*10).toFixed(1)+"/10";
+ document.getElementById("results").style.display="block";
+ document.getElementById("results").scrollIntoView({behavior:"smooth"});
+}
+</script>
+</body>
+</html>
