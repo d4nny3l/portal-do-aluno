@@ -59,22 +59,19 @@ body.auth-check{visibility:hidden}
           <div class="auth-icon">🔒</div>
           <h1>Acesso restrito</h1>
           <p>Faça login na Área do Professor para acessar o Corretor de Avaliações.</p>
+          <a href="../plataforma/professor.html" style="display:inline-block;margin-top:18px;padding:11px 15px;border-radius:12px;background:#111;color:#fff;text-decoration:none;font-weight:600">Ir para o login</a>
         </div>
       </div>`;
   }
 
   async function check() {
     const token = sessionStorage.getItem(SESSION_KEY);
-
-    if (!token) {
-      window.location.replace("../plataforma/professor.html");
-      return;
-    }
+    const headers = token ? { Authorization: "Bearer " + token } : {};
 
     try {
       const response = await fetch(AUTH_API_URL + "/session", {
         method: "GET",
-        headers: { Authorization: "Bearer " + token },
+        headers,
         credentials: "include",
         cache: "no-store"
       });
@@ -93,7 +90,8 @@ body.auth-check{visibility:hidden}
         return;
       }
 
-      // Só libera a página depois que o DOM/body existir.
+      // Sessão válida por cookie ou por Bearer token.
+      // Libera o corretor somente depois da confirmação no servidor.
       document.body.classList.add("auth-ready");
     } catch (error) {
       showDenied();
@@ -101,10 +99,10 @@ body.auth-check{visibility:hidden}
   }
 
   function start() {
-    if (document.body) {
-      check();
-    } else {
+    if (document.readyState === "loading") {
       window.addEventListener("DOMContentLoaded", check, { once: true });
+    } else {
+      check();
     }
   }
 
