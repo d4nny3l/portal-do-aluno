@@ -1,1 +1,72 @@
-<!doctype html><html lang="pt-BR"><head><meta charset="utf-8"><title>SALTA — Folha-resposta</title><style>@page{size:A4;margin:0}body{margin:0;background:#ddd;font-family:Arial,sans-serif}.page{width:210mm;height:297mm;background:#fff;margin:0 auto;position:relative;overflow:hidden}.m{position:absolute;width:12mm;height:12mm;background:#000}.tl{left:10mm;top:10mm}.tr{right:10mm;top:10mm}.br{right:10mm;bottom:10mm}.bl{left:10mm;bottom:10mm}h1{position:absolute;top:17mm;width:100%;text-align:center;font-size:22px;margin:0}.sub{position:absolute;top:28mm;width:100%;text-align:center;font-size:11px;color:#555}.head{position:absolute;top:38mm;left:25mm;right:25mm;border-bottom:1px solid #aaa;padding-bottom:7mm;font-size:11px}.line{display:inline-block;width:65mm;border-bottom:1px solid #555;margin:0 8mm}.inst{position:absolute;top:51mm;width:100%;text-align:center;font-size:10px;color:#555}.grid{position:absolute;top:61mm;left:25mm;right:25mm;display:grid;grid-template-columns:repeat(5,1fr);grid-auto-rows:11.8mm}.cell{display:flex;align-items:center;gap:3mm;font-size:10px}.num{width:7mm;text-align:right;font-weight:bold}.b{width:6.5mm;height:6.5mm;border:1.4px solid #111;border-radius:50%;display:inline-block}.foot{position:absolute;bottom:18mm;width:100%;text-align:center;font-size:9px;color:#777}@media print{body{background:#fff}.page{margin:0}}</style></head><body><div class="page"><div class="m tl"></div><div class="m tr"></div><div class="m br"></div><div class="m bl"></div><h1>SALTA</h1><div class="sub">FOLHA-RESPOSTA • 20 QUESTÕES</div><div class="head">ALUNO:<span class="line"></span>TURMA:<span class="line" style="width:25mm"></span></div><div class="inst">Marque apenas uma alternativa por questão, preenchendo o círculo completamente.</div><div class="grid" id="grid"></div><div class="foot">SALTA — Ferramenta Educacional • Desenvolvido por Prof. Dannyel Moisés</div></div><script>const g=document.getElementById("grid"),L=["A","B","C","D","E"];for(let i=1;i<=20;i++){let d=document.createElement("div");d.className="cell";d.innerHTML='<span class="num">'+i+'</span>'+L.map(x=>'<span class="b" aria-label="'+x+'"></span>').join("");g.appendChild(d)}</script></body></html>
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>SALTA — Cartão de Respostas</title>
+<style>
+@page{size:A4;margin:0}*{box-sizing:border-box}body{margin:0;background:#ddd;font-family:Arial,Helvetica,sans-serif;color:#333}
+.page{width:210mm;height:297mm;background:#fff;margin:0 auto;position:relative;overflow:hidden;padding:9mm 10mm}
+.top{border:1px solid #777;height:30mm;display:grid;grid-template-columns:1.45fr 1fr 0.7fr;font-size:10px}
+.top>div{padding:3mm;border-right:1px solid #999}.top>div:last-child{border-right:0}.line{height:7mm;border-bottom:1px solid #555;margin-top:2mm}
+.title{text-align:center;font-size:18px;font-weight:700;margin-top:5mm;border:1px solid #777;border-bottom:0;padding:3mm}
+.info{border:1px solid #777;display:grid;grid-template-columns:1.1fr 2fr 1fr;font-size:10px}
+.info>div{padding:3mm;border-right:1px solid #999}.info>div:last-child{border-right:0}
+.instructions{margin-top:0;border:1px solid #777;min-height:31mm;display:grid;grid-template-columns:42% 58%;font-size:9px}
+.sign{border-right:1px solid #999;padding:4mm;display:flex;flex-direction:column;justify-content:flex-end}.signline{border-bottom:1px solid #555;margin-top:12mm}
+.rules{padding:3mm}.rules b{font-size:10px}.rules p{margin:2mm 0}
+.dot{display:inline-block;width:4.5mm;height:4.5mm;border-radius:50%;background:#666;vertical-align:middle;margin-right:2mm}
+.answer{margin-top:7mm;display:grid;grid-template-columns:1fr 1fr;gap:12mm;padding:0 4mm}
+.block{display:grid;grid-template-columns:10mm repeat(5,1fr);font-size:10px}
+.block .head{font-weight:700;text-align:center;margin-bottom:2mm}
+.block .num{text-align:center;font-weight:700;display:flex;align-items:center;justify-content:center}
+.row{display:contents}
+.bubble{width:6.2mm;height:6.2mm;border:1.2px solid #555;border-radius:50%;display:flex;align-items:center;justify-content:center;margin:auto;font-size:8px}
+.qnum{font-weight:700;text-align:center;display:flex;align-items:center;justify-content:center}
+.qrow{min-height:12mm;display:contents}
+.note{margin-top:5mm;border:1px solid #999;padding:3mm;font-size:9px;color:#666;text-align:center}
+@media print{body{background:#fff}.page{margin:0}}
+</style>
+</head>
+<body>
+<div class="page">
+<div class="top">
+<div>Professor:<strong> DANNYEL MOISÉS</strong><div class="line"></div></div>
+<div>Disciplina:<strong> MATEMÁTICA</strong><div class="line"></div></div>
+<div>Data:<div class="line"></div></div>
+</div>
+<div class="info">
+<div>Turma:<div class="line"></div></div>
+<div>Nome:<div class="line"></div></div>
+<div>Nota:<div class="line"></div></div>
+</div>
+<div class="title">CARTÃO DE RESPOSTAS</div>
+<div class="instructions">
+<div class="sign">Assinatura<div class="signline"></div></div>
+<div class="rules"><b>ATENÇÃO! Instruções para preenchimento</b>
+<p>1. Não dobre ou rasgue este cartão de respostas.</p>
+<p>2. Marque apenas uma resposta por questão.</p>
+<p>3. Todas as questões devem ser respondidas com caneta azul ou preta.</p>
+<p>4. Preencha totalmente o espaço conforme o modelo: <span class="dot"></span>forma correta de preenchimento</p>
+</div>
+</div>
+<div class="answer">
+<div class="block" id="left"></div>
+<div class="block" id="right"></div>
+</div>
+<div class="note">SALTA — Ferramenta Educacional • Desenvolvido por Prof. Dannyel Moisés</div>
+</div>
+<script>
+const L=["A","B","C","D","E"];
+function make(start,end){
+ const el=document.createElement("div");el.className="block";
+ el.innerHTML='<div></div>'+L.map(x=>'<div class="head">'+x+'</div>').join("");
+ for(let q=start;q<=end;q++){
+  el.innerHTML+='<div class="qnum">'+String(q).padStart(2,"0")+'</div>'+L.map(x=>'<div><span class="bubble">'+x+'</span></div>').join("");
+ }
+ return el;
+}
+document.getElementById("left").replaceWith(make(1,10));
+document.getElementById("right").replaceWith(make(11,20));
+</script>
+</body>
+</html>
