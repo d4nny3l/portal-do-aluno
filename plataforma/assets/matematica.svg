@@ -1,0 +1,22 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 760">
+<defs><filter id="s"><feDropShadow dx="0" dy="18" stdDeviation="22" flood-opacity=".14"/></filter></defs>
+<rect width="1200" height="760" rx="44" fill="#eeeef0"/>
+<rect x="52" y="48" width="1096" height="664" rx="28" fill="#fff" filter="url(#s)"/>
+<g fill="#111" font-family="cursive" font-style="italic">
+<text x="105" y="170" font-size="76">(3 + 5i) · (1 − i)</text>
+<text x="650" y="170" font-size="48">= 3 − 3i + 5i + 5</text>
+<text x="105" y="285" font-size="70">(1 + i) · (1 − i)</text>
+<text x="650" y="285" font-size="52">= 1 − i + i + 1 = 2</text>
+<text x="105" y="420" font-size="72">2.</text>
+<text x="190" y="420" font-size="66">(7 + i)</text><path d="M180 438h300" stroke="#111" stroke-width="5"/>
+<text x="280" y="505" font-size="64">(2 − i)</text>
+<text x="610" y="420" font-size="54">= (7 + i)(2 + i)</text>
+<text x="610" y="505" font-size="54">= 14 + 7i + 2i − 1</text>
+<text x="105" y="625" font-size="55">Matemática passo a passo.</text>
+</g>
+<g stroke="#111" fill="none" stroke-linecap="round" stroke-width="6" opacity=".65">
+<path d="M520 110 Q575 80 625 115"/>
+<path d="M470 245 Q530 215 585 250"/>
+<path d="M490 570 Q550 530 610 565"/>
+</g>
+</svg>
