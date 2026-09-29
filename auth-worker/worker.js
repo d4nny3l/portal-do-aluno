@@ -71,7 +71,9 @@ async function login(request, env) {
 
 async function session(request, env) {
   const cookies = parseCookies(request.headers.get("Cookie") || "");
-  const token = cookies.salta_session;
+  const header = request.headers.get("Authorization") || "";
+  const bearer = header.startsWith("Bearer ") ? header.slice(7).trim() : "";
+  const token = bearer || cookies.salta_session;
 
   if (!token) {
     return json({ ok: false, authenticated: false }, 401, request);
@@ -123,7 +125,7 @@ function corsHeaders(request) {
     headers.set("Access-Control-Allow-Credentials", "true");
   }
 
-  headers.set("Access-Control-Allow-Headers", "Content-Type");
+  headers.set("Access-Control-Allow-Headers", "Content-Type, Authorization");
   headers.set("Access-Control-Allow-Methods", "GET,POST,OPTIONS");
   headers.set("Vary", "Origin");
   return headers;
