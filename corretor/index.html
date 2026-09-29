@@ -65,6 +65,7 @@ body.auth-check{visibility:hidden}
 
   async function check() {
     const token = sessionStorage.getItem(SESSION_KEY);
+
     if (!token) {
       window.location.replace("../plataforma/professor.html");
       return;
@@ -85,19 +86,29 @@ body.auth-check{visibility:hidden}
       }
 
       const data = await response.json();
+
       if (!data.authenticated) {
         sessionStorage.removeItem(SESSION_KEY);
         window.location.replace("../plataforma/professor.html");
         return;
       }
 
+      // Só libera a página depois que o DOM/body existir.
       document.body.classList.add("auth-ready");
     } catch (error) {
       showDenied();
     }
   }
 
-  check();
+  function start() {
+    if (document.body) {
+      check();
+    } else {
+      window.addEventListener("DOMContentLoaded", check, { once: true });
+    }
+  }
+
+  start();
 })();
 </script>
 </head>
