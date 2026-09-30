@@ -242,24 +242,42 @@ function uniquePoints(points){
  return out;
 }
 
+function groupCenters(values, gapLimit){
+ const sorted=values.slice().sort((a,b)=>a-b);
+ const groups=[];
+ for(const value of sorted){
+   const last=groups[groups.length-1];
+   if(!last || value-last.max>gapLimit){
+     groups.push({values:[value],min:value,max:value});
+   }else{
+     last.values.push(value);
+     last.max=value;
+   }
+ }
+ return groups.map(g=>{
+   const vals=g.values.slice().sort((a,b)=>a-b);
+   return vals[Math.floor(vals.length/2)];
+ });
+}
+
+function nearestCenters(values, centers){
+ return values.filter(v=>centers.some(c=>Math.abs(v-c)<40));
+}
+
 function detectGrid(src){
  const gray=new cv.Mat(),blur=new cv.Mat();
  cv.cvtColor(src,gray,cv.COLOR_RGBA2GRAY);
  cv.GaussianBlur(gray,blur,new cv.Size(5,5),1.1,1.1,cv.BORDER_DEFAULT);
 
- // O cartão padrão possui bolhas de aproximadamente 6,2 mm de diâmetro.
- // Trabalhamos com raio proporcional à largura da imagem para tolerar
- // fotos em diferentes resoluções.
  const expectedR=Math.max(9,Math.min(40,src.cols*0.0148));
- const minR=Math.max(8,Math.round(expectedR*.52));
- const maxR=Math.round(expectedR*1.65);
+ const minR=Math.max(9,Math.round(expectedR*.50));
+ const maxR=Math.round(expectedR*1.75);
 
  const candidates=[];
  const params=[
-   [1.10,Math.max(16,Math.round(expectedR*1.5)),70,15],
-   [1.20,Math.max(18,Math.round(expectedR*1.7)),85,14],
-   [1.30,Math.max(20,Math.round(expectedR*1.9)),95,13],
-   [1.05,Math.max(14,Math.round(expectedR*1.3)),60,17]
+   [1.10,Math.max(22,Math.round(expectedR*1.45)),70,15],
+   [1.20,Math.max(24,Math.round(expectedR*1.60)),85,14],
+   [1.30,Math.max(25,Math.round(expectedR*1.80)),100,13]
  ];
 
  for(const [dp,minDist,p1,p2] of params){
@@ -274,17 +292,11 @@ function detectGrid(src){
      const y=circles.data32F[i*3+1];
      const rad=circles.data32F[i*3+2];
 
-     // Ignora cabeçalho/instruções e margens.
      if(
-       y>src.rows*.28 &&
-       y<src.rows*.92 &&
-       x>src.cols*.04 &&
-       x<src.cols*.96
+       x>src.cols*.04 && x<src.cols*.96 &&
+       y>src.rows*.28 && y<src.rows*.92
      ){
-       candidates.push({
-         x,y,r:rad,
-         score:1
-       });
+       candidates.push({x,y,r:rad,score:1});
      }
    }
    circles.delete();
@@ -292,96 +304,104 @@ function detectGrid(src){
 
  const pts=uniquePoints(candidates);
 
- if(pts.length<35){
+ if(pts.length<30){
    gray.delete();blur.delete();
    throw new Error("Poucas bolhas detectadas");
  }
 
- // O maior intervalo entre colunas revela se existem dois blocos.
- const xs=pts.map(p=>p.x).sort((a,b)=>a-b);
- const gaps=xs.slice(1).map((v,i)=>v-xs[i]);
- const sortedGaps=gaps.slice().sort((a,b)=>a-b);
- const medianGap=sortedGaps[Math.floor(sortedGaps.length/2)]||1;
+ // Primeiro agrupamos fisicamente os centros. A folha possui grande
+ // separação entre os dois blocos e espaçamento muito menor entre
+ // alternativas/questões.
+ const gapLimit=Math.max(12,expectedR*1.35);
+ const xCentersAll=groupCenters(pts.map(p=>p.x),gapLimit);
+ const yCenters=groupCenters(pts.map(p=>p.y),gapLimit);
 
- let splitIndex=-1,bestGap=0;
- for(let i=0;i<gaps.length;i++){
-   if(gaps[i]>bestGap){
-     bestGap=gaps[i];
-     splitIndex=i+1;
+ if(yCenters.length<5 || yCenters.length>25){
+   gray.delete();blur.delete();
+   throw new Error("Linhas de questões não reconhecidas");
+ }
+
+ // Mantém apenas centros com evidência suficiente na imagem.
+ const validY=yCenters.filter(y=>{
+   const n=pts.filter(p=>Math.abs(p.y-y)<gapLimit).length;
+   return n>=4;
+ });
+
+ if(validY.length<5){
+   gray.delete();blur.delete();
+   throw new Error("Linhas insuficientes");
+ }
+
+ // Detecta a divisão entre os dois blocos pela maior distância entre
+ // colunas consecutivas.
+ const xs=xCentersAll.slice().sort((a,b)=>a-b);
+ let split=-1,bestGap=0;
+ for(let i=1;i<xs.length;i++){
+   const gap=xs[i]-xs[i-1];
+   if(gap>bestGap){
+     bestGap=gap;
+     split=i;
    }
  }
 
- const doisBlocos=bestGap>medianGap*2.1 && splitIndex>4 && splitIndex<xs.length-4;
+ const regularGaps=xs.slice(1).map((v,i)=>v-xs[i]);
+ const medGap=regularGaps.length
+   ? regularGaps.slice().sort((a,b)=>a-b)[Math.floor(regularGaps.length/2)]
+   : 0;
 
- let left,right;
+ const doisBlocos=split>4 && split<xs.length-4 && bestGap>Math.max(gapLimit*2,medGap*2.1);
+
+ let leftX=[],rightX=[];
  if(doisBlocos){
-   const cut=(xs[splitIndex-1]+xs[splitIndex])/2;
-   left=pts.filter(p=>p.x<cut);
-   right=pts.filter(p=>p.x>cut);
+   leftX=xs.slice(0,split);
+   rightX=xs.slice(split);
  }else{
-   left=pts;
-   right=[];
+   leftX=xs;
  }
 
- if(left.length<20){
+ // Cada bloco contém cinco alternativas. Pequenos falsos positivos
+ // podem aparecer fora da grade; aproximamos para os cinco centros mais
+ // sustentados por bolhas reais.
+ function chooseFive(centers,points){
+   const scored=centers.map(c=>({
+     c,
+     n:points.filter(p=>Math.abs(p.x-c)<gapLimit).length
+   })).sort((a,b)=>b.n-a.n);
+
+   return scored
+     .filter(x=>x.n>=3)
+     .slice(0,Math.min(5,scored.length))
+     .sort((a,b)=>a.c-b.c)
+     .map(x=>x.c);
+ }
+
+ leftX=chooseFive(leftX,pts);
+ if(doisBlocos) rightX=chooseFive(rightX,pts);
+
+ if(leftX.length!==5 || (doisBlocos && rightX.length!==5)){
    gray.delete();blur.delete();
-   throw new Error("Bloco de respostas não localizado");
+   throw new Error("Cinco alternativas não reconhecidas");
  }
- if(doisBlocos && right.length<20){
+
+ // Para o seu cartão 20×5: 10 linhas × 2 blocos.
+ // Outros tamanhos podem ser reconhecidos pela quantidade de linhas.
+ const blocks=doisBlocos?2:1;
+ const questions=validY.length*blocks;
+
+ if(questions<5 || questions>50){
    gray.delete();blur.delete();
-   throw new Error("Segundo bloco de respostas não localizado");
+   throw new Error("Quantidade de questões inválida");
  }
-
- const colunasPorBloco=5;
- const leftX=cluster1D(left.map(p=>p.x),colunasPorBloco);
- const rightX=doisBlocos ? cluster1D(right.map(p=>p.x),colunasPorBloco) : [];
-
- // Cada questão ocupa uma linha. Portanto 20 questões no modelo padrão
- // significam 10 linhas no bloco esquerdo + 10 no bloco direito.
- const allY=pts.map(p=>p.y);
- let quantidadeLinhas=10;
-
- const ySorted=allY.slice().sort((a,b)=>a-b);
- const yGaps=ySorted.slice(1).map((v,i)=>v-ySorted[i]);
- const yMed=yGaps.slice().sort((a,b)=>a-b)[Math.floor(yGaps.length/2)]||1;
-
- // Testamos várias quantidades possíveis e escolhemos a que produz
- // espaçamento vertical mais regular.
- const candidatosY=[5,6,8,10,12,15,20];
- let melhor=10,bestScore=Infinity;
-
- for(const k of candidatosY){
-   if(allY.length<k) continue;
-   try{
-     const centers=cluster1D(allY,k);
-     const d=centers.slice(1).map((v,i)=>v-centers[i]);
-     if(!d.length) continue;
-     const med=d.slice().sort((a,b)=>a-b)[Math.floor(d.length/2)]||1;
-     const irregular=d.reduce((acc,v)=>acc+Math.abs(v-med),0)/(med*d.length);
-     const score=irregular+Math.abs(med-yMed)/Math.max(1,yMed)*.35;
-     if(score<bestScore){
-       bestScore=score;
-       melhor=k;
-     }
-   }catch(e){}
- }
- quantidadeLinhas=melhor;
- const ys=cluster1D(allY,quantidadeLinhas);
-
- // Normaliza para o número de questões que a geometria realmente encontrou.
- const numeroBlocos=doisBlocos ? 2 : 1;
- const quantidadeQuestoes=ys.length*numeroBlocos;
 
  gray.delete();blur.delete();
 
  return {
    leftX,
    rightX,
-   ys,
-   blocks:numeroBlocos,
-   questions:quantidadeQuestoes
- };
-}
+   ys:validY,
+   blocks,
+   questions
+ };}
 function sampleAt(src,x,y){
  // A leitura usa várias regiões do círculo. O contorno impresso sozinho não
  // basta para considerar uma alternativa marcada.
