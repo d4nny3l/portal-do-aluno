@@ -264,20 +264,41 @@ function nearestCenters(values, centers){
  return values.filter(v=>centers.some(c=>Math.abs(v-c)<40));
 }
 
-function detectGrid(src){
+function median(values){
+ const a=values.slice().sort((x,y)=>x-y);
+ return a.length?a[Math.floor(a.length/2)]:0;
+}
+
+function buildYGroups(points,gap){
+ const sorted=points.slice().sort((a,b)=>a.y-b.y);
+ const groups=[];
+ for(const p of sorted){
+   const g=groups[groups.length-1];
+   if(!g || Math.abs(p.y-g.center)>gap){
+     groups.push({points:[p],center:p.y});
+   }else{
+     g.points.push(p);
+     g.center=median(g.points.map(q=>q.y));
+   }
+ }
+ return groups;
+}
+
+function detectarCabecalhoQuestoes(src){
  const gray=new cv.Mat(),blur=new cv.Mat();
  cv.cvtColor(src,gray,cv.COLOR_RGBA2GRAY);
  cv.GaussianBlur(gray,blur,new cv.Size(5,5),1.1,1.1,cv.BORDER_DEFAULT);
 
- const expectedR=Math.max(9,Math.min(40,src.cols*0.0148));
- const minR=Math.max(9,Math.round(expectedR*.50));
- const maxR=Math.round(expectedR*1.75);
+ const baseR=Math.max(9,Math.min(38,src.cols*0.015));
+ const minR=Math.max(8,Math.round(baseR*.58));
+ const maxR=Math.round(baseR*1.55);
 
- const candidates=[];
+ const candidatos=[];
  const params=[
-   [1.10,Math.max(22,Math.round(expectedR*1.45)),70,15],
-   [1.20,Math.max(24,Math.round(expectedR*1.60)),85,14],
-   [1.30,Math.max(25,Math.round(expectedR*1.80)),100,13]
+   [1.05,Math.max(24,Math.round(baseR*1.55)),55,22],
+   [1.15,Math.max(25,Math.round(baseR*1.75)),65,24],
+   [1.25,Math.max(27,Math.round(baseR*1.95)),80,20],
+   [1.35,Math.max(28,Math.round(baseR*2.10)),95,18]
  ];
 
  for(const [dp,minDist,p1,p2] of params){
@@ -290,150 +311,167 @@ function detectGrid(src){
    for(let i=0;i<circles.cols;i++){
      const x=circles.data32F[i*3];
      const y=circles.data32F[i*3+1];
-     const rad=circles.data32F[i*3+2];
+     const r=circles.data32F[i*3+2];
 
+     // Os números 01–20 ficam na metade inferior da folha,
+     // muito acima das cinco linhas A–E.
      if(
-       x>src.cols*.04 && x<src.cols*.96 &&
-       y>src.rows*.28 && y<src.rows*.92
+       x>src.cols*.03 && x<src.cols*.97 &&
+       y>src.rows*.35 && y<src.rows*.84
      ){
-       candidates.push({x,y,r:rad,score:1});
+       candidatos.push({x,y,r,score:1});
      }
    }
    circles.delete();
  }
 
- const pts=uniquePoints(candidates);
-
- if(pts.length<30){
+ const pts=uniquePoints(candidatos);
+ if(pts.length<12){
    gray.delete();blur.delete();
-   throw new Error("Poucas bolhas detectadas");
+   throw new Error("Cabeçalho das questões não encontrado");
  }
 
- // Primeiro agrupamos fisicamente os centros. A folha possui grande
- // separação entre os dois blocos e espaçamento muito menor entre
- // alternativas/questões.
- const gapLimit=Math.max(12,expectedR*1.35);
- const xCentersAll=groupCenters(pts.map(p=>p.x),gapLimit);
- const yCenters=groupCenters(pts.map(p=>p.y),gapLimit);
+ // O cabeçalho é uma fileira de círculos com muitos pontos e grande
+ // extensão horizontal. Escolhemos a faixa com maior suporte.
+ const groups=buildYGroups(pts,Math.max(8,baseR*1.15))
+   .filter(g=>g.points.length>=5)
+   .sort((a,b)=>{
+     const spanA=Math.max(...a.points.map(p=>p.x))-Math.min(...a.points.map(p=>p.x));
+     const spanB=Math.max(...b.points.map(p=>p.x))-Math.min(...b.points.map(p=>p.x));
+     return (b.points.length*2+b.points.length*spanB/src.cols)-
+            (a.points.length*2+a.points.length*spanA/src.cols);
+   });
 
- if(yCenters.length<5 || yCenters.length>25){
+ if(!groups.length){
    gray.delete();blur.delete();
-   throw new Error("Linhas de questões não reconhecidas");
+   throw new Error("Fileira de questões não localizada");
  }
 
- // Mantém apenas centros com evidência suficiente na imagem.
- const validY=yCenters.filter(y=>{
-   const n=pts.filter(p=>Math.abs(p.y-y)<gapLimit).length;
-   return n>=4;
- });
+ let header=groups[0].points.slice().sort((a,b)=>a.x-b.x);
 
- if(validY.length<5){
-   gray.delete();blur.delete();
-   throw new Error("Linhas insuficientes");
+ // Rejeita candidatos de outras marcações e mantém a fileira mais regular.
+ if(header.length>24) header=header.slice(0,24);
+
+ // Procura a grande separação entre 01–10 e 11–20.
+ let bestGap=-Infinity,split=-1;
+ const hx=header.map(p=>p.x);
+ for(let i=1;i<hx.length;i++){
+   const gap=hx[i]-hx[i-1];
+   if(gap>bestGap){bestGap=gap;split=i;}
  }
 
- // Detecta a divisão entre os dois blocos pela maior distância entre
- // colunas consecutivas.
- const xs=xCentersAll.slice().sort((a,b)=>a-b);
- let split=-1,bestGap=0;
- for(let i=1;i<xs.length;i++){
-   const gap=xs[i]-xs[i-1];
-   if(gap>bestGap){
-     bestGap=gap;
-     split=i;
+ if(split<5||split>header.length-5){
+   gray.delete();blur.delete();
+   throw new Error("Dois blocos de questões não reconhecidos");
+ }
+
+ const leftRaw=header.slice(0,split);
+ const rightRaw=header.slice(split);
+
+ function chooseTen(arr){
+   if(arr.length===10)return arr;
+   if(arr.length<10)return null;
+
+   // Escolhe a sequência de 10 centros mais regularmente espaçada.
+   let best=null,bestScore=Infinity;
+   for(let st=0;st<=arr.length-10;st++){
+     const sub=arr.slice(st,st+10);
+     const gaps=sub.slice(1).map((p,i)=>p.x-sub[i].x);
+     const med=median(gaps);
+     if(!med)continue;
+     const irregular=gaps.reduce((acc,g)=>acc+Math.abs(g-med),0)/(med*gaps.length);
+     if(irregular<bestScore){bestScore=irregular;best=sub;}
    }
+   return best;
  }
 
- const regularGaps=xs.slice(1).map((v,i)=>v-xs[i]);
- const medGap=regularGaps.length
-   ? regularGaps.slice().sort((a,b)=>a-b)[Math.floor(regularGaps.length/2)]
-   : 0;
+ const left=chooseTen(leftRaw);
+ const right=chooseTen(rightRaw);
 
- const doisBlocos=split>4 && split<xs.length-4 && bestGap>Math.max(gapLimit*2,medGap*2.1);
-
- let leftX=[],rightX=[];
- if(doisBlocos){
-   leftX=xs.slice(0,split);
-   rightX=xs.slice(split);
- }else{
-   leftX=xs;
- }
-
- // Cada bloco contém cinco alternativas. Pequenos falsos positivos
- // podem aparecer fora da grade; aproximamos para os cinco centros mais
- // sustentados por bolhas reais.
- function chooseFive(centers,points){
-   const scored=centers.map(c=>({
-     c,
-     n:points.filter(p=>Math.abs(p.x-c)<gapLimit).length
-   })).sort((a,b)=>b.n-a.n);
-
-   return scored
-     .filter(x=>x.n>=3)
-     .slice(0,Math.min(5,scored.length))
-     .sort((a,b)=>a.c-b.c)
-     .map(x=>x.c);
- }
-
- leftX=chooseFive(leftX,pts);
- if(doisBlocos) rightX=chooseFive(rightX,pts);
-
- if(leftX.length!==5 || (doisBlocos && rightX.length!==5)){
+ if(!left || !right){
    gray.delete();blur.delete();
-   throw new Error("Cinco alternativas não reconhecidas");
+   throw new Error("Não foram encontradas 10 questões em cada bloco");
  }
 
- // Para o seu cartão 20×5: 10 linhas × 2 blocos.
- // Outros tamanhos podem ser reconhecidos pela quantidade de linhas.
- const blocks=doisBlocos?2:1;
- const questions=validY.length*blocks;
+ const leftX=left.map(p=>p.x);
+ const rightX=right.map(p=>p.x);
 
- if(questions<5 || questions>50){
-   gray.delete();blur.delete();
-   throw new Error("Quantidade de questões inválida");
+ const xGapsL=leftX.slice(1).map((v,i)=>v-leftX[i]);
+ const xGapsR=rightX.slice(1).map((v,i)=>v-rightX[i]);
+ const colGap=Math.max(8,median(xGapsL.concat(xGapsR)));
+
+ // No cartão real, a distância vertical entre A/B/C/D/E é
+ // aproximadamente 1,8x a distância horizontal entre questões.
+ // Usamos a própria geometria encontrada, e não uma resolução fixa.
+ const rowGap=colGap*1.78;
+ const firstRowY=groups[0].center+rowGap*1.78;
+ const ys=[0,1,2,3,4].map(i=>firstRowY+i*rowGap);
+
+ // Pequeno ajuste caso a última linha extrapole a área provável.
+ if(ys[4]>src.rows*.90){
+   const available=src.rows*.90-groups[0].center;
+   const g=Math.max(10,available/6);
+   const fy=groups[0].center+g;
+   for(let i=0;i<5;i++)ys[i]=fy+i*g;
  }
+
+ const headerY=groups[0].center;
+ const bubbleRadius=Math.max(8,Math.min(28,colGap*.37));
 
  gray.delete();blur.delete();
 
  return {
    leftX,
    rightX,
-   ys:validY,
-   blocks,
-   questions
- };}
-function sampleAt(src,x,y){
- // A leitura usa várias regiões do círculo. O contorno impresso sozinho não
- // basta para considerar uma alternativa marcada.
+   ys,
+   blocks:2,
+   questions:20,
+   headerY,
+   colGap,
+   bubbleRadius
+ };
+}
+function sampleAt(src,x,y,radiusHint=14){
  const hsv=new cv.Mat();
  cv.cvtColor(src,hsv,cv.COLOR_RGBA2HSV);
+
+ const radius=Math.max(7,Math.min(34,radiusHint));
  let centerGray=0,ringGray=0,centerN=0,ringN=0,blue=0,black=0;
- const radius=14;
- for(let yy=Math.max(0,Math.round(y-radius));yy<Math.min(src.rows,Math.round(y+radius));yy++){
-   for(let xx=Math.max(0,Math.round(x-radius));xx<Math.min(src.cols,Math.round(x+radius));xx++){
+ const inner=radius*.58;
+ const outer=radius*1.10;
+
+ const x0=Math.max(0,Math.floor(x-outer));
+ const x1=Math.min(src.cols-1,Math.ceil(x+outer));
+ const y0=Math.max(0,Math.floor(y-outer));
+ const y1=Math.min(src.rows-1,Math.ceil(y+outer));
+
+ for(let yy=y0;yy<=y1;yy++){
+   for(let xx=x0;xx<=x1;xx++){
      const dx=xx-x,dy=yy-y,d2=dx*dx+dy*dy;
-     const pix=src.ucharPtr(yy,xx), gv=.299*pix[0]+.587*pix[1]+.114*pix[2];
-     const hp=hsv.ucharPtr(yy,xx), sat=hp[1],val=hp[2];
-     if(d2<=8.5*8.5){
+     const pix=src.ucharPtr(yy,xx);
+     const gv=.299*pix[0]+.587*pix[1]+.114*pix[2];
+     const hp=hsv.ucharPtr(yy,xx),sat=hp[1],val=hp[2];
+
+     if(d2<=inner*inner){
        centerGray+=gv;centerN++;
-       if(sat>45 && val<245) blue++;
-       if(gv<105) black++;
-     }else if(d2<=16*16){
+       if(sat>45 && val<245)blue++;
+       if(gv<105)black++;
+     }else if(d2<=outer*outer){
        ringGray+=gv;ringN++;
      }
    }
  }
+
  hsv.delete();
- const cg=centerGray/Math.max(1,centerN), rg=ringGray/Math.max(1,ringN);
+
+ const cg=centerGray/Math.max(1,centerN);
+ const rg=ringGray/Math.max(1,ringN);
  const blueRatio=blue/Math.max(1,centerN);
  const blackRatio=black/Math.max(1,centerN);
-
- // Azul é uma evidência forte; para preto, usamos o contraste centro/anel.
- // Assim a borda impressa da bolha não vira "marcação".
  const ink=Math.max(0,(rg-cg)/95);
- return blueRatio*4.0 + blackRatio*1.7 + ink;
-}
 
+ return blueRatio*4.0+blackRatio*1.7+ink;
+}
 function readSheet(im){
  const src=matFromImage(im);
  let grid;
@@ -444,37 +482,34 @@ function readSheet(im){
    throw e;
  }
 
- const total=grid.questions;
  const scores=[];
+ const radius=grid.bubbleRadius;
 
  function lerQuestao(x,y){
    const vals=[];
-   for(let r=0;r<5;r++)vals.push(sampleAt(src,x[r],y));
+   for(let r=0;r<5;r++){
+     vals.push(sampleAt(src,x,y[r],radius));
+   }
+
    const order=vals.map((v,i)=>({v,i})).sort((a,b)=>b.v-a.v);
    const best=order[0],second=order[1];
    const margin=best.v-second.v;
    const ratio=second.v>0?best.v/second.v:99;
 
-   // Mantém a alternativa indefinida quando a diferença é pequena.
+   // A marca precisa se destacar da borda impressa da bolha.
    const answer=(best.v<.52 || (margin<.16 && ratio<1.35))?"?":L[best.i];
    return {answer,values:vals,confidence:margin};
  }
 
- if(grid.blocks===1){
-   for(let q=0;q<grid.ys.length;q++){
-     scores.push(lerQuestao(grid.leftX,grid.ys[q]));
-   }
- }else{
-   for(let q=0;q<grid.ys.length;q++){
-     scores.push(lerQuestao(grid.leftX,grid.ys[q]));
-   }
-   for(let q=0;q<grid.ys.length;q++){
-     scores.push(lerQuestao(grid.rightX,grid.ys[q]));
-   }
+ for(let q=0;q<10;q++){
+   scores.push(lerQuestao(grid.leftX[q],grid.ys));
+ }
+ for(let q=0;q<10;q++){
+   scores.push(lerQuestao(grid.rightX[q],grid.ys));
  }
 
  src.delete();
- return scores.slice(0,total);
+ return scores;
 }
 function detectQuestionCountFromCircles(im){
  const src=matFromImage(im);
