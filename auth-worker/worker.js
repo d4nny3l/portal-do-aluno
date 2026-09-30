@@ -63,7 +63,7 @@ async function login(request, env) {
     "; Max-Age=28800; Path=/; HttpOnly; Secure; SameSite=None"
   );
 
-  return new Response(JSON.stringify({ ok: true, user: username }), {
+  return new Response(JSON.stringify({ ok: true, user: username, token }), {
     status: 200,
     headers: { ...Object.fromEntries(headers), "Content-Type": "application/json" }
   });
