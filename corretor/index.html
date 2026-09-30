@@ -51,6 +51,8 @@ body.auth-check{visibility:hidden}
 (() => {
   const AUTH_API_URL = "https://salta-auth.dannyel-moises.workers.dev";
   const SESSION_KEY = "saltaProfessorSession";
+  const SESSION_STORE = window.localStorage;
+  const OLD_STORE = window.sessionStorage;
 
   function showDenied() {
     document.documentElement.style.background = "#f5f5f7";
@@ -67,7 +69,7 @@ body.auth-check{visibility:hidden}
   }
 
   async function check() {
-    const token = sessionStorage.getItem(SESSION_KEY);
+    const token = SESSION_STORE.getItem(SESSION_KEY) || OLD_STORE.getItem(SESSION_KEY);
     const headers = token ? { Authorization: "Bearer " + token } : {};
 
     try {
@@ -79,7 +81,7 @@ body.auth-check{visibility:hidden}
       });
 
       if (!response.ok) {
-        sessionStorage.removeItem(SESSION_KEY);
+        SESSION_STORE.removeItem(SESSION_KEY); OLD_STORE.removeItem(SESSION_KEY);
         window.location.replace("../plataforma/professor.html");
         return;
       }
