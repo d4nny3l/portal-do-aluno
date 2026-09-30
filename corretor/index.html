@@ -17,6 +17,8 @@ select{width:100%;border:0;background:#fff;border-radius:8px;padding:9px;font-si
 table{width:100%;border-collapse:collapse;margin-top:18px}th,td{text-align:left;padding:11px 7px;border-bottom:1px solid #eee}th{font-size:11px;color:#777}.ok{font-weight:700}.err{font-weight:700}.warn{font-weight:700;color:#a66a00}
 .badge{display:inline-block;padding:5px 9px;border-radius:999px;background:#eee;font-size:12px;color:#555;margin-bottom:12px}
 footer{text-align:center;color:#777;font-size:13px;padding:10px 10px 45px}@media(max-width:650px){.grid{grid-template-columns:repeat(2,1fr)}.card{padding:20px}.brand{font-size:42px}}
+
+.camera-box{display:none;margin-top:18px;position:relative;border-radius:20px;overflow:hidden;background:#111;border:1px solid #ddd}.camera-box video{display:block;width:100%;max-height:560px;object-fit:cover}.camera-guide{position:absolute;inset:12% 10%;border:2px solid rgba(255,255,255,.8);border-radius:18px;box-shadow:0 0 0 999px rgba(0,0,0,.22);pointer-events:none}.camera-actions{position:absolute;left:0;right:0;bottom:0;padding:14px;display:flex;justify-content:center;gap:8px;background:linear-gradient(transparent,rgba(0,0,0,.8))}.camera-actions button{margin:0}.detected{display:none;margin-top:15px;padding:15px 17px;border-radius:16px;background:#f4f4f6;border:1px solid #e4e4e7}.detected strong{font-size:22px;letter-spacing:-.5px}.detected small{display:block;color:#707070;margin-top:4px}.
 </style>
 <style id="salta-grid-global">
 /* SALTA — identidade visual global */
@@ -128,14 +130,21 @@ body.auth-check{visibility:hidden}
 </section>
 
 <section class="card">
-<span class="badge">CORREÇÃO</span>
-<h2>2. Fotografe a folha do aluno</h2>
-<p class="help">Use o seu cartão padrão: 20 questões, duas colunas de 10 e alternativas A–E. Não é necessário colocar marcadores pretos nos cantos.</p>
+<span class="badge">CORREÇÃO AUTOMÁTICA</span>
+<h2>2. Leia o cartão do aluno</h2>
+<p class="help">O SALTA tenta reconhecer a estrutura do cartão automaticamente. Você pode usar uma foto ou abrir a câmera e corrigir diretamente pela tela.</p>
 <div class="actions">
-<label class="file">Escolher foto<input id="photo" type="file" accept="image/*" capture="environment"></label>
-<button class="secondary" onclick="scanStudent()">Corrigir folha</button>
+<label class="file">Escolher cartão<input id="photo" type="file" accept="image/*" capture="environment"></label>
+<button class="secondary" id="cameraBtn" onclick="toggleCamera()">Abrir câmera</button>
+<button class="secondary" onclick="scanStudent()">Corrigir cartão</button>
+</div>
+<div id="cameraBox" class="camera-box">
+  <video id="video" playsinline autoplay muted></video>
+  <div class="camera-guide"><span></span></div>
+  <div class="camera-actions"><button onclick="captureFrame()">Ler cartão agora</button><button class="secondary" onclick="toggleCamera(false)">Fechar</button></div>
 </div>
 <div id="preview" class="preview"><canvas id="canvas"></canvas></div>
+<div id="detected" class="detected"></div>
 <div id="status" class="status"></div>
 </section>
 
@@ -148,20 +157,25 @@ body.auth-check{visibility:hidden}
 
 <script>
 const L=["A","B","C","D","E"],g=document.getElementById("grid");
-for(let i=1;i<=20;i++)g.innerHTML+=`<div class="q"><label>Questão ${i}</label><select id="q${i}"><option value="">—</option>${L.map(x=>"<option>"+x+"</option>").join("")}</select></div>`;
+let questionCount=20;
+function renderKeyGrid(n){
+ questionCount=n;
+ g.innerHTML="";
+ for(let i=1;i<=n;i++)g.innerHTML+=`<div class="q"><label>Questão ${i}</label><select id="q${i}"><option value="">—</option>${L.map(x=>"<option>"+x+"</option>").join("")}</select></div>`;
 
 let key=JSON.parse(localStorage.getItem("saltaKey")||"null")||[];
-key.forEach((x,i)=>{if(x)document.getElementById("q"+(i+1)).value=x;});
+if(!Array.isArray(key))key=[];
+renderKeyGrid(key.length||20);
+key.forEach((x,i)=>{if(x&&document.getElementById("q"+(i+1)))document.getElementById("q"+(i+1)).value=x;});
 
 function msg(t,id="status"){const s=document.getElementById(id);s.textContent=t;s.classList.add("show");}
 function saveKey(){
- key=Array.from({length:20},(_,i)=>document.getElementById("q"+(i+1)).value);
- if(key.some(x=>!x)){msg("Preencha as 20 respostas antes de salvar.","keyStatus");return}
+ key=Array.from({length:questionCount},(_,i)=>document.getElementById("q"+(i+1)).value);
+ if(key.some(x=>!x)){msg("Preencha todas as respostas antes de salvar.","keyStatus");return}
  localStorage.setItem("saltaKey",JSON.stringify(key));msg("Gabarito salvo com sucesso.","keyStatus");
 }
 function clearKey(){
- key=[];localStorage.removeItem("saltaKey");
- for(let i=1;i<=20;i++)document.getElementById("q"+i).value="";
+ key=[];localStorage.removeItem("saltaKey");renderKeyGrid(20);
  msg("Gabarito limpo.","keyStatus");
 }
 
@@ -171,7 +185,7 @@ function loadFile(input,kind){
  const im=new Image();
  im.onload=()=>{
    if(kind==="student"){
-     studentImage=im;drawPreview(im);msg("Foto carregada. Toque em “Corrigir folha”.");
+     studentImage=im;drawPreview(im);msg("Cartão carregado. O SALTA pode detectar a quantidade antes da correção.");
    }else{
      keyImage=im;msg("Gabarito carregado. Toque novamente em “Ler gabarito por foto”.","keyStatus");
      readKeyPhoto();
@@ -330,11 +344,72 @@ function readSheet(im){
  return scores;
 }
 
+function detectQuestionCountFromCircles(im){
+ const src=matFromImage(im);
+ const gray=new cv.Mat(),blur=new cv.Mat(),circles=new cv.Mat();
+ cv.cvtColor(src,gray,cv.COLOR_RGBA2GRAY);
+ cv.GaussianBlur(gray,blur,new cv.Size(5,5),1.1,1.1,cv.BORDER_DEFAULT);
+ const tries=[[1.15,20,75,14,8,34],[1.25,24,90,15,9,36],[1.05,18,65,13,8,38]];
+ const pts=[];
+ for(const [dp,md,p1,p2,mn,mx] of tries){
+   cv.HoughCircles(blur,circles,cv.HOUGH_GRADIENT,dp,md,p1,p2,mn,mx);
+   for(let i=0;i<circles.cols;i++){
+     const x=circles.data32F[i*3],y=circles.data32F[i*3+1],r=circles.data32F[i*3+2];
+     if(x>src.cols*.03&&x<src.cols*.97&&y>src.rows*.05&&y<src.rows*.95)pts.push({x,y,r});
+   }
+   circles.delete();
+ }
+ const uniq=uniquePoints(pts.map(p=>({...p,score:1})));
+ src.delete();gray.delete();blur.delete();
+ if(uniq.length<40)throw new Error("Poucas marcações detectadas");
+ // O cartão é composto por 5 alternativas por questão.
+ const raw=uniq.length/5;
+ const candidates=[10,15,20,25,30,35,40];
+ return candidates.reduce((a,b)=>Math.abs(b-raw)<Math.abs(a-raw)?b:a);
+}
+
+function showDetected(n,label="estrutura detectada"){
+ const box=document.getElementById("detected");
+ box.innerHTML="<strong>"+n+" questões</strong><small>"+label+". O gabarito e a correção usarão essa quantidade.</small>";
+ box.style.display="block";
+ renderKeyGrid(n);
+}
+
+let cameraStream=null;
+async function toggleCamera(force){
+ const box=document.getElementById("cameraBox");
+ if(force===false || cameraStream){
+   if(cameraStream)cameraStream.getTracks().forEach(t=>t.stop());
+   cameraStream=null;box.style.display="none";return;
+ }
+ try{
+   cameraStream=await navigator.mediaDevices.getUserMedia({video:{facingMode:{ideal:"environment"},width:{ideal:1280},height:{ideal:1920}},audio:false});
+   document.getElementById("video").srcObject=cameraStream;
+   box.style.display="block";
+ }catch(e){msg("Não foi possível abrir a câmera. Verifique a permissão do navegador.");}
+}
+
+function captureFrame(){
+ const v=document.getElementById("video");
+ if(!v.videoWidth)return;
+ const c=document.createElement("canvas");c.width=v.videoWidth;c.height=v.videoHeight;
+ c.getContext("2d").drawImage(v,0,0);
+ const im=new Image();
+ im.onload=()=>{studentImage=im;drawPreview(im);scanStudent();};
+ im.src=c.toDataURL("image/jpeg",.92);
+}
+
 function readKeyPhoto(){
  if(!keyImage)return;
  if(typeof cv==="undefined"||!cv.Mat){msg("O leitor ainda está carregando. Tente novamente.","keyStatus");return}
  try{
    msg("Lendo o gabarito...","keyStatus");
+   const detectedCount=detectQuestionCountFromCircles(keyImage);
+   showDetected(detectedCount,"gabarito reconhecido automaticamente");
+   if(detectedCount!==20){
+     msg("A estrutura foi detectada. Nesta primeira versão, a leitura detalhada do cartão continua calibrada para o modelo padrão de 20 questões.","keyStatus");
+     return;
+   }
    const r=readSheet(keyImage);
    const found=r.map(x=>x.answer);
    if(found.some(x=>x==="?")){
@@ -348,12 +423,18 @@ function readKeyPhoto(){
 }
 
 function scanStudent(){
- if(!key.length||key.length!==20||key.some(x=>!x)){msg("Primeiro informe e salve o gabarito completo.");return}
+ if(!key.length||key.some(x=>!x)){msg("Primeiro informe e salve o gabarito completo.");return}
  if(!studentImage){msg("Escolha uma foto primeiro.");return}
  if(typeof cv==="undefined"||!cv.Mat){msg("O leitor ainda está carregando. Tente novamente em alguns segundos.");return}
  try{
    msg("Lendo a folha...");
-   const r=readSheet(studentImage).map(x=>x.answer);
+   const detectedCount=detectQuestionCountFromCircles(studentImage);
+   showDetected(detectedCount,"cartão do aluno reconhecido automaticamente");
+   if(detectedCount!==key.length){
+     msg("A quantidade detectada no cartão ("+detectedCount+") não coincide com o gabarito ("+key.length+"). Confira as folhas.");
+     return;
+   }
+   const r=readSheet(studentImage).map(x=>x.answer).slice(0,key.length);
    showResult(r);
    msg(r.some(x=>x==="?")?"Folha lida. Confira as questões com Revisar.":"Folha lida com sucesso.");
  }catch(e){console.error(e);msg("Não consegui localizar a grade. Use a folha inteira, sem cortar a região das respostas, e tente com boa iluminação.")}
@@ -366,7 +447,7 @@ function showResult(r){
    if(x===key[i])hits++;
    return `<tr><td>${i+1}</td><td>${x}</td><td>${key[i]}</td><td class="${cl}">${x==="?"?"⚠ Revisar":x===key[i]?"✓ Acerto":"✕ Erro"}</td></tr>`;
  }).join("");
- document.getElementById("score").innerHTML=hits+"/20<small>questões acertadas</small>";
+ document.getElementById("score").innerHTML=hits+"/"+r.length+"<small>questões acertadas</small>";
  document.getElementById("results").style.display="block";
  requestAnimationFrame(()=>document.getElementById("results").scrollIntoView({behavior:"smooth",block:"start"}));
 }
