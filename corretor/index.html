@@ -162,6 +162,7 @@ function renderKeyGrid(n){
  questionCount=n;
  g.innerHTML="";
  for(let i=1;i<=n;i++)g.innerHTML+=`<div class="q"><label>Questão ${i}</label><select id="q${i}"><option value="">—</option>${L.map(x=>"<option>"+x+"</option>").join("")}</select></div>`;
+}
 
 let key=JSON.parse(localStorage.getItem("saltaKey")||"null")||[];
 if(!Array.isArray(key))key=[];
