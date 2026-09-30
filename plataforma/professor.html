@@ -60,6 +60,8 @@ body::before{
 <script>
 const AUTH_API_URL = "https://salta-auth.dannyel-moises.workers.dev";
 const SESSION_KEY = "saltaProfessorSession";
+const SESSION_STORE = window.localStorage;
+const OLD_STORE = window.sessionStorage;
 
 function mostrarPainel(){
     document.getElementById("loginBox").style.display="none";
@@ -75,11 +77,11 @@ function mostrarLogin(mensagem=""){
 }
 
 function salvarToken(token){
-    if(token) sessionStorage.setItem(SESSION_KEY,token);
+    if(token) SESSION_STORE.setItem(SESSION_KEY,token);
 }
 
 function obterToken(){
-    return sessionStorage.getItem(SESSION_KEY) || "";
+    return SESSION_STORE.getItem(SESSION_KEY) || OLD_STORE.getItem(SESSION_KEY) || "";
 }
 
 async function verificarSessao(){
@@ -95,7 +97,7 @@ async function verificarSessao(){
         });
 
         if(!resposta.ok){
-            sessionStorage.removeItem(SESSION_KEY);
+            SESSION_STORE.removeItem(SESSION_KEY); OLD_STORE.removeItem(SESSION_KEY);
             mostrarLogin();
             return;
         }
@@ -105,7 +107,7 @@ async function verificarSessao(){
         if(dados.authenticated){
             mostrarPainel();
         }else{
-            sessionStorage.removeItem(SESSION_KEY);
+            SESSION_STORE.removeItem(SESSION_KEY); OLD_STORE.removeItem(SESSION_KEY);
             mostrarLogin();
         }
     }catch(e){
