@@ -242,28 +242,6 @@ function uniquePoints(points){
  return out;
 }
 
-function groupCenters(values, gapLimit){
- const sorted=values.slice().sort((a,b)=>a-b);
- const groups=[];
- for(const value of sorted){
-   const last=groups[groups.length-1];
-   if(!last || value-last.max>gapLimit){
-     groups.push({values:[value],min:value,max:value});
-   }else{
-     last.values.push(value);
-     last.max=value;
-   }
- }
- return groups.map(g=>{
-   const vals=g.values.slice().sort((a,b)=>a-b);
-   return vals[Math.floor(vals.length/2)];
- });
-}
-
-function nearestCenters(values, centers){
- return values.filter(v=>centers.some(c=>Math.abs(v-c)<40));
-}
-
 function median(values){
  const a=values.slice().sort((x,y)=>x-y);
  return a.length?a[Math.floor(a.length/2)]:0;
@@ -284,7 +262,7 @@ function buildYGroups(points,gap){
  return groups;
 }
 
-function detectarCabecalhoQuestoes(src){
+function detectGrid(src){
  const gray=new cv.Mat(),blur=new cv.Mat();
  cv.cvtColor(src,gray,cv.COLOR_RGBA2GRAY);
  cv.GaussianBlur(gray,blur,new cv.Size(5,5),1.1,1.1,cv.BORDER_DEFAULT);
@@ -338,8 +316,11 @@ function detectarCabecalhoQuestoes(src){
    .sort((a,b)=>{
      const spanA=Math.max(...a.points.map(p=>p.x))-Math.min(...a.points.map(p=>p.x));
      const spanB=Math.max(...b.points.map(p=>p.x))-Math.min(...b.points.map(p=>p.x));
-     return (b.points.length*2+b.points.length*spanB/src.cols)-
-            (a.points.length*2+a.points.length*spanA/src.cols);
+     const radA=median(a.points.map(p=>p.r));
+     const radB=median(b.points.map(p=>p.r));
+     const scoreA=a.points.length*12+(spanA/src.cols)*3+radA;
+     const scoreB=b.points.length*12+(spanB/src.cols)*3+radB;
+     return scoreB-scoreA;
    });
 
  if(!groups.length){
@@ -403,8 +384,8 @@ function detectarCabecalhoQuestoes(src){
  // No cartão real, a distância vertical entre A/B/C/D/E é
  // aproximadamente 1,8x a distância horizontal entre questões.
  // Usamos a própria geometria encontrada, e não uma resolução fixa.
- const rowGap=colGap*1.78;
- const firstRowY=groups[0].center+rowGap*1.78;
+ const rowGap=colGap*0.92;
+ const firstRowY=groups[0].center+rowGap*0.92;
  const ys=[0,1,2,3,4].map(i=>firstRowY+i*rowGap);
 
  // Pequeno ajuste caso a última linha extrapole a área provável.
