@@ -330,7 +330,7 @@ function detectGrid(src){
  }
 
  if(candidates.length<40){
-   gray.delete();bw.delete();nLabels.delete();labels.delete();
+   gray.delete();bw.delete();labels.delete();
    stats.delete();centroids.delete();
    throw new Error("Poucas marcações circulares encontradas");
  }
@@ -342,7 +342,7 @@ function detectGrid(src){
    .sort((x,y)=>x.center-y.center);
 
  if(groups.length<6){
-   gray.delete();bw.delete();nLabels.delete();labels.delete();
+   gray.delete();bw.delete();labels.delete();
    stats.delete();centroids.delete();
    throw new Error("Não foram encontradas as seis fileiras do cartão");
  }
@@ -357,14 +357,14 @@ function detectGrid(src){
    }
  });
  if(!headerGroup) {
-   gray.delete();bw.delete();nLabels.delete();labels.delete();
+   gray.delete();bw.delete();labels.delete();
    stats.delete();centroids.delete();
    throw new Error("Fileira 01–20 não localizada");
  }
 
  const header=chooseRegularSequence(headerGroup.points,20);
  if(!header || header.length<20){
-   gray.delete();bw.delete();nLabels.delete();labels.delete();
+   gray.delete();bw.delete();labels.delete();
    stats.delete();centroids.delete();
    throw new Error("Não foi possível reconstruir as 20 questões");
  }
@@ -395,7 +395,7 @@ function detectGrid(src){
    .slice(0,5);
 
  if(rowGroups.length<5){
-   gray.delete();bw.delete();nLabels.delete();labels.delete();
+   gray.delete();bw.delete();labels.delete();
    stats.delete();centroids.delete();
    throw new Error("As cinco fileiras A–E não foram encontradas");
  }
@@ -433,7 +433,7 @@ function detectGrid(src){
    rowGroups.flatMap(g=>g.points.map(p=>Math.min(p.w,p.h)/2))
  );
 
- gray.delete();bw.delete();nLabels.delete();labels.delete();
+ gray.delete();bw.delete();labels.delete();
  stats.delete();centroids.delete();
 
  return {
