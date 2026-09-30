@@ -262,191 +262,135 @@ function buildYGroups(points,gap){
  return groups;
 }
 
-function chooseRegularSequence(points,count){
- const arr=points.slice().sort((a,b)=>a.x-b.x);
- if(arr.length<=count)return arr;
+function detectGrid(src){
+  // MODELO OFICIAL SALTA — cartão 20×5.
+  // Coordenadas calibradas sobre a folha real enviada pelo professor
+  // (página 768×1024), convertidas para proporção da imagem recebida.
+  const W=768,H=1024;
 
- let best=null,bestScore=Infinity;
- for(let st=0;st<=arr.length-count;st++){
-   const sub=arr.slice(st,st+count);
-   const gaps=sub.slice(1).map((p,i)=>p.x-sub[i].x);
-   const med=median(gaps);
-   if(!med)continue;
-   const irregular=gaps.reduce((sum,g)=>sum+Math.abs(g-med),0)/(med*gaps.length);
-   if(irregular<bestScore){
-     bestScore=irregular;
-     best=sub;
-   }
- }
- return best;
+  const xLeft=[48,80,113,145,177,209,241,273,305,338];
+  const xRight=[438,470,502,535,567,599,631,663,695,728];
+  const yRows=[469,497,526,555,584];
+
+  const sx=src.cols/W;
+  const sy=src.rows/H;
+
+  const xs=xLeft.concat(xRight).map(x=>x*sx);
+  const ys=yRows.map(y=>y*sy);
+
+  // Raio proporcional ao cartão. Usamos uma região interna para ignorar
+  // o contorno impresso da bolha e enxergar apenas a tinta do preenchimento.
+  const radius=Math.max(8,Math.min(src.cols,src.rows)*0.0175);
+
+  return {
+    leftX:xs.slice(0,10),
+    rightX:xs.slice(10),
+    ys,
+    blocks:2,
+    questions:20,
+    headerY:443*sy,
+    colGap:32*sx,
+    bubbleRadius:radius,
+    rowPoints:ys.map(y=>xs.map(x=>({x,y,r:radius}))),
+    template:true
+  };
 }
 
-function detectGrid(src){
- const gray=new cv.Mat();
- cv.cvtColor(src,gray,cv.COLOR_RGBA2GRAY);
+function sampleAt(src,x,y,radiusHint=14){
+  const hsv=new cv.Mat();
+  cv.cvtColor(src,hsv,cv.COLOR_RGBA2HSV);
 
- // Para uma folha impressa, a separação preto/branco é muito mais estável
- // que procurar círculos por Hough. O Otsu se adapta à iluminação da foto.
- const bw=new cv.Mat();
- cv.threshold(gray,bw,0,255,cv.THRESH_BINARY_INV+cv.THRESH_OTSU);
+  const radius=Math.max(7,Math.min(42,radiusHint));
+  // Só o miolo da bolha. O anel e a letra impressos ficam parcialmente
+  // fora desta área; uma marca preenchida ocupa muito mais pixels.
+  const inner=radius*.48;
 
- const nLabels=new cv.Mat();
- const labels=new cv.Mat();
- const stats=new cv.Mat();
- const centroids=new cv.Mat();
- cv.connectedComponentsWithStatsWithAlgorithm(
-   bw,labels,stats,centroids,8,cv.CV_32S,cv.CCL_GRANA
- );
+  let dark=0,blue=0,total=0,lumSum=0;
 
- const candidates=[];
- for(let i=1;i<nLabels.rows;i++){
-   const x=stats.intAt(i,cv.CC_STAT_LEFT);
-   const y=stats.intAt(i,cv.CC_STAT_TOP);
-   const w=stats.intAt(i,cv.CC_STAT_WIDTH);
-   const h=stats.intAt(i,cv.CC_STAT_HEIGHT);
-   const area=stats.intAt(i,cv.CC_STAT_AREA);
+  const x0=Math.max(0,Math.floor(x-inner));
+  const x1=Math.min(src.cols-1,Math.ceil(x+inner));
+  const y0=Math.max(0,Math.floor(y-inner));
+  const y1=Math.min(src.rows-1,Math.ceil(y+inner));
 
-   if(y<src.rows*.30 || y>src.rows*.90)continue;
+  for(let yy=y0;yy<=y1;yy++){
+    for(let xx=x0;xx<=x1;xx++){
+      const dx=xx-x,dy=yy-y;
+      if(dx*dx+dy*dy>inner*inner)continue;
 
-   const relW=w/src.cols;
-   const relH=h/src.rows;
-   const aspect=w/Math.max(1,h);
+      const p=src.ucharPtr(yy,xx);
+      const lum=.299*p[0]+.587*p[1]+.114*p[2];
+      const hp=hsv.ucharPtr(yy,xx);
 
-   // Círculos de questão/bubbles têm dimensões semelhantes e quase quadradas.
-   // A janela é proporcional à imagem para aceitar fotos grandes ou pequenas.
-   if(
-     relW>=.014 && relW<=.055 &&
-     relH>=.014 && relH<=.055 &&
-     aspect>=.70 && aspect<=1.30 &&
-     area>=src.cols*src.rows*.00010 &&
-     area<=src.cols*src.rows*.0025
-   ){
-     candidates.push({
-       x:centroids.doubleAt(i,0),
-       y:centroids.doubleAt(i,1),
-       w,h,area
-     });
-   }
- }
+      total++;
+      lumSum+=lum;
 
- if(candidates.length<40){
-   gray.delete();bw.delete();labels.delete();
-   stats.delete();centroids.delete();
-   throw new Error("Poucas marcações circulares encontradas");
- }
+      // Caneta preta/azul.
+      if(lum<165)dark++;
+      if(hp[1]>35 && hp[2]<245)blue++;
+    }
+  }
 
- const medH=median(candidates.map(p=>p.h));
- const gapY=Math.max(10,medH*.78);
- const groups=buildYGroups(candidates,gapY)
-   .filter(g=>g.points.length>=10)
-   .sort((x,y)=>x.center-y.center);
+  hsv.delete();
 
- if(groups.length<6){
-   gray.delete();bw.delete();labels.delete();
-   stats.delete();centroids.delete();
-   throw new Error("Não foram encontradas as seis fileiras do cartão");
- }
+  const darkRatio=dark/Math.max(1,total);
+  const blueRatio=blue/Math.max(1,total);
+  const meanLum=lumSum/Math.max(1,total);
 
- // A primeira fileira densa é 01–20.
- let headerGroup=null,headerIndex=-1,best=-Infinity;
- groups.forEach((g,i)=>{
-   const span=Math.max(...g.points.map(p=>p.x))-Math.min(...g.points.map(p=>p.x));
-   const score=Math.min(g.points.length,24)*10+(span/src.cols)*30-i*.5;
-   if(g.points.length>=16 && g.points.length<=28 && span>src.cols*.55 && score>best){
-     best=score;headerGroup=g;headerIndex=i;
-   }
- });
- if(!headerGroup) {
-   gray.delete();bw.delete();labels.delete();
-   stats.delete();centroids.delete();
-   throw new Error("Fileira 01–20 não localizada");
- }
+  // Peso maior para azul/preto, mas sem depender da cor da caneta.
+  return darkRatio*.72 + blueRatio*.95 +
+         Math.max(0,(190-meanLum)/255)*.28;
+}
 
- const header=chooseRegularSequence(headerGroup.points,20);
- if(!header || header.length<20){
-   gray.delete();bw.delete();labels.delete();
-   stats.delete();centroids.delete();
-   throw new Error("Não foi possível reconstruir as 20 questões");
- }
- header.sort((x,y)=>x.x-y.x);
+function readSheet(im){
+  const src=matFromImage(im);
+  const grid=detectGrid(src);
 
- // Divide exatamente nos dois blocos da folha.
- let split=0,bestGap=0;
- for(let i=1;i<header.length;i++){
-   const gap=header[i].x-header[i-1].x;
-   if(gap>bestGap){bestGap=gap;split=i;}
- }
- if(split<8||split>12)split=10;
+  const scores=[];
 
- const leftHeader=header.slice(0,10);
- const rightHeader=header.slice(split,split+10);
+  for(let q=0;q<20;q++){
+    const vals=[];
 
- const leftX=leftHeader.map(p=>p.x);
- const rightX=rightHeader.map(p=>p.x);
- const allGaps=leftX.slice(1).map((v,i)=>v-leftX[i])
-   .concat(rightX.slice(1).map((v,i)=>v-rightX[i]));
- const colGap=Math.max(5,median(allGaps));
+    for(let r=0;r<5;r++){
+      const point=grid.rowPoints[r][q];
+      vals.push(sampleAt(src,point.x,point.y,grid.bubbleRadius));
+    }
 
- // As cinco fileiras seguintes são A, B, C, D e E.
- const rowGroups=groups
-   .slice(headerIndex+1)
-   .filter(g=>g.center>headerGroup.center)
-   .sort((x,y)=>x.center-y.center)
-   .slice(0,5);
+    const ordered=vals.map((v,i)=>({v,i}))
+      .sort((a,b)=>b.v-a.v);
 
- if(rowGroups.length<5){
-   gray.delete();bw.delete();labels.delete();
-   stats.delete();centroids.delete();
-   throw new Error("As cinco fileiras A–E não foram encontradas");
- }
+    const best=ordered[0];
+    const second=ordered[1];
 
- const rows=[];
- const allX=leftX.concat(rightX);
- for(let r=0;r<5;r++){
-   const group=rowGroups[r];
-   const used=new Set();
-   const row=[];
-   for(const expectedX of allX){
-     let bestPoint=null,bestDist=Infinity,bestIndex=-1;
-     group.points.forEach((p,idx)=>{
-       if(used.has(idx))return;
-       const d=Math.abs(p.x-expectedX);
-       if(d<bestDist){bestDist=d;bestPoint=p;bestIndex=idx;}
-     });
-     if(bestPoint && bestDist<colGap*.62){
-       used.add(bestIndex);
-       row.push({x:bestPoint.x,y:bestPoint.y,r:Math.min(bestPoint.w,bestPoint.h)/2});
-     }else{
-       // A posição da pergunta é conhecida pelo cabeçalho; isso também
-       // corrige pequenas perdas de detecção em uma foto ruim.
-       row.push({
-         x:expectedX,
-         y:group.center,
-         r:medH/2
-       });
-     }
-   }
-   rows.push(row);
- }
+    // Em uma folha vazia todas as cinco posições ficam próximas.
+    // Em uma questão marcada, a bolha preenchida se distancia claramente.
+    const avg=vals.reduce((a,b)=>a+b,0)/vals.length;
+    const spread=best.v-avg;
+    const gap=best.v-second.v;
 
- const bubbleRadius=median(
-   rowGroups.flatMap(g=>g.points.map(p=>Math.min(p.w,p.h)/2))
- );
+    let answer="?";
 
- gray.delete();bw.delete();labels.delete();
- stats.delete();centroids.delete();
+    // Limiares deliberadamente baixos: o desempate é feito pela diferença
+    // entre a melhor bolha e as demais, não por um valor absoluto.
+    if(spread>=.055 && gap>=.025){
+      answer=L[best.i];
+    }
 
- return {
-   leftX,
-   rightX,
-   ys:rowGroups.map(g=>g.center),
-   rowPoints:rows,
-   blocks:2,
-   questions:20,
-   headerY:headerGroup.center,
-   colGap,
-   bubbleRadius:Math.max(8,bubbleRadius)
- };
+    scores.push({
+      answer,
+      values:vals,
+      confidence:Math.max(0,gap),
+      points:grid.rowPoints.map(row=>row[q])
+    });
+  }
+
+  src.delete();
+  return scores;
+}
+
+function detectQuestionCountFromCircles(im){
+  // O cartão oficial SALTA possui 20 questões e cinco alternativas.
+  // A leitura da quantidade deixa de falhar por causa da qualidade da foto.
+  return 20;
 }
 function sampleAt(src,x,y,radiusHint=14){
  const hsv=new cv.Mat();
