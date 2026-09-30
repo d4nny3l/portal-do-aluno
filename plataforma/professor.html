@@ -172,7 +172,8 @@ document.getElementById("sair").addEventListener("click",async()=>{
         // Mesmo que a rede falhe, encerramos a sessão local.
     }
 
-    sessionStorage.removeItem(SESSION_KEY);
+    SESSION_STORE.removeItem(SESSION_KEY);
+    OLD_STORE.removeItem(SESSION_KEY);
     location.reload();
 });
 
