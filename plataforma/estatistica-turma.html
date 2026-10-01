@@ -1,0 +1,79 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#f5f5f7">
+<title>Estatística por Turma — Área do Professor</title>
+<style>
+:root{--bg:#f5f5f7;--text:#1d1d1f;--muted:#6e6e73;--line:rgba(0,0,0,.09);--card:rgba(255,255,255,.78);--blue:#0071e3;--shadow:0 18px 55px rgba(0,0,0,.08)}
+*{box-sizing:border-box}html{scroll-behavior:smooth}body{margin:0;min-height:100vh;color:var(--text);font-family:-apple-system,BlinkMacSystemFont,"SF Pro Display","SF Pro Text",Inter,Arial,sans-serif;-webkit-font-smoothing:antialiased;background:linear-gradient(115deg,#fff,#f1f1f4 72%)}
+a{color:inherit;text-decoration:none}.wrap{width:min(1120px,calc(100% - 40px));margin:auto}
+.salta-platform-button{position:fixed;top:18px;right:18px;z-index:1000;width:42px;height:42px;border-radius:13px;display:grid;place-items:center;background:rgba(255,255,255,.82);color:#1d1d1f;border:1px solid rgba(0,0,0,.08);box-shadow:0 8px 24px rgba(0,0,0,.08);font-size:17px;font-weight:800;line-height:1;backdrop-filter:blur(16px) saturate(150%);-webkit-backdrop-filter:blur(16px) saturate(150%);transition:transform .25s ease,box-shadow .25s ease,background .25s ease}
+.salta-platform-button:hover{transform:translateY(-2px);box-shadow:0 12px 30px rgba(0,0,0,.12);background:#fff}
+main{min-height:100vh;padding:100px 0 80px;position:relative;z-index:1}
+.page-head{text-align:center;margin-bottom:28px}.page-head .eyebrow{font-size:13px;font-weight:700;letter-spacing:.08em;color:var(--blue);margin-bottom:12px}.page-head h1{font-size:clamp(38px,6vw,58px);line-height:1;letter-spacing:-2.8px;margin:0 0 12px}.page-head p{font-size:16px;line-height:1.5;color:var(--muted);max-width:700px;margin:auto}
+.class-grid{display:grid;grid-template-columns:minmax(280px,760px);justify-content:center;gap:18px}
+.card{position:relative;min-height:280px;padding:30px;border-radius:30px;background:var(--card);border:1px solid rgba(0,0,0,.08);box-shadow:var(--shadow);display:flex;flex-direction:column;overflow:hidden;transition:transform .35s cubic-bezier(.2,.8,.2,1),box-shadow .35s}
+.card:hover{transform:translateY(-5px);box-shadow:0 26px 65px rgba(0,0,0,.12)}
+.icon{width:54px;height:54px;border-radius:17px;background:#111;color:#fff;display:grid;place-items:center;font-size:23px;margin-bottom:26px}
+.card h3{font-size:27px;letter-spacing:-1px;margin:0 0 10px}.card p{font-size:15px;line-height:1.55;color:var(--muted);margin:0;max-width:620px}
+.cardfoot{margin-top:auto;padding-top:25px;display:flex;align-items:center;justify-content:space-between}
+.badge{font-size:12px;color:#777;background:#f0f0f2;border-radius:999px;padding:7px 10px}.arrow{width:38px;height:38px;border-radius:50%;background:#1d1d1f;color:#fff;display:grid;place-items:center;font-size:18px}
+.glow-card::before{content:"";position:absolute;inset:0;pointer-events:none;opacity:0;transition:opacity .25s ease;background:radial-gradient(230px circle at var(--mx,50%) var(--my,50%),rgba(0,113,227,.15),transparent 68%)}
+.glow-card:hover::before{opacity:1}.glow-card>*{position:relative;z-index:1}
+.reveal{opacity:0;transform:translateY(28px) scale(.985);transition:opacity .75s cubic-bezier(.2,.7,.2,1),transform .75s cubic-bezier(.2,.7,.2,1)}.reveal.is-visible{opacity:1;transform:translateY(0) scale(1)}
+.back{display:inline-block;margin-top:24px;font-size:14px;font-weight:600}
+.salta-grid{position:fixed;inset:0;pointer-events:none;z-index:0;background-image:linear-gradient(rgba(90,90,100,.055) 1px,transparent 1px),linear-gradient(90deg,rgba(90,90,100,.055) 1px,transparent 1px);background-size:32px 32px}
+body.auth-ready{visibility:visible}body{visibility:hidden}
+@media(max-width:560px){.wrap{width:calc(100% - 28px)}.salta-platform-button{width:38px;height:38px;top:14px;right:14px;border-radius:12px}main{padding:78px 0 55px}.card{min-height:260px;padding:26px;border-radius:25px}.page-head h1{letter-spacing:-2px}}
+</style>
+</head>
+<body>
+<div class="salta-grid"></div>
+<a class="salta-platform-button" href="./" aria-label="Ir para a Plataforma SALTA" title="Plataforma SALTA">S</a>
+<main><div class="wrap">
+<section class="page-head">
+<div class="eyebrow">AMBIENTE DO PROFESSOR</div>
+<h1>Estatística por Turma</h1>
+<p>Área reservada para reunir os resultados acadêmicos de uma turma e acompanhar seus indicadores de forma coletiva.</p>
+</section>
+<div class="class-grid">
+<div class="card glow-card reveal">
+<div class="icon">▥</div>
+<h3>Módulo em construção</h3>
+<p>A estrutura está pronta para receber a seleção de turma e, depois, os indicadores coletivos: médias, distribuição de resultados, avaliações e outros dados acadêmicos.</p>
+<div class="cardfoot"><span class="badge">Acesso restrito</span><span class="arrow">⌁</span></div>
+</div>
+</div>
+<a class="back" href="./estatistica.html">← Voltar para Estatística</a>
+</div></main>
+<script>
+(() => {
+ const AUTH_API_URL="https://salta-auth.dannyel-moises.workers.dev";
+ const KEY="saltaProfessorSession";
+ async function check(){
+   const token=localStorage.getItem(KEY)||sessionStorage.getItem(KEY);
+   try{
+     const headers=token?{Authorization:"Bearer "+token}:{};
+     const r=await fetch(AUTH_API_URL+"/session",{method:"GET",headers,credentials:"include",cache:"no-store"});
+     const d=await r.json().catch(()=>({}));
+     if(!r.ok||!d.authenticated){localStorage.removeItem(KEY);sessionStorage.removeItem(KEY);location.replace("./professor.html");return;}
+     document.body.classList.add("auth-ready");
+     const els=document.querySelectorAll(".reveal");
+     if("IntersectionObserver" in window){
+       const obs=new IntersectionObserver(entries=>entries.forEach(e=>{if(e.isIntersecting){e.target.classList.add("is-visible");obs.unobserve(e.target)}}),{threshold:.14});
+       els.forEach((el,i)=>{el.style.transitionDelay=(Math.min(i*70,210))+"ms";obs.observe(el)});
+     }else els.forEach(el=>el.classList.add("is-visible"));
+     document.querySelectorAll(".glow-card").forEach(card=>card.addEventListener("pointermove",ev=>{
+       const r=card.getBoundingClientRect();
+       card.style.setProperty("--mx",(ev.clientX-r.left)+"px");
+       card.style.setProperty("--my",(ev.clientY-r.top)+"px");
+     },{passive:true}));
+   }catch(e){location.replace("./professor.html")}
+ }
+ check();
+})();
+</script>
+</body>
+</html>
