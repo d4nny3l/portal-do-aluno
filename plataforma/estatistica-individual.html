@@ -131,7 +131,7 @@ document.getElementById("busca").addEventListener("input",render);
 
 async function api(path){
  const headers=token?{Authorization:"Bearer "+token}:{};
- const response=await fetch(API+path,{headers,credentials:"include",cache:"no-store"});
+ const response=await fetch(API+path,{headers,credentials:"omit",cache:"no-store"});
  const data=await response.json().catch(()=>({}));
  if(!response.ok){
    throw new Error((data.error||"Falha HTTP "+response.status)+" [HTTP "+response.status+"]");
