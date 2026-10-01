@@ -63,7 +63,7 @@ function vals(v){if(Array.isArray(v))return v;if(typeof v==="string"){try{const 
 function segment(t){return String(t||"").toUpperCase().includes("EJA")?"EJA":"REGULAR"}
 function bCount(t){return segment(t)==="EJA"?2:4}
 
-async function authCheck(){
+async async function authCheck(){
  try{
   const tokenAtual=obterToken();
   if(!tokenAtual){
