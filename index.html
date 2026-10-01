@@ -8,7 +8,7 @@
 *{box-sizing:border-box;margin:0;padding:0}
 body{font-family:Arial,Helvetica,sans-serif;background:linear-gradient(135deg,#f4f7fb,#e9eef6);min-height:100vh;color:#1f2937;padding:30px 15px}
 .container{width:100%;max-width:900px;margin:auto}
-header{text-align:center;margin-bottom:30px}
+header{text-align:center;margin-bottom:30px;position:relative}
 header h1{font-size:32px;color:#172554;margin-bottom:8px}
 header p{color:#64748b;font-size:16px}
 .professor{margin-top:6px;color:#2563eb;font-size:15px;font-weight:bold}
@@ -60,6 +60,28 @@ footer small{display:block;margin-top:8px;font-size:12px;color:#94a3b8}
 .carregando{background:#eff6ff;color:#1d4ed8}
 footer{text-align:center;margin-top:30px;color:#94a3b8;font-size:14px}
 @media(max-width:600px){body{padding:20px 12px}header h1{font-size:26px}.consulta{padding:20px}.campo{flex-direction:column}.campo button{height:50px}.aluno-topo{flex-direction:column;align-items:flex-start}.resumo{grid-template-columns:1fr}.aba{min-width:95px;font-size:12px}table{font-size:14px}}
+
+.top-platform{
+ position:absolute;
+ top:0;
+ right:0;
+ width:42px;height:42px;
+ border-radius:13px;
+ display:grid;
+ place-items:center;
+ background:rgba(255,255,255,.78);
+ color:#1d1d1f;
+ border:1px solid rgba(0,0,0,.08);
+ box-shadow:0 8px 24px rgba(0,0,0,.07);
+ text-decoration:none;
+ font-size:17px;
+ font-weight:800;
+ transition:transform .25s ease,box-shadow .25s ease,background .25s ease;
+}
+.top-platform:hover{transform:translateY(-2px);box-shadow:0 12px 30px rgba(0,0,0,.11);background:#fff}
+@media(max-width:600px){
+ .top-platform{width:38px;height:38px;top:-2px;right:0;border-radius:12px}
+}
 </style>
 <style id="salta-grid-global">
 /* SALTA — identidade visual global */
@@ -83,6 +105,7 @@ body::before{
 <body>
 <div class="container">
 <header>
+<a class="top-platform" href="./plataforma/" aria-label="Voltar para a Plataforma SALTA" title="Plataforma SALTA">S</a>
 <h1>📚 Portal do Aluno</h1>
 <p>Matemática</p>
 <div class="professor">Prof. Dannyel Moisés</div>
