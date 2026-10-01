@@ -93,6 +93,25 @@ footer{padding:35px 0 50px;border-top:1px solid var(--line);color:var(--muted);f
 .solver-grid{grid-template-columns:minmax(280px,760px);justify-content:center}
 .solver-card{width:100%}
 @media(max-width:560px){.solver-grid{grid-template-columns:1fr}}
+
+/* SALTA — título principal: gradiente em movimento */
+.animated-title{
+  background:linear-gradient(120deg,#171717 0%,#5f5f68 28%,#0071e3 52%,#9d5bd0 72%,#171717 100%);
+  background-size:300% 300%;
+  background-position:0% 50%;
+  -webkit-background-clip:text;
+  background-clip:text;
+  -webkit-text-fill-color:transparent;
+  animation:saltaTitleGradient 9s ease-in-out infinite;
+}
+@keyframes saltaTitleGradient{
+  0%{background-position:0% 50%}
+  50%{background-position:100% 50%}
+  100%{background-position:0% 50%}
+}
+@media(prefers-reduced-motion:reduce){
+  .animated-title{animation:none;background-position:50% 50%}
+}
 </style>
 <style id="salta-grid-global">
 /* SALTA — identidade visual global */
@@ -115,7 +134,7 @@ body::before{
 <body>
 <nav><div class="wrap"><div class="brand"><div class="mark">S</div><span>SALTA — Ferramenta educacional</span></div><div class="navpill">Plataforma Educacional</div></div></nav>
 <main>
-<section class="hero"><div class="wrap"><div class="eyebrow">PLATAFORMA EDUCACIONAL</div><h1>Educação.<br>Em um só lugar.</h1><p>Uma experiência única para alunos e professores, reunindo ferramentas educacionais em um só lugar.</p></div></section>
+<section class="hero"><div class="wrap"><div class="eyebrow">PLATAFORMA EDUCACIONAL</div><h1 class="animated-title">Educação.<br>Em um só lugar.</h1><p>Uma experiência única para alunos e professores, reunindo ferramentas educacionais em um só lugar.</p></div></section>
 <section class="section"><div class="wrap">
 <div class="sectionhead"><h2>Acesso</h2><span>Escolha seu ambiente</span></div>
 <div class="grid">
