@@ -18,7 +18,7 @@ main{padding:90px 0 70px}.hero{margin-bottom:24px}.eyebrow{font-size:12px;font-w
 @media(max-width:700px){.controls{grid-template-columns:1fr}.student{grid-template-columns:1fr auto}.student small{font-size:12px}.profile-head{flex-direction:column}.code-big{align-self:flex-start}}@media(max-width:520px){.hero h1{font-size:34px}.profile-box{padding:22px}}
 .salta-grid{position:fixed;inset:0;pointer-events:none;z-index:-1;background-image:linear-gradient(rgba(90,90,100,.055) 1px,transparent 1px),linear-gradient(90deg,rgba(90,90,100,.055) 1px,transparent 1px);background-size:32px 32px}
 
-.aluno-search{position:relative}.aluno-search input{width:100%;border:0;background:transparent;outline:0;font-size:16px;color:var(--text);padding:3px 0}.suggestions{position:absolute;top:calc(100% + 8px);left:0;right:0;z-index:30;display:none;padding:6px;border:1px solid var(--line);border-radius:16px;background:rgba(255,255,255,.96);box-shadow:0 18px 45px rgba(0,0,0,.12);backdrop-filter:blur(18px)}.suggestion{display:flex;justify-content:space-between;align-items:center;gap:10px;width:100%;padding:11px 12px;border:0;border-radius:11px;background:transparent;text-align:left;color:var(--text);cursor:pointer;font:inherit}.suggestion:hover,.suggestion:focus{background:#f1f1f3;outline:none}.suggestion small{color:var(--muted);font-size:11px;white-space:nowrap}.suggestions-empty{padding:12px;color:var(--muted);font-size:13px}
+
 </style>
 </head>
 <body>
@@ -30,9 +30,10 @@ main{padding:90px 0 70px}.hero{margin-bottom:24px}.eyebrow{font-size:12px;font-w
 <section class="controls">
 <div class="select-wrap"><label for="turma">Turma</label><select id="turma"><option value="">Selecione a turma</option></select></div>
 <div class="select-wrap aluno-search">
-<label for="buscaAluno">Aluno</label>
-<input id="buscaAluno" type="search" disabled placeholder="Selecione a turma primeiro..." autocomplete="off" autocapitalize="words" spellcheck="false">
-<div class="suggestions" id="suggestions"></div>
+<label for="alunoSelect">Aluno</label>
+<select id="alunoSelect" disabled>
+<option value="">Selecione a turma primeiro...</option>
+</select>
 </div>
 </section>
 <div id="status" class="status" style="display:none"></div>
@@ -150,69 +151,35 @@ main{padding:90px 0 70px}.hero{margin-bottom:24px}.eyebrow{font-size:12px;font-w
       turmas.map(t => '<option value="' + escapeHtml(t) + '">' + escapeHtml(t) + "</option>").join("");
   }
 
-  function limparBuscaAluno() {
-    const input = document.getElementById("buscaAluno");
-    const box = document.getElementById("suggestions");
-    const turma = document.getElementById("turma").value;
+  function renderAlunos() {
+  const select = document.getElementById("alunoSelect");
+  const turma = document.getElementById("turma").value;
 
-    input.value = "";
-    input.disabled = !turma;
-    input.placeholder = turma ? "Digite o nome do aluno..." : "Selecione a turma primeiro...";
-    box.innerHTML = "";
-    box.style.display = "none";
+  if (!turma) {
+    select.disabled = true;
+    select.innerHTML = '<option value="">Selecione a turma primeiro...</option>';
+    return;
   }
 
-  function alunosDaTurma() {
-    const turma = document.getElementById("turma").value;
-    if (!turma) return [];
-    return alunos.filter(a => String(a.turma || "").trim() === turma)
-      .sort((a,b) => String(a.nome || "").localeCompare(String(b.nome || ""), "pt-BR"));
-  }
+  const lista = alunos
+    .filter(a => String(a.turma || "").trim() === turma)
+    .sort((a,b) => String(a.nome || "").localeCompare(String(b.nome || ""), "pt-BR"));
 
-  function renderSuggestions() {
-    const input = document.getElementById("buscaAluno");
-    const box = document.getElementById("suggestions");
-    const turma = document.getElementById("turma").value;
-    const termo = input.value.trim().toLowerCase();
-
-    if (!turma || !termo) {
-      box.innerHTML = "";
-      box.style.display = "none";
-      return;
-    }
-
-    const resultados = alunosDaTurma()
-      .filter(a => String(a.nome || "").toLowerCase().includes(termo))
-      .slice(0, 8);
-
-    if (!resultados.length) {
-      box.innerHTML = '<div class="suggestions-empty">Nenhum aluno encontrado.</div>';
-      box.style.display = "block";
-      return;
-    }
-
-    box.innerHTML = resultados.map(a =>
-      '<button class="suggestion" type="button" data-codigo="' + escapeHtml(a.codigo) + '">' +
-      '<span>' + escapeHtml(a.nome || "Aluno sem nome") + "</span>" +
-      "<small>" + escapeHtml(a.codigo || "") + "</small>" +
-      "</button>"
+  select.disabled = false;
+  select.innerHTML =
+    '<option value="">Selecione um aluno</option>' +
+    lista.map(a =>
+      '<option value="' + escapeHtml(a.codigo) + '">' +
+      escapeHtml(a.nome || "Aluno sem nome") +
+      '</option>'
     ).join("");
+}
 
-    box.style.display = "block";
+function limparBuscaAluno() {
+  renderAlunos();
+}
 
-    box.querySelectorAll(".suggestion").forEach(button => {
-      button.addEventListener("click", () => {
-        const aluno = alunos.find(a => a.codigo === button.dataset.codigo);
-        if (!aluno) return;
-        input.value = aluno.nome || "";
-        box.innerHTML = "";
-        box.style.display = "none";
-        abrirPerfil(alunos.indexOf(aluno));
-      });
-    });
-  }
-
-  async function abrirPerfil(index) {
+async function abrirPerfil(index) {
     const resumo = alunos[index];
     if (!resumo) return;
 
@@ -321,19 +288,17 @@ main{padding:90px 0 70px}.hero{margin-bottom:24px}.eyebrow{font-size:12px;font-w
   window.fecharPerfil = fecharPerfil;
   window.showBim = showBim;
 
-  document.getElementById("turma").addEventListener("change", limparBuscaAluno);
-  document.getElementById("buscaAluno").addEventListener("input", renderSuggestions);
-  document.getElementById("buscaAluno").addEventListener("focus", renderSuggestions);
+  document.getElementById("turma").addEventListener("change", carregarAlunosTurma);
 
-  document.addEventListener("click", event => {
-    const box = document.getElementById("suggestions");
-    const search = document.querySelector(".aluno-search");
-    if (box.style.display === "block" && !search.contains(event.target)) {
-      box.style.display = "none";
-    }
+  document.getElementById("alunoSelect").addEventListener("change", () => {
+    const codigo = document.getElementById("alunoSelect").value;
+    if (!codigo) return;
+
+    const index = alunos.findIndex(a => a.codigo === codigo);
+    if (index >= 0) abrirPerfil(index);
   });
 
-  async function loadData() {
+async function loadData() {
     try {
       const data = await api("/admin/alunos");
       alunos = Array.isArray(data.alunos) ? data.alunos : [];
