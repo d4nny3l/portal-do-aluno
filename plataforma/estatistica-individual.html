@@ -11,7 +11,7 @@
 body.auth-ready{visibility:visible}.wrap{width:min(1100px,calc(100% - 32px));margin:auto}
 .salta-platform-button{position:fixed;top:18px;right:18px;z-index:1000;width:42px;height:42px;border-radius:13px;display:grid;place-items:center;background:rgba(255,255,255,.82);color:#1d1d1f;border:1px solid rgba(0,0,0,.08);box-shadow:0 8px 24px rgba(0,0,0,.08);text-decoration:none;font-size:17px;font-weight:800;backdrop-filter:blur(16px) saturate(150%);transition:transform .25s,box-shadow .25s,background .25s}.salta-platform-button:hover{transform:translateY(-2px);box-shadow:0 12px 30px rgba(0,0,0,.12);background:#fff}
 main{padding:90px 0 70px}.hero{margin-bottom:24px}.eyebrow{font-size:12px;font-weight:700;letter-spacing:.1em;color:var(--blue);margin-bottom:10px}.hero h1{font-size:42px;letter-spacing:-1.9px;margin:0 0 10px}.hero p{color:var(--muted);font-size:15px;line-height:1.5;margin:0}
-.controls{display:grid;grid-template-columns:220px 1fr;gap:12px;margin:25px 0 18px}.field,.select-wrap{background:var(--card);border:1px solid var(--line);border-radius:17px;padding:10px 13px;box-shadow:0 10px 30px rgba(0,0,0,.05)}.field label,.select-wrap label{display:block;font-size:11px;color:var(--muted);font-weight:700;margin-bottom:6px;text-transform:uppercase;letter-spacing:.07em}.field input,.select-wrap select{width:100%;border:0;background:transparent;outline:0;font-size:16px;color:var(--text);padding:3px 0}.select-wrap select{cursor:pointer}
+.controls{display:grid;grid-template-columns:220px 1fr;gap:12px;margin:25px 0 18px}.field,.select-wrap{background:var(--card);border:1px solid var(--line);border-radius:17px;padding:10px 13px;box-shadow:0 10px 30px rgba(0,0,0,.05)}.field label,.select-wrap label{display:block;font-size:11px;color:var(--muted);font-weight:700;margin-bottom:6px;text-transform:uppercase;letter-spacing:.07em}.field input,.select-wrap select{width:100%;border:0;background:transparent;outline:0;font-size:16px;color:var(--text);padding:3px 0}.select-wrap select{cursor:pointer}.select-wrap select:disabled{cursor:not-allowed;color:#9a9aa0}.select-wrap select option{color:var(--text)}
 .status{padding:13px 15px;border-radius:14px;background:#f0f0f2;color:#68686d;font-size:13px;margin-bottom:18px}
 .list{display:grid;gap:10px}.student{display:grid;grid-template-columns:minmax(180px,1fr) auto auto;gap:16px;align-items:center;padding:17px 18px;border-radius:18px;background:rgba(255,255,255,.78);border:1px solid var(--line);box-shadow:0 8px 24px rgba(0,0,0,.04);cursor:pointer;transition:transform .2s,box-shadow .2s}.student:hover{transform:translateY(-2px);box-shadow:0 15px 32px rgba(0,0,0,.08)}.student strong{font-size:15px}.student small{color:var(--muted);display:block;margin-top:3px}.code-pill{background:#eff6ff;color:#1d4ed8;padding:7px 10px;border-radius:999px;font-size:12px;font-weight:700}
 .profile{display:none;margin-top:22px}.profile-box{background:var(--card);border:1px solid var(--line);border-radius:27px;box-shadow:var(--shadow);padding:28px}.profile-head{display:flex;justify-content:space-between;gap:20px;align-items:flex-start}.profile h2{margin:0 0 5px;font-size:30px;letter-spacing:-1px}.profile-sub{margin:0;color:var(--muted);font-size:14px}.code-big{background:#eff6ff;color:#1d4ed8;padding:10px 13px;border-radius:12px;font-weight:800;font-size:14px;white-space:nowrap}.back-profile{display:inline-block;margin-top:18px;color:#555;font-size:13px;font-weight:650;cursor:pointer}.bim-tabs{display:flex;gap:8px;overflow:auto;margin:25px 0 18px}.bim-tab{border:1px solid var(--line);background:#fff;color:#5b5b60;border-radius:999px;padding:10px 14px;font-size:13px;font-weight:700;white-space:nowrap;cursor:pointer}.bim-tab.active{background:#111;color:#fff;border-color:#111}.bim-panel{display:none}.bim-panel.active{display:block}.summary{display:grid;grid-template-columns:repeat(2,1fr);gap:12px;margin-bottom:16px}.summary-card{padding:20px;border-radius:19px;background:#f6f7f9;text-align:center}.summary-card span{display:block;color:var(--muted);font-size:13px;margin-bottom:7px}.summary-card strong{font-size:29px}.evals{padding:20px;border:1px solid var(--line);border-radius:19px;background:#fff}.evals h3{margin:0 0 12px;font-size:17px}.empty{text-align:center;padding:30px;color:var(--muted);font-size:14px}.final{margin-top:16px;padding:20px;border-radius:19px;background:#eff6ff;text-align:center}.final span{display:block;color:#4c5e74;font-size:13px}.final strong{display:block;font-size:34px;margin-top:4px}
@@ -27,7 +27,7 @@ main{padding:90px 0 70px}.hero{margin-bottom:24px}.eyebrow{font-size:12px;font-w
 
 <section class="controls">
 <div class="select-wrap"><label for="turma">Turma</label><select id="turma"><option value="">Selecione a turma</option></select></div>
-<div class="field"><label for="busca">Nome do aluno</label><input id="busca" type="search" placeholder="Digite para filtrar por nome..." autocomplete="off"></div>
+<div class="select-wrap"><label for="alunoSelect">Aluno</label><select id="alunoSelect" disabled><option value="">Selecione primeiro a turma</option></select></div>
 </section>
 <div id="status" class="status">Preparando a consulta...</div>
 <div id="lista" class="list"></div>
@@ -71,21 +71,44 @@ async function authCheck(){
 function renderTurmas(){
  const sel=document.getElementById("turma");
  const turmas=[...new Set(alunos.map(a=>a.turma).filter(Boolean))].sort((a,b)=>String(a).localeCompare(String(b),"pt-BR"));
- sel.innerHTML='<option value="">Todas as turmas</option>'+turmas.map(t=>'<option value="'+escapeHtml(t)+'">'+escapeHtml(t)+'</option>').join("");
+ sel.innerHTML='<option value="">Selecione a turma</option>'+turmas.map(t=>'<option value="'+escapeHtml(t)+'">'+escapeHtml(t)+'</option>').join("");
 }
 function escapeHtml(v){return String(v).replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;","'":"&#039;"}[c]))}
 
-function filtered(){
- const turma=document.getElementById("turma").value.toLowerCase();
- const q=document.getElementById("busca").value.trim().toLowerCase();
- return alunos.filter(a=>(!turma||String(a.turma||"").toLowerCase()===turma)&&(!q||String(a.nome||"").toLowerCase().includes(q)));
+function alunosDaTurma(){
+ const turma=document.getElementById("turma").value;
+ if(!turma)return [];
+ return alunos.filter(a=>String(a.turma||"")===turma)
+   .sort((x,y)=>String(x.nome||"").localeCompare(String(y.nome||""),"pt-BR"));
 }
+
+function atualizarAlunos(){
+ const sel=document.getElementById("alunoSelect");
+ const turma=document.getElementById("turma").value;
+ sel.innerHTML="";
+ if(!turma){
+   sel.disabled=true;
+   sel.innerHTML='<option value="">Selecione primeiro a turma</option>';
+   document.getElementById("lista").innerHTML="";
+   return;
+ }
+ const arr=alunosDaTurma();
+ sel.disabled=false;
+ sel.innerHTML='<option value="">Selecione um aluno</option>'+
+   arr.map((a)=>'<option value="'+escapeHtml(a.codigo)+'">'+escapeHtml(a.nome||"Aluno sem nome")+'</option>').join("");
+ render();
+}
+
 function render(){
- const list=document.getElementById("lista"), arr=filtered();
- if(!arr.length){list.innerHTML='<div class="status">Nenhum aluno encontrado com esses filtros.</div>';return}
- list.innerHTML=arr.map((a,i)=>'<div class="student" onclick="abrirPerfil('+alunos.indexOf(a)+')"><div><strong>'+escapeHtml(a.nome||"Aluno sem nome")+'</strong><small>'+escapeHtml(a.turma||"Turma não informada")+'</small></div><div class="code-pill">'+escapeHtml(a.codigo||"—")+'</div><div>→</div></div>').join("");
-}
-window.abrirPerfil=async function(index){
+ const list=document.getElementById("lista");
+ const turma=document.getElementById("turma").value;
+ if(!turma){
+   list.innerHTML="";
+   return;
+ }
+ const arr=alunosDaTurma();
+ list.innerHTML='<div class="status">'+arr.length+" aluno"+(arr.length===1?"":"s")+" encontrado"+(arr.length===1?"":"s")+" nesta turma."+'</div>';
+}window.abrirPerfil=async function(index){
  const a=alunos[index]; if(!a)return;
  document.getElementById("pNome").textContent=a.nome||"—";
  document.getElementById("pTurma").textContent=a.turma||"—";
@@ -126,8 +149,15 @@ window.abrirPerfil=async function(index){
 }
 window.fecharPerfil=function(){document.getElementById("profile").style.display="none";document.querySelector(".controls").style.display="grid";document.getElementById("lista").style.display="grid";render()}
 window.showBim=function(n){document.querySelectorAll(".bim-tab").forEach((b,i)=>b.classList.toggle("active",i===n-1));document.querySelectorAll(".bim-panel").forEach((p,i)=>p.classList.toggle("active",i===n-1))}
-document.getElementById("turma").addEventListener("change",render);
-document.getElementById("busca").addEventListener("input",render);
+document.getElementById("turma").addEventListener("change",()=>{
+  atualizarAlunos();
+});
+document.getElementById("alunoSelect").addEventListener("change",async()=>{
+  const codigo=document.getElementById("alunoSelect").value;
+  if(!codigo)return;
+  const index=alunos.findIndex(a=>a.codigo===codigo);
+  if(index>=0) await window.abrirPerfil(index);
+});
 
 async function api(path){
  const headers=token?{Authorization:"Bearer "+token}:{};
@@ -148,7 +178,7 @@ async function loadStudents(){
    alunos=Array.isArray(data.alunos)?data.alunos:[];
 
    renderTurmas();
-   render();
+   atualizarAlunos();
 
    document.getElementById("status").textContent=
      alunos.length+" aluno"+(alunos.length===1?"":"s")+" disponível"+(alunos.length===1?"":"is")+" para consulta.";
