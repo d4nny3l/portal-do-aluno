@@ -7,6 +7,7 @@ function corsHeaders(request) {
     "Access-Control-Allow-Origin": origin === ALLOWED_ORIGIN ? origin : ALLOWED_ORIGIN,
     "Access-Control-Allow-Methods": "GET, OPTIONS",
     "Access-Control-Allow-Headers": "Authorization, Content-Type",
+    "Access-Control-Allow-Credentials": "true",
     "Access-Control-Max-Age": "86400",
     "Vary": "Origin"
   };
@@ -23,12 +24,25 @@ function json(data, request, status = 200) {
   });
 }
 
+function cookieToken(request) {
+  const raw = request.headers.get("Cookie") || "";
+  for (const part of raw.split(";")) {
+    const item = part.trim();
+    if (item.startsWith("salta_session=")) return decodeURIComponent(item.slice("salta_session=".length));
+  }
+  return "";
+}
+
 async function authenticated(request) {
-  const auth = request.headers.get("Authorization") || "";
-  if (!auth.startsWith("Bearer ")) return false;
+  const header = request.headers.get("Authorization") || "";
+  const bearer = header.startsWith("Bearer ") ? header.slice(7).trim() : "";
+  const cookie = cookieToken(request);
+  const token = bearer || cookie;
+  if (!token) return false;
+
   const response = await fetch(AUTH_API_URL + "/session", {
     method: "GET",
-    headers: { Authorization: auth },
+    headers: { Authorization: "Bearer " + token },
     cache: "no-store"
   });
   if (!response.ok) return false;
