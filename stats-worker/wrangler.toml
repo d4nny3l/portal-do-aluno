@@ -1,0 +1,9 @@
+name = "salta-stats"
+main = "worker.js"
+compatibility_date = "2026-09-30"
+workers_dev = true
+
+[[d1_databases]]
+binding = "DB"
+database_name = "portal-aluno-2026"
+database_id = "COLOCAR_DATABASE_ID_AQUI"
