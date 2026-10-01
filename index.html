@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Portal do Aluno — Matemática</title>
+<title>Área do Aluno — Matemática</title>
 <style>
 *{box-sizing:border-box;margin:0;padding:0}
 body{font-family:Arial,Helvetica,sans-serif;background:linear-gradient(135deg,#f4f7fb,#e9eef6);min-height:100vh;color:#1f2937;padding:30px 15px}
@@ -106,7 +106,7 @@ body::before{
 <div class="container">
 <header>
 <a class="top-platform" href="./plataforma/" aria-label="Ir para a Plataforma SALTA" title="Plataforma SALTA">S</a>
-<h1>📚 Portal do Aluno</h1>
+<h1>📚 Área do Aluno</h1>
 <p>Matemática</p>
 <div class="professor">Prof. Dannyel Moisés</div>
 </header>
@@ -153,7 +153,7 @@ body::before{
 </div>
 </section>
 
-<footer id="rodape">Portal do Aluno<small>Este domínio adota medidas de proteção de dados alinhadas aos princípios da LGPD. As informações escolares de cada aluno são disponibilizadas mediante código individual de consulta; não compartilhe seu código.</small></footer>
+<footer id="rodape">Área do Aluno<small>Este domínio adota medidas de proteção de dados alinhadas aos princípios da LGPD. As informações escolares de cada aluno são disponibilizadas mediante código individual de consulta; não compartilhe seu código.</small></footer>
 </div>
 
 <script>
@@ -330,7 +330,7 @@ async function consultarAluno(){
         document.getElementById('codigoAluno').textContent=codigo;
         document.getElementById('ultimaAtualizacao').textContent=aluno.ultima_atualizacao||'—';
         document.getElementById('anoAluno').textContent=ano?'Ano letivo: '+ano:'Ano letivo';
-        document.getElementById('rodape').textContent=ano?'Portal do Aluno • '+ano:'Portal do Aluno';
+        document.getElementById('rodape').textContent=ano?'Área do Aluno • '+ano:'Área do Aluno';
 
         criarAbas(quantidade);
         criarConteudos(aluno,quantidade);
