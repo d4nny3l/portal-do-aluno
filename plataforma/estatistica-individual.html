@@ -71,17 +71,17 @@ async function authCheck(){
  }catch(e){location.replace("./professor.html");return false}
 }
 
-function renderTurmas(){
+function renderTurmas(turmas){
  const sel=document.getElementById("turma");
- const turmas=[...new Set(alunos.map(a=>a.turma).filter(Boolean))].sort((a,b)=>String(a).localeCompare(String(b),"pt-BR"));
- sel.innerHTML='<option value="">Selecione a turma</option>'+turmas.map(t=>'<option value="'+escapeHtml(t)+'">'+escapeHtml(t)+'</option>').join("");
+ sel.innerHTML='<option value="">Selecione a turma</option>'+
+   turmas.map(t=>'<option value="'+escapeHtml(t)+'">'+escapeHtml(t)+'</option>').join("");
 }
-function escapeHtml(v){return String(v).replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;","'":"&#039;"}[c]))}
 
 function alunosDaTurma(){
  const turma=document.getElementById("turma").value;
  if(!turma)return [];
- return alunos.filter(a=>String(a.turma||"")===turma)
+ return alunos
+   .filter(a=>String(a.turma||"")===turma)
    .sort((x,y)=>String(x.nome||"").localeCompare(String(y.nome||""),"pt-BR"));
 }
 
@@ -89,7 +89,7 @@ function renderSuggestions(){
  const box=document.getElementById("suggestions");
  const input=document.getElementById("buscaAluno");
  const turma=document.getElementById("turma").value;
- const termo=input.value.trim().toLowerCase();
+ const termo=input.value.trim();
 
  if(!turma || !termo){
    box.style.display="none";
@@ -97,7 +97,9 @@ function renderSuggestions(){
    return;
  }
 
- const arr=alunosDaTurma().filter(a=>String(a.nome||"").toLowerCase().includes(termo)).slice(0,8);
+ const arr=alunosDaTurma()
+   .filter(a=>String(a.nome||"").toLowerCase().includes(termo.toLowerCase()))
+   .slice(0,8);
 
  if(!arr.length){
    box.innerHTML='<div class="suggestions-empty">Nenhum aluno encontrado.</div>';
@@ -114,10 +116,7 @@ function renderSuggestions(){
      const aluno=alunos.find(a=>a.codigo===codigo);
      input.value=aluno?.nome||"";
      box.style.display="none";
-     if(aluno){
-       const index=alunos.indexOf(aluno);
-       window.abrirPerfil(index);
-     }
+     if(aluno) window.abrirPerfil(alunos.indexOf(aluno));
    });
  });
 }
@@ -130,6 +129,28 @@ function limparBuscaAluno(){
  input.placeholder=document.getElementById("turma").value ? "Digite o nome do aluno..." : "Selecione a turma primeiro...";
  box.style.display="none";
  box.innerHTML="";
+}
+
+async function carregarAlunosTurma(){
+ const turma=document.getElementById("turma").value;
+ if(!turma){
+   alunos=[];
+   limparBuscaAluno();
+   return;
+ }
+ const status=document.getElementById("status");
+ status.textContent="Carregando alunos da turma...";
+ status.style.display="block";
+ try{
+   const data=await api("/admin/alunos?turma="+encodeURIComponent(turma));
+   alunos=Array.isArray(data.alunos)?data.alunos:[];
+   limparBuscaAluno();
+   status.style.display="none";
+ }catch(e){
+   alunos=[];
+   status.textContent="Falha ao carregar a turma: "+(e?.message||"erro desconhecido");
+   status.style.display="block";
+ }
 }
 
 window.abrirPerfil=async function(index){
@@ -173,9 +194,7 @@ window.abrirPerfil=async function(index){
 }
 window.fecharPerfil=function(){document.getElementById("profile").style.display="none";document.querySelector(".controls").style.display="grid";document.getElementById("lista").style.display="grid";render()}
 window.showBim=function(n){document.querySelectorAll(".bim-tab").forEach((b,i)=>b.classList.toggle("active",i===n-1));document.querySelectorAll(".bim-panel").forEach((p,i)=>p.classList.toggle("active",i===n-1))}
-document.getElementById("turma").addEventListener("change",()=>{
- limparBuscaAluno();
-});
+document.getElementById("turma").addEventListener("change",carregarAlunosTurma);
 
 document.getElementById("buscaAluno").addEventListener("input",renderSuggestions);
 document.getElementById("buscaAluno").addEventListener("focus",renderSuggestions);
@@ -197,18 +216,14 @@ async function api(path){
 
 async function loadStudents(){
  try{
-   document.getElementById("status").textContent="Carregando turmas e alunos...";
-   document.getElementById("status").style.display="block";
-
-   const data=await api("/admin/alunos");
-   alunos=Array.isArray(data.alunos)?data.alunos:[];
-
-   renderTurmas();
+   const data=await api("/admin/turmas");
+   const turmas=Array.isArray(data.turmas)?data.turmas:[];
+   renderTurmas(turmas);
    limparBuscaAluno();
    document.getElementById("status").style.display="none";
  }catch(e){
-   console.error(e);
-   document.getElementById("status").textContent="Falha ao carregar os alunos: "+(e?.message||"erro desconhecido");
+   document.getElementById("status").textContent="Falha ao carregar as turmas: "+(e?.message||"erro desconhecido");
+   document.getElementById("status").style.display="block";
  }
 }
 
