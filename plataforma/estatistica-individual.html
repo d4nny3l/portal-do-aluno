@@ -51,7 +51,9 @@ main{padding:90px 0 70px}.hero{margin-bottom:24px}.eyebrow{font-size:12px;font-w
 (() => {
 const AUTH="https://salta-auth.dannyel-moises.workers.dev";
 const KEY="saltaProfessorSession";
-const token=localStorage.getItem(KEY)||sessionStorage.getItem(KEY)||"";
+function obterToken(){
+  return localStorage.getItem(KEY) || sessionStorage.getItem(KEY) || "";
+}
 const API="https://salta-stats.dannyel-moises.workers.dev";
 
 let alunos=[];
@@ -63,7 +65,12 @@ function bCount(t){return segment(t)==="EJA"?2:4}
 
 async function authCheck(){
  try{
-  const h=token?{Authorization:"Bearer "+token}:{};
+  const tokenAtual=obterToken();
+  if(!tokenAtual){
+    location.replace("./professor.html");
+    return false;
+  }
+  const h={Authorization:"Bearer "+tokenAtual};
   const r=await fetch(AUTH+"/session",{headers:h,credentials:"include",cache:"no-store"});
   const d=await r.json().catch(()=>({}));
   if(!r.ok||!d.authenticated){localStorage.removeItem(KEY);sessionStorage.removeItem(KEY);location.replace("./professor.html");return false}
@@ -205,7 +212,9 @@ document.addEventListener("click",event=>{
 });
 
 async function api(path){
- const headers=token?{Authorization:"Bearer "+token}:{};
+ const tokenAtual=obterToken();
+ if(!tokenAtual) throw new Error("Sessão do professor não encontrada.");
+ const headers={Authorization:"Bearer "+tokenAtual};
  const response=await fetch(API+path,{headers,credentials:"omit",cache:"no-store"});
  const data=await response.json().catch(()=>({}));
  if(!response.ok){
