@@ -49,204 +49,361 @@ main{padding:90px 0 70px}.hero{margin-bottom:24px}.eyebrow{font-size:12px;font-w
 
 <script>
 (() => {
-const AUTH="https://salta-auth.dannyel-moises.workers.dev";
-const KEY="saltaProfessorSession";
-function obterToken(){
-  return localStorage.getItem(KEY) || sessionStorage.getItem(KEY) || "";
-}
-const API="https://salta-stats.dannyel-moises.workers.dev";
+  const AUTH = "https://salta-auth.dannyel-moises.workers.dev";
+  const KEY = "saltaProfessorSession";
+  const API = "https://salta-stats.dannyel-moises.workers.dev";
 
-let alunos=[];
+  let alunos = [];
 
-function fmt(v){if(v===null||v===undefined||v==="")return "—";const n=Number(v);return Number.isFinite(n)?n.toFixed(1).replace(".",","):String(v)}
-function vals(v){if(Array.isArray(v))return v;if(typeof v==="string"){try{const x=JSON.parse(v);return Array.isArray(x)?x:[]}catch(e){}}return []}
-function segment(t){return String(t||"").toUpperCase().includes("EJA")?"EJA":"REGULAR"}
-function bCount(t){return segment(t)==="EJA"?2:4}
-
-async async function authCheck(){
- try{
-  const tokenAtual=obterToken();
-  if(!tokenAtual){
-    location.replace("./professor.html");
-    return false;
+  function obterToken() {
+    return localStorage.getItem(KEY) || sessionStorage.getItem(KEY) || "";
   }
-  const h={Authorization:"Bearer "+tokenAtual};
-  const r=await fetch(AUTH+"/session",{headers:h,credentials:"include",cache:"no-store"});
-  const d=await r.json().catch(()=>({}));
-  if(!r.ok||!d.authenticated){localStorage.removeItem(KEY);sessionStorage.removeItem(KEY);location.replace("./professor.html");return false}
-  document.body.classList.add("auth-ready"); return true;
- }catch(e){location.replace("./professor.html");return false}
-}
 
-function renderTurmas(turmas){
- const sel=document.getElementById("turma");
- sel.innerHTML='<option value="">Selecione a turma</option>'+
-   turmas.map(t=>'<option value="'+escapeHtml(t)+'">'+escapeHtml(t)+'</option>').join("");
-}
+  function fmt(v) {
+    if (v === null || v === undefined || v === "") return "—";
+    const n = Number(v);
+    return Number.isFinite(n) ? n.toFixed(1).replace(".", ",") : String(v);
+  }
 
-function alunosDaTurma(){
- const turma=document.getElementById("turma").value;
- if(!turma)return [];
- return alunos
-   .filter(a=>String(a.turma||"")===turma)
-   .sort((x,y)=>String(x.nome||"").localeCompare(String(y.nome||""),"pt-BR"));
-}
+  function vals(v) {
+    if (Array.isArray(v)) return v;
+    if (typeof v === "string") {
+      try {
+        const x = JSON.parse(v);
+        return Array.isArray(x) ? x : [];
+      } catch {
+        return [];
+      }
+    }
+    return [];
+  }
 
-function renderSuggestions(){
- const box=document.getElementById("suggestions");
- const input=document.getElementById("buscaAluno");
- const turma=document.getElementById("turma").value;
- const termo=input.value.trim();
+  function segment(turma) {
+    return String(turma || "").toUpperCase().includes("EJA") ? "EJA" : "REGULAR";
+  }
 
- if(!turma || !termo){
-   box.style.display="none";
-   box.innerHTML="";
-   return;
- }
+  function bCount(turma) {
+    return segment(turma) === "EJA" ? 2 : 4;
+  }
 
- const arr=alunosDaTurma()
-   .filter(a=>String(a.nome||"").toLowerCase().includes(termo.toLowerCase()))
-   .slice(0,8);
+  function escapeHtml(value) {
+    return String(value).replace(/[&<>"']/g, ch => ({
+      "&":"&amp;",
+      "<":"&lt;",
+      ">":"&gt;",
+      '"':"&quot;",
+      "'":"&#039;"
+    }[ch]));
+  }
 
- if(!arr.length){
-   box.innerHTML='<div class="suggestions-empty">Nenhum aluno encontrado.</div>';
-   box.style.display="block";
-   return;
- }
+  async function authCheck() {
+    const token = obterToken();
 
- box.innerHTML=arr.map(a=>'<button class="suggestion" type="button" data-codigo="'+escapeHtml(a.codigo)+'"><span>'+escapeHtml(a.nome||"Aluno sem nome")+'</span><small>'+escapeHtml(a.codigo||"")+'</small></button>').join("");
- box.style.display="block";
+    if (!token) {
+      location.replace("./professor.html");
+      return false;
+    }
 
- box.querySelectorAll(".suggestion").forEach(btn=>{
-   btn.addEventListener("click",()=>{
-     const codigo=btn.dataset.codigo;
-     const aluno=alunos.find(a=>a.codigo===codigo);
-     input.value=aluno?.nome||"";
-     box.style.display="none";
-     if(aluno) window.abrirPerfil(alunos.indexOf(aluno));
-   });
- });
-}
+    try {
+      const response = await fetch(AUTH + "/session", {
+        method: "GET",
+        headers: { Authorization: "Bearer " + token },
+        credentials: "include",
+        cache: "no-store"
+      });
 
-function limparBuscaAluno(){
- const input=document.getElementById("buscaAluno");
- const box=document.getElementById("suggestions");
- input.value="";
- input.disabled=!document.getElementById("turma").value;
- input.placeholder=document.getElementById("turma").value ? "Digite o nome do aluno..." : "Selecione a turma primeiro...";
- box.style.display="none";
- box.innerHTML="";
-}
+      const data = await response.json().catch(() => ({}));
 
-async function carregarAlunosTurma(){
- const turma=document.getElementById("turma").value;
- if(!turma){
-   alunos=[];
-   limparBuscaAluno();
-   return;
- }
- const status=document.getElementById("status");
- status.textContent="Carregando alunos da turma...";
- status.style.display="block";
- try{
-   const data=await api("/admin/alunos?turma="+encodeURIComponent(turma));
-   alunos=Array.isArray(data.alunos)?data.alunos:[];
-   limparBuscaAluno();
-   status.style.display="none";
- }catch(e){
-   alunos=[];
-   status.textContent="Falha ao carregar a turma: "+(e?.message||"erro desconhecido");
-   status.style.display="block";
- }
-}
+      if (!response.ok || !data.authenticated) {
+        localStorage.removeItem(KEY);
+        sessionStorage.removeItem(KEY);
+        location.replace("./professor.html");
+        return false;
+      }
 
-window.abrirPerfil=async function(index){
- const a=alunos[index]; if(!a)return;
- document.getElementById("pNome").textContent=a.nome||"—";
- document.getElementById("pTurma").textContent=a.turma||"—";
- document.getElementById("pCodigo").textContent=a.codigo||"—";
- document.getElementById("pAtualizacao").textContent="";
- const n=bCount(a.turma),tabs=document.getElementById("bimTabs"),panels=document.getElementById("bimPanels");
+      document.body.classList.add("auth-ready");
+      return true;
+    } catch {
+      location.replace("./professor.html");
+      return false;
+    }
+  }
 
- document.getElementById("lista").style.display="none";
- document.querySelector(".controls").style.display="none";
- document.getElementById("status").style.display="none";
- document.getElementById("profile").style.display="block";
- tabs.innerHTML="";
- panels.innerHTML='<div class="empty">Carregando dados acadêmicos...</div>';
- window.scrollTo({top:0,behavior:"smooth"});
+  async function api(pathname) {
+    const token = obterToken();
+    if (!token) throw new Error("Sessão do professor não encontrada.");
 
- let detail;
- try{
-   detail=await api("/admin/aluno?codigo="+encodeURIComponent(a.codigo));
- }catch(e){
-   panels.innerHTML='<div class="empty">Não foi possível carregar os dados deste aluno.</div>';
-   return;
- }
- const aluno=detail||a;
- if(aluno.ultima_atualizacao) document.getElementById("pAtualizacao").textContent="Última atualização: "+aluno.ultima_atualizacao;
- tabs.innerHTML="";panels.innerHTML="";
- for(let i=1;i<=n;i++){
-  const d={status:aluno["bimestre"+i+"_status"]||"nao_iniciado",media:aluno["bimestre"+i+"_media"],vistos:aluno["bimestre"+i+"_vistos"],avaliacoes:vals(aluno["bimestre"+i+"_avaliacoes"])};
-  const tab=document.createElement("button");tab.className="bim-tab"+(i===1?" active":"");tab.textContent=i+"º Bimestre";tab.onclick=()=>showBim(i);tabs.appendChild(tab);
-  const p=document.createElement("div");p.className="bim-panel"+(i===1?" active":"");p.id="bim"+i;
-  const rows=d.avaliacoes.map(v=>'<tr><td>'+escapeHtml(v.nome||"Avaliação")+'</td><td>'+fmt(v.pontos)+'</td></tr>').join("");
-  p.innerHTML='<div class="summary"><div class="summary-card"><span>Média Bimestral</span><strong>'+fmt(d.media)+'</strong></div><div class="summary-card"><span>Vistos</span><strong>'+((d.vistos??"")!==""?d.vistos:"—")+'</strong></div></div><div class="evals"><h3>Avaliações</h3>'+(rows?'<table style="width:100%;border-collapse:collapse"><thead><tr><th style="text-align:left;padding:8px;border-bottom:1px solid #eee">Avaliação</th><th style="text-align:right;padding:8px;border-bottom:1px solid #eee">Pontos</th></tr></thead><tbody>'+rows+'</tbody></table>':'<div class="empty">Nenhuma avaliação registrada.</div>')+'</div>';
-  panels.appendChild(p);
- }
- const finalValue=aluno.media_anual??aluno.media_final??(() => { const count=bCount(aluno.turma); const ms=[]; for(let k=1;k<=count;k++){ const v=Number(aluno["bimestre"+k+"_media"]); if(Number.isFinite(v)) ms.push(v); } return ms.length?ms.reduce((x,y)=>x+y,0)/count:null; })();
- document.getElementById("pFinal").textContent=fmt(finalValue);
- document.getElementById("lista").style.display="none";document.querySelector(".controls").style.display="none";document.getElementById("status").style.display="none";document.getElementById("profile").style.display="block";
- window.scrollTo({top:0,behavior:"smooth"});
-}
-window.fecharPerfil=function(){document.getElementById("profile").style.display="none";document.querySelector(".controls").style.display="grid";document.getElementById("lista").style.display="grid";render()}
-window.showBim=function(n){document.querySelectorAll(".bim-tab").forEach((b,i)=>b.classList.toggle("active",i===n-1));document.querySelectorAll(".bim-panel").forEach((p,i)=>p.classList.toggle("active",i===n-1))}
-document.getElementById("turma").addEventListener("change",carregarAlunosTurma);
+    const response = await fetch(API + pathname, {
+      method: "GET",
+      headers: { Authorization: "Bearer " + token },
+      credentials: "omit",
+      cache: "no-store"
+    });
 
-document.getElementById("buscaAluno").addEventListener("input",renderSuggestions);
-document.getElementById("buscaAluno").addEventListener("focus",renderSuggestions);
-document.addEventListener("click",event=>{
- const box=document.getElementById("suggestions");
- const search=document.querySelector(".aluno-search");
- if(box.style.display==="block" && !search.contains(event.target)) box.style.display="none";
-});
+    const data = await response.json().catch(() => ({}));
 
-async function api(path){
- const tokenAtual=obterToken();
- if(!tokenAtual) throw new Error("Sessão do professor não encontrada.");
- const headers={Authorization:"Bearer "+tokenAtual};
- const response=await fetch(API+path,{headers,credentials:"omit",cache:"no-store"});
- const data=await response.json().catch(()=>({}));
- if(!response.ok){
-   throw new Error((data.error||"Falha HTTP "+response.status)+" [HTTP "+response.status+"]");
- }
- return data;
-}
+    if (!response.ok) {
+      throw new Error((data.error || "Falha HTTP " + response.status) + " [HTTP " + response.status + "]");
+    }
 
-async function loadStudents(){
- try{
-   const data=await api("/admin/turmas");
-   const turmas=Array.isArray(data.turmas)?data.turmas:[];
-   renderTurmas(turmas);
-   limparBuscaAluno();
+    return data;
+  }
 
-   const diagnostico=data.diagnostico||{};
-   if(!turmas.length){
-     document.getElementById("status").textContent=
-       "Nenhuma turma encontrada na base. Alunos no banco: "+(diagnostico.totalAlunos??"—")+
-       " | com turma: "+(diagnostico.alunosComTurma??"—")+
-       " | turmas: "+(diagnostico.quantidadeTurmas??"—");
-     document.getElementById("status").style.display="block";
-   }else{
-     document.getElementById("status").style.display="none";
-   }
- }catch(e){
-   document.getElementById("status").textContent="Falha ao carregar as turmas: "+(e?.message||"erro desconhecido");
-   document.getElementById("status").style.display="block";
- }
-}
+  function renderTurmas(turmas) {
+    const select = document.getElementById("turma");
+    select.innerHTML =
+      '<option value="">Selecione a turma</option>' +
+      turmas.map(t => '<option value="' + escapeHtml(t) + '">' + escapeHtml(t) + "</option>").join("");
+  }
 
-authCheck().then(ok=>ok&&loadStudents());
+  function alunosDaTurma() {
+    const turma = document.getElementById("turma").value;
+    if (!turma) return [];
+
+    return alunos
+      .filter(a => String(a.turma || "") === turma)
+      .sort((a, b) => String(a.nome || "").localeCompare(String(b.nome || ""), "pt-BR"));
+  }
+
+  function limparBuscaAluno() {
+    const input = document.getElementById("buscaAluno");
+    const box = document.getElementById("suggestions");
+    const turma = document.getElementById("turma").value;
+
+    input.value = "";
+    input.disabled = !turma;
+    input.placeholder = turma ? "Digite o nome do aluno..." : "Selecione a turma primeiro...";
+    box.innerHTML = "";
+    box.style.display = "none";
+  }
+
+  function renderSuggestions() {
+    const input = document.getElementById("buscaAluno");
+    const box = document.getElementById("suggestions");
+    const turma = document.getElementById("turma").value;
+    const termo = input.value.trim().toLowerCase();
+
+    if (!turma || !termo) {
+      box.innerHTML = "";
+      box.style.display = "none";
+      return;
+    }
+
+    const resultados = alunosDaTurma()
+      .filter(a => String(a.nome || "").toLowerCase().includes(termo))
+      .slice(0, 8);
+
+    if (!resultados.length) {
+      box.innerHTML = '<div class="suggestions-empty">Nenhum aluno encontrado.</div>';
+      box.style.display = "block";
+      return;
+    }
+
+    box.innerHTML = resultados.map(a =>
+      '<button class="suggestion" type="button" data-codigo="' + escapeHtml(a.codigo) + '">' +
+      '<span>' + escapeHtml(a.nome || "Aluno sem nome") + "</span>" +
+      '<small>' + escapeHtml(a.codigo || "") + "</small>" +
+      "</button>"
+    ).join("");
+
+    box.style.display = "block";
+
+    box.querySelectorAll(".suggestion").forEach(button => {
+      button.addEventListener("click", () => {
+        const codigo = button.dataset.codigo;
+        const aluno = alunos.find(a => a.codigo === codigo);
+        if (!aluno) return;
+
+        input.value = aluno.nome || "";
+        box.innerHTML = "";
+        box.style.display = "none";
+        abrirPerfil(alunos.indexOf(aluno));
+      });
+    });
+  }
+
+  async function carregarAlunosTurma() {
+    const turma = document.getElementById("turma").value;
+    const input = document.getElementById("buscaAluno");
+    const status = document.getElementById("status");
+
+    alunos = [];
+
+    if (!turma) {
+      limparBuscaAluno();
+      status.style.display = "none";
+      return;
+    }
+
+    input.disabled = true;
+    input.placeholder = "Carregando alunos...";
+    status.textContent = "Carregando alunos da turma...";
+    status.style.display = "block";
+
+    try {
+      const data = await api("/admin/alunos?turma=" + encodeURIComponent(turma));
+      alunos = Array.isArray(data.alunos) ? data.alunos : [];
+
+      limparBuscaAluno();
+      status.style.display = "none";
+    } catch (error) {
+      status.textContent = "Falha ao carregar a turma: " + (error?.message || "erro desconhecido");
+      status.style.display = "block";
+      limparBuscaAluno();
+    }
+  }
+
+  async function abrirPerfil(index) {
+    const resumo = alunos[index];
+    if (!resumo) return;
+
+    document.getElementById("pNome").textContent = resumo.nome || "—";
+    document.getElementById("pTurma").textContent = resumo.turma || "—";
+    document.getElementById("pCodigo").textContent = resumo.codigo || "—";
+    document.getElementById("pAtualizacao").textContent = "";
+
+    document.querySelector(".controls").style.display = "none";
+    document.getElementById("status").style.display = "none";
+    document.getElementById("profile").style.display = "block";
+
+    const tabs = document.getElementById("bimTabs");
+    const panels = document.getElementById("bimPanels");
+    tabs.innerHTML = "";
+    panels.innerHTML = '<div class="empty">Carregando dados acadêmicos...</div>';
+
+    window.scrollTo({ top: 0, behavior: "smooth" });
+
+    let aluno;
+    try {
+      aluno = await api("/admin/aluno?codigo=" + encodeURIComponent(resumo.codigo));
+    } catch {
+      panels.innerHTML = '<div class="empty">Não foi possível carregar os dados deste aluno.</div>';
+      return;
+    }
+
+    if (aluno.ultima_atualizacao) {
+      document.getElementById("pAtualizacao").textContent =
+        "Última atualização: " + aluno.ultima_atualizacao;
+    }
+
+    const quantidade = bCount(aluno.turma);
+
+    for (let i = 1; i <= quantidade; i++) {
+      const dados = {
+        media: aluno["bimestre" + i + "_media"],
+        vistos: aluno["bimestre" + i + "_vistos"],
+        avaliacoes: vals(aluno["bimestre" + i + "_avaliacoes"])
+      };
+
+      const tab = document.createElement("button");
+      tab.className = "bim-tab" + (i === 1 ? " active" : "");
+      tab.textContent = i + "º Bimestre";
+      tab.addEventListener("click", () => showBim(i));
+      tabs.appendChild(tab);
+
+      const panel = document.createElement("div");
+      panel.className = "bim-panel" + (i === 1 ? " active" : "");
+      panel.id = "bim" + i;
+
+      const rows = dados.avaliacoes.map(av =>
+        "<tr><td>" + escapeHtml(av.nome || "Avaliação") +
+        "</td><td>" + fmt(av.pontos) + "</td></tr>"
+      ).join("");
+
+      panel.innerHTML =
+        '<div class="summary">' +
+          '<div class="summary-card"><span>Média Bimestral</span><strong>' + fmt(dados.media) + "</strong></div>" +
+          '<div class="summary-card"><span>Vistos</span><strong>' +
+            ((dados.vistos ?? "") !== "" ? escapeHtml(dados.vistos) : "—") +
+          "</strong></div>" +
+        "</div>" +
+        '<div class="evals"><h3>Avaliações</h3>' +
+          (rows
+            ? '<table style="width:100%;border-collapse:collapse"><thead><tr>' +
+                '<th style="text-align:left;padding:8px;border-bottom:1px solid #eee">Avaliação</th>' +
+                '<th style="text-align:right;padding:8px;border-bottom:1px solid #eee">Pontos</th>' +
+              "</tr></thead><tbody>" + rows + "</tbody></table>"
+            : '<div class="empty">Nenhuma avaliação registrada.</div>') +
+        "</div>";
+
+      panels.appendChild(panel);
+    }
+
+    const medias = [];
+    for (let i = 1; i <= quantidade; i++) {
+      const value = Number(aluno["bimestre" + i + "_media"]);
+      if (Number.isFinite(value)) medias.push(value);
+    }
+
+    // Mantém a média anual dividida pelo total de bimestres do segmento.
+    const finalValue = medias.length
+      ? medias.reduce((sum, value) => sum + value, 0) / quantidade
+      : null;
+
+    document.getElementById("pFinal").textContent = fmt(finalValue);
+  }
+
+  function fecharPerfil() {
+    document.getElementById("profile").style.display = "none";
+    document.querySelector(".controls").style.display = "grid";
+    limparBuscaAluno();
+  }
+
+  function showBim(n) {
+    document.querySelectorAll(".bim-tab").forEach((tab, i) => {
+      tab.classList.toggle("active", i === n - 1);
+    });
+    document.querySelectorAll(".bim-panel").forEach((panel, i) => {
+      panel.classList.toggle("active", i === n - 1);
+    });
+  }
+
+  window.abrirPerfil = abrirPerfil;
+  window.fecharPerfil = fecharPerfil;
+  window.showBim = showBim;
+
+  document.getElementById("turma").addEventListener("change", carregarAlunosTurma);
+  document.getElementById("buscaAluno").addEventListener("input", renderSuggestions);
+  document.getElementById("buscaAluno").addEventListener("focus", renderSuggestions);
+
+  document.addEventListener("click", event => {
+    const box = document.getElementById("suggestions");
+    const search = document.querySelector(".aluno-search");
+    if (box.style.display === "block" && !search.contains(event.target)) {
+      box.style.display = "none";
+    }
+  });
+
+  async function loadTurmas() {
+    try {
+      const data = await api("/admin/turmas");
+      const turmas = Array.isArray(data.turmas) ? data.turmas : [];
+
+      renderTurmas(turmas);
+      limparBuscaAluno();
+
+      const status = document.getElementById("status");
+
+      if (!turmas.length) {
+        const d = data.diagnostico || {};
+        status.textContent =
+          "Nenhuma turma encontrada. Alunos: " + (d.totalAlunos ?? "—") +
+          " | com turma: " + (d.alunosComTurma ?? "—") +
+          " | turmas: " + (d.quantidadeTurmas ?? "—");
+        status.style.display = "block";
+      } else {
+        status.style.display = "none";
+      }
+    } catch (error) {
+      const status = document.getElementById("status");
+      status.textContent = "Falha ao carregar as turmas: " + (error?.message || "erro desconhecido");
+      status.style.display = "block";
+    }
+  }
+
+  authCheck().then(ok => {
+    if (ok) loadTurmas();
+  });
 })();
 </script>
 </body>
