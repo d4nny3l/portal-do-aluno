@@ -220,7 +220,17 @@ async function loadStudents(){
    const turmas=Array.isArray(data.turmas)?data.turmas:[];
    renderTurmas(turmas);
    limparBuscaAluno();
-   document.getElementById("status").style.display="none";
+
+   const diagnostico=data.diagnostico||{};
+   if(!turmas.length){
+     document.getElementById("status").textContent=
+       "Nenhuma turma encontrada na base. Alunos no banco: "+(diagnostico.totalAlunos??"—")+
+       " | com turma: "+(diagnostico.alunosComTurma??"—")+
+       " | turmas: "+(diagnostico.quantidadeTurmas??"—");
+     document.getElementById("status").style.display="block";
+   }else{
+     document.getElementById("status").style.display="none";
+   }
  }catch(e){
    document.getElementById("status").textContent="Falha ao carregar as turmas: "+(e?.message||"erro desconhecido");
    document.getElementById("status").style.display="block";
