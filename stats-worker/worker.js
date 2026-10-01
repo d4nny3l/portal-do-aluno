@@ -3,14 +3,14 @@ const ALLOWED_ORIGIN = "https://d4nny3l.github.io";
 
 function corsHeaders(request) {
   const origin = request.headers.get("Origin") || "";
-  return {
-    "Access-Control-Allow-Origin": origin === ALLOWED_ORIGIN ? origin : ALLOWED_ORIGIN,
+  const headers = {
     "Access-Control-Allow-Methods": "GET, OPTIONS",
     "Access-Control-Allow-Headers": "Authorization, Content-Type",
-    "Access-Control-Allow-Credentials": "true",
     "Access-Control-Max-Age": "86400",
     "Vary": "Origin"
   };
+  if (origin === ALLOWED_ORIGIN) headers["Access-Control-Allow-Origin"] = origin;
+  return headers;
 }
 
 function json(data, request, status = 200) {
@@ -63,6 +63,9 @@ export default {
     }
     const url = new URL(request.url);
     try {
+      if (url.pathname === "/health") {
+        return json({ ok: true, service: "salta-stats" }, request);
+      }
       if (url.pathname === "/admin/turmas") {
         const result = await env.DB.prepare(
           "SELECT DISTINCT turma FROM alunos WHERE turma IS NOT NULL AND turma <> '' ORDER BY turma COLLATE NOCASE"
