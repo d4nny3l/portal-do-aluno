@@ -75,19 +75,37 @@ export default {
         return json({ ok: true, service: "salta-stats" }, request);
       }
       if (url.pathname === "/admin/turmas") {
+        const totals = await env.DB.prepare(
+          "SELECT COUNT(*) AS total_alunos, " +
+          "COUNT(CASE WHEN turma IS NOT NULL AND TRIM(turma) <> '' THEN 1 END) AS com_turma, " +
+          "COUNT(DISTINCT CASE WHEN turma IS NOT NULL AND TRIM(turma) <> '' THEN TRIM(turma) END) AS turmas"
+        ).first();
+
         const result = await env.DB.prepare(
-          "SELECT DISTINCT turma FROM alunos WHERE turma IS NOT NULL AND turma <> '' ORDER BY turma COLLATE NOCASE"
+          "SELECT TRIM(turma) AS turma " +
+          "FROM alunos " +
+          "WHERE turma IS NOT NULL AND TRIM(turma) <> '' " +
+          "GROUP BY TRIM(turma) " +
+          "ORDER BY TRIM(turma)"
         ).all();
-        return json({ turmas: (result.results || []).map(row => row.turma) }, request);
+
+        return json({
+          turmas: (result.results || []).map(row => row.turma).filter(Boolean),
+          diagnostico: {
+            totalAlunos: Number(totals?.total_alunos || 0),
+            alunosComTurma: Number(totals?.com_turma || 0),
+            quantidadeTurmas: Number(totals?.turmas || 0)
+          }
+        }, request);
       }
       if (url.pathname === "/admin/alunos") {
         const turma = (url.searchParams.get("turma") || "").trim();
         const nome = (url.searchParams.get("nome") || "").trim();
-        let query = "SELECT codigo, nome, turma FROM alunos WHERE 1=1";
+        let query = "SELECT codigo, nome, TRIM(turma) AS turma FROM alunos WHERE 1=1";
         const binds = [];
-        if (turma) { query += " AND turma = ?"; binds.push(turma); }
+        if (turma) { query += " AND TRIM(turma) = ?"; binds.push(turma); }
         if (nome) { query += " AND LOWER(nome) LIKE LOWER(?)"; binds.push("%" + nome + "%"); }
-        query += " ORDER BY turma COLLATE NOCASE, nome COLLATE NOCASE";
+        query += " ORDER BY TRIM(turma), nome";
         const result = await env.DB.prepare(query).bind(...binds).all();
         return json({ total: (result.results || []).length, alunos: result.results || [] }, request);
       }
