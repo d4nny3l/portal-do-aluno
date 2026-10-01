@@ -17,6 +17,8 @@ main{padding:90px 0 70px}.hero{margin-bottom:24px}.eyebrow{font-size:12px;font-w
 .profile{display:none;margin-top:22px}.profile-box{background:var(--card);border:1px solid var(--line);border-radius:27px;box-shadow:var(--shadow);padding:28px}.profile-head{display:flex;justify-content:space-between;gap:20px;align-items:flex-start}.profile h2{margin:0 0 5px;font-size:30px;letter-spacing:-1px}.profile-sub{margin:0;color:var(--muted);font-size:14px}.code-big{background:#eff6ff;color:#1d4ed8;padding:10px 13px;border-radius:12px;font-weight:800;font-size:14px;white-space:nowrap}.back-profile{display:inline-block;margin-top:18px;color:#555;font-size:13px;font-weight:650;cursor:pointer}.bim-tabs{display:flex;gap:8px;overflow:auto;margin:25px 0 18px}.bim-tab{border:1px solid var(--line);background:#fff;color:#5b5b60;border-radius:999px;padding:10px 14px;font-size:13px;font-weight:700;white-space:nowrap;cursor:pointer}.bim-tab.active{background:#111;color:#fff;border-color:#111}.bim-panel{display:none}.bim-panel.active{display:block}.summary{display:grid;grid-template-columns:repeat(2,1fr);gap:12px;margin-bottom:16px}.summary-card{padding:20px;border-radius:19px;background:#f6f7f9;text-align:center}.summary-card span{display:block;color:var(--muted);font-size:13px;margin-bottom:7px}.summary-card strong{font-size:29px}.evals{padding:20px;border:1px solid var(--line);border-radius:19px;background:#fff}.evals h3{margin:0 0 12px;font-size:17px}.empty{text-align:center;padding:30px;color:var(--muted);font-size:14px}.final{margin-top:16px;padding:20px;border-radius:19px;background:#eff6ff;text-align:center}.final span{display:block;color:#4c5e74;font-size:13px}.final strong{display:block;font-size:34px;margin-top:4px}
 @media(max-width:700px){.controls{grid-template-columns:1fr}.student{grid-template-columns:1fr auto}.student small{font-size:12px}.profile-head{flex-direction:column}.code-big{align-self:flex-start}}@media(max-width:520px){.hero h1{font-size:34px}.profile-box{padding:22px}}
 .salta-grid{position:fixed;inset:0;pointer-events:none;z-index:-1;background-image:linear-gradient(rgba(90,90,100,.055) 1px,transparent 1px),linear-gradient(90deg,rgba(90,90,100,.055) 1px,transparent 1px);background-size:32px 32px}
+
+.aluno-search{position:relative}.aluno-search input{width:100%;border:0;background:transparent;outline:0;font-size:16px;color:var(--text);padding:3px 0}.suggestions{position:absolute;top:calc(100% + 8px);left:0;right:0;z-index:30;display:none;padding:6px;border:1px solid var(--line);border-radius:16px;background:rgba(255,255,255,.96);box-shadow:0 18px 45px rgba(0,0,0,.12);backdrop-filter:blur(18px)}.suggestion{display:flex;justify-content:space-between;align-items:center;gap:10px;width:100%;padding:11px 12px;border:0;border-radius:11px;background:transparent;text-align:left;color:var(--text);cursor:pointer;font:inherit}.suggestion:hover,.suggestion:focus{background:#f1f1f3;outline:none}.suggestion small{color:var(--muted);font-size:11px;white-space:nowrap}.suggestions-empty{padding:12px;color:var(--muted);font-size:13px}
 </style>
 </head>
 <body>
@@ -27,11 +29,12 @@ main{padding:90px 0 70px}.hero{margin-bottom:24px}.eyebrow{font-size:12px;font-w
 
 <section class="controls">
 <div class="select-wrap"><label for="turma">Turma</label><select id="turma"><option value="">Selecione a turma</option></select></div>
-<div class="select-wrap"><label for="alunoSelect">Aluno</label><select id="alunoSelect" disabled><option value="">Selecione primeiro a turma</option></select></div>
+<div class="select-wrap aluno-search">
+<label for="buscaAluno">Aluno</label>
+<input id="buscaAluno" type="search" disabled placeholder="Selecione a turma primeiro..." autocomplete="off" autocapitalize="words" spellcheck="false">
+<div class="suggestions" id="suggestions"></div>
+</div>
 </section>
-<div id="status" class="status">Preparando a consulta...</div>
-<div id="lista" class="list"></div>
-
 <section class="profile" id="profile">
 <div class="profile-box">
 <div class="profile-head"><div><h2 id="pNome">—</h2><p class="profile-sub" id="pTurma">—</p><p class="profile-sub" id="pAtualizacao"></p></div><div class="code-big" id="pCodigo">—</div></div>
@@ -82,33 +85,54 @@ function alunosDaTurma(){
    .sort((x,y)=>String(x.nome||"").localeCompare(String(y.nome||""),"pt-BR"));
 }
 
-function atualizarAlunos(){
- const sel=document.getElementById("alunoSelect");
+function renderSuggestions(){
+ const box=document.getElementById("suggestions");
+ const input=document.getElementById("buscaAluno");
  const turma=document.getElementById("turma").value;
- sel.innerHTML="";
- if(!turma){
-   sel.disabled=true;
-   sel.innerHTML='<option value="">Selecione primeiro a turma</option>';
-   document.getElementById("lista").innerHTML="";
+ const termo=input.value.trim().toLowerCase();
+
+ if(!turma || !termo){
+   box.style.display="none";
+   box.innerHTML="";
    return;
  }
- const arr=alunosDaTurma();
- sel.disabled=false;
- sel.innerHTML='<option value="">Selecione um aluno</option>'+
-   arr.map((a)=>'<option value="'+escapeHtml(a.codigo)+'">'+escapeHtml(a.nome||"Aluno sem nome")+'</option>').join("");
- render();
+
+ const arr=alunosDaTurma().filter(a=>String(a.nome||"").toLowerCase().includes(termo)).slice(0,8);
+
+ if(!arr.length){
+   box.innerHTML='<div class="suggestions-empty">Nenhum aluno encontrado.</div>';
+   box.style.display="block";
+   return;
+ }
+
+ box.innerHTML=arr.map(a=>'<button class="suggestion" type="button" data-codigo="'+escapeHtml(a.codigo)+'"><span>'+escapeHtml(a.nome||"Aluno sem nome")+'</span><small>'+escapeHtml(a.codigo||"")+'</small></button>').join("");
+ box.style.display="block";
+
+ box.querySelectorAll(".suggestion").forEach(btn=>{
+   btn.addEventListener("click",()=>{
+     const codigo=btn.dataset.codigo;
+     const aluno=alunos.find(a=>a.codigo===codigo);
+     input.value=aluno?.nome||"";
+     box.style.display="none";
+     if(aluno){
+       const index=alunos.indexOf(aluno);
+       window.abrirPerfil(index);
+     }
+   });
+ });
 }
 
-function render(){
- const list=document.getElementById("lista");
- const turma=document.getElementById("turma").value;
- if(!turma){
-   list.innerHTML="";
-   return;
- }
- const arr=alunosDaTurma();
- list.innerHTML='<div class="status">'+arr.length+" aluno"+(arr.length===1?"":"s")+" encontrado"+(arr.length===1?"":"s")+" nesta turma."+'</div>';
-}window.abrirPerfil=async function(index){
+function limparBuscaAluno(){
+ const input=document.getElementById("buscaAluno");
+ const box=document.getElementById("suggestions");
+ input.value="";
+ input.disabled=!document.getElementById("turma").value;
+ input.placeholder=document.getElementById("turma").value ? "Digite o nome do aluno..." : "Selecione a turma primeiro...";
+ box.style.display="none";
+ box.innerHTML="";
+}
+
+window.abrirPerfil=async function(index){
  const a=alunos[index]; if(!a)return;
  document.getElementById("pNome").textContent=a.nome||"—";
  document.getElementById("pTurma").textContent=a.turma||"—";
@@ -150,13 +174,15 @@ function render(){
 window.fecharPerfil=function(){document.getElementById("profile").style.display="none";document.querySelector(".controls").style.display="grid";document.getElementById("lista").style.display="grid";render()}
 window.showBim=function(n){document.querySelectorAll(".bim-tab").forEach((b,i)=>b.classList.toggle("active",i===n-1));document.querySelectorAll(".bim-panel").forEach((p,i)=>p.classList.toggle("active",i===n-1))}
 document.getElementById("turma").addEventListener("change",()=>{
-  atualizarAlunos();
+ limparBuscaAluno();
 });
-document.getElementById("alunoSelect").addEventListener("change",async()=>{
-  const codigo=document.getElementById("alunoSelect").value;
-  if(!codigo)return;
-  const index=alunos.findIndex(a=>a.codigo===codigo);
-  if(index>=0) await window.abrirPerfil(index);
+
+document.getElementById("buscaAluno").addEventListener("input",renderSuggestions);
+document.getElementById("buscaAluno").addEventListener("focus",renderSuggestions);
+document.addEventListener("click",event=>{
+ const box=document.getElementById("suggestions");
+ const search=document.querySelector(".aluno-search");
+ if(box.style.display==="block" && !search.contains(event.target)) box.style.display="none";
 });
 
 async function api(path){
@@ -178,10 +204,8 @@ async function loadStudents(){
    alunos=Array.isArray(data.alunos)?data.alunos:[];
 
    renderTurmas();
-   atualizarAlunos();
-
-   document.getElementById("status").textContent=
-     alunos.length+" aluno"+(alunos.length===1?"":"s")+" disponível"+(alunos.length===1?"":"is")+" para consulta.";
+   limparBuscaAluno();
+   document.getElementById("status").style.display="none";
  }catch(e){
    console.error(e);
    document.getElementById("status").textContent="Falha ao carregar os alunos: "+(e?.message||"erro desconhecido");
