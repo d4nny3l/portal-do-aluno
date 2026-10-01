@@ -1,0 +1,122 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#f5f5f7">
+<title>Estatística Individual — Área do Professor</title>
+<style>
+:root{--bg:#f5f5f7;--text:#1d1d1f;--muted:#6e6e73;--line:rgba(0,0,0,.09);--card:rgba(255,255,255,.86);--blue:#0071e3;--shadow:0 20px 60px rgba(0,0,0,.09);--green:#16794a}
+*{box-sizing:border-box}html{scroll-behavior:smooth}body{margin:0;min-height:100vh;background:radial-gradient(circle at 50% -5%,#fff 0,#f5f5f7 52%,#efeff1 100%);font-family:-apple-system,BlinkMacSystemFont,"SF Pro Display","SF Pro Text",Inter,Arial,sans-serif;color:var(--text);-webkit-font-smoothing:antialiased;visibility:hidden}
+body.auth-ready{visibility:visible}.wrap{width:min(1100px,calc(100% - 32px));margin:auto}
+.salta-platform-button{position:fixed;top:18px;right:18px;z-index:1000;width:42px;height:42px;border-radius:13px;display:grid;place-items:center;background:rgba(255,255,255,.82);color:#1d1d1f;border:1px solid rgba(0,0,0,.08);box-shadow:0 8px 24px rgba(0,0,0,.08);text-decoration:none;font-size:17px;font-weight:800;backdrop-filter:blur(16px) saturate(150%);transition:transform .25s,box-shadow .25s,background .25s}.salta-platform-button:hover{transform:translateY(-2px);box-shadow:0 12px 30px rgba(0,0,0,.12);background:#fff}
+main{padding:90px 0 70px}.hero{margin-bottom:24px}.eyebrow{font-size:12px;font-weight:700;letter-spacing:.1em;color:var(--blue);margin-bottom:10px}.hero h1{font-size:42px;letter-spacing:-1.9px;margin:0 0 10px}.hero p{color:var(--muted);font-size:15px;line-height:1.5;margin:0}
+.controls{display:grid;grid-template-columns:220px 1fr;gap:12px;margin:25px 0 18px}.field,.select-wrap{background:var(--card);border:1px solid var(--line);border-radius:17px;padding:10px 13px;box-shadow:0 10px 30px rgba(0,0,0,.05)}.field label,.select-wrap label{display:block;font-size:11px;color:var(--muted);font-weight:700;margin-bottom:6px;text-transform:uppercase;letter-spacing:.07em}.field input,.select-wrap select{width:100%;border:0;background:transparent;outline:0;font-size:16px;color:var(--text);padding:3px 0}.select-wrap select{cursor:pointer}
+.status{padding:13px 15px;border-radius:14px;background:#f0f0f2;color:#68686d;font-size:13px;margin-bottom:18px}
+.list{display:grid;gap:10px}.student{display:grid;grid-template-columns:minmax(180px,1fr) auto auto;gap:16px;align-items:center;padding:17px 18px;border-radius:18px;background:rgba(255,255,255,.78);border:1px solid var(--line);box-shadow:0 8px 24px rgba(0,0,0,.04);cursor:pointer;transition:transform .2s,box-shadow .2s}.student:hover{transform:translateY(-2px);box-shadow:0 15px 32px rgba(0,0,0,.08)}.student strong{font-size:15px}.student small{color:var(--muted);display:block;margin-top:3px}.code-pill{background:#eff6ff;color:#1d4ed8;padding:7px 10px;border-radius:999px;font-size:12px;font-weight:700}
+.profile{display:none;margin-top:22px}.profile-box{background:var(--card);border:1px solid var(--line);border-radius:27px;box-shadow:var(--shadow);padding:28px}.profile-head{display:flex;justify-content:space-between;gap:20px;align-items:flex-start}.profile h2{margin:0 0 5px;font-size:30px;letter-spacing:-1px}.profile-sub{margin:0;color:var(--muted);font-size:14px}.code-big{background:#eff6ff;color:#1d4ed8;padding:10px 13px;border-radius:12px;font-weight:800;font-size:14px;white-space:nowrap}.back-profile{display:inline-block;margin-top:18px;color:#555;font-size:13px;font-weight:650;cursor:pointer}.bim-tabs{display:flex;gap:8px;overflow:auto;margin:25px 0 18px}.bim-tab{border:1px solid var(--line);background:#fff;color:#5b5b60;border-radius:999px;padding:10px 14px;font-size:13px;font-weight:700;white-space:nowrap;cursor:pointer}.bim-tab.active{background:#111;color:#fff;border-color:#111}.bim-panel{display:none}.bim-panel.active{display:block}.summary{display:grid;grid-template-columns:repeat(2,1fr);gap:12px;margin-bottom:16px}.summary-card{padding:20px;border-radius:19px;background:#f6f7f9;text-align:center}.summary-card span{display:block;color:var(--muted);font-size:13px;margin-bottom:7px}.summary-card strong{font-size:29px}.evals{padding:20px;border:1px solid var(--line);border-radius:19px;background:#fff}.evals h3{margin:0 0 12px;font-size:17px}.empty{text-align:center;padding:30px;color:var(--muted);font-size:14px}.final{margin-top:16px;padding:20px;border-radius:19px;background:#eff6ff;text-align:center}.final span{display:block;color:#4c5e74;font-size:13px}.final strong{display:block;font-size:34px;margin-top:4px}
+@media(max-width:700px){.controls{grid-template-columns:1fr}.student{grid-template-columns:1fr auto}.student small{font-size:12px}.profile-head{flex-direction:column}.code-big{align-self:flex-start}}@media(max-width:520px){.hero h1{font-size:34px}.profile-box{padding:22px}}
+.salta-grid{position:fixed;inset:0;pointer-events:none;z-index:-1;background-image:linear-gradient(rgba(90,90,100,.055) 1px,transparent 1px),linear-gradient(90deg,rgba(90,90,100,.055) 1px,transparent 1px);background-size:32px 32px}
+</style>
+</head>
+<body>
+<div class="salta-grid"></div>
+<a class="salta-platform-button" href="./" aria-label="Ir para a Plataforma SALTA" title="Plataforma SALTA">S</a>
+<main><div class="wrap">
+<section class="hero"><div class="eyebrow">AMBIENTE DO PROFESSOR</div><h1>Estatística Individual</h1><p>Consulte os dados acadêmicos completos de cada aluno por turma e nome.</p></section>
+
+<section class="controls">
+<div class="select-wrap"><label for="turma">Turma</label><select id="turma"><option value="">Selecione a turma</option></select></div>
+<div class="field"><label for="busca">Nome do aluno</label><input id="busca" type="search" placeholder="Digite para filtrar por nome..." autocomplete="off"></div>
+</section>
+<div id="status" class="status">Preparando a consulta...</div>
+<div id="lista" class="list"></div>
+
+<section class="profile" id="profile">
+<div class="profile-box">
+<div class="profile-head"><div><h2 id="pNome">—</h2><p class="profile-sub" id="pTurma">—</p></div><div class="code-big" id="pCodigo">—</div></div>
+<a class="back-profile" onclick="fecharPerfil()">← Voltar para a lista</a>
+<div class="bim-tabs" id="bimTabs"></div>
+<div id="bimPanels"></div>
+<div class="final"><span>Média final</span><strong id="pFinal">—</strong></div>
+</div>
+</section>
+</div></main>
+
+<script>
+(() => {
+const AUTH="https://salta-auth.dannyel-moises.workers.dev";
+const KEY="saltaProfessorSession";
+const token=localStorage.getItem(KEY)||sessionStorage.getItem(KEY);
+const API="https://portal-aluno-api.dannyel-moises.workers.dev";
+
+let alunos=[];
+
+function fmt(v){if(v===null||v===undefined||v==="")return "—";const n=Number(v);return Number.isFinite(n)?n.toFixed(1).replace(".",","):String(v)}
+function vals(v){if(Array.isArray(v))return v;if(typeof v==="string"){try{const x=JSON.parse(v);return Array.isArray(x)?x:[]}catch(e){}}return []}
+function segment(t){return String(t||"").toUpperCase().includes("EJA")?"EJA":"REGULAR"}
+function bCount(t){return segment(t)==="EJA"?2:4}
+
+async function authCheck(){
+ try{
+  const h=token?{Authorization:"Bearer "+token}:{};
+  const r=await fetch(AUTH+"/session",{headers:h,credentials:"include",cache:"no-store"});
+  const d=await r.json().catch(()=>({}));
+  if(!r.ok||!d.authenticated){localStorage.removeItem(KEY);sessionStorage.removeItem(KEY);location.replace("./professor.html");return false}
+  document.body.classList.add("auth-ready"); return true;
+ }catch(e){location.replace("./professor.html");return false}
+}
+
+function renderTurmas(){
+ const sel=document.getElementById("turma");
+ const turmas=[...new Set(alunos.map(a=>a.turma).filter(Boolean))].sort((a,b)=>String(a).localeCompare(String(b),"pt-BR"));
+ sel.innerHTML='<option value="">Todas as turmas</option>'+turmas.map(t=>'<option value="'+escapeHtml(t)+'">'+escapeHtml(t)+'</option>').join("");
+}
+function escapeHtml(v){return String(v).replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;","'":"&#039;"}[c]))}
+
+function filtered(){
+ const turma=document.getElementById("turma").value.toLowerCase();
+ const q=document.getElementById("busca").value.trim().toLowerCase();
+ return alunos.filter(a=>(!turma||String(a.turma||"").toLowerCase()===turma)&&(!q||String(a.nome||"").toLowerCase().includes(q)));
+}
+function render(){
+ const list=document.getElementById("lista"), arr=filtered();
+ if(!arr.length){list.innerHTML='<div class="status">Nenhum aluno encontrado com esses filtros.</div>';return}
+ list.innerHTML=arr.map((a,i)=>'<div class="student" onclick="abrirPerfil('+alunos.indexOf(a)+')"><div><strong>'+escapeHtml(a.nome||"Aluno sem nome")+'</strong><small>'+escapeHtml(a.turma||"Turma não informada")+'</small></div><div class="code-pill">'+escapeHtml(a.codigo||"—")+'</div><div>→</div></div>').join("");
+}
+window.abrirPerfil=function(index){
+ const a=alunos[index]; if(!a)return;
+ document.getElementById("pNome").textContent=a.nome||"—";
+ document.getElementById("pTurma").textContent=a.turma||"—";
+ document.getElementById("pCodigo").textContent=a.codigo||"—";
+ const n=bCount(a.turma),tabs=document.getElementById("bimTabs"),panels=document.getElementById("bimPanels");
+ tabs.innerHTML="";panels.innerHTML="";
+ for(let i=1;i<=n;i++){
+  const d={status:a["bimestre"+i+"_status"]||"nao_iniciado",media:a["bimestre"+i+"_media"],vistos:a["bimestre"+i+"_vistos"],avaliacoes:vals(a["bimestre"+i+"_avaliacoes"])};
+  const tab=document.createElement("button");tab.className="bim-tab"+(i===1?" active":"");tab.textContent=i+"º Bimestre";tab.onclick=()=>showBim(i);tabs.appendChild(tab);
+  const p=document.createElement("div");p.className="bim-panel"+(i===1?" active":"");p.id="bim"+i;
+  const rows=d.avaliacoes.map(v=>'<tr><td>'+escapeHtml(v.nome||"Avaliação")+'</td><td>'+fmt(v.pontos)+'</td></tr>').join("");
+  p.innerHTML='<div class="summary"><div class="summary-card"><span>Média Bimestral</span><strong>'+fmt(d.media)+'</strong></div><div class="summary-card"><span>Vistos</span><strong>'+((d.vistos??"")!==""?d.vistos:"—")+'</strong></div></div><div class="evals"><h3>Avaliações</h3>'+(rows?'<table style="width:100%;border-collapse:collapse"><thead><tr><th style="text-align:left;padding:8px;border-bottom:1px solid #eee">Avaliação</th><th style="text-align:right;padding:8px;border-bottom:1px solid #eee">Pontos</th></tr></thead><tbody>'+rows+'</tbody></table>':'<div class="empty">Nenhuma avaliação registrada.</div>')+'</div>';
+  panels.appendChild(p);
+ }
+ document.getElementById("pFinal").textContent=fmt(a.media_anual??a.media_final);
+ document.getElementById("lista").style.display="none";document.querySelector(".controls").style.display="none";document.getElementById("status").style.display="none";document.getElementById("profile").style.display="block";
+ window.scrollTo({top:0,behavior:"smooth"});
+}
+window.fecharPerfil=function(){document.getElementById("profile").style.display="none";document.querySelector(".controls").style.display="grid";document.getElementById("lista").style.display="grid";render()}
+window.showBim=function(n){document.querySelectorAll(".bim-tab").forEach((b,i)=>b.classList.toggle("active",i===n-1));document.querySelectorAll(".bim-panel").forEach((p,i)=>p.classList.toggle("active",i===n-1))}
+document.getElementById("turma").addEventListener("change",render);
+document.getElementById("busca").addEventListener("input",render);
+
+async function loadStudents(){
+ // O endpoint administrativo ainda será conectado ao D1.
+ // Mantemos a UI pronta sem colocar um endpoint público imaginário.
+ document.getElementById("status").textContent="A interface está pronta. Falta conectar o catálogo administrativo do D1 para carregar as turmas e os alunos.";
+ document.getElementById("status").style.display="block";
+}
+
+authCheck().then(ok=>ok&&loadStudents());
+})();
+</script>
+</body>
+</html>
