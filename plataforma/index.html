@@ -89,17 +89,10 @@ footer{padding:35px 0 50px;border-top:1px solid var(--line);color:var(--muted);f
   .scroll-fill::after{width:150px;transition:none}
 }
 
-/* SALTA — banner do solucionador */
-.solver-banner{position:relative;display:flex;align-items:center;gap:28px;min-height:205px;margin-top:18px;padding:30px 32px;border-radius:30px;overflow:hidden;background:linear-gradient(135deg,rgba(255,255,255,.88),rgba(239,240,244,.76));border:1px solid var(--line);box-shadow:var(--shadow);transition:transform .35s cubic-bezier(.2,.8,.2,1),box-shadow .35s}
-.solver-banner:hover{transform:translateY(-5px);box-shadow:0 26px 65px rgba(0,0,0,.12)}
-.solver-banner::before{content:"";position:absolute;width:380px;height:380px;right:-120px;top:-180px;border-radius:50%;background:radial-gradient(circle,rgba(0,113,227,.16),transparent 68%);pointer-events:none}
-.solver-banner .solver-icon{position:relative;z-index:1;width:68px;height:68px;flex:none;border-radius:21px;display:grid;place-items:center;background:var(--blue);color:#fff;font-size:27px;font-weight:600;box-shadow:0 10px 28px rgba(0,113,227,.24)}
-.solver-banner .solver-copy{position:relative;z-index:1;flex:1}
-.solver-banner .mini{display:block;font-size:12px;color:var(--blue);text-transform:uppercase;letter-spacing:.09em;font-weight:700;margin-bottom:9px}
-.solver-banner h3{font-size:clamp(25px,3vw,32px);letter-spacing:-1.1px;margin:0 0 8px}
-.solver-banner p{max-width:660px;margin:0;color:var(--muted);font-size:15px;line-height:1.55}
-.solver-banner .arrow{position:relative;z-index:1;width:46px;height:46px;flex:none}
-@media(max-width:560px){.solver-banner{flex-direction:column;align-items:flex-start;gap:18px;min-height:0;padding:26px;border-radius:25px}.solver-banner .arrow{position:absolute;right:22px;bottom:22px}}
+/* SALTA — card central do solucionador */
+.solver-grid{grid-template-columns:minmax(280px,760px);justify-content:center}
+.solver-card{width:100%}
+@media(max-width:560px){.solver-grid{grid-template-columns:1fr}}
 </style>
 <style id="salta-grid-global">
 /* SALTA — identidade visual global */
@@ -131,15 +124,14 @@ body::before{
 </div>
 </div></section>
 <section class="section" style="padding-top:0"><div class="wrap">
-<a class="solver-banner glow-card reveal" href="../solucionador.html">
-<div class="solver-icon">∑</div>
-<div class="solver-copy">
-<span class="mini">MATEMÁTICA</span>
+<div class="grid solver-grid">
+<a class="card blue glow-card reveal solver-card" href="../solucionador.html">
+<div class="icon">∑</div>
 <h3>Solucionador de Equações</h3>
 <p>Resolva equações quadráticas passo a passo, com resultados exatos e uma apresentação matemática clara e organizada.</p>
-</div>
-<span class="arrow">→</span>
+<div class="cardfoot"><span class="badge">Ferramenta de matemática</span><span class="arrow">→</span></div>
 </a>
+</div>
 </div></section>
 </main>
 <footer><div class="wrap"><span class="signature">Desenvolvido por Prof. Dannyel Moisés • 2026</span></div></footer>
