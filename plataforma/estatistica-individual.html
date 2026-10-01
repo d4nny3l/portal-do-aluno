@@ -48,7 +48,7 @@ main{padding:90px 0 70px}.hero{margin-bottom:24px}.eyebrow{font-size:12px;font-w
 (() => {
 const AUTH="https://salta-auth.dannyel-moises.workers.dev";
 const KEY="saltaProfessorSession";
-const token=localStorage.getItem(KEY)||sessionStorage.getItem(KEY);
+const token=localStorage.getItem(KEY)||sessionStorage.getItem(KEY)||"";
 const API="https://salta-stats.dannyel-moises.workers.dev";
 
 let alunos=[];
@@ -131,9 +131,11 @@ document.getElementById("busca").addEventListener("input",render);
 
 async function api(path){
  const headers=token?{Authorization:"Bearer "+token}:{};
- const response=await fetch(API+path,{headers,cache:"no-store"});
+ const response=await fetch(API+path,{headers,credentials:"include",cache:"no-store"});
  const data=await response.json().catch(()=>({}));
- if(!response.ok) throw new Error(data.error||"Não foi possível consultar os dados.");
+ if(!response.ok){
+   throw new Error((data.error||"Falha HTTP "+response.status)+" [HTTP "+response.status+"]");
+ }
  return data;
 }
 
@@ -152,7 +154,7 @@ async function loadStudents(){
      alunos.length+" aluno"+(alunos.length===1?"":"s")+" disponível"+(alunos.length===1?"":"is")+" para consulta.";
  }catch(e){
    console.error(e);
-   document.getElementById("status").textContent="Não foi possível carregar os alunos. Verifique se o serviço de estatísticas foi publicado.";
+   document.getElementById("status").textContent="Falha ao carregar os alunos: "+(e?.message||"erro desconhecido");
  }
 }
 
