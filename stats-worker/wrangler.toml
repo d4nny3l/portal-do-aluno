@@ -6,4 +6,4 @@ workers_dev = true
 [[d1_databases]]
 binding = "DB"
 database_name = "portal-aluno-2026"
-database_id = "COLOCAR_DATABASE_ID_AQUI"
+database_id = "e7538b0a-891e-408f-a668-75d60ca907e3"
