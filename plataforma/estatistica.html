@@ -54,7 +54,7 @@ body.auth-ready{visibility:visible}body{visibility:hidden}
 <p>Consulte estatísticas individuais e, em breve, análises agrupadas por turma.</p>
 </section>
 <div class="stats-grid">
-<a class="card blue glow-card reveal" href="./estatistica-individual.html">
+<a class="card blue glow-card reveal" href="./estatistica-individual.html" id="individualLink">
 <div class="icon">◎</div>
 <h3>Estatística Individual</h3>
 <p>Consulte a ficha completa de cada aluno, organizada por turma e filtrada por nome, com acesso ao código individual e aos dados acadêmicos.</p>
@@ -75,7 +75,38 @@ body.auth-ready{visibility:visible}body{visibility:hidden}
  const KEY="saltaProfessorSession";
  const token=localStorage.getItem(KEY)||sessionStorage.getItem(KEY);
 
- async function check(){
+ async function abrirIndividual(event){
+  event.preventDefault();
+  const token = localStorage.getItem(KEY) || sessionStorage.getItem(KEY) || "";
+  if(!token){
+    location.replace("./professor.html");
+    return;
+  }
+  try{
+    const r = await fetch(AUTH_API_URL + "/session", {
+      method:"GET",
+      headers:{Authorization:"Bearer "+token},
+      credentials:"include",
+      cache:"no-store"
+    });
+    const d = await r.json().catch(()=>({}));
+    if(!r.ok || !d.authenticated){
+      localStorage.removeItem(KEY);
+      sessionStorage.removeItem(KEY);
+      location.replace("./professor.html");
+      return;
+    }
+    sessionStorage.setItem("saltaProfessorModule","estatistica-individual");
+    location.assign("./estatistica-individual.html");
+  }catch(e){
+    location.replace("./professor.html");
+  }
+}
+
+const individualLink=document.getElementById("individualLink");
+if(individualLink) individualLink.addEventListener("click",abrirIndividual);
+
+async function check(){
    try{
      const headers=token?{Authorization:"Bearer "+token}:{};
      const r=await fetch(AUTH_API_URL+"/session",{method:"GET",headers,credentials:"include",cache:"no-store"});
