@@ -35,6 +35,7 @@ main{padding:90px 0 70px}.hero{margin-bottom:24px}.eyebrow{font-size:12px;font-w
 <div class="suggestions" id="suggestions"></div>
 </div>
 </section>
+<div id="status" class="status" style="display:none"></div>
 <section class="profile" id="profile">
 <div class="profile-box">
 <div class="profile-head"><div><h2 id="pNome">—</h2><p class="profile-sub" id="pTurma">—</p><p class="profile-sub" id="pAtualizacao"></p></div><div class="code-big" id="pCodigo">—</div></div>
@@ -71,9 +72,7 @@ main{padding:90px 0 70px}.hero{margin-bottom:24px}.eyebrow{font-size:12px;font-w
       try {
         const x = JSON.parse(v);
         return Array.isArray(x) ? x : [];
-      } catch {
-        return [];
-      }
+      } catch { return []; }
     }
     return [];
   }
@@ -88,17 +87,12 @@ main{padding:90px 0 70px}.hero{margin-bottom:24px}.eyebrow{font-size:12px;font-w
 
   function escapeHtml(value) {
     return String(value).replace(/[&<>"']/g, ch => ({
-      "&":"&amp;",
-      "<":"&lt;",
-      ">":"&gt;",
-      '"':"&quot;",
-      "'":"&#039;"
+      "&":"&amp;", "<":"&lt;", ">":"&gt;", '"':"&quot;", "'":"&#039;"
     }[ch]));
   }
 
   async function authCheck() {
     const token = obterToken();
-
     if (!token) {
       location.replace("./professor.html");
       return false;
@@ -111,7 +105,6 @@ main{padding:90px 0 70px}.hero{margin-bottom:24px}.eyebrow{font-size:12px;font-w
         credentials: "include",
         cache: "no-store"
       });
-
       const data = await response.json().catch(() => ({}));
 
       if (!response.ok || !data.authenticated) {
@@ -141,28 +134,20 @@ main{padding:90px 0 70px}.hero{margin-bottom:24px}.eyebrow{font-size:12px;font-w
     });
 
     const data = await response.json().catch(() => ({}));
-
     if (!response.ok) {
       throw new Error((data.error || "Falha HTTP " + response.status) + " [HTTP " + response.status + "]");
     }
-
     return data;
   }
 
-  function renderTurmas(turmas) {
+  function renderTurmas() {
     const select = document.getElementById("turma");
+    const turmas = [...new Set(alunos.map(a => String(a.turma || "").trim()).filter(Boolean))]
+      .sort((a,b) => a.localeCompare(b, "pt-BR"));
+
     select.innerHTML =
       '<option value="">Selecione a turma</option>' +
       turmas.map(t => '<option value="' + escapeHtml(t) + '">' + escapeHtml(t) + "</option>").join("");
-  }
-
-  function alunosDaTurma() {
-    const turma = document.getElementById("turma").value;
-    if (!turma) return [];
-
-    return alunos
-      .filter(a => String(a.turma || "") === turma)
-      .sort((a, b) => String(a.nome || "").localeCompare(String(b.nome || ""), "pt-BR"));
   }
 
   function limparBuscaAluno() {
@@ -175,6 +160,13 @@ main{padding:90px 0 70px}.hero{margin-bottom:24px}.eyebrow{font-size:12px;font-w
     input.placeholder = turma ? "Digite o nome do aluno..." : "Selecione a turma primeiro...";
     box.innerHTML = "";
     box.style.display = "none";
+  }
+
+  function alunosDaTurma() {
+    const turma = document.getElementById("turma").value;
+    if (!turma) return [];
+    return alunos.filter(a => String(a.turma || "").trim() === turma)
+      .sort((a,b) => String(a.nome || "").localeCompare(String(b.nome || ""), "pt-BR"));
   }
 
   function renderSuggestions() {
@@ -202,7 +194,7 @@ main{padding:90px 0 70px}.hero{margin-bottom:24px}.eyebrow{font-size:12px;font-w
     box.innerHTML = resultados.map(a =>
       '<button class="suggestion" type="button" data-codigo="' + escapeHtml(a.codigo) + '">' +
       '<span>' + escapeHtml(a.nome || "Aluno sem nome") + "</span>" +
-      '<small>' + escapeHtml(a.codigo || "") + "</small>" +
+      "<small>" + escapeHtml(a.codigo || "") + "</small>" +
       "</button>"
     ).join("");
 
@@ -210,10 +202,8 @@ main{padding:90px 0 70px}.hero{margin-bottom:24px}.eyebrow{font-size:12px;font-w
 
     box.querySelectorAll(".suggestion").forEach(button => {
       button.addEventListener("click", () => {
-        const codigo = button.dataset.codigo;
-        const aluno = alunos.find(a => a.codigo === codigo);
+        const aluno = alunos.find(a => a.codigo === button.dataset.codigo);
         if (!aluno) return;
-
         input.value = aluno.nome || "";
         box.innerHTML = "";
         box.style.display = "none";
@@ -222,131 +212,100 @@ main{padding:90px 0 70px}.hero{margin-bottom:24px}.eyebrow{font-size:12px;font-w
     });
   }
 
-  async function carregarAlunosTurma() {
-    const turma = document.getElementById("turma").value;
-    const input = document.getElementById("buscaAluno");
-    const status = document.getElementById("status");
-
-    alunos = [];
-
-    if (!turma) {
-      limparBuscaAluno();
-      status.style.display = "none";
-      return;
-    }
-
-    input.disabled = true;
-    input.placeholder = "Carregando alunos...";
-    status.textContent = "Carregando alunos da turma...";
-    status.style.display = "block";
-
-    try {
-      const data = await api("/admin/alunos?turma=" + encodeURIComponent(turma));
-      alunos = Array.isArray(data.alunos) ? data.alunos : [];
-
-      limparBuscaAluno();
-      status.style.display = "none";
-    } catch (error) {
-      status.textContent = "Falha ao carregar a turma: " + (error?.message || "erro desconhecido");
-      status.style.display = "block";
-      limparBuscaAluno();
-    }
-  }
-
   async function abrirPerfil(index) {
     const resumo = alunos[index];
     if (!resumo) return;
+
+    const controls = document.querySelector(".controls");
+    const profile = document.getElementById("profile");
+    const tabs = document.getElementById("bimTabs");
+    const panels = document.getElementById("bimPanels");
 
     document.getElementById("pNome").textContent = resumo.nome || "—";
     document.getElementById("pTurma").textContent = resumo.turma || "—";
     document.getElementById("pCodigo").textContent = resumo.codigo || "—";
     document.getElementById("pAtualizacao").textContent = "";
 
-    document.querySelector(".controls").style.display = "none";
-    document.getElementById("status").style.display = "none";
-    document.getElementById("profile").style.display = "block";
-
-    const tabs = document.getElementById("bimTabs");
-    const panels = document.getElementById("bimPanels");
+    controls.style.display = "none";
+    profile.style.display = "block";
     tabs.innerHTML = "";
     panels.innerHTML = '<div class="empty">Carregando dados acadêmicos...</div>';
-
     window.scrollTo({ top: 0, behavior: "smooth" });
 
-    let aluno;
     try {
-      aluno = await api("/admin/aluno?codigo=" + encodeURIComponent(resumo.codigo));
-    } catch {
-      panels.innerHTML = '<div class="empty">Não foi possível carregar os dados deste aluno.</div>';
-      return;
+      const aluno = await api("/admin/aluno?codigo=" + encodeURIComponent(resumo.codigo));
+
+      if (aluno.ultima_atualizacao) {
+        document.getElementById("pAtualizacao").textContent =
+          "Última atualização: " + aluno.ultima_atualizacao;
+      }
+
+      const quantidade = bCount(aluno.turma);
+
+      for (let i = 1; i <= quantidade; i++) {
+        const dados = {
+          media: aluno["bimestre" + i + "_media"],
+          vistos: aluno["bimestre" + i + "_vistos"],
+          avaliacoes: vals(aluno["bimestre" + i + "_avaliacoes"])
+        };
+
+        const tab = document.createElement("button");
+        tab.className = "bim-tab" + (i === 1 ? " active" : "");
+        tab.textContent = i + "º Bimestre";
+        tab.addEventListener("click", () => showBim(i));
+        tabs.appendChild(tab);
+
+        const panel = document.createElement("div");
+        panel.className = "bim-panel" + (i === 1 ? " active" : "");
+        panel.id = "bim" + i;
+
+        const rows = dados.avaliacoes.map(av =>
+          "<tr><td>" + escapeHtml(av.nome || "Avaliação") +
+          "</td><td>" + fmt(av.pontos) + "</td></tr>"
+        ).join("");
+
+        panel.innerHTML =
+          '<div class="summary">' +
+            '<div class="summary-card"><span>Média Bimestral</span><strong>' + fmt(dados.media) + "</strong></div>" +
+            '<div class="summary-card"><span>Vistos</span><strong>' +
+              ((dados.vistos ?? "") !== "" ? escapeHtml(dados.vistos) : "—") +
+            "</strong></div>" +
+          "</div>" +
+          '<div class="evals"><h3>Avaliações</h3>' +
+            (rows
+              ? '<table style="width:100%;border-collapse:collapse"><thead><tr>' +
+                  '<th style="text-align:left;padding:8px;border-bottom:1px solid #eee">Avaliação</th>' +
+                  '<th style="text-align:right;padding:8px;border-bottom:1px solid #eee">Pontos</th>' +
+                "</tr></thead><tbody>" + rows + "</tbody></table>"
+              : '<div class="empty">Nenhuma avaliação registrada.</div>') +
+          "</div>";
+
+        panels.appendChild(panel);
+      }
+
+      const medias = [];
+      for (let i = 1; i <= quantidade; i++) {
+        const value = Number(aluno["bimestre" + i + "_media"]);
+        if (Number.isFinite(value)) medias.push(value);
+      }
+
+      const finalValue = medias.length
+        ? medias.reduce((sum, value) => sum + value, 0) / quantidade
+        : null;
+
+      document.getElementById("pFinal").textContent = fmt(finalValue);
+
+    } catch (error) {
+      panels.innerHTML =
+        '<div class="empty">Não foi possível carregar os dados deste aluno.</div>';
     }
-
-    if (aluno.ultima_atualizacao) {
-      document.getElementById("pAtualizacao").textContent =
-        "Última atualização: " + aluno.ultima_atualizacao;
-    }
-
-    const quantidade = bCount(aluno.turma);
-
-    for (let i = 1; i <= quantidade; i++) {
-      const dados = {
-        media: aluno["bimestre" + i + "_media"],
-        vistos: aluno["bimestre" + i + "_vistos"],
-        avaliacoes: vals(aluno["bimestre" + i + "_avaliacoes"])
-      };
-
-      const tab = document.createElement("button");
-      tab.className = "bim-tab" + (i === 1 ? " active" : "");
-      tab.textContent = i + "º Bimestre";
-      tab.addEventListener("click", () => showBim(i));
-      tabs.appendChild(tab);
-
-      const panel = document.createElement("div");
-      panel.className = "bim-panel" + (i === 1 ? " active" : "");
-      panel.id = "bim" + i;
-
-      const rows = dados.avaliacoes.map(av =>
-        "<tr><td>" + escapeHtml(av.nome || "Avaliação") +
-        "</td><td>" + fmt(av.pontos) + "</td></tr>"
-      ).join("");
-
-      panel.innerHTML =
-        '<div class="summary">' +
-          '<div class="summary-card"><span>Média Bimestral</span><strong>' + fmt(dados.media) + "</strong></div>" +
-          '<div class="summary-card"><span>Vistos</span><strong>' +
-            ((dados.vistos ?? "") !== "" ? escapeHtml(dados.vistos) : "—") +
-          "</strong></div>" +
-        "</div>" +
-        '<div class="evals"><h3>Avaliações</h3>' +
-          (rows
-            ? '<table style="width:100%;border-collapse:collapse"><thead><tr>' +
-                '<th style="text-align:left;padding:8px;border-bottom:1px solid #eee">Avaliação</th>' +
-                '<th style="text-align:right;padding:8px;border-bottom:1px solid #eee">Pontos</th>' +
-              "</tr></thead><tbody>" + rows + "</tbody></table>"
-            : '<div class="empty">Nenhuma avaliação registrada.</div>') +
-        "</div>";
-
-      panels.appendChild(panel);
-    }
-
-    const medias = [];
-    for (let i = 1; i <= quantidade; i++) {
-      const value = Number(aluno["bimestre" + i + "_media"]);
-      if (Number.isFinite(value)) medias.push(value);
-    }
-
-    // Mantém a média anual dividida pelo total de bimestres do segmento.
-    const finalValue = medias.length
-      ? medias.reduce((sum, value) => sum + value, 0) / quantidade
-      : null;
-
-    document.getElementById("pFinal").textContent = fmt(finalValue);
   }
 
   function fecharPerfil() {
     document.getElementById("profile").style.display = "none";
     document.querySelector(".controls").style.display = "grid";
     limparBuscaAluno();
+    window.scrollTo({ top: 0, behavior: "smooth" });
   }
 
   function showBim(n) {
@@ -362,7 +321,7 @@ main{padding:90px 0 70px}.hero{margin-bottom:24px}.eyebrow{font-size:12px;font-w
   window.fecharPerfil = fecharPerfil;
   window.showBim = showBim;
 
-  document.getElementById("turma").addEventListener("change", carregarAlunosTurma);
+  document.getElementById("turma").addEventListener("change", limparBuscaAluno);
   document.getElementById("buscaAluno").addEventListener("input", renderSuggestions);
   document.getElementById("buscaAluno").addEventListener("focus", renderSuggestions);
 
@@ -374,35 +333,21 @@ main{padding:90px 0 70px}.hero{margin-bottom:24px}.eyebrow{font-size:12px;font-w
     }
   });
 
-  async function loadTurmas() {
+  async function loadData() {
     try {
-      const data = await api("/admin/turmas");
-      const turmas = Array.isArray(data.turmas) ? data.turmas : [];
-
-      renderTurmas(turmas);
+      const data = await api("/admin/alunos");
+      alunos = Array.isArray(data.alunos) ? data.alunos : [];
+      renderTurmas();
       limparBuscaAluno();
-
-      const status = document.getElementById("status");
-
-      if (!turmas.length) {
-        const d = data.diagnostico || {};
-        status.textContent =
-          "Nenhuma turma encontrada. Alunos: " + (d.totalAlunos ?? "—") +
-          " | com turma: " + (d.alunosComTurma ?? "—") +
-          " | turmas: " + (d.quantidadeTurmas ?? "—");
-        status.style.display = "block";
-      } else {
-        status.style.display = "none";
-      }
     } catch (error) {
       const status = document.getElementById("status");
-      status.textContent = "Falha ao carregar as turmas: " + (error?.message || "erro desconhecido");
+      status.textContent = "Falha ao carregar os dados: " + (error?.message || "erro desconhecido");
       status.style.display = "block";
     }
   }
 
   authCheck().then(ok => {
-    if (ok) loadTurmas();
+    if (ok) loadData();
   });
 })();
 </script>
