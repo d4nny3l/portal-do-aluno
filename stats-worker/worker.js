@@ -33,18 +33,26 @@ function cookieToken(request) {
   return "";
 }
 
-async function authenticated(request) {
+async function authenticated(request, env) {
   const header = request.headers.get("Authorization") || "";
   const bearer = header.startsWith("Bearer ") ? header.slice(7).trim() : "";
   const cookie = cookieToken(request);
   const token = bearer || cookie;
   if (!token) return false;
 
-  const response = await fetch(AUTH_API_URL + "/session", {
+  const authRequest = new Request("https://salta-auth/session", {
     method: "GET",
-    headers: { Authorization: "Bearer " + token },
-    cache: "no-store"
+    headers: { Authorization: "Bearer " + token }
   });
+
+  const response = env.AUTH
+    ? await env.AUTH.fetch(authRequest)
+    : await fetch(AUTH_API_URL + "/session", {
+        method: "GET",
+        headers: { Authorization: "Bearer " + token },
+        cache: "no-store"
+      });
+
   if (!response.ok) return false;
   const data = await response.json().catch(() => ({}));
   return data.authenticated === true;
@@ -58,7 +66,7 @@ export default {
     if (request.method !== "GET") {
       return json({ error: "Método não permitido." }, request, 405);
     }
-    if (!(await authenticated(request))) {
+    if (!(await authenticated(request, env))) {
       return json({ error: "Acesso restrito." }, request, 401);
     }
     const url = new URL(request.url);
