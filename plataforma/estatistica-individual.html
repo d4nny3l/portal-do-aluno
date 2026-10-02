@@ -231,8 +231,8 @@ async function abrirPerfil(index) {
         panel.id = "bim" + i;
 
         const rows = dados.avaliacoes.map(av =>
-          "<tr><td>" + escapeHtml(av.nome || "Avaliação") +
-          "</td><td>" + fmt(av.pontos) + "</td></tr>"
+          "<tr><td style="text-align:left;padding:8px;border-bottom:1px solid #eee">" + escapeHtml(av.nome || "Avaliação") +
+          "</td><td style="text-align:right;padding:8px;border-bottom:1px solid #eee">" + fmt(av.pontos) + "</td></tr>"
         ).join("");
 
         panel.innerHTML =
@@ -245,8 +245,8 @@ async function abrirPerfil(index) {
           '<div class="evals"><h3>Avaliações</h3>' +
             (rows
               ? '<table style="width:100%;border-collapse:collapse"><thead><tr>' +
-                  '<th style="text-align:left;padding:8px;border-bottom:1px solid #eee">Avaliação</th>' +
-                  '<th style="text-align:right;padding:8px;border-bottom:1px solid #eee">Pontos</th>' +
+                  '<th style="width:70%;text-align:left;padding:8px;border-bottom:1px solid #eee">Avaliação</th>' +
+                  '<th style="width:30%;text-align:right;padding:8px;border-bottom:1px solid #eee">Pontos</th>' +
                 "</tr></thead><tbody>" + rows + "</tbody></table>"
               : '<div class="empty">Nenhuma avaliação registrada.</div>') +
           "</div>";
