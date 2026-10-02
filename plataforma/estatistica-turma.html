@@ -6,73 +6,201 @@
 <meta name="theme-color" content="#f5f5f7">
 <title>Estatística por Turma — Área do Professor</title>
 <style>
-:root{--bg:#f5f5f7;--text:#1d1d1f;--muted:#6e6e73;--line:rgba(0,0,0,.09);--card:rgba(255,255,255,.78);--blue:#0071e3;--shadow:0 18px 55px rgba(0,0,0,.08)}
-*{box-sizing:border-box}html{scroll-behavior:smooth}body{margin:0;min-height:100vh;color:var(--text);font-family:-apple-system,BlinkMacSystemFont,"SF Pro Display","SF Pro Text",Inter,Arial,sans-serif;-webkit-font-smoothing:antialiased;background:linear-gradient(115deg,#fff,#f1f1f4 72%)}
-a{color:inherit;text-decoration:none}.wrap{width:min(1120px,calc(100% - 40px));margin:auto}
-.salta-platform-button{position:fixed;top:18px;right:18px;z-index:1000;width:42px;height:42px;border-radius:13px;display:grid;place-items:center;background:rgba(255,255,255,.82);color:#1d1d1f;border:1px solid rgba(0,0,0,.08);box-shadow:0 8px 24px rgba(0,0,0,.08);font-size:17px;font-weight:800;line-height:1;backdrop-filter:blur(16px) saturate(150%);-webkit-backdrop-filter:blur(16px) saturate(150%);transition:transform .25s ease,box-shadow .25s ease,background .25s ease}
+:root{--bg:#f5f5f7;--text:#1d1d1f;--muted:#6e6e73;--line:rgba(0,0,0,.09);--card:rgba(255,255,255,.86);--blue:#0071e3;--green:#16794a;--red:#c62828;--shadow:0 18px 55px rgba(0,0,0,.08)}
+*{box-sizing:border-box}html{scroll-behavior:smooth}body{margin:0;min-height:100vh;color:var(--text);font-family:-apple-system,BlinkMacSystemFont,"SF Pro Display","SF Pro Text",Inter,Arial,sans-serif;-webkit-font-smoothing:antialiased;background:radial-gradient(circle at 50% -5%,#fff 0,#f5f5f7 52%,#efeff1 100%);visibility:hidden}
+body.auth-ready{visibility:visible}a{color:inherit;text-decoration:none}.wrap{width:min(1120px,calc(100% - 32px));margin:auto}
+.salta-platform-button{position:fixed;top:18px;right:18px;z-index:1000;width:42px;height:42px;border-radius:13px;display:grid;place-items:center;background:rgba(255,255,255,.82);color:#1d1d1f;border:1px solid rgba(0,0,0,.08);box-shadow:0 8px 24px rgba(0,0,0,.08);font-size:17px;font-weight:800;line-height:1;backdrop-filter:blur(16px) saturate(150%);-webkit-backdrop-filter:blur(16px) saturate(150%);transition:transform .25s,box-shadow .25s,background .25s}
 .salta-platform-button:hover{transform:translateY(-2px);box-shadow:0 12px 30px rgba(0,0,0,.12);background:#fff}
-main{min-height:100vh;padding:100px 0 80px;position:relative;z-index:1}
-.page-head{text-align:center;margin-bottom:28px}.page-head .eyebrow{font-size:13px;font-weight:700;letter-spacing:.08em;color:var(--blue);margin-bottom:12px}.page-head h1{font-size:clamp(38px,6vw,58px);line-height:1;letter-spacing:-2.8px;margin:0 0 12px}.page-head p{font-size:16px;line-height:1.5;color:var(--muted);max-width:700px;margin:auto}
-.class-grid{display:grid;grid-template-columns:minmax(280px,760px);justify-content:center;gap:18px}
-.card{position:relative;min-height:280px;padding:30px;border-radius:30px;background:var(--card);border:1px solid rgba(0,0,0,.08);box-shadow:var(--shadow);display:flex;flex-direction:column;overflow:hidden;transition:transform .35s cubic-bezier(.2,.8,.2,1),box-shadow .35s}
-.card:hover{transform:translateY(-5px);box-shadow:0 26px 65px rgba(0,0,0,.12)}
-.icon{width:54px;height:54px;border-radius:17px;background:#111;color:#fff;display:grid;place-items:center;font-size:23px;margin-bottom:26px}
-.card h3{font-size:27px;letter-spacing:-1px;margin:0 0 10px}.card p{font-size:15px;line-height:1.55;color:var(--muted);margin:0;max-width:620px}
-.cardfoot{margin-top:auto;padding-top:25px;display:flex;align-items:center;justify-content:space-between}
-.badge{font-size:12px;color:#777;background:#f0f0f2;border-radius:999px;padding:7px 10px}.arrow{width:38px;height:38px;border-radius:50%;background:#1d1d1f;color:#fff;display:grid;place-items:center;font-size:18px}
-.glow-card::before{content:"";position:absolute;inset:0;pointer-events:none;opacity:0;transition:opacity .25s ease;background:radial-gradient(230px circle at var(--mx,50%) var(--my,50%),rgba(0,113,227,.15),transparent 68%)}
-.glow-card:hover::before{opacity:1}.glow-card>*{position:relative;z-index:1}
-.reveal{opacity:0;transform:translateY(28px) scale(.985);transition:opacity .75s cubic-bezier(.2,.7,.2,1),transform .75s cubic-bezier(.2,.7,.2,1)}.reveal.is-visible{opacity:1;transform:translateY(0) scale(1)}
-.back{display:inline-block;margin-top:24px;font-size:14px;font-weight:600}
+main{padding:88px 0 70px;position:relative;z-index:1}.hero{margin-bottom:24px}.eyebrow{font-size:12px;font-weight:700;letter-spacing:.1em;color:var(--blue);margin-bottom:10px}.hero h1{font-size:42px;letter-spacing:-1.9px;margin:0 0 10px}.hero p{color:var(--muted);font-size:15px;line-height:1.5;margin:0}
+.controls{display:grid;grid-template-columns:minmax(260px,520px);gap:12px;margin:25px 0 18px}.select-wrap{background:var(--card);border:1px solid var(--line);border-radius:17px;padding:10px 13px;box-shadow:0 10px 30px rgba(0,0,0,.05)}.select-wrap label{display:block;font-size:11px;color:var(--muted);font-weight:700;margin-bottom:6px;text-transform:uppercase;letter-spacing:.07em}.select-wrap select{width:100%;border:0;background:transparent;outline:0;font-size:16px;color:var(--text);padding:3px 0;cursor:pointer}.status{padding:13px 15px;border-radius:14px;background:#f0f0f2;color:#68686d;font-size:13px;margin-bottom:18px}.status.error{background:#fff0f0;color:#a52323}
+.grid{display:grid;grid-template-columns:repeat(4,1fr);gap:12px}.card{background:var(--card);border:1px solid var(--line);border-radius:22px;box-shadow:var(--shadow);padding:21px}.metric span{display:block;color:var(--muted);font-size:13px;margin-bottom:8px}.metric strong{font-size:31px;letter-spacing:-1px}.metric small{display:block;margin-top:7px;color:var(--muted);font-size:12px}
+.meta{display:flex;flex-wrap:wrap;gap:8px;margin:14px 0 18px}.pill{padding:8px 11px;border-radius:999px;background:#eef5ff;color:#285a92;font-size:12px;font-weight:700}.pill.dark{background:#f0f0f2;color:#555}
+.section{margin-top:18px}.section-title{font-size:20px;letter-spacing:-.5px;margin:0 0 12px}.two{display:grid;grid-template-columns:1fr 1fr;gap:18px}.panel{background:var(--card);border:1px solid var(--line);border-radius:24px;box-shadow:var(--shadow);padding:23px}
+.bars{display:grid;gap:13px}.bar-row{display:grid;grid-template-columns:92px 1fr 42px;gap:10px;align-items:center;font-size:12px}.bar-track{height:10px;background:#ececef;border-radius:99px;overflow:hidden}.bar-fill{height:100%;background:#111;border-radius:99px;min-width:0}.bar-value{text-align:right;font-weight:700}
+.evo{display:grid;grid-template-columns:repeat(4,1fr);gap:9px}.evo-item{padding:15px 10px;border-radius:16px;background:#f6f7f9;text-align:center}.evo-item span{display:block;color:var(--muted);font-size:11px;margin-bottom:6px}.evo-item strong{font-size:22px}
+.eval-list{display:grid;gap:10px}.eval-row{display:grid;grid-template-columns:minmax(120px,1fr) 70px 60px;gap:10px;align-items:center;padding:12px 0;border-bottom:1px solid #eee}.eval-row:last-child{border-bottom:0}.eval-row strong{text-align:right}.eval-row small{text-align:right;color:var(--muted)}
+.attention{display:grid;gap:8px}.student-row{display:grid;grid-template-columns:minmax(150px,1fr) 80px 70px;gap:10px;align-items:center;padding:12px 14px;border-radius:15px;background:#fff4f4;border:1px solid #f2d5d5}.student-row strong{text-align:right}.student-row small{text-align:right;color:var(--muted)}
+.table-wrap{overflow:auto;border-radius:18px;border:1px solid var(--line);background:#fff}.students-table{width:100%;border-collapse:collapse;min-width:520px}.students-table th,.students-table td{padding:12px 14px;border-bottom:1px solid #eee;font-size:13px}.students-table th{text-align:left;color:var(--muted);font-size:11px;text-transform:uppercase;letter-spacing:.06em}.students-table td:not(:first-child),.students-table th:not(:first-child){text-align:right}.students-table tr:last-child td{border-bottom:0}.muted{color:var(--muted)}.empty{padding:22px;text-align:center;color:var(--muted);font-size:14px}
+.back{display:inline-block;margin-top:24px;font-size:14px;font-weight:650}
 .salta-grid{position:fixed;inset:0;pointer-events:none;z-index:0;background-image:linear-gradient(rgba(90,90,100,.055) 1px,transparent 1px),linear-gradient(90deg,rgba(90,90,100,.055) 1px,transparent 1px);background-size:32px 32px}
-body.auth-ready{visibility:visible}body{visibility:hidden}
-@media(max-width:560px){.wrap{width:calc(100% - 28px)}.salta-platform-button{width:38px;height:38px;top:14px;right:14px;border-radius:12px}main{padding:78px 0 55px}.card{min-height:260px;padding:26px;border-radius:25px}.page-head h1{letter-spacing:-2px}}
+@media(max-width:850px){.grid{grid-template-columns:repeat(2,1fr)}.two{grid-template-columns:1fr}.evo{grid-template-columns:repeat(2,1fr)}}@media(max-width:560px){.wrap{width:calc(100% - 26px)}main{padding:76px 0 55px}.hero h1{font-size:34px}.grid{grid-template-columns:1fr 1fr}.card{padding:17px;border-radius:19px}.metric strong{font-size:26px}.bar-row{grid-template-columns:78px 1fr 38px}.panel{padding:18px;border-radius:20px}}
 </style>
 </head>
 <body>
 <div class="salta-grid"></div>
 <a class="salta-platform-button" href="./" aria-label="Ir para a Plataforma SALTA" title="Plataforma SALTA">S</a>
 <main><div class="wrap">
-<section class="page-head">
-<div class="eyebrow">AMBIENTE DO PROFESSOR</div>
-<h1>Estatística por Turma</h1>
-<p>Área reservada para reunir os resultados acadêmicos de uma turma e acompanhar seus indicadores de forma coletiva.</p>
+<section class="hero">
+  <div class="eyebrow">AMBIENTE DO PROFESSOR</div>
+  <h1>Estatística por Turma</h1>
+  <p>Visão coletiva do desempenho, das avaliações, dos vistos e da evolução da turma.</p>
 </section>
-<div class="class-grid">
-<div class="card glow-card reveal">
-<div class="icon">▥</div>
-<h3>Módulo em construção</h3>
-<p>A estrutura está pronta para receber a seleção de turma e, depois, os indicadores coletivos: médias, distribuição de resultados, avaliações e outros dados acadêmicos.</p>
-<div class="cardfoot"><span class="badge">Acesso restrito</span><span class="arrow">⌁</span></div>
+
+<section class="controls">
+  <div class="select-wrap">
+    <label for="turma">Turma</label>
+    <select id="turma"><option value="">Selecione a turma</option></select>
+  </div>
+</section>
+
+<div id="status" class="status" style="display:none"></div>
+<div id="dashboard" style="display:none">
+  <div id="meta" class="meta"></div>
+
+  <section class="grid">
+    <div class="card metric"><span>Total de alunos</span><strong id="mTotal">—</strong><small id="mComMedia">—</small></div>
+    <div class="card metric"><span>Média da turma</span><strong id="mMedia">—</strong><small id="mRegra">—</small></div>
+    <div class="card metric"><span>Maior média</span><strong id="mMaior">—</strong><small>Entre as médias finais</small></div>
+    <div class="card metric"><span>Menor média</span><strong id="mMenor">—</strong><small>Entre as médias finais</small></div>
+  </section>
+
+  <section class="section two">
+    <div class="panel">
+      <h2 class="section-title">Distribuição das médias</h2>
+      <div id="distribution" class="bars"></div>
+    </div>
+    <div class="panel">
+      <h2 class="section-title">Acompanhamento</h2>
+      <div id="attention"></div>
+    </div>
+  </section>
+
+  <section class="section two">
+    <div class="panel">
+      <h2 class="section-title">Desempenho por avaliação</h2>
+      <div id="evaluations"></div>
+    </div>
+    <div class="panel">
+      <h2 class="section-title">Evolução da turma</h2>
+      <div id="evolution" class="evo"></div>
+      <div class="meta" style="margin-top:14px">
+        <span class="pill dark" id="vistos">Média de vistos: —</span>
+        <span class="pill dark" id="acima">— alunos na média ou acima</span>
+      </div>
+    </div>
+  </section>
+
+  <section class="section">
+    <div class="panel">
+      <h2 class="section-title">Alunos da turma</h2>
+      <div class="table-wrap">
+        <table class="students-table">
+          <thead><tr><th>Aluno</th><th>Média</th><th>Vistos</th><th>Situação</th></tr></thead>
+          <tbody id="students"></tbody>
+        </table>
+      </div>
+    </div>
+  </section>
 </div>
-</div>
+
 <a class="back" href="./estatistica.html">← Voltar para Estatística</a>
 </div></main>
+
 <script>
 (() => {
- const AUTH_API_URL="https://salta-auth.dannyel-moises.workers.dev";
- const KEY="saltaProfessorSession";
- async function check(){
-   const token=localStorage.getItem(KEY)||sessionStorage.getItem(KEY);
-   try{
-     const headers=token?{Authorization:"Bearer "+token}:{};
-     const r=await fetch(AUTH_API_URL+"/session",{method:"GET",headers,credentials:"include",cache:"no-store"});
-     const d=await r.json().catch(()=>({}));
-     if(!r.ok||!d.authenticated){localStorage.removeItem(KEY);sessionStorage.removeItem(KEY);location.replace("./professor.html");return;}
-     document.body.classList.add("auth-ready");
-     const els=document.querySelectorAll(".reveal");
-     if("IntersectionObserver" in window){
-       const obs=new IntersectionObserver(entries=>entries.forEach(e=>{if(e.isIntersecting){e.target.classList.add("is-visible");obs.unobserve(e.target)}}),{threshold:.14});
-       els.forEach((el,i)=>{el.style.transitionDelay=(Math.min(i*70,210))+"ms";obs.observe(el)});
-     }else els.forEach(el=>el.classList.add("is-visible"));
-     document.querySelectorAll(".glow-card").forEach(card=>card.addEventListener("pointermove",ev=>{
-       const r=card.getBoundingClientRect();
-       card.style.setProperty("--mx",(ev.clientX-r.left)+"px");
-       card.style.setProperty("--my",(ev.clientY-r.top)+"px");
-     },{passive:true}));
-   }catch(e){location.replace("./professor.html")}
- }
- check();
+  const AUTH="https://salta-auth.dannyel-moises.workers.dev";
+  const API="https://salta-stats.dannyel-moises.workers.dev";
+  const KEY="saltaProfessorSession";
+  const turmaSelect=document.getElementById("turma");
+  const statusEl=document.getElementById("status");
+  const dashboard=document.getElementById("dashboard");
+
+  function token(){return localStorage.getItem(KEY)||sessionStorage.getItem(KEY)||""}
+  function fmt(v){if(v===null||v===undefined||v==="")return "—";const n=Number(v);return Number.isFinite(n)?n.toFixed(1).replace(".",","):String(v)}
+  function esc(v){return String(v??"").replace(/[&<>"']/g,ch=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#039;"}[ch]))}
+  function showStatus(msg,error=false){statusEl.textContent=msg;statusEl.className="status"+(error?" error":"");statusEl.style.display="block"}
+  function hideStatus(){statusEl.style.display="none"}
+
+  async function authCheck(){
+    const t=token();
+    if(!t){location.replace("./professor.html");return false}
+    try{
+      const r=await fetch(AUTH+"/session",{headers:{Authorization:"Bearer "+t},credentials:"include",cache:"no-store"});
+      const d=await r.json().catch(()=>({}));
+      if(!r.ok||!d.authenticated){localStorage.removeItem(KEY);sessionStorage.removeItem(KEY);location.replace("./professor.html");return false}
+      document.body.classList.add("auth-ready");return true;
+    }catch{location.replace("./professor.html");return false}
+  }
+
+  async function api(path){
+    const r=await fetch(API+path,{headers:{Authorization:"Bearer "+token()},credentials:"omit",cache:"no-store"});
+    const d=await r.json().catch(()=>({}));
+    if(!r.ok)throw new Error((d.error||"Falha HTTP "+r.status)+" [HTTP "+r.status+"]");
+    return d;
+  }
+
+  async function loadTurmas(){
+    try{
+      const data=await api("/admin/turmas");
+      const turmas=Array.isArray(data.turmas)?data.turmas:[];
+      turmaSelect.innerHTML='<option value="">Selecione a turma</option>'+
+        turmas.map(t=>'<option value="'+esc(t)+'">'+esc(t)+'</option>').join("");
+      if(!turmas.length)showStatus("Nenhuma turma encontrada.",true);
+    }catch(e){showStatus("Falha ao carregar as turmas: "+e.message,true)}
+  }
+
+  function render(data){
+    dashboard.style.display="block";
+    document.getElementById("mTotal").textContent=data.quantidadeAlunos;
+    document.getElementById("mComMedia").textContent=data.alunosComMedia+" com média calculável";
+    document.getElementById("mMedia").textContent=fmt(data.mediaTurma);
+    document.getElementById("mRegra").textContent="Média mínima: "+fmt(data.mediaMinima);
+    document.getElementById("mMaior").textContent=fmt(data.maiorMedia);
+    document.getElementById("mMenor").textContent=fmt(data.menorMedia);
+
+    document.getElementById("meta").innerHTML=
+      '<span class="pill">'+esc(data.rede==="DF"?"Distrito Federal":"Goiás")+'</span>'+
+      '<span class="pill dark">Mínimo '+fmt(data.mediaMinima)+'</span>'+
+      '<span class="pill dark">'+esc(data.modeloAvaliativo)+'</span>';
+
+    const max=Math.max(...data.distribuicao.map(x=>Number(x.quantidade)||0),1);
+    document.getElementById("distribution").innerHTML=data.distribuicao.map(x=>
+      '<div class="bar-row"><span>'+esc(x.faixa)+'</span><div class="bar-track"><div class="bar-fill" style="width:'+((x.quantidade/max)*100)+'%"></div></div><span class="bar-value">'+x.quantidade+'</span></div>'
+    ).join("");
+
+    const at=document.getElementById("attention");
+    if(data.acompanhamento?.length){
+      at.innerHTML='<div class="attention">'+data.acompanhamento.map(x=>
+        '<div class="student-row"><span>'+esc(x.nome)+'</span><strong>'+fmt(x.media)+'</strong><small>'+((x.vistos??"—")!=="—"?fmt(x.vistos):"—")+' vistos</small></div>'
+      ).join("")+'</div>';
+    }else{
+      at.innerHTML='<div class="empty">Nenhum aluno abaixo da média mínima de '+fmt(data.mediaMinima)+'.</div>';
+    }
+
+    const evals=data.desempenhoAvaliacoes||[];
+    document.getElementById("evaluations").innerHTML=evals.length?
+      '<div class="eval-list">'+evals.map(x=>
+        '<div class="eval-row"><span>'+esc(x.avaliacao)+' <small class="muted">('+x.bimestre+'º bim.)</small></span><strong>'+fmt(x.media)+'</strong><small>'+x.quantidade+' registros</small></div>'
+      ).join("")+'</div>':
+      '<div class="empty">Nenhuma avaliação registrada.</div>';
+
+    const evo=data.evolucao||[];
+    document.getElementById("evolution").innerHTML=evo.map(x=>
+      '<div class="evo-item"><span>'+x.bimestre+'º Bimestre</span><strong>'+fmt(x.media)+'</strong></div>'
+    ).join("");
+    document.getElementById("vistos").textContent="Média de vistos: "+fmt(data.mediaVistos);
+    document.getElementById("acima").textContent=(data.acimaOuIgualMedia||0)+" alunos na média ou acima";
+
+    const tbody=document.getElementById("students");
+    tbody.innerHTML=(data.porAluno||[]).map(x=>{
+      const ok=Number(x.media)>=Number(data.mediaMinima);
+      return '<tr><td>'+esc(x.nome)+'</td><td>'+fmt(x.media)+'</td><td>'+fmt(x.vistos)+'</td><td>'+ (ok?"Na média ou acima":"Abaixo da média") +'</td></tr>';
+    }).join("");
+  }
+
+  async function loadStats(){
+    const turma=turmaSelect.value;
+    dashboard.style.display="none";
+    if(!turma){hideStatus();return}
+    showStatus("Carregando estatísticas da turma...");
+    try{
+      const data=await api("/admin/turma-estatistica?turma="+encodeURIComponent(turma));
+      hideStatus();render(data);window.scrollTo({top:0,behavior:"smooth"});
+    }catch(e){showStatus("Falha ao carregar a estatística: "+e.message,true)}
+  }
+
+  turmaSelect.addEventListener("change",loadStats);
+  authCheck().then(ok=>{if(ok)loadTurmas()});
 })();
 </script>
 </body>
