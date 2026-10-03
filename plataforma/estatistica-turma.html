@@ -39,7 +39,7 @@ main{padding:88px 0 70px;position:relative;z-index:1}.hero{margin-bottom:24px}.e
 <section class="controls">
   <div class="select-wrap">
     <label for="turma">Turma</label>
-    <select id="turma"><option value="">Selecione a turma</option></select>
+    <select id="turma"><option value="">Selecione a turma</option><option value="__GLOBAL__">Todas as turmas</option></select>
   </div>
 </section>
 
@@ -92,6 +92,53 @@ main{padding:88px 0 70px;position:relative;z-index:1}.hero{margin-bottom:24px}.e
     </div>
   </section>
 </div>
+<div id="globalDashboard" style="display:none">
+  <div id="globalMeta" class="meta"></div>
+  <section class="grid">
+    <div class="card metric"><span>Total de alunos</span><strong id="gTotal">—</strong><small id="gComMedia">—</small></div>
+    <div class="card metric"><span>Média global</span><strong id="gMedia">—</strong><small>Todos os alunos com média calculável</small></div>
+    <div class="card metric"><span>Na média ou acima</span><strong id="gAcima">—</strong><small id="gAcimaPct">—</small></div>
+    <div class="card metric"><span>Abaixo da média</span><strong id="gAbaixo">—</strong><small id="gAbaixoPct">—</small></div>
+  </section>
+
+  <section class="section two">
+    <div class="panel">
+      <h2 class="section-title">5 maiores médias</h2>
+      <div id="bestStudents"></div>
+    </div>
+    <div class="panel">
+      <h2 class="section-title">5 menores médias</h2>
+      <div id="worstStudents"></div>
+    </div>
+  </section>
+
+  <section class="section two">
+    <div class="panel">
+      <h2 class="section-title">Distribuição global das médias</h2>
+      <div id="globalDistribution" class="bars"></div>
+    </div>
+    <div class="panel">
+      <h2 class="section-title">Indicadores gerais</h2>
+      <div class="meta" style="margin:0">
+        <span class="pill dark" id="globalVistos">Média de vistos: —</span>
+        <span class="pill dark" id="globalTurmas">Turmas: —</span>
+      </div>
+      <div class="empty" style="text-align:left;padding-left:0;padding-right:0">A comparação detalhada abaixo considera a média de cada turma e sua própria média mínima.</div>
+    </div>
+  </section>
+
+  <section class="section">
+    <div class="panel">
+      <h2 class="section-title">Comparação entre turmas</h2>
+      <div class="table-wrap">
+        <table class="students-table">
+          <thead><tr><th>Turma</th><th>Rede</th><th>Alunos</th><th>Média</th><th>Abaixo</th></tr></thead>
+          <tbody id="globalClasses"></tbody>
+        </table>
+      </div>
+    </div>
+  </section>
+</div>
 
 <a class="back" href="./estatistica.html">← Voltar para Estatística</a>
 </div></main>
@@ -133,13 +180,65 @@ main{padding:88px 0 70px;position:relative;z-index:1}.hero{margin-bottom:24px}.e
     try{
       const data=await api("/admin/turmas");
       const turmas=Array.isArray(data.turmas)?data.turmas:[];
-      turmaSelect.innerHTML='<option value="">Selecione a turma</option>'+
+      turmaSelect.innerHTML='<option value="">Selecione a turma</option><option value="__GLOBAL__">Todas as turmas</option>'+
         turmas.map(t=>'<option value="'+esc(t)+'">'+esc(t)+'</option>').join("");
       if(!turmas.length)showStatus("Nenhuma turma encontrada.",true);
     }catch(e){showStatus("Falha ao carregar as turmas: "+e.message,true)}
   }
 
+  function pct(part,total){
+    if(!total) return "0%";
+    return Math.round((part/total)*1000)/10+"%";
+  }
+
+  function renderRanking(id, rows, worst=false){
+    const el=document.getElementById(id);
+    if(!rows?.length){el.innerHTML='<div class="empty">Nenhum dado disponível.</div>';return;}
+    el.innerHTML='<div class="attention">'+rows.map((x,i)=>
+      '<div class="student-row" style="background:'+(worst?'#fff7f7':'#f7faff')+';border-color:'+(worst?'#f0dcdc':'#dbe9f7')+'">' +
+        '<span><strong style="display:block;text-align:left">'+(i+1)+". "+esc(x.nome)+'</strong>' +
+        '<small style="display:block;text-align:left">'+esc(x.turma)+" · "+esc(x.rede)+"</small></span>" +
+        '<strong>'+fmt(x.media)+'</strong><small>'+fmt(x.vistos)+" vistos</small>" +
+      '</div>'
+    ).join("")+'</div>';
+  }
+
+  function renderGlobal(data){
+    document.getElementById("dashboard").style.display="none";
+    document.getElementById("globalDashboard").style.display="block";
+
+    const total=data.quantidadeAlunos||0;
+    const comMedia=data.alunosComMedia||0;
+    document.getElementById("gTotal").textContent=total;
+    document.getElementById("gComMedia").textContent=comMedia+" com média calculável";
+    document.getElementById("gMedia").textContent=fmt(data.mediaGlobal);
+    document.getElementById("gAcima").textContent=data.acimaOuIgualMedia||0;
+    document.getElementById("gAcimaPct").textContent=pct(data.acimaOuIgualMedia||0,comMedia)+" dos alunos com média";
+    document.getElementById("gAbaixo").textContent=data.abaixoMedia||0;
+    document.getElementById("gAbaixoPct").textContent=pct(data.abaixoMedia||0,comMedia)+" dos alunos com média";
+
+    document.getElementById("globalMeta").innerHTML=
+      '<span class="pill">Todas as turmas</span>' +
+      '<span class="pill dark">'+(data.turmas?.length||0)+' turmas analisadas</span>';
+
+    renderRanking("bestStudents",data.melhores,false);
+    renderRanking("worstStudents",data.piores,true);
+
+    const max=Math.max(...(data.distribuicao||[]).map(x=>Number(x.quantidade)||0),1);
+    document.getElementById("globalDistribution").innerHTML=(data.distribuicao||[]).map(x=>
+      '<div class="bar-row"><span>'+esc(x.faixa)+'</span><div class="bar-track"><div class="bar-fill" style="width:'+((x.quantidade/max)*100)+'%"></div></div><span class="bar-value">'+x.quantidade+'</span></div>'
+    ).join("");
+
+    document.getElementById("globalVistos").textContent="Média de vistos: "+fmt(data.mediaVistos);
+    document.getElementById("globalTurmas").textContent="Turmas: "+(data.turmas?.length||0);
+
+    document.getElementById("globalClasses").innerHTML=(data.turmas||[]).map(x=>
+      '<tr><td>'+esc(x.turma)+'</td><td>'+esc(x.rede)+'</td><td>'+x.alunos+'</td><td>'+fmt(x.media)+'</td><td>'+x.abaixo+'</td></tr>'
+    ).join("");
+  }
+
   function render(data){
+    document.getElementById("globalDashboard").style.display="none";
     dashboard.style.display="block";
     document.getElementById("mTotal").textContent=data.quantidadeAlunos;
     document.getElementById("mComMedia").textContent=data.alunosComMedia+" com média calculável";
@@ -191,12 +290,22 @@ main{padding:88px 0 70px;position:relative;z-index:1}.hero{margin-bottom:24px}.e
   async function loadStats(){
     const turma=turmaSelect.value;
     dashboard.style.display="none";
+    document.getElementById("globalDashboard").style.display="none";
     if(!turma){hideStatus();return}
-    showStatus("Carregando estatísticas da turma...");
+
+    showStatus(turma==="__GLOBAL__" ? "Carregando desempenho global..." : "Carregando estatísticas da turma...");
     try{
-      const data=await api("/admin/turma-estatistica?turma="+encodeURIComponent(turma));
-      hideStatus();render(data);window.scrollTo({top:0,behavior:"smooth"});
-    }catch(e){showStatus("Falha ao carregar a estatística: "+e.message,true)}
+      const data=turma==="__GLOBAL__"
+        ? await api("/admin/estatistica-global")
+        : await api("/admin/turma-estatistica?turma="+encodeURIComponent(turma));
+
+      hideStatus();
+      if(turma==="__GLOBAL__") renderGlobal(data);
+      else render(data);
+      window.scrollTo({top:0,behavior:"smooth"});
+    }catch(e){
+      showStatus("Falha ao carregar a estatística: "+e.message,true);
+    }
   }
 
   turmaSelect.addEventListener("change",loadStats);
