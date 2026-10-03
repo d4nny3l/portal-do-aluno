@@ -1,5 +1,6 @@
 const AUTH_API_URL = "https://salta-auth.dannyel-moises.workers.dev";
 const ALLOWED_ORIGIN = "https://d4nny3l.github.io";
+const BIMESTRE_VIGENTE = 3;
 
 function corsHeaders(request) {
   const origin = request.headers.get("Origin") || "";
@@ -142,17 +143,13 @@ async function turmaConfig(env, turma) {
   ).bind(turma).first();
 }
 
-function currentBimestre(rows) {
-  let vigente = 1;
-  const maxBimestres = Math.max(...rows.map(r => bCount(r.turma)), 1);
-  for (let i = 1; i <= maxBimestres; i++) {
-    if (rows.some(row => Number.isFinite(Number(row["bimestre" + i + "_media"])))) vigente = i;
-  }
-  return vigente;
+function currentBimestre() {
+  return BIMESTRE_VIGENTE;
 }
 
+
 function buildTurmaStats(rows, config) {
-  const vigente = currentBimestre(rows);
+  const vigente = currentBimestre();
   const turma = String(config?.turma || rows[0]?.turma || "").trim();
   const limite = Number(config?.media_minima ?? 6);
   const quantidadeBimestres = bCount(turma);
@@ -283,7 +280,7 @@ function buildTurmaStats(rows, config) {
 
 
 function buildGlobalStats(rows, configs) {
-  const vigente = currentBimestre(rows);
+  const vigente = currentBimestre();
   const configMap = new Map(configs.map(c => [String(c.turma).trim(), c]));
   const grupos = new Map();
 
@@ -303,9 +300,7 @@ function buildGlobalStats(rows, configs) {
       if (Number.isFinite(value)) medias.push(value);
     }
 
-    const mediaFinal = medias.length
-      ? medias.reduce((sum, value) => sum + value, 0) / quantidadeBimestres
-      : null;
+    const mediaFinal = medias.length ? medias[0] : null;
 
     const vistoValues = [];
     for (let i = vigente; i <= vigente; i++) {
