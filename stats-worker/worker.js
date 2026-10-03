@@ -270,6 +270,121 @@ function buildTurmaStats(rows, config) {
   };
 }
 
+
+function buildGlobalStats(rows, configs) {
+  const configMap = new Map(configs.map(c => [String(c.turma).trim(), c]));
+  const grupos = new Map();
+
+  const alunos = rows.map(row => {
+    const turma = String(row.turma || "").trim();
+    const config = configMap.get(turma) || {
+      turma,
+      rede: "GO",
+      media_minima: 6,
+      modelo_avaliativo: "—"
+    };
+    const quantidadeBimestres = bCount(turma);
+    const medias = [];
+
+    for (let i = 1; i <= quantidadeBimestres; i++) {
+      const value = Number(row["bimestre" + i + "_media"]);
+      if (Number.isFinite(value)) medias.push(value);
+    }
+
+    const mediaFinal = medias.length
+      ? medias.reduce((sum, value) => sum + value, 0) / quantidadeBimestres
+      : null;
+
+    const vistoValues = [];
+    for (let i = 1; i <= quantidadeBimestres; i++) {
+      const value = Number(row["bimestre" + i + "_vistos"]);
+      if (Number.isFinite(value)) vistoValues.push(value);
+    }
+
+    const aluno = {
+      codigo: row.codigo,
+      nome: row.nome,
+      turma,
+      rede: config.rede,
+      mediaMinima: Number(config.media_minima),
+      media: Number.isFinite(mediaFinal) ? mediaFinal : null,
+      vistos: vistoValues.length ? mean(vistoValues) : null
+    };
+
+    if (!grupos.has(turma)) grupos.set(turma, []);
+    grupos.get(turma).push(aluno);
+    return aluno;
+  });
+
+  const comMedia = alunos.filter(a => Number.isFinite(a.media));
+  const mediaGlobal = mean(comMedia.map(a => a.media));
+  const mediaVistos = mean(alunos.map(a => a.vistos).filter(Number.isFinite));
+  const acima = comMedia.filter(a => a.media >= a.mediaMinima);
+  const abaixo = comMedia.filter(a => a.media < a.mediaMinima);
+
+  const melhores = [...comMedia]
+    .sort((a,b) => b.media - a.media || String(a.nome).localeCompare(String(b.nome), "pt-BR"))
+    .slice(0,5);
+
+  const piores = [...comMedia]
+    .sort((a,b) => a.media - b.media || String(a.nome).localeCompare(String(b.nome), "pt-BR"))
+    .slice(0,5);
+
+  const faixas = [
+    { faixa:"0,0–2,9", quantidade:0 },
+    { faixa:"3,0–4,9", quantidade:0 },
+    { faixa:"5,0–6,9", quantidade:0 },
+    { faixa:"7,0–8,9", quantidade:0 },
+    { faixa:"9,0–10,0", quantidade:0 }
+  ];
+  for (const a of comMedia) {
+    if (a.media < 3) faixas[0].quantidade++;
+    else if (a.media < 5) faixas[1].quantidade++;
+    else if (a.media < 7) faixas[2].quantidade++;
+    else if (a.media < 9) faixas[3].quantidade++;
+    else faixas[4].quantidade++;
+  }
+
+  const turmas = [];
+  for (const [turma, lista] of grupos.entries()) {
+    const medias = lista.map(a => a.media).filter(Number.isFinite);
+    const cfg = configMap.get(turma);
+    const limite = Number(cfg?.media_minima ?? 6);
+    turmas.push({
+      turma,
+      rede: cfg?.rede || "GO",
+      mediaMinima: limite,
+      alunos: lista.length,
+      alunosComMedia: medias.length,
+      media: round1(mean(medias)),
+      maiorMedia: medias.length ? round1(Math.max(...medias)) : null,
+      menorMedia: medias.length ? round1(Math.min(...medias)) : null,
+      acimaOuIgual: medias.filter(v => v >= limite).length,
+      abaixo: medias.filter(v => v < limite).length
+    });
+  }
+
+  turmas.sort((a,b) => (b.media ?? -Infinity) - (a.media ?? -Infinity) ||
+    String(a.turma).localeCompare(String(b.turma), "pt-BR"));
+
+  return {
+    quantidadeAlunos: alunos.length,
+    alunosComMedia: comMedia.length,
+    mediaGlobal: round1(mediaGlobal),
+    mediaVistos: round1(mediaVistos),
+    acimaOuIgualMedia: acima.length,
+    abaixoMedia: abaixo.length,
+    distribuicao: faixas,
+    melhores: melhores.map(a => ({
+      codigo:a.codigo, nome:a.nome, turma:a.turma, rede:a.rede, media:round1(a.media), vistos:round1(a.vistos)
+    })),
+    piores: piores.map(a => ({
+      codigo:a.codigo, nome:a.nome, turma:a.turma, rede:a.rede, media:round1(a.media), vistos:round1(a.vistos)
+    })),
+    turmas
+  };
+}
+
 export default {
   async fetch(request, env) {
     if (request.method === "OPTIONS") {
@@ -363,6 +478,27 @@ export default {
         }
 
         return json(buildTurmaStats(result.results, config), request);
+      }
+
+      if (url.pathname === "/admin/estatistica-global") {
+        await ensureTurmaConfig(env);
+
+        const cfgResult = await env.DB.prepare(
+          "SELECT turma, rede, media_minima, modelo_avaliativo, atualizado_em " +
+          "FROM turma_config ORDER BY turma"
+        ).all();
+
+        const result = await env.DB.prepare(
+          "SELECT codigo, nome, TRIM(turma) AS turma, " +
+          "bimestre1_media,bimestre1_vistos," +
+          "bimestre2_media,bimestre2_vistos," +
+          "bimestre3_media,bimestre3_vistos," +
+          "bimestre4_media,bimestre4_vistos " +
+          "FROM alunos WHERE turma IS NOT NULL AND TRIM(turma) <> '' " +
+          "ORDER BY TRIM(turma), nome"
+        ).all();
+
+        return json(buildGlobalStats(result.results || [], cfgResult.results || []), request);
       }
 
       if (url.pathname === "/admin/turmas-config") {
