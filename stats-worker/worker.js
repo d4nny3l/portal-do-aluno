@@ -142,7 +142,17 @@ async function turmaConfig(env, turma) {
   ).bind(turma).first();
 }
 
+function currentBimestre(rows) {
+  let vigente = 1;
+  const maxBimestres = Math.max(...rows.map(r => bCount(r.turma)), 1);
+  for (let i = 1; i <= maxBimestres; i++) {
+    if (rows.some(row => Number.isFinite(Number(row["bimestre" + i + "_media"])))) vigente = i;
+  }
+  return vigente;
+}
+
 function buildTurmaStats(rows, config) {
+  const vigente = currentBimestre(rows);
   const turma = String(config?.turma || rows[0]?.turma || "").trim();
   const limite = Number(config?.media_minima ?? 6);
   const quantidadeBimestres = bCount(turma);
@@ -161,9 +171,9 @@ function buildTurmaStats(rows, config) {
     }
 
     const mediaAtual = medias.length ? medias[medias.length - 1] : null;
-    const mediaFinal = medias.length
-      ? medias.reduce((sum, value) => sum + value, 0) / quantidadeBimestres
-      : null;
+    const mediaAtualValor = Number(row["bimestre" + vigente + "_media"]);
+    const mediaFinal = Number.isFinite(mediaAtualValor) ? mediaAtualValor : null;
+    const vistosAtualValor = Number(row["bimestre" + vigente + "_vistos"]);
 
     return {
       codigo: row.codigo,
@@ -172,7 +182,7 @@ function buildTurmaStats(rows, config) {
       medias,
       mediaAtual,
       mediaFinal,
-      vistos: vistos.length ? mean(vistos) : null,
+      vistos: Number.isFinite(vistosAtualValor) ? vistosAtualValor : null,
       avaliacoesPorBimestre
     };
   });
@@ -198,7 +208,7 @@ function buildTurmaStats(rows, config) {
   }
 
   const desempenhoAvaliacoes = [];
-  for (let bim = 1; bim <= quantidadeBimestres; bim++) {
+  for (let bim = vigente; bim <= vigente; bim++) {
     const mapa = new Map();
     for (const aluno of alunos) {
       for (const av of (aluno.avaliacoesPorBimestre[bim] || [])) {
@@ -251,6 +261,7 @@ function buildTurmaStats(rows, config) {
 
   return {
     turma,
+    bimestreVigente: vigente,
     rede: config?.rede || "GO",
     mediaMinima: limite,
     modeloAvaliativo: config?.modelo_avaliativo || "—",
@@ -272,6 +283,7 @@ function buildTurmaStats(rows, config) {
 
 
 function buildGlobalStats(rows, configs) {
+  const vigente = currentBimestre(rows);
   const configMap = new Map(configs.map(c => [String(c.turma).trim(), c]));
   const grupos = new Map();
 
@@ -286,7 +298,7 @@ function buildGlobalStats(rows, configs) {
     const quantidadeBimestres = bCount(turma);
     const medias = [];
 
-    for (let i = 1; i <= quantidadeBimestres; i++) {
+    for (let i = vigente; i <= vigente; i++) {
       const value = Number(row["bimestre" + i + "_media"]);
       if (Number.isFinite(value)) medias.push(value);
     }
@@ -296,7 +308,7 @@ function buildGlobalStats(rows, configs) {
       : null;
 
     const vistoValues = [];
-    for (let i = 1; i <= quantidadeBimestres; i++) {
+    for (let i = vigente; i <= vigente; i++) {
       const value = Number(row["bimestre" + i + "_vistos"]);
       if (Number.isFinite(value)) vistoValues.push(value);
     }
@@ -368,6 +380,7 @@ function buildGlobalStats(rows, configs) {
     String(a.turma).localeCompare(String(b.turma), "pt-BR"));
 
   return {
+    bimestreVigente: vigente,
     quantidadeAlunos: alunos.length,
     alunosComMedia: comMedia.length,
     mediaGlobal: round1(mediaGlobal),
