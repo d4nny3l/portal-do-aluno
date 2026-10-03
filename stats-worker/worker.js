@@ -480,10 +480,10 @@ export default {
         const config = await turmaConfig(env, turma);
         const result = await env.DB.prepare(
           "SELECT codigo, nome, TRIM(turma) AS turma, " +
-          "bimestre1_media,bimestre1_vistos,bimestre1_avaliacoes," +
-          "bimestre2_media,bimestre2_vistos,bimestre2_avaliacoes," +
-          "bimestre3_media,bimestre3_vistos,bimestre3_avaliacoes," +
-          "bimestre4_media,bimestre4_vistos,bimestre4_avaliacoes " +
+          "bimestre1_status,bimestre1_media,bimestre1_vistos,bimestre1_avaliacoes," +
+          "bimestre2_status,bimestre2_media,bimestre2_vistos,bimestre2_avaliacoes," +
+          "bimestre3_status,bimestre3_media,bimestre3_vistos,bimestre3_avaliacoes," +
+          "bimestre4_status,bimestre4_media,bimestre4_vistos,bimestre4_avaliacoes " +
           "FROM alunos WHERE TRIM(turma) = ? ORDER BY nome"
         ).bind(turma).all();
 
@@ -504,10 +504,10 @@ export default {
 
         const result = await env.DB.prepare(
           "SELECT codigo, nome, TRIM(turma) AS turma, " +
-          "bimestre1_media,bimestre1_vistos," +
-          "bimestre2_media,bimestre2_vistos," +
-          "bimestre3_media,bimestre3_vistos," +
-          "bimestre4_media,bimestre4_vistos " +
+          "bimestre1_status,bimestre1_media,bimestre1_vistos," +
+          "bimestre2_status,bimestre2_media,bimestre2_vistos," +
+          "bimestre3_status,bimestre3_media,bimestre3_vistos," +
+          "bimestre4_status,bimestre4_media,bimestre4_vistos " +
           "FROM alunos WHERE turma IS NOT NULL AND TRIM(turma) <> '' " +
           "ORDER BY TRIM(turma), nome"
         ).all();
