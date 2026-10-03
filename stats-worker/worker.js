@@ -290,11 +290,13 @@ export default {
       }
 
       if (url.pathname === "/admin/turmas") {
-        const totals = await env.DB.prepare(
-          "SELECT COUNT(*) AS total_alunos, " +
-          "COUNT(CASE WHEN turma IS NOT NULL AND TRIM(turma) <> '' THEN 1 END) AS com_turma, " +
-          "COUNT(DISTINCT CASE WHEN turma IS NOT NULL AND TRIM(turma) <> '' THEN TRIM(turma) END) AS turmas " +
-          "FROM alunos"
+        const totalRow = await env.DB.prepare(
+          "SELECT COUNT(*) AS total_alunos FROM alunos"
+        ).first();
+
+        const comTurmaRow = await env.DB.prepare(
+          "SELECT COUNT(*) AS com_turma FROM alunos " +
+          "WHERE turma IS NOT NULL AND TRIM(turma) <> ''"
         ).first();
 
         const result = await env.DB.prepare(
@@ -306,9 +308,9 @@ export default {
         return json({
           turmas: (result.results || []).map(row => row.turma).filter(Boolean),
           diagnostico: {
-            totalAlunos: Number(totals?.total_alunos || 0),
-            alunosComTurma: Number(totals?.com_turma || 0),
-            quantidadeTurmas: Number(totals?.turmas || 0)
+            totalAlunos: Number(totalRow?.total_alunos || 0),
+            alunosComTurma: Number(comTurmaRow?.com_turma || 0),
+            quantidadeTurmas: (result.results || []).length
           }
         }, request);
       }
