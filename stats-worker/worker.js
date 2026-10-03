@@ -89,11 +89,14 @@ async function ensureTurmaConfig(env) {
     "rede TEXT NOT NULL, " +
     "media_minima REAL NOT NULL, " +
     "modelo_avaliativo TEXT NOT NULL, " +
+    "ativa INTEGER NOT NULL DEFAULT 1, " +
     "atualizado_em TEXT DEFAULT CURRENT_TIMESTAMP)"
   ).run();
 
   const turmas = await env.DB.prepare(
-    "SELECT TRIM(turma) AS turma, bimestre1_avaliacoes FROM alunos " +
+    "SELECT TRIM(turma) AS turma, " +
+    "GROUP_CONCAT(bimestre1_avaliacoes, '|||') AS conjuntos " +
+    "FROM alunos " +
     "WHERE turma IS NOT NULL AND TRIM(turma) <> '' " +
     "GROUP BY TRIM(turma)"
   ).all();
@@ -101,21 +104,32 @@ async function ensureTurmaConfig(env) {
   for (const row of (turmas.results || [])) {
     const turma = String(row.turma || "").trim();
     if (!turma) continue;
+
     const exists = await env.DB.prepare(
       "SELECT turma FROM turma_config WHERE turma = ? LIMIT 1"
     ).bind(turma).first();
+
     if (exists) continue;
 
-    const avaliacoes = parseArray(row.bimestre1_avaliacoes);
-    const temBloco = avaliacoes.some(av =>
-      /bloco/i.test(String(av?.nome || ""))
-    );
+    let temBloco = false;
+    for (const raw of String(row.conjuntos || "").split("|||")) {
+      for (const av of parseArray(raw)) {
+        if (/\bbloco\b/i.test(String(av?.nome || ""))) {
+          temBloco = true;
+          break;
+        }
+      }
+      if (temBloco) break;
+    }
+
     const rede = temBloco ? "GO" : "DF";
     const mediaMinima = rede === "GO" ? 6 : 5;
     const modelo = temBloco ? "GO_BLOCO" : "DF_SEM_BLOCO";
 
     await env.DB.prepare(
-      "INSERT INTO turma_config (turma, rede, media_minima, modelo_avaliativo) VALUES (?, ?, ?, ?)"
+      "INSERT INTO turma_config " +
+      "(turma, rede, media_minima, modelo_avaliativo) " +
+      "VALUES (?, ?, ?, ?)"
     ).bind(turma, rede, mediaMinima, modelo).run();
   }
 }
