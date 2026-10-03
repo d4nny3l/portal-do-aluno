@@ -212,7 +212,7 @@ main{padding:88px 0 70px;position:relative;z-index:1}.hero{margin-bottom:24px}.e
     document.getElementById("gTotal").textContent=total;
     document.getElementById("gComMedia").textContent=comMedia+" com média calculável";
     document.getElementById("gMedia").textContent=fmt(data.mediaGlobal);
-    document.getElementById("gBimLabel").textContent="Bimestre "+data.bimestreVigente+" vigente";
+    document.getElementById("gBimLabel").textContent="Bimestre "+(data.bimestreVigente || 3)+" vigente";
     document.getElementById("gAcima").textContent=data.acimaOuIgualMedia||0;
     document.getElementById("gAcimaPct").textContent=pct(data.acimaOuIgualMedia||0,comMedia)+" dos alunos com média";
     document.getElementById("gAbaixo").textContent=data.abaixoMedia||0;
@@ -220,7 +220,7 @@ main{padding:88px 0 70px;position:relative;z-index:1}.hero{margin-bottom:24px}.e
 
     document.getElementById("globalMeta").innerHTML=
       '<span class="pill">Todas as turmas</span>' +
-      '<span class="pill dark">'+data.bimestreVigente+'º bimestre vigente</span>' +
+      '<span class="pill dark">'+(data.bimestreVigente || 3)+'º bimestre vigente</span>' +
       '<span class="pill dark">'+(data.turmas?.length||0)+' turmas analisadas</span>';
 
     renderRanking("bestStudents",data.melhores,false);
@@ -245,8 +245,8 @@ main{padding:88px 0 70px;position:relative;z-index:1}.hero{margin-bottom:24px}.e
     document.getElementById("mTotal").textContent=data.quantidadeAlunos;
     document.getElementById("mComMedia").textContent=data.alunosComMedia+" com média calculável";
     document.getElementById("mMedia").textContent=fmt(data.mediaTurma);
-    document.getElementById("mMediaLabel").textContent="Média do "+data.bimestreVigente+"º bimestre";
-    document.getElementById("mRegra").textContent="Média mínima: "+fmt(data.mediaMinima)+" no "+data.bimestreVigente+"º bimestre";
+    document.getElementById("mMediaLabel").textContent="Média do "+(data.bimestreVigente || 3)+"º bimestre";
+    document.getElementById("mRegra").textContent="Média mínima: "+fmt(data.mediaMinima)+" no "+(data.bimestreVigente || 3)+"º bimestre";
     document.getElementById("mMaior").textContent=fmt(data.maiorMedia);
     document.getElementById("mMenor").textContent=fmt(data.menorMedia);
 
