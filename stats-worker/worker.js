@@ -143,8 +143,12 @@ async function turmaConfig(env, turma) {
   ).bind(turma).first();
 }
 
-function currentBimestre() {
-  return BIMESTRE_VIGENTE;
+function bimestreVigenteDaTurma(rows) {
+  const maxBimestres = Math.max(...rows.map(r => bCount(r.turma)), 1);
+  for (let i = 1; i <= maxBimestres; i++) {
+    if (rows.some(row => String(row["bimestre" + i + "_status"] || "").toLowerCase() === "andamento")) return i;
+  }
+  return 1;
 }
 
 
