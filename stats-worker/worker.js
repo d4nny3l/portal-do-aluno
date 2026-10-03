@@ -1,6 +1,5 @@
 const AUTH_API_URL = "https://salta-auth.dannyel-moises.workers.dev";
 const ALLOWED_ORIGIN = "https://d4nny3l.github.io";
-const BIMESTRE_VIGENTE = 3;
 
 function corsHeaders(request) {
   const origin = request.headers.get("Origin") || "";
@@ -153,7 +152,7 @@ function bimestreVigenteDaTurma(rows) {
 
 
 function buildTurmaStats(rows, config) {
-  const vigente = currentBimestre();
+  const vigente = bimestreVigenteDaTurma(rows);
   const turma = String(config?.turma || rows[0]?.turma || "").trim();
   const limite = Number(config?.media_minima ?? 6);
   const quantidadeBimestres = bCount(turma);
@@ -284,48 +283,43 @@ function buildTurmaStats(rows, config) {
 
 
 function buildGlobalStats(rows, configs) {
-  const vigente = currentBimestre();
   const configMap = new Map(configs.map(c => [String(c.turma).trim(), c]));
   const grupos = new Map();
 
-  const alunos = rows.map(row => {
+  for (const row of rows) {
     const turma = String(row.turma || "").trim();
+    if (!grupos.has(turma)) grupos.set(turma, []);
+    grupos.get(turma).push(row);
+  }
+
+  const alunos = [];
+
+  for (const [turma, turmaRows] of grupos.entries()) {
     const config = configMap.get(turma) || {
       turma,
       rede: "GO",
       media_minima: 6,
       modelo_avaliativo: "—"
     };
-    const quantidadeBimestres = bCount(turma);
-    const medias = [];
 
-    for (let i = vigente; i <= vigente; i++) {
-      const value = Number(row["bimestre" + i + "_media"]);
-      if (Number.isFinite(value)) medias.push(value);
+    const vigente = bimestreVigenteDaTurma(turmaRows);
+
+    for (const row of turmaRows) {
+      const mediaValor = Number(row["bimestre" + vigente + "_media"]);
+      const vistosValor = Number(row["bimestre" + vigente + "_vistos"]);
+
+      alunos.push({
+        codigo: row.codigo,
+        nome: row.nome,
+        turma,
+        rede: config.rede,
+        mediaMinima: Number(config.media_minima),
+        media: Number.isFinite(mediaValor) ? mediaValor : null,
+        vistos: Number.isFinite(vistosValor) ? vistosValor : null,
+        bimestreVigente: vigente
+      });
     }
-
-    const mediaFinal = medias.length ? medias[0] : null;
-
-    const vistoValues = [];
-    for (let i = vigente; i <= vigente; i++) {
-      const value = Number(row["bimestre" + i + "_vistos"]);
-      if (Number.isFinite(value)) vistoValues.push(value);
-    }
-
-    const aluno = {
-      codigo: row.codigo,
-      nome: row.nome,
-      turma,
-      rede: config.rede,
-      mediaMinima: Number(config.media_minima),
-      media: Number.isFinite(mediaFinal) ? mediaFinal : null,
-      vistos: vistoValues.length ? mean(vistoValues) : null
-    };
-
-    if (!grupos.has(turma)) grupos.set(turma, []);
-    grupos.get(turma).push(aluno);
-    return aluno;
-  });
+  }
 
   const comMedia = alunos.filter(a => Number.isFinite(a.media));
   const mediaGlobal = mean(comMedia.map(a => a.media));
@@ -358,12 +352,15 @@ function buildGlobalStats(rows, configs) {
 
   const turmas = [];
   for (const [turma, lista] of grupos.entries()) {
-    const medias = lista.map(a => a.media).filter(Number.isFinite);
-    const cfg = configMap.get(turma);
-    const limite = Number(cfg?.media_minima ?? 6);
+    const cfg = configMap.get(turma) || { rede:"GO", media_minima:6 };
+    const medias = alunos.filter(a => a.turma === turma).map(a => a.media).filter(Number.isFinite);
+    const vigente = bimestreVigenteDaTurma(lista);
+    const limite = Number(cfg.media_minima ?? 6);
+
     turmas.push({
       turma,
-      rede: cfg?.rede || "GO",
+      bimestreVigente: vigente,
+      rede: cfg.rede || "GO",
       mediaMinima: limite,
       alunos: lista.length,
       alunosComMedia: medias.length,
@@ -378,8 +375,10 @@ function buildGlobalStats(rows, configs) {
   turmas.sort((a,b) => (b.media ?? -Infinity) - (a.media ?? -Infinity) ||
     String(a.turma).localeCompare(String(b.turma), "pt-BR"));
 
+  const bimestresVigentes = [...new Set(turmas.map(t => t.bimestreVigente))].sort((a,b) => a-b);
+
   return {
-    bimestreVigente: vigente,
+    bimestresVigentes,
     quantidadeAlunos: alunos.length,
     alunosComMedia: comMedia.length,
     mediaGlobal: round1(mediaGlobal),
@@ -388,14 +387,17 @@ function buildGlobalStats(rows, configs) {
     abaixoMedia: abaixo.length,
     distribuicao: faixas,
     melhores: melhores.map(a => ({
-      codigo:a.codigo, nome:a.nome, turma:a.turma, rede:a.rede, media:round1(a.media), vistos:round1(a.vistos)
+      codigo:a.codigo, nome:a.nome, turma:a.turma, rede:a.rede,
+      bimestreVigente:a.bimestreVigente, media:round1(a.media), vistos:round1(a.vistos)
     })),
     piores: piores.map(a => ({
-      codigo:a.codigo, nome:a.nome, turma:a.turma, rede:a.rede, media:round1(a.media), vistos:round1(a.vistos)
+      codigo:a.codigo, nome:a.nome, turma:a.turma, rede:a.rede,
+      bimestreVigente:a.bimestreVigente, media:round1(a.media), vistos:round1(a.vistos)
     })),
     turmas
   };
 }
+
 
 export default {
   async fetch(request, env) {
