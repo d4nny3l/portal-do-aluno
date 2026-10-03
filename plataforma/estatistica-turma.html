@@ -49,9 +49,9 @@ main{padding:88px 0 70px;position:relative;z-index:1}.hero{margin-bottom:24px}.e
 
   <section class="grid">
     <div class="card metric"><span>Total de alunos</span><strong id="mTotal">—</strong><small id="mComMedia">—</small></div>
-    <div class="card metric"><span>Média da turma</span><strong id="mMedia">—</strong><small id="mRegra">—</small></div>
-    <div class="card metric"><span>Maior média</span><strong id="mMaior">—</strong><small>Entre as médias finais</small></div>
-    <div class="card metric"><span>Menor média</span><strong id="mMenor">—</strong><small>Entre as médias finais</small></div>
+    <div class="card metric"><span id="mMediaLabel">Média do bimestre vigente</span><strong id="mMedia">—</strong><small id="mRegra">—</small></div>
+    <div class="card metric"><span>Maior média</span><strong id="mMaior">—</strong><small>No bimestre vigente</small></div>
+    <div class="card metric"><span>Menor média</span><strong id="mMenor">—</strong><small>No bimestre vigente</small></div>
   </section>
 
   <section class="section two">
@@ -96,7 +96,7 @@ main{padding:88px 0 70px;position:relative;z-index:1}.hero{margin-bottom:24px}.e
   <div id="globalMeta" class="meta"></div>
   <section class="grid">
     <div class="card metric"><span>Total de alunos</span><strong id="gTotal">—</strong><small id="gComMedia">—</small></div>
-    <div class="card metric"><span>Média global</span><strong id="gMedia">—</strong><small>Todos os alunos com média calculável</small></div>
+    <div class="card metric"><span>Média global</span><strong id="gMedia">—</strong><small id="gBimLabel">Bimestre vigente</small></div>
     <div class="card metric"><span>Na média ou acima</span><strong id="gAcima">—</strong><small id="gAcimaPct">—</small></div>
     <div class="card metric"><span>Abaixo da média</span><strong id="gAbaixo">—</strong><small id="gAbaixoPct">—</small></div>
   </section>
@@ -114,7 +114,7 @@ main{padding:88px 0 70px;position:relative;z-index:1}.hero{margin-bottom:24px}.e
 
   <section class="section two">
     <div class="panel">
-      <h2 class="section-title">Distribuição global das médias</h2>
+      <h2 class="section-title">Distribuição das médias do bimestre</h2>
       <div id="globalDistribution" class="bars"></div>
     </div>
     <div class="panel">
@@ -212,6 +212,7 @@ main{padding:88px 0 70px;position:relative;z-index:1}.hero{margin-bottom:24px}.e
     document.getElementById("gTotal").textContent=total;
     document.getElementById("gComMedia").textContent=comMedia+" com média calculável";
     document.getElementById("gMedia").textContent=fmt(data.mediaGlobal);
+    document.getElementById("gBimLabel").textContent="Bimestre "+data.bimestreVigente+" vigente";
     document.getElementById("gAcima").textContent=data.acimaOuIgualMedia||0;
     document.getElementById("gAcimaPct").textContent=pct(data.acimaOuIgualMedia||0,comMedia)+" dos alunos com média";
     document.getElementById("gAbaixo").textContent=data.abaixoMedia||0;
@@ -219,6 +220,7 @@ main{padding:88px 0 70px;position:relative;z-index:1}.hero{margin-bottom:24px}.e
 
     document.getElementById("globalMeta").innerHTML=
       '<span class="pill">Todas as turmas</span>' +
+      '<span class="pill dark">'+data.bimestreVigente+'º bimestre vigente</span>' +
       '<span class="pill dark">'+(data.turmas?.length||0)+' turmas analisadas</span>';
 
     renderRanking("bestStudents",data.melhores,false);
@@ -243,7 +245,8 @@ main{padding:88px 0 70px;position:relative;z-index:1}.hero{margin-bottom:24px}.e
     document.getElementById("mTotal").textContent=data.quantidadeAlunos;
     document.getElementById("mComMedia").textContent=data.alunosComMedia+" com média calculável";
     document.getElementById("mMedia").textContent=fmt(data.mediaTurma);
-    document.getElementById("mRegra").textContent="Média mínima: "+fmt(data.mediaMinima);
+    document.getElementById("mMediaLabel").textContent="Média do "+data.bimestreVigente+"º bimestre";
+    document.getElementById("mRegra").textContent="Média mínima: "+fmt(data.mediaMinima)+" no "+data.bimestreVigente+"º bimestre";
     document.getElementById("mMaior").textContent=fmt(data.maiorMedia);
     document.getElementById("mMenor").textContent=fmt(data.menorMedia);
 
