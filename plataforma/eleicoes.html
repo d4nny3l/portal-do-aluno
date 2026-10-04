@@ -21,7 +21,22 @@ main{padding:55px 0 80px}.hero{text-align:center;margin-bottom:35px}.eyebrow{fon
 .state-flag{width:22px;height:15px;object-fit:cover;border-radius:3px;box-shadow:0 1px 4px rgba(0,0,0,.14)}
 .state-picker-wrap{display:none}
 .state-picker-wrap.active{display:block}.tab{border:1px solid var(--line);background:rgba(255,255,255,.7);border-radius:999px;padding:10px 16px;font-size:14px;font-weight:650;cursor:pointer}.tab.active{background:#111;color:#fff;border-color:#111}
-.panel{display:none}.panel.active{display:block}.section-title{display:flex;justify-content:space-between;align-items:end;gap:15px;margin:28px 0 14px}.section-title h2{font-size:27px;letter-spacing:-1px;margin:0}.section-title span{font-size:12px;color:var(--muted)}
+.panel{display:none}
+.map-card{padding:22px}
+.map-wrap{position:relative;min-height:520px;display:flex;justify-content:center;align-items:center;overflow:hidden}
+.brazil-map{width:min(720px,100%);height:auto}
+.region-shape{fill:rgba(255,255,255,.72);stroke:rgba(0,0,0,.10);stroke-width:1.5;transition:.25s}
+.region-shape:hover{fill:rgba(0,113,227,.08)}
+.map-label{font-size:12px;font-weight:700;fill:#6e6e73;letter-spacing:.02em}
+.map-ring{position:absolute;width:82px;height:82px;border-radius:50%;display:grid;place-items:center;background:conic-gradient(#0071e3 var(--progress),#e5e7eb 0);box-shadow:0 12px 30px rgba(0,113,227,.16);transform:translate(-50%,-50%);border:1px solid rgba(255,255,255,.8)}
+.map-ring:after{content:"";position:absolute;inset:7px;background:rgba(255,255,255,.96);border-radius:50%}
+.map-ring strong{position:relative;z-index:1;font-size:14px}
+.map-ring small{position:absolute;z-index:1;top:49px;font-size:8px;color:#6e6e73;font-weight:600}
+.map-north{left:51%;top:24%}.map-northeast{left:73%;top:43%}.map-center{left:52%;top:51%}.map-southeast{left:63%;top:67%}.map-south{left:53%;top:84%}
+.map-legend{display:grid;grid-template-columns:repeat(5,1fr);gap:8px;margin-top:12px}
+.map-stat{padding:12px;border-radius:16px;background:rgba(255,255,255,.62);border:1px solid rgba(0,0,0,.05);text-align:center}
+.map-stat strong{display:block;font-size:14px}.map-stat small{display:block;color:var(--muted);font-size:10px;margin-top:4px}
+@media(max-width:680px){.map-wrap{min-height:430px}.map-ring{width:68px;height:68px}.map-ring small{top:42px}.map-north{left:50%;top:24%}.map-northeast{left:72%;top:43%}.map-center{left:51%;top:51%}.map-southeast{left:62%;top:67%}.map-south{left:52%;top:84%}.map-legend{grid-template-columns:repeat(2,1fr)} }.panel.active{display:block}.section-title{display:flex;justify-content:space-between;align-items:end;gap:15px;margin:28px 0 14px}.section-title h2{font-size:27px;letter-spacing:-1px;margin:0}.section-title span{font-size:12px;color:var(--muted)}
 .card{position:relative;background:var(--card);border:1px solid var(--line);border-radius:27px;box-shadow:var(--shadow);padding:25px;margin-bottom:17px;overflow:hidden;backdrop-filter:blur(20px)}.card:hover{box-shadow:0 27px 70px rgba(0,0,0,.11)}
 .summary{display:grid;grid-template-columns:repeat(3,1fr);gap:14px}
 .ring-metric{display:flex;align-items:center;gap:18px;min-height:110px}
@@ -51,6 +66,7 @@ main{padding:55px 0 80px}.hero{text-align:center;margin-bottom:35px}.eyebrow{fon
 <div class="switch">
 <button class="tab active" data-target="brasil">🇧🇷 Presidência</button>
 <button class="tab" data-target="estado">🇧🇷 Estados</button>
+<button class="tab" data-target="mapa">🗺️ Mapa da apuração</button>
 </div>
 
 <section class="panel active" id="brasil">
@@ -63,6 +79,32 @@ main{padding:55px 0 80px}.hero{text-align:center;margin-bottom:35px}.eyebrow{fon
 <div class="card"><div class="result-head"><h3>Classificação</h3><span>votos • percentual</span></div><div class="rows" id="brRows"><div class="loading">Carregando resultado…</div></div></div>
 </section>
 
+<section class="panel" id="mapa">
+<div class="section-title"><h2>Mapa da apuração</h2><span>Percentual de urnas apuradas por região</span></div>
+<div class="card map-card">
+<div class="map-wrap">
+<svg class="brazil-map" viewBox="0 0 600 760" role="img" aria-label="Mapa esquemático do Brasil dividido por regiões">
+<path class="region-shape" d="M235 52 L320 30 L390 58 L405 130 L365 170 L300 155 L245 185 L195 150 L205 90 Z"/>
+<path class="region-shape" d="M390 160 L480 145 L540 205 L510 300 L455 330 L395 285 L365 220 Z"/>
+<path class="region-shape" d="M250 180 L365 170 L395 285 L350 385 L270 350 L215 270 Z"/>
+<path class="region-shape" d="M215 270 L270 350 L350 385 L330 500 L260 540 L190 475 L165 365 Z"/>
+<path class="region-shape" d="M190 475 L260 540 L245 650 L180 710 L105 650 L120 555 Z"/>
+<text class="map-label" x="275" y="115">NORTE</text>
+<text class="map-label" x="438" y="235">NORDESTE</text>
+<text class="map-label" x="278" y="285">CENTRO-OESTE</text>
+<text class="map-label" x="235" y="425">SUDESTE</text>
+<text class="map-label" x="160" y="590">SUL</text>
+</svg>
+<div class="map-ring map-north" data-region="Norte"><strong>—</strong><small>Norte</small></div>
+<div class="map-ring map-northeast" data-region="Nordeste"><strong>—</strong><small>Nordeste</small></div>
+<div class="map-ring map-center" data-region="Centro-Oeste"><strong>—</strong><small>Centro-Oeste</small></div>
+<div class="map-ring map-southeast" data-region="Sudeste"><strong>—</strong><small>Sudeste</small></div>
+<div class="map-ring map-south" data-region="Sul"><strong>—</strong><small>Sul</small></div>
+</div>
+<div class="map-legend" id="mapLegend"></div>
+</div>
+<div class="source">O percentual regional é calculado pela soma das seções totalizadas e do total de seções dos estados que compõem cada região.</div>
+</section>
 <section class="panel" id="estado">
 <div class="section-title"><h2 id="stateTitle">Goiás</h2><span id="stateSubtitle">Eleição estadual</span></div>
 <div class="state-picker-wrap active" id="statePickerWrap"><div class="state-picker" id="statePicker"></div></div>
@@ -171,6 +213,31 @@ const cargos=[
  {id:"est",code:"0007",title:"Deputado Estadual"}
 ];
 let selectedState="GO";
+const regions={
+ "Norte":["AC","AP","AM","PA","RO","RR","TO"],
+ "Nordeste":["AL","BA","CE","MA","PB","PE","PI","RN","SE"],
+ "Centro-Oeste":["DF","GO","MT","MS"],
+ "Sudeste":["ES","MG","RJ","SP"],
+ "Sul":["PR","RS","SC"]
+};
+function updateMapRegion(region,st,ts){
+ const p=ts?Math.max(0,Math.min(100,st/ts*100)):0;
+ const ring=document.querySelector('.map-ring[data-region="'+region+'"]');
+ if(ring){ring.style.setProperty("--progress",p+"%");ring.querySelector("strong").textContent=ts?pct(p):"—";}
+}
+async function loadMap(){
+ const totals={};
+ Object.keys(regions).forEach(r=>totals[r]={st:0,ts:0});
+ await Promise.allSettled(states.map(async s=>{
+  try{
+   const d=await getJson(BASE+"/6257/dados/"+s.uf.toLowerCase()+"/"+s.uf.toLowerCase()+"-c0001-e006257-u.json");
+   const m=meta(d);
+   for(const r of Object.keys(regions))if(regions[r].includes(s.uf)){totals[r].st+=m.st;totals[r].ts+=m.ts;}
+  }catch(e){}
+ }));
+ const legend=document.getElementById("mapLegend");
+ legend.innerHTML=Object.entries(totals).map(([r,m])=>{const p=m.ts?m.st/m.ts*100:0;updateMapRegion(r,m.st,m.ts);return '<div class="map-stat"><strong>'+r+'</strong><small>'+fmt(m.st)+' / '+fmt(m.ts)+' • '+(m.ts?pct(p):"—")+'</small></div>'}).join("");
+}
 function buildStatePicker(){
  const picker=document.getElementById("statePicker");
  picker.innerHTML="";
@@ -217,7 +284,7 @@ async function loadState(uf){
  if(!ok)out.innerHTML='<div class="error">Não foi possível carregar os resultados de '+s.name+' neste momento. O TSE pode estar atualizando os arquivos oficiais. A página tentará novamente.</div>';
 }
 async function loadAll(){
- await Promise.allSettled([loadPresident(),loadState(selectedState)]);
+ await Promise.allSettled([loadPresident(),loadState(selectedState),loadMap()]);
  document.getElementById("updated").textContent="Dados consultados no TSE • atualização automática a cada 10s • "+new Date().toLocaleTimeString("pt-BR");
 }
 document.querySelectorAll(".tab").forEach(b=>b.addEventListener("click",()=>{
