@@ -75,8 +75,21 @@ async function getJson(url){
  return r.json();
 }
 function candidateRows(data){
- const list=Array.isArray(data?.cand)?data.cand:(Array.isArray(data?.candidatos)?data.candidatos:[]);
- return list.filter(c=>!["0",""].includes(String(val(c,"vap","votos","tv")))).sort((a,b)=>Number(val(b,"vap","votos","tv"))-Number(val(a,"vap","votos","tv")));
+ const found=[],seen=new Set();
+ function walk(x){
+  if(!x||typeof x!=="object")return;
+  if(Array.isArray(x)){x.forEach(walk);return;}
+  const hasName=x.nm!==undefined||x.nome!==undefined||x.ds!==undefined;
+  const hasVote=x.vap!==undefined||x.votos!==undefined||x.tv!==undefined;
+  if(hasName&&hasVote&&!seen.has(x)){seen.add(x);found.push(x);}
+  Object.values(x).forEach(walk);
+ }
+ walk(data);
+ return found.sort((a,b)=>{
+  const av=Number(String(val(a,"vap","votos","tv")).replace(",","."))||0;
+  const bv=Number(String(val(b,"vap","votos","tv")).replace(",","."))||0;
+  return bv-av;
+ });
 }
 function renderRows(el,list){
  if(!list.length){el.innerHTML='<div class="loading">Ainda não há dados de votação disponíveis.</div>';return}
