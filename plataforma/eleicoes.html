@@ -13,7 +13,14 @@ a{text-decoration:none;color:inherit}.wrap{width:min(1080px,calc(100% - 32px));m
 nav{height:68px;display:flex;align-items:center;background:rgba(245,245,247,.78);backdrop-filter:saturate(180%) blur(22px);border-bottom:1px solid rgba(0,0,0,.05);position:sticky;top:0;z-index:20}nav .wrap{display:flex;justify-content:space-between;align-items:center}.brand{display:flex;align-items:center;gap:11px;font-weight:650}.mark{width:30px;height:30px;border-radius:9px;background:#111;color:#fff;display:grid;place-items:center;font-weight:700}.back{font-size:13px;color:var(--muted)}
 main{padding:55px 0 80px}.hero{text-align:center;margin-bottom:35px}.eyebrow{font-size:12px;font-weight:750;letter-spacing:.09em;color:var(--blue);margin-bottom:12px}.hero h1{font-size:clamp(42px,7vw,70px);letter-spacing:-4px;line-height:.98;margin:0 0 15px}.hero p{color:var(--muted);font-size:16px;line-height:1.5;margin:0 auto;max-width:680px}
 .status{display:flex;align-items:center;justify-content:center;gap:9px;margin-top:18px;color:var(--muted);font-size:13px}.dot{width:9px;height:9px;border-radius:50%;background:#27ae60;box-shadow:0 0 0 5px rgba(39,174,96,.1)}
-.switch{display:flex;justify-content:center;gap:8px;margin:0 auto 25px;flex-wrap:wrap}.tab{border:1px solid var(--line);background:rgba(255,255,255,.7);border-radius:999px;padding:10px 16px;font-size:14px;font-weight:650;cursor:pointer}.tab.active{background:#111;color:#fff;border-color:#111}
+.switch{display:flex;justify-content:center;gap:8px;margin:0 auto 18px;flex-wrap:wrap}
+.state-picker{display:flex;gap:8px;overflow-x:auto;padding:4px 2px 12px;margin:0 auto 25px;scrollbar-width:thin;max-width:1080px}
+.state-btn{flex:0 0 auto;display:flex;align-items:center;gap:7px;border:1px solid var(--line);background:rgba(255,255,255,.72);border-radius:999px;padding:8px 11px;font-size:13px;font-weight:650;cursor:pointer;transition:.2s}
+.state-btn:hover{transform:translateY(-1px);background:#fff}
+.state-btn.active{background:#111;color:#fff;border-color:#111}
+.state-flag{width:22px;height:15px;object-fit:cover;border-radius:3px;box-shadow:0 1px 4px rgba(0,0,0,.14)}
+.state-picker-wrap{display:none}
+.state-picker-wrap.active{display:block}.tab{border:1px solid var(--line);background:rgba(255,255,255,.7);border-radius:999px;padding:10px 16px;font-size:14px;font-weight:650;cursor:pointer}.tab.active{background:#111;color:#fff;border-color:#111}
 .panel{display:none}.panel.active{display:block}.section-title{display:flex;justify-content:space-between;align-items:end;gap:15px;margin:28px 0 14px}.section-title h2{font-size:27px;letter-spacing:-1px;margin:0}.section-title span{font-size:12px;color:var(--muted)}
 .card{position:relative;background:var(--card);border:1px solid var(--line);border-radius:27px;box-shadow:var(--shadow);padding:25px;margin-bottom:17px;overflow:hidden;backdrop-filter:blur(20px)}.card:hover{box-shadow:0 27px 70px rgba(0,0,0,.11)}
 .summary{display:grid;grid-template-columns:repeat(3,1fr);gap:14px}
@@ -28,7 +35,7 @@ main{padding:55px 0 80px}.hero{text-align:center;margin-bottom:35px}.eyebrow{fon
 .rows{display:grid;gap:9px}.row{display:grid;grid-template-columns:46px minmax(0,1fr) 150px;gap:12px;align-items:center;padding:13px 14px;border-radius:16px;background:rgba(255,255,255,.62);border:1px solid rgba(0,0,0,.045)}.pos{font-size:13px;font-weight:750;color:var(--muted)}.cand{min-width:0}.cand strong{display:block;font-size:15px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.cand small{display:block;font-size:11px;color:var(--muted);margin-top:3px}.votes{text-align:right}.votes strong{font-size:15px}.votes small{display:block;color:var(--muted);font-size:11px;margin-top:2px}.bar{height:5px;border-radius:99px;background:#e7e7eb;overflow:hidden;margin-top:8px}.fill{height:100%;width:0;background:#111;border-radius:99px;transition:width .7s ease}
 .loading{padding:35px;text-align:center;color:var(--muted)}.error{padding:18px;border-radius:16px;background:#fff1f1;color:#a61b1b;font-size:13px;line-height:1.5}
 .source{margin-top:28px;text-align:center;color:#888;font-size:11px;line-height:1.5}.source a{text-decoration:underline;color:#666}
-@media(max-width:680px){main{padding-top:38px}.hero h1{letter-spacing:-2.5px}.summary{grid-template-columns:1fr}.row{grid-template-columns:32px minmax(0,1fr);}.votes{text-align:left;grid-column:2}.section-title{align-items:flex-start;flex-direction:column}.card{padding:18px;border-radius:23px}}
+@media(max-width:680px){.state-picker{justify-content:flex-start}.state-btn{font-size:12px;padding:7px 10px}.state-flag{width:20px;height:14px}main{padding-top:38px}.hero h1{letter-spacing:-2.5px}.summary{grid-template-columns:1fr}.row{grid-template-columns:32px minmax(0,1fr);}.votes{text-align:left;grid-column:2}.section-title{align-items:flex-start;flex-direction:column}.card{padding:18px;border-radius:23px}}
 </style>
 </head>
 <body>
@@ -37,13 +44,13 @@ main{padding:55px 0 80px}.hero{text-align:center;margin-bottom:35px}.eyebrow{fon
 <section class="hero">
 <div class="eyebrow">RESULTADOS ELEITORAIS</div>
 <h1>Eleições 2026</h1>
-<p>Apuração oficial em tempo real para Presidente da República e para os cargos estaduais de Goiás.</p>
+<p>Apuração oficial em tempo real para Presidente da República e para os cargos estaduais de todos os estados.</p>
 <div class="status"><i class="dot"></i><span id="updated">Conectando aos dados oficiais…</span></div>
 </section>
 
 <div class="switch">
 <button class="tab active" data-target="brasil">🇧🇷 Presidência</button>
-<button class="tab" data-target="goias">🟢 Goiás</button>
+<button class="tab" data-target="estado">🇧🇷 Estados</button>
 </div>
 
 <section class="panel active" id="brasil">
@@ -56,14 +63,15 @@ main{padding:55px 0 80px}.hero{text-align:center;margin-bottom:35px}.eyebrow{fon
 <div class="card"><div class="result-head"><h3>Classificação</h3><span>votos • percentual</span></div><div class="rows" id="brRows"><div class="loading">Carregando resultado…</div></div></div>
 </section>
 
-<section class="panel" id="goias">
-<div class="section-title"><h2>Goiás</h2><span>Eleição estadual</span></div>
+<section class="panel" id="estado">
+<div class="section-title"><h2 id="stateTitle">Goiás</h2><span id="stateSubtitle">Eleição estadual</span></div>
+<div class="state-picker-wrap active" id="statePickerWrap"><div class="state-picker" id="statePicker"></div></div>
 <div class="card"><div class="summary">
 <div class="metric ring-metric"><div class="ring" id="goRing"><span class="ring-value" id="goPct">—</span></div><div class="ring-copy"><span class="label">Urnas apuradas</span><strong id="goPst">—</strong><small id="goHora">—</small></div></div>
-<div class="metric"><span class="label">Abrangência</span><strong>GO</strong><small>Estado de Goiás</small></div>
+<div class="metric"><span class="label">Abrangência</span><strong id="stateUF">GO</strong><small id="stateName">Estado de Goiás</small></div>
 <div class="metric"><span class="label">Atualização</span><strong id="goDate">—</strong><small>fonte oficial</small></div>
 </div></div>
-<div id="goCards"><div class="loading">Carregando resultados de Goiás…</div></div>
+<div id="goCards"><div class="loading">Carregando resultados…</div></div>
 </section>
 
 <div class="source">Dados oficiais da Justiça Eleitoral. Atualização automática a cada 30 segundos.<br><a href="https://www.tse.jus.br/eleicoes/informacoes-tecnicas-sobre-a-divulgacao-de-resultados" target="_blank" rel="noopener">Documentação oficial de divulgação de resultados do TSE</a></div>
@@ -143,35 +151,69 @@ async function loadPresident(){
   renderRows(document.getElementById("brRows"),list);
  }catch(e){document.getElementById("brRows").innerHTML='<div class="error">Não foi possível carregar a apuração presidencial neste momento. O TSE pode estar atualizando a CDN. A página tentará novamente automaticamente.</div>'}
 }
+const states=[
+ ["AC","Acre","Acre"],["AL","Alagoas","Alagoas"],["AP","Amapá","Amapa"],["AM","Amazonas","Amazonas"],
+ ["BA","Bahia","Bahia"],["CE","Ceará","Ceara"],["DF","Distrito Federal","Distrito_Federal"],["ES","Espírito Santo","Espirito_Santo"],
+ ["GO","Goiás","Goias"],["MA","Maranhão","Maranhao"],["MT","Mato Grosso","Mato_Grosso"],["MS","Mato Grosso do Sul","Mato_Grosso_do_Sul"],
+ ["MG","Minas Gerais","Minas_Gerais"],["PA","Pará","Para"],["PB","Paraíba","Paraiba"],["PR","Paraná","Parana"],
+ ["PE","Pernambuco","Pernambuco"],["PI","Piauí","Piaui"],["RJ","Rio de Janeiro","Rio_de_Janeiro"],["RN","Rio Grande do Norte","Rio_Grande_do_Norte"],
+ ["RS","Rio Grande do Sul","Rio_Grande_do_Sul"],["RO","Rondônia","Rondonia"],["RR","Roraima","Roraima"],["SC","Santa Catarina","Santa_Catarina"],
+ ["SP","São Paulo","Sao_Paulo"],["SE","Sergipe","Sergipe"],["TO","Tocantins","Tocantins"]
+].map(([uf,name,flag])=>({uf,name,flag}));
 const cargos=[
- {id:"gov",code:"0003",title:"Governador de Goiás"},
+ {id:"gov",code:"0003",title:"Governador"},
  {id:"sen",code:"0005",title:"Senador"},
  {id:"fed",code:"0006",title:"Deputado Federal"},
  {id:"est",code:"0007",title:"Deputado Estadual"}
 ];
-async function loadGoias(){
- const out=document.getElementById("goCards"); out.innerHTML="";
+let selectedState="GO";
+function buildStatePicker(){
+ const picker=document.getElementById("statePicker");
+ picker.innerHTML="";
+ states.forEach(s=>{
+  const b=document.createElement("button"); b.className="state-btn"+(s.uf===selectedState?" active":""); b.type="button";
+  b.innerHTML='<img class="state-flag" alt="" src="https://commons.wikimedia.org/wiki/Special:FilePath/Flag_of_'+s.flag+'.svg"><span>'+s.uf+'</span>';
+  b.title=s.name;
+  b.addEventListener("click",()=>selectState(s.uf));
+  picker.appendChild(b);
+ });
+}
+function selectState(uf){
+ selectedState=uf;
+ document.querySelectorAll(".state-btn").forEach(b=>b.classList.toggle("active",b.querySelector("span")?.textContent===uf));
+ loadState(uf);
+}
+async function loadState(uf){
+ const s=states.find(x=>x.uf===uf)||states.find(x=>x.uf==="GO");
+ const out=document.getElementById("goCards"); out.innerHTML='<div class="loading">Carregando resultados de '+s.name+'…</div>';
+ document.getElementById("stateTitle").textContent=s.name;
+ document.getElementById("stateUF").textContent=s.uf;
+ document.getElementById("stateName").textContent=s.name;
+ document.getElementById("stateSubtitle").textContent=s.uf==="DF"?"Eleição distrital":"Eleição estadual";
+ document.getElementById("goPst").textContent="—"; document.getElementById("goPct").textContent="—";
+ document.getElementById("goHora").textContent="—"; document.getElementById("goDate").textContent="—";
+ document.getElementById("goRing").style.setProperty("--progress","0%");
  let ok=0;
  for(const c of cargos){
   try{
-   const d=await getJson(BASE+"/"+EST+"/dados/go/go-c"+c.code+"-e006259-u.json");
-   const m=meta(d), list=candidateRows(d);
-   ok++;
+   const d=await getJson(BASE+"/"+EST+"/dados/"+s.uf.toLowerCase()+"/"+s.uf.toLowerCase()+"-c"+c.code+"-e006259-u.json");
+   const m=meta(d), list=candidateRows(d); ok++;
    if(ok===1){
     document.getElementById("goPst").textContent=sectionsLabel(m);
     updateRing("goRing","goPct",m);
     document.getElementById("goHora").textContent=sectionsDetail(m)+(m.ht&&m.ht!=="0"?" • "+m.ht:"");
     document.getElementById("goDate").textContent=m.dt||"agora";
    }
+   const title=s.uf==="DF"&&c.id==="est"?"Deputado Distrital":c.title;
    const card=document.createElement("div"); card.className="card";
-   card.innerHTML='<div class="result-head"><h3>'+c.title+'</h3><span>'+list.length+' candidatos</span></div><div class="rows"></div>';
+   card.innerHTML='<div class="result-head"><h3>'+title+'</h3><span>'+list.length+' candidatos</span></div><div class="rows"></div>';
    out.appendChild(card); renderRows(card.querySelector(".rows"),list);
   }catch(e){}
  }
- if(!ok)out.innerHTML='<div class="error">Não foi possível carregar os resultados de Goiás neste momento. O TSE pode estar atualizando os arquivos oficiais. A página tentará novamente.</div>';
+ if(!ok)out.innerHTML='<div class="error">Não foi possível carregar os resultados de '+s.name+' neste momento. O TSE pode estar atualizando os arquivos oficiais. A página tentará novamente.</div>';
 }
 async function loadAll(){
- await Promise.allSettled([loadPresident(),loadGoias()]);
+ await Promise.allSettled([loadPresident(),loadState(selectedState)]);
  document.getElementById("updated").textContent="Dados consultados no TSE • "+new Date().toLocaleTimeString("pt-BR");
 }
 document.querySelectorAll(".tab").forEach(b=>b.addEventListener("click",()=>{
@@ -179,7 +221,7 @@ document.querySelectorAll(".tab").forEach(b=>b.addEventListener("click",()=>{
  document.querySelectorAll(".panel").forEach(x=>x.classList.remove("active"));
  b.classList.add("active");document.getElementById(b.dataset.target).classList.add("active");
 }));
-loadAll();setInterval(loadAll,30000);
+buildStatePicker(); loadAll(); setInterval(loadAll,30000);
 </script>
 </body>
 </html>
