@@ -183,7 +183,7 @@ const REGION_STATES={
  Sudeste:["ES","MG","RJ","SP"],
  Sul:["PR","RS","SC"]
 };
-const REGION_IDS={Norte:"mapNorte",Nordeste:"mapNordeste","Centro-Oeste:"mapCentro",Sudeste:"mapSudeste",Sul:"mapSul"};
+const REGION_IDS={Norte:"mapNorte",Nordeste:"mapNordeste","Centro-Oeste":"mapCentro",Sudeste:"mapSudeste",Sul:"mapSul"};
 async function loadRegionMap(){
  const all=Object.entries(REGION_STATES).map(async ([region,ufs])=>{
   const results=await Promise.allSettled(ufs.map(async uf=>{
