@@ -27,6 +27,9 @@ main{padding:55px 0 80px}.hero{text-align:center;margin-bottom:35px}.eyebrow{fon
 .brazil-map{width:min(760px,100%);height:auto;display:block}
 .state-shape{fill:rgba(255,255,255,.84);stroke:rgba(0,0,0,.16);stroke-width:.7;transition:fill .25s,transform .2s;cursor:pointer}
 .state-shape:hover{fill:#b9dcff;stroke:#0071e3;stroke-width:1.2}
+.region-label{font-size:18px;font-weight:800;fill:#111;text-anchor:middle;paint-order:stroke;stroke:rgba(255,255,255,.94);stroke-width:6px;stroke-linejoin:round;pointer-events:none}
+.region-label tspan{font-size:12px;font-weight:650;fill:#0071e3}
+.map-wrap{background:linear-gradient(180deg,rgba(255,255,255,.38),rgba(255,255,255,.08));border-radius:22px}
 .map-tooltip{position:absolute;display:none;pointer-events:none;padding:9px 12px;border-radius:12px;background:rgba(17,17,17,.92);color:#fff;font-size:12px;box-shadow:0 10px 28px rgba(0,0,0,.18);z-index:5}
 .region-tabs{display:grid;grid-template-columns:repeat(5,1fr);gap:8px;margin-top:15px}
 .region-tab{border:1px solid rgba(0,0,0,.07);background:rgba(255,255,255,.62);border-radius:16px;padding:12px 8px;text-align:center;cursor:pointer;transition:.2s}
@@ -210,7 +213,15 @@ function regionPct(r){const m=mapTotals[r]||{st:0,ts:0};return m.ts?m.st/m.ts*10
 async function drawRealMap(){
  if(mapGeoLoaded)return;
  const svg=d3.select("#brazilMap");
- const geo=await fetch("https://cdn.jsdelivr.net/gh/henriquemalvar/br-geojson@main/dist/estados.geojson",{cache:"no-store"}).then(r=>r.json());
+ const urls=[
+  "https://cdn.jsdelivr.net/gh/henriquemalvar/br-geojson@main/dist/estados.geojson",
+  "https://raw.githubusercontent.com/henriquemalvar/br-geojson/main/dist/estados.geojson"
+ ];
+ let geo=null;
+ for(const url of urls){
+  try{const rr=await fetch(url,{cache:"no-store"});if(rr.ok){geo=await rr.json();break;}}catch(e){}
+ }
+ if(!geo)throw new Error("Mapa geográfico indisponível");
  const projection=d3.geoMercator().fitExtent([[25,25],[875,875]],geo);
  const path=d3.geoPath(projection);
  svg.selectAll("path").data(geo.features).join("path")
@@ -226,7 +237,23 @@ async function drawRealMap(){
     tip.style.left=(event.offsetX+14)+"px";tip.style.top=(event.offsetY+14)+"px";
   })
   .on("mouseleave",()=>document.getElementById("mapTooltip").style.display="none");
+ const centers={
+  "Norte":[370,190],"Nordeste":[665,270],"Centro-Oeste":[465,430],
+  "Sudeste":[610,565],"Sul":[480,710]
+ };
+ const labels=svg.append("g").attr("class","region-labels");
+ Object.entries(centers).forEach(([name,[x,y]])=>{
+  const g=labels.append("text").attr("class","region-label").attr("x",x).attr("y",y);
+  g.append("tspan").text(name).attr("x",x).attr("dy",0);
+  g.append("tspan").text("—").attr("x",x).attr("dy",20).attr("class","region-value");
+ });
  mapGeoLoaded=true;
+}
+function paintRegionLabels(){
+ document.querySelectorAll(".region-label").forEach(el=>{
+  const name=el.querySelector("tspan")?.textContent, spans=el.querySelectorAll("tspan");
+  if(spans.length>1)spans[1].textContent=mapTotals[name]?.ts?pct(regionPct(name)):"—";
+ });
 }
 function paintRealMap(){
  document.querySelectorAll(".state-shape").forEach(el=>{
@@ -255,6 +282,7 @@ async function loadMap(){
  mapTotals=totals;
  await drawRealMap();
  paintRealMap();
+ paintRegionLabels();
  renderRegionTabs();
 }
 function buildStatePicker(){
