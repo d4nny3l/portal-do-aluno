@@ -103,15 +103,28 @@ function renderRows(el,list){
  }).join("");
 }
 function meta(data){
- return {pst:val(data,"pst","secoesTotalizadas"),valid:val(data,"vv","vnom","votosValidos"),ht:val(data,"ht","hora"),dt:val(data,"dt","data")};
+ const s=data?.s||{};
+ const v=data?.v||{};
+ const st=Number(String(val(s,"st","secoesTotalizadas")).replace(",","."))||0;
+ const ts=Number(String(val(s,"ts","totalSecoes")).replace(",","."))||0;
+ const valid=Number(String(val(v,"vv","vnom","votosValidos")).replace(",","."))||0;
+ return {st,ts,valid,ht:val(data,"ht","hora"),dt:val(data,"dt","data")};
+}
+function sectionsLabel(m){
+ if(!m.ts) return "—";
+ return fmt(m.st)+" / "+fmt(m.ts);
+}
+function sectionsDetail(m){
+ if(!m.ts) return "totalização em andamento";
+ return pct((m.st/m.ts)*100)+" das seções totalizadas";
 }
 async function loadPresident(){
  try{
   const d=await getJson(BASE+"/"+FED+"/dados/br/br-c0001-e006257-u.json");
   const m=meta(d), list=candidateRows(d);
-  document.getElementById("brPst").textContent=pct(m.pst);
+  document.getElementById("brPst").textContent=sectionsLabel(m);
   document.getElementById("brValidos").textContent=fmt(m.valid);
-  document.getElementById("brHora").textContent=m.ht&&m.ht!=="0"?"Até "+m.ht:"totalização em andamento";
+  document.getElementById("brHora").textContent=sectionsDetail(m)+(m.ht&&m.ht!=="0"?" • "+m.ht:"");
   document.getElementById("brDate").textContent=m.dt||"agora";
   renderRows(document.getElementById("brRows"),list);
  }catch(e){document.getElementById("brRows").innerHTML='<div class="error">Não foi possível carregar a apuração presidencial neste momento. O TSE pode estar atualizando a CDN. A página tentará novamente automaticamente.</div>'}
@@ -131,8 +144,8 @@ async function loadGoias(){
    const m=meta(d), list=candidateRows(d);
    ok++;
    if(ok===1){
-    document.getElementById("goPst").textContent=pct(m.pst);
-    document.getElementById("goHora").textContent=m.ht&&m.ht!=="0"?"Até "+m.ht:"totalização em andamento";
+    document.getElementById("goPst").textContent=sectionsLabel(m);
+    document.getElementById("goHora").textContent=sectionsDetail(m)+(m.ht&&m.ht!=="0"?" • "+m.ht:"");
     document.getElementById("goDate").textContent=m.dt||"agora";
    }
    const card=document.createElement("div"); card.className="card";
