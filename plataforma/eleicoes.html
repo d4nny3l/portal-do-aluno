@@ -272,15 +272,16 @@ async function drawRealMap(){
  const labels=svg.append("g").attr("class","region-labels");
  Object.entries(centers).forEach(([name,[x,y]])=>{
   const g=labels.append("text").attr("class","region-label").attr("x",x).attr("y",y);
-  g.append("tspan").text(name).attr("x",x).attr("dy",0);
-  g.append("tspan").text("—").attr("x",x).attr("dy",20).attr("class","region-value");
+  g.append("tspan").text(name).attr("x",x).attr("dy",0).attr("class","region-name");
+  g.append("tspan").text("—").attr("x",x).attr("dy",20).attr("class","region-value").attr("data-region",name);
  });
  mapGeoLoaded=true;
 }
 function paintRegionLabels(){
- document.querySelectorAll(".region-label").forEach(el=>{
-  const name=el.querySelector("tspan")?.textContent, spans=el.querySelectorAll("tspan");
-  if(spans.length>1)spans[1].textContent=mapTotals[name]?.ts?pct(regionPct(name)):"—";
+ document.querySelectorAll(".region-value").forEach(el=>{
+  const name=el.dataset.region;
+  const total=mapTotals[name];
+  el.textContent=total&&total.ts?pct(regionPct(name)):"—";
  });
 }
 function paintRealMap(){
