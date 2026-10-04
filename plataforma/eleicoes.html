@@ -24,6 +24,11 @@ main{padding:55px 0 80px}.hero{text-align:center;margin-bottom:35px}.eyebrow{fon
 .panel{display:none}
 .map-card{padding:22px}
 .map-wrap{position:relative;min-height:520px;display:flex;justify-content:center;align-items:center;overflow:hidden}
+.region-map-image{width:min(760px,94%);height:auto;display:block;filter:drop-shadow(0 18px 28px rgba(0,0,0,.10))}
+.region-badge{position:absolute;transform:translate(-50%,-50%);min-width:92px;padding:8px 12px;border-radius:14px;background:rgba(255,255,255,.94);border:1px solid rgba(0,0,0,.08);box-shadow:0 8px 24px rgba(0,0,0,.13);text-align:center;backdrop-filter:blur(10px);pointer-events:none}
+.region-badge strong{display:block;font-size:12px;font-weight:750}
+.region-badge span{display:block;margin-top:2px;font-size:17px;font-weight:800;color:var(--blue)}
+.region-norte{left:37%;top:31%}.region-nordeste{left:67%;top:38%}.region-centro{left:47%;top:53%}.region-sudeste{left:64%;top:67%}.region-sul{left:50%;top:83%}
 .brazil-map{width:min(760px,100%);height:auto;display:block}
 .state-shape{fill:rgba(255,255,255,.84);stroke:rgba(0,0,0,.16);stroke-width:.7;transition:fill .25s,transform .2s;cursor:pointer}
 .state-shape:hover{fill:#b9dcff;stroke:#0071e3;stroke-width:1.2}
@@ -83,7 +88,7 @@ main{padding:55px 0 80px}.hero{text-align:center;margin-bottom:35px}.eyebrow{fon
 <div class="section-title"><h2>Mapa da apuração</h2><span>Percentual de urnas apuradas por região</span></div>
 <div class="card map-card">
 <div class="map-wrap">
-<svg id="brazilMap" class="brazil-map" viewBox="0 0 900 900" role="img" aria-label="Mapa real dos estados do Brasil"></svg>
+<img class="region-map-image" src="https://upload.wikimedia.org/wikipedia/commons/e/e4/Regions_of_Brazil.svg" alt="Mapa das regiões do Brasil"><div class="region-badge region-norte"><strong>Norte</strong><span id="mapNorte">—</span></div><div class="region-badge region-nordeste"><strong>Nordeste</strong><span id="mapNordeste">—</span></div><div class="region-badge region-centro"><strong>Centro-Oeste</strong><span id="mapCentro">—</span></div><div class="region-badge region-sudeste"><strong>Sudeste</strong><span id="mapSudeste">—</span></div><div class="region-badge region-sul"><strong>Sul</strong><span id="mapSul">—</span></div>
 <div id="mapTooltip" class="map-tooltip"></div>
 </div>
 <div class="region-tabs" id="regionTabs"></div>
@@ -170,6 +175,29 @@ function updateRing(ringId,pctId,m){
  const ring=document.getElementById(ringId), label=document.getElementById(pctId);
  if(ring)ring.style.setProperty("--progress",p+"%");
  if(label)label.textContent=m.ts?pct(p):"—";
+}
+const REGION_STATES={
+ Norte:["AC","AP","AM","PA","RO","RR","TO"],
+ Nordeste:["AL","BA","CE","MA","PB","PE","PI","RN","SE"],
+ "Centro-Oeste":["DF","GO","MT","MS"],
+ Sudeste:["ES","MG","RJ","SP"],
+ Sul:["PR","RS","SC"]
+};
+const REGION_IDS={Norte:"mapNorte",Nordeste:"mapNordeste","Centro-Oeste:"mapCentro",Sudeste:"mapSudeste",Sul:"mapSul"};
+async function loadRegionMap(){
+ const all=Object.entries(REGION_STATES).map(async ([region,ufs])=>{
+  const results=await Promise.allSettled(ufs.map(async uf=>{
+   const d=await getJson(BASE+"/6257/dados/"+uf.toLowerCase()+"/"+uf.toLowerCase()+"-c0001-e006257-u.json");
+   const m=meta(d); return [m.st,m.ts];
+  }));
+  let st=0,ts=0;
+  results.forEach(r=>{if(r.status==="fulfilled"){st+=r.value[0];ts+=r.value[1]}});
+  const value=ts?pct(st/ts*100):"—";
+  const el=document.getElementById(REGION_IDS[region]); if(el)el.textContent=value;
+  return [region,st,ts,value];
+ });
+ const rows=await Promise.all(all);
+ document.getElementById("regionTabs").innerHTML=rows.map(([r,st,ts,v])=>'<div class="region-tab"><strong>'+r+'</strong><span>'+v+'</span><small>'+fmt(st)+' / '+fmt(ts)+' seções</small></div>').join("");
 }
 async function loadPresident(){
  try{
