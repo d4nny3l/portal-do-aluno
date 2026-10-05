@@ -52,7 +52,12 @@ main{padding:55px 0 80px}.hero{text-align:center;margin-bottom:35px}.eyebrow{fon
 .ring-copy strong{font-size:15px;letter-spacing:-.2px}
 .ring-copy small{margin-top:4px}.metric{padding:20px;border-radius:21px;background:rgba(255,255,255,.64);border:1px solid rgba(0,0,0,.06)}.metric .label{font-size:12px;color:var(--muted);display:block;margin-bottom:8px}.metric strong{font-size:25px;letter-spacing:-1px}.metric small{display:block;color:var(--muted);font-size:11px;margin-top:5px}
 .result-head{display:flex;align-items:center;justify-content:space-between;gap:15px;margin-bottom:17px}.result-head h3{margin:0;font-size:21px}.result-head span{font-size:12px;color:var(--muted)}
-.rows{display:grid;gap:9px}.row{display:grid;grid-template-columns:46px minmax(0,1fr) 150px;gap:12px;align-items:center;padding:13px 14px;border-radius:16px;background:rgba(255,255,255,.62);border:1px solid rgba(0,0,0,.045)}.pos{font-size:13px;font-weight:750;color:var(--muted)}.cand{min-width:0}.cand strong{display:block;font-size:15px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.cand small{display:block;font-size:11px;color:var(--muted);margin-top:3px}.votes{text-align:right}.votes strong{font-size:15px}.votes small{display:block;color:var(--muted);font-size:11px;margin-top:2px}.bar{height:5px;border-radius:99px;background:#e7e7eb;overflow:hidden;margin-top:8px}.fill{height:100%;width:0;background:#111;border-radius:99px;transition:width .7s ease}
+.rows{display:grid;gap:9px}.status-badge{display:inline-flex;align-items:center;margin-left:8px;padding:3px 8px;border-radius:999px;font-size:11px;font-weight:750;letter-spacing:.1px}
+.status-eleito{background:#dcfce7;color:#15803d}
+.status-turno{background:#dbeafe;color:#2563eb}
+.status-nao{background:#fee2e2;color:#dc2626}
+.section-title{display:flex;align-items:center;gap:9px;margin:18px 0 10px;font-size:14px;font-weight:750}
+.row{display:grid;grid-template-columns:46px minmax(0,1fr) 150px;gap:12px;align-items:center;padding:13px 14px;border-radius:16px;background:rgba(255,255,255,.62);border:1px solid rgba(0,0,0,.045)}.pos{font-size:13px;font-weight:750;color:var(--muted)}.cand{min-width:0}.cand strong{display:block;font-size:15px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.cand small{display:block;font-size:11px;color:var(--muted);margin-top:3px}.votes{text-align:right}.votes strong{font-size:15px}.votes small{display:block;color:var(--muted);font-size:11px;margin-top:2px}.bar{height:5px;border-radius:99px;background:#e7e7eb;overflow:hidden;margin-top:8px}.fill{height:100%;width:0;background:#111;border-radius:99px;transition:width .7s ease}
 .loading{padding:35px;text-align:center;color:var(--muted)}.error{padding:18px;border-radius:16px;background:#fff1f1;color:#a61b1b;font-size:13px;line-height:1.5}
 .source{margin-top:28px;text-align:center;color:#888;font-size:11px;line-height:1.5}.source a{text-decoration:underline;color:#666}
 @media(max-width:680px){.state-picker{justify-content:flex-start}.state-btn{font-size:12px;padding:7px 10px}.state-flag{width:20px;height:14px}main{padding-top:38px}.hero h1{letter-spacing:-2.5px}.summary{grid-template-columns:1fr}.row{grid-template-columns:32px minmax(0,1fr);}.votes{text-align:left;grid-column:2}.section-title{align-items:flex-start;flex-direction:column}.card{padding:18px;border-radius:23px}}
@@ -143,16 +148,30 @@ function candidateRows(data){
   return bv-av;
  });
 }
-function renderRows(el,list){
+function candidateStatus(c,i,list){
+ const e=String(val(c,"e","eleito","eleitoResultado")).toLowerCase();
+ if(e==="s"||e==="sim"||e==="true"||e==="1") return "eleito";
+ return "nao";
+}
+function renderRows(el,list,opts={}){
  if(!list.length){el.innerHTML='<div class="loading">Ainda não há dados de votação disponíveis.</div>';return}
- el.innerHTML=list.map((c,i)=>{
-   const name=val(c,"nm","nome","ds");
-   const party=val(c,"sgp","partido","sg");
-   const votes=val(c,"vap","votos","tv");
-   const per=val(c,"pvap","percentual","pct");
+ const statuses=list.map((c,i)=>candidateStatus(c,i,list));
+ const hasResultFlag=list.some(c=>val(c,"e","eleito","eleitoResultado")!==undefined);
+ let groups={eleito:[],turno:[],nao:[]};
+ list.forEach((c,i)=>{
+   let s=statuses[i];
+   if(opts.runoff && !hasResultFlag && i<2) s="turno";
+   groups[s].push([c,i]);
+ });
+ const badge=(s)=>s==="eleito"?'<span class="status-badge status-eleito">ELEITO</span>':s==="turno"?'<span class="status-badge status-turno">2º TURNO</span>':'<span class="status-badge status-nao">NÃO ELEITO</span>';
+ const row=([c,i],s)=> {
+   const name=val(c,"nm","nome","ds"), party=val(c,"sgp","partido","sg"), votes=val(c,"vap","votos","tv"), per=val(c,"pvap","percentual","pct");
    const p=Number(String(per).replace(",","."))||0;
-   return '<div class="row"><div class="pos">'+(i+1)+'º</div><div class="cand"><strong>'+name+'</strong><small>'+party+'</small><div class="bar"><div class="fill" style="width:'+Math.min(p,100)+'%"></div></div></div><div class="votes"><strong>'+fmt(votes)+'</strong><small>'+pct(per)+'</small></div></div>';
- }).join("");
+   return '<div class="row"><div class="pos">'+(i+1)+'º</div><div class="cand"><strong>'+name+'</strong>'+badge(s)+'<small>'+party+'</small><div class="bar"><div class="fill" style="width:'+Math.min(p,100)+'%"></div></div></div><div class="votes"><strong>'+fmt(votes)+'</strong><small>'+pct(per)+'</small></div></div>';
+ };
+ el.innerHTML=(groups.eleito.length?'<div class="section-title">Eleitos</div>'+groups.eleito.map(x=>row(x,"eleito")).join(""):"")+
+   (groups.turno.length?'<div class="section-title">Segundo turno</div>'+groups.turno.map(x=>row(x,"turno")).join(""):"")+
+   (groups.nao.length?'<div class="section-title">Demais candidatos</div>'+groups.nao.map(x=>row(x,"nao")).join(""):"");
 }
 function meta(data){
  const s=data?.s||{};
@@ -208,7 +227,7 @@ async function loadPresident(){
   document.getElementById("brValidos").textContent=fmt(m.valid);
   document.getElementById("brHora").textContent=sectionsDetail(m)+(m.ht&&m.ht!=="0"?" • "+m.ht:"");
   document.getElementById("brDate").textContent=m.dt||"agora";
-  renderRows(document.getElementById("brRows"),list);
+  renderRows(document.getElementById("brRows"),list,{runoff:true});
  }catch(e){document.getElementById("brRows").innerHTML='<div class="error">Não foi possível carregar a apuração presidencial neste momento. O TSE pode estar atualizando a CDN. A página tentará novamente automaticamente.</div>'}
 }
 const states=[
@@ -354,7 +373,7 @@ async function loadState(uf){
    const title=s.uf==="DF"&&c.id==="est"?"Deputado Distrital":c.title;
    const card=document.createElement("div"); card.className="card";
    card.innerHTML='<div class="result-head"><h3>'+title+'</h3><span>'+list.length+' candidatos</span></div><div class="rows"></div>';
-   out.appendChild(card); renderRows(card.querySelector(".rows"),list);
+   out.appendChild(card); renderRows(card.querySelector(".rows"),list,{runoff:c.code==="0003"});
   }catch(e){}
  }
  if(!ok)out.innerHTML='<div class="error">Não foi possível carregar os resultados de '+s.name+' neste momento. O TSE pode estar atualizando os arquivos oficiais. A página tentará novamente.</div>';
