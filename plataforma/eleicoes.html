@@ -56,7 +56,7 @@ main{padding:55px 0 80px}.hero{text-align:center;margin-bottom:35px}.eyebrow{fon
 .status-eleito{background:#dcfce7;color:#15803d}
 .status-turno{background:#dbeafe;color:#2563eb}
 .status-nao{background:#fee2e2;color:#dc2626}
-.section-title{display:flex;align-items:center;gap:9px;margin:18px 0 10px;font-size:14px;font-weight:750}
+.section-title{display:flex;align-items:center;gap:9px;margin:18px 0 10px;font-size:14px;font-weight:750}.section-nao{color:#dc2626}
 .row{display:grid;grid-template-columns:46px minmax(0,1fr) 150px;gap:12px;align-items:center;padding:13px 14px;border-radius:16px;background:rgba(255,255,255,.62);border:1px solid rgba(0,0,0,.045)}.pos{font-size:13px;font-weight:750;color:var(--muted)}.cand{min-width:0}.cand strong{display:block;font-size:15px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.cand small{display:block;font-size:11px;color:var(--muted);margin-top:3px}.votes{text-align:right}.votes strong{font-size:15px}.votes small{display:block;color:var(--muted);font-size:11px;margin-top:2px}.bar{height:5px;border-radius:99px;background:#e7e7eb;overflow:hidden;margin-top:8px}.fill{height:100%;width:0;background:#111;border-radius:99px;transition:width .7s ease}
 .loading{padding:35px;text-align:center;color:var(--muted)}.error{padding:18px;border-radius:16px;background:#fff1f1;color:#a61b1b;font-size:13px;line-height:1.5}
 .source{margin-top:28px;text-align:center;color:#888;font-size:11px;line-height:1.5}.source a{text-decoration:underline;color:#666}
@@ -148,22 +148,21 @@ function candidateRows(data){
   return bv-av;
  });
 }
-function candidateStatus(c,i,list){
- const e=String(val(c,"e","eleito","eleitoResultado")).toLowerCase();
- if(e==="s"||e==="sim"||e==="true"||e==="1") return "eleito";
- return "nao";
+function candidateStatus(c){
+ const st=String(val(c,"st","status")).trim().toLowerCase();
+ if(st.startsWith("eleito")) return "eleito";
+ if(st.includes("turno")) return "turno";
+ if(st==="não eleito"||st==="nao eleito") return "nao";
+ return null;
 }
-function renderRows(el,list,opts={}){
+function renderRows(el,list){
  if(!list.length){el.innerHTML='<div class="loading">Ainda não há dados de votação disponíveis.</div>';return}
- const statuses=list.map((c,i)=>candidateStatus(c,i,list));
- const hasResultFlag=list.some(c=>val(c,"e","eleito","eleitoResultado")!==undefined);
- let groups={eleito:[],turno:[],nao:[]};
+ const groups={eleito:[],turno:[],nao:[],pending:[]};
  list.forEach((c,i)=>{
-   let s=statuses[i];
-   if(opts.runoff && !hasResultFlag && i<2) s="turno";
-   groups[s].push([c,i]);
+   const s=candidateStatus(c);
+   (groups[s||"pending"]).push([c,i]);
  });
- const badge=(s)=>s==="eleito"?'<span class="status-badge status-eleito">ELEITO</span>':s==="turno"?'<span class="status-badge status-turno">2º TURNO</span>':'<span class="status-badge status-nao">NÃO ELEITO</span>';
+ const badge=(s)=>s==="eleito"?'<span class="status-badge status-eleito">ELEITO</span>':s==="turno"?'<span class="status-badge status-turno">2º TURNO</span>':s==="nao"?'<span class="status-badge status-nao">NÃO ELEITO</span>':"";
  const row=([c,i],s)=> {
    const name=val(c,"nm","nome","ds"), party=val(c,"sgp","partido","sg"), votes=val(c,"vap","votos","tv"), per=val(c,"pvap","percentual","pct");
    const p=Number(String(per).replace(",","."))||0;
@@ -171,7 +170,8 @@ function renderRows(el,list,opts={}){
  };
  el.innerHTML=(groups.eleito.length?'<div class="section-title">Eleitos</div>'+groups.eleito.map(x=>row(x,"eleito")).join(""):"")+
    (groups.turno.length?'<div class="section-title">Segundo turno</div>'+groups.turno.map(x=>row(x,"turno")).join(""):"")+
-   (groups.nao.length?'<div class="section-title">Demais candidatos</div>'+groups.nao.map(x=>row(x,"nao")).join(""):"");
+   (groups.pending.length?'<div class="section-title">Em apuração</div>'+groups.pending.map(x=>row(x,null)).join(""):"")+
+   (groups.nao.length?'<div class="section-title section-nao">Não eleitos</div>'+groups.nao.map(x=>row(x,"nao")).join(""):"");
 }
 function meta(data){
  const s=data?.s||{};
