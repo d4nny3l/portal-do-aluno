@@ -327,8 +327,29 @@ function extrairAno(data){
 
 function formatarNumero(valor,casas){
     if(valor===null||valor===undefined||valor==='') return '—';
-    const n=Number(valor);
+    const n=converterNota(valor);
     return Number.isFinite(n)?n.toFixed(casas||1).replace('.',','):'—';
+}
+
+function converterNota(valor){
+    if(valor===null||valor===undefined||valor==='') return null;
+    if(typeof valor==='number') return Number.isFinite(valor)?valor:null;
+
+    let texto=String(valor).trim().replace(/\s/g,'');
+    if(!texto) return null;
+
+    /*
+      Aceita notas vindas da planilha/API como:
+      6,5 | 6.5 | "6,50" | "6.50"
+    */
+    if(texto.includes(',') && texto.includes('.')){
+        texto=texto.replace(/\./g,'').replace(',','.');
+    }else{
+        texto=texto.replace(',','.');
+    }
+
+    const numero=Number(texto);
+    return Number.isFinite(numero)?numero:null;
 }
 
 function normalizarAvaliacoes(valor){
@@ -541,10 +562,10 @@ function mostrarResultadoFinal(aluno,quantidade){
 
     for(let i=1;i<=quantidade;i++){
         const d=obterBimestre(aluno,i);
-        const vazio=(d.media===null||d.media===undefined||d.media==='');
-        const media=vazio?null:Number(d.media);
+        const media=converterNota(d.media);
+        const vazio=(media===null);
 
-        if(media!==null && Number.isFinite(media)){
+        if(media!==null){
             soma+=media;
             bimestresComMedia++;
         }
