@@ -83,6 +83,133 @@ footer{text-align:center;margin-top:30px;color:#94a3b8;font-size:14px}
 @media(max-width:600px){
  .top-platform{width:38px;height:38px;top:-2px;right:0;border-radius:12px}
 }
+
+/* Resultado final — aprovação */
+.aprovacao-box{
+  margin-top:20px;
+  padding:22px;
+  border-radius:16px;
+  background:linear-gradient(135deg,#f0fdf4,#ecfdf5);
+  border:1px solid #bbf7d0;
+}
+.aprovacao-box.aprovado{
+  background:linear-gradient(135deg,#f0fdf4,#ffffff);
+  border-color:#86efac;
+}
+.aprovacao-box.atencao{
+  background:linear-gradient(135deg,#eff6ff,#ffffff);
+  border-color:#bfdbfe;
+}
+.aprovacao-box .titulo{
+  font-weight:800;
+  color:#166534;
+  font-size:18px;
+  margin-bottom:8px;
+}
+.aprovacao-box .descricao{
+  color:#475569;
+  line-height:1.5;
+  font-size:14px;
+}
+.aprovacao-numeros{
+  display:grid;
+  grid-template-columns:repeat(3,1fr);
+  gap:10px;
+  margin-top:16px;
+}
+.aprovacao-numeros .mini-card{
+  background:rgba(255,255,255,.82);
+  border:1px solid rgba(22,101,52,.09);
+  border-radius:12px;
+  padding:14px 10px;
+  text-align:center;
+}
+.aprovacao-numeros .mini-card span{
+  display:block;
+  color:#64748b;
+  font-size:12px;
+  margin-bottom:5px;
+}
+.aprovacao-numeros .mini-card strong{
+  font-size:20px;
+  color:#172554;
+}
+.mensagem-aprovado{
+  display:inline-flex;
+  align-items:center;
+  justify-content:center;
+  gap:7px;
+  margin-top:15px;
+  padding:11px 15px;
+  border-radius:10px;
+  background:#166534;
+  color:#fff;
+  font-weight:700;
+  text-decoration:none;
+  cursor:pointer;
+  border:0;
+  font-size:14px;
+}
+.mensagem-aprovado:hover{background:#14532d}
+.js-confete{
+  position:relative;
+  width:100%;
+  height:105px;
+  margin-top:8px;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  overflow:hidden;
+}
+.js-confete canvas{
+  position:absolute;
+  inset:0;
+  width:100%;
+  height:100%;
+  pointer-events:none;
+}
+.modal-aprovado{
+  display:none;
+  position:fixed;
+  inset:0;
+  z-index:9999;
+  align-items:center;
+  justify-content:center;
+  padding:20px;
+  background:rgba(15,23,42,.48);
+  backdrop-filter:blur(6px);
+}
+.modal-aprovado.aberto{display:flex}
+.modal-aprovado-card{
+  width:min(460px,100%);
+  background:#fff;
+  border-radius:22px;
+  padding:28px 24px;
+  text-align:center;
+  box-shadow:0 25px 80px rgba(0,0,0,.22);
+  animation:aprovadoEntrada .35s ease;
+}
+.modal-aprovado-card .emoji{font-size:42px;margin-bottom:10px}
+.modal-aprovado-card h4{font-size:23px;color:#172554;margin-bottom:10px}
+.modal-aprovado-card p{color:#475569;line-height:1.6;font-size:15px}
+.modal-fechar{
+  margin-top:18px;
+  border:0;
+  padding:10px 16px;
+  border-radius:10px;
+  background:#172554;
+  color:#fff;
+  font-weight:700;
+  cursor:pointer;
+}
+@keyframes aprovadoEntrada{
+  from{opacity:0;transform:translateY(12px) scale(.97)}
+  to{opacity:1;transform:translateY(0) scale(1)}
+}
+@media(max-width:600px){
+  .aprovacao-numeros{grid-template-columns:1fr}
+  .js-confete{height:90px}
+}
 </style>
 <style id="salta-grid-global">
 /* SALTA — identidade visual global */
@@ -150,10 +277,19 @@ body::before{
 <strong id="mediaAnual">—</strong>
 <p id="textoMediaFinal" style="margin-top:8px;font-size:13px;color:#64748b">—</p>
 </div>
+<div id="blocoAprovacao"></div>
 </div>
 </div>
 </section>
 
+<div class="modal-aprovado" id="modalAprovado" role="dialog" aria-modal="true" aria-labelledby="tituloModalAprovado">
+  <div class="modal-aprovado-card">
+    <div class="emoji">🎉</div>
+    <h4 id="tituloModalAprovado">Parabéns pela aprovação!</h4>
+    <p>Você faz parte do seleto grupo que já está aprovado. Seu esforço é muito valorizado! Continue se dedicando e se torne uma excelente pessoa!</p>
+    <button class="modal-fechar" type="button" onclick="fecharMensagemAprovacao()">Fechar</button>
+  </div>
+</div>
 <footer id="rodape">Área do Aluno<small>Este domínio adota medidas de proteção de dados alinhadas aos princípios da LGPD. As informações escolares de cada aluno são disponibilizadas mediante código individual de consulta; não compartilhe seu código.</small></footer>
 </div>
 
@@ -270,20 +406,81 @@ function encontrarBimestreVigente(aluno,quantidade){
     return 1;
 }
 
+
+function normalizarTexto(valor){
+    return String(valor||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toUpperCase().trim();
+}
+
+function identificarRegraAprovacao(turma){
+    const t=normalizarTexto(turma);
+    if(t.includes('EJA')) return {tipo:'EJA',minimo:12,quantidade:2};
+    if(/\b1\s?[AB]\b/.test(t)) return {tipo:'GOIAS',minimo:24,quantidade:4};
+    const paises=['AFEGANISTAO','AFRICA DO SUL','ALBANIA','ALEMANHA','ANDORRA','ANGOLA','ANTIGUA E BARBUDA','ARABIA SAUDITA','ARGELIA','ARGENTINA','ARMENIA','AUSTRALIA','AUSTRIA','AZERBAIJAO','BAHAMAS','BAHREIN','BANGLADESH','BARBADOS','BELARUS','BELGICA','BELIZE','BENIM','BOLIVIA','BOSNIA E HERZEGOVINA','BOTSUANA','BRASIL','BRUNEI','BULGARIA','BURKINA FASO','BURUNDI','BUTAO','CABO VERDE','CAMBOJA','CAMAROES','CANADA','CATAR','CAZAQUISTAO','CHADE','CHILE','CHINA','CHIPRE','COLOMBIA','COMORES','CONGO','COREIA DO NORTE','COREIA DO SUL','COSTA DO MARFIM','COSTA RICA','CROACIA','CUBA','DINAMARCA','DJIBUTI','DOMINICA','EGITO','EL SALVADOR','EMIRADOS ARABES UNIDOS','EQUADOR','ERITREIA','ESLOVAQUIA','ESLOVENIA','ESPANHA','ESTADOS UNIDOS','ESTONIA','ESWATINI','ETIOPIA','FIJI','FILIPINAS','FINLANDIA','FRANCA','GABAO','GAMBIA','GANA','GEORGIA','GRECIA','GRENADA','GUATEMALA','GUIANA','GUINE','GUINE BISSAU','GUINE EQUATORIAL','HAITI','HONDURAS','HUNGRIA','IEMEN','ILHAS MARSHALL','ILHAS SALOMAO','INDIA','INDONESIA','IRA','IRAQUE','IRLANDA','ISLANDIA','ISRAEL','ITALIA','JAMAICA','JAPAO','JORDANIA','KIRIBATI','KUWAIT','LAOS','LESOTO','LETONIA','LIBANO','LIBERIA','LIBIA','LIECHTENSTEIN','LITUANIA','LUXEMBURGO','MACEDONIA DO NORTE','MADAGASCAR','MALASIA','MALAWI','MALDIVAS','MALI','MALTA','MARROCOS','MAURICIO','MAURITANIA','MEXICO','MICRONESIA','MOCAMBIQUE','MOLDAVIA','MONACO','MONGOLIA','MONTENEGRO','MYANMAR','NAMIBIA','NAURU','NEPAL','NICARAGUA','NIGER','NIGERIA','NORUEGA','NOVA ZELANDIA','OMA','PAISES BAIXOS','PALAU','PANAMA','PAPUA NOVA GUINE','PAQUISTAO','PARAGUAI','PERU','POLONIA','PORTUGAL','QUENIA','QUIRGUISTAO','REINO UNIDO','REPUBLICA CENTRO AFRICANA','REPUBLICA DEMOCRATICA DO CONGO','REPUBLICA DOMINICANA','ROMENIA','RUANDA','RUSSIA','SAMOA','SAN MARINO','SANTA LUCIA','SAO CRISTOVAO E NEVIS','SAO MARINHO','SAO TOME E PRINCIPE','SAO VICENTE E GRANADINAS','SEICHELES','SENEGAL','SERRA LEOA','SERVIA','SINGAPURA','SIRIA','SOMALIA','SRI LANKA','SUDAO','SUDESAO DO SUL','SURINAME','SUECIA','SUICA','TAILANDIA','TAJIQUISTAO','TANZANIA','TIMOR LESTE','TOGO','TONGA','TRINDADE E TOBAGO','TUNISIA','TURCOMENISTAO','TUVALU','UCRANIA','UGANDA','URUGUAI','UZBEQUISTAO','VANUATU','VATICANO','VENEZUELA','VIETNA','ZAMBIA','ZIMBABUE'];
+    const ehDF=paises.some(p=>t===p || t.includes(p));
+    if(ehDF) return {tipo:'DF',minimo:20,quantidade:4};
+    return {tipo:'GOIAS',minimo:24,quantidade:4};
+}
+
+function formatarTipoRegra(tipo){
+    return tipo==='DF'?'Distrito Federal':(tipo==='EJA'?'EJA':'Goiás');
+}
+
+function fecharMensagemAprovacao(){
+    const modal=document.getElementById('modalAprovado');
+    if(modal) modal.classList.remove('aberto');
+}
+
+function abrirMensagemAprovacao(){
+    const modal=document.getElementById('modalAprovado');
+    if(modal) modal.classList.add('aberto');
+}
+
+function soltarConfete(){
+    const area=document.querySelector('.js-confete');
+    if(!area) return;
+    const cv=area.querySelector('canvas');
+    if(!cv) return;
+    const ctx=cv.getContext('2d');
+    cv.width=area.clientWidth; cv.height=area.clientHeight;
+    let papeis=[];
+    const cores=['#ffffff','#ff4d6a','#a1a1aa','#ffd7a1'];
+    for(let i=0;i<90;i++) papeis.push({x:cv.width/2,y:cv.height/2,vx:(Math.random()-.5)*11,vy:(Math.random()*-9)-3,giro:Math.random()*6,dGiro:(Math.random()-.5)*.3,cor:cores[(Math.random()*cores.length)|0],l:4+Math.random()*5,a:7+Math.random()*7});
+    function rodar(){
+        ctx.clearRect(0,0,cv.width,cv.height);
+        let vivos=0;
+        papeis.forEach(p=>{
+            p.vy+=.32; p.vx*=.995; p.x+=p.vx; p.y+=p.vy; p.giro+=p.dGiro;
+            if(p.y<cv.height+30) vivos++;
+            ctx.save(); ctx.translate(p.x,p.y); ctx.rotate(p.giro); ctx.fillStyle=p.cor; ctx.fillRect(-p.l/2,-p.a/2,p.l,p.a); ctx.restore();
+        });
+        if(vivos) requestAnimationFrame(rodar);
+    }
+    rodar();
+}
+
 function mostrarResultadoFinal(aluno,quantidade){
+    const regra=identificarRegraAprovacao(aluno.turma);
     const tabela=document.getElementById('tabelaResultadoFinal');
+    const bloco=document.getElementById('blocoAprovacao');
     tabela.innerHTML='';
+    bloco.innerHTML='';
+
     let soma=0;
+    let concluidos=0;
+    let restantes=0;
 
     for(let i=1;i<=quantidade;i++){
         const d=obterBimestre(aluno,i);
-        const media=(d.media===null||d.media===undefined||d.media==='')?0:Number(d.media);
+        const vazio=(d.media===null||d.media===undefined||d.media==='');
+        const media=vazio?0:Number(d.media);
 
         if(Number.isFinite(media)) soma+=media;
+        if(d.status==='concluido') concluidos++;
+        else restantes++;
 
         tabela.innerHTML+=
             '<tr><td>'+i+'º Bimestre</td><td class="nota">'+
-            ((d.media===null||d.media===undefined||d.media==='')?'—':formatarNumero(d.media,1))+
+            (vazio?'—':formatarNumero(d.media,1))+
             '</td></tr>';
     }
 
@@ -291,9 +488,42 @@ function mostrarResultadoFinal(aluno,quantidade){
     document.getElementById('mediaAnual').textContent=formatarNumero(final,2);
 
     document.getElementById('textoMediaFinal').textContent=
-        quantidade===2
+        regra.tipo==='EJA'
         ?'Cálculo considerando os 2 bimestres da EJA.'
-        :'Cálculo considerando os 4 bimestres do Ensino Regular.';
+        :'Cálculo considerando os 4 bimestres do ensino regular.';
+
+    const falta=Math.max(0,regra.minimo-soma);
+    const mediaRestante=restantes>0 ? Math.max(0,falta/restantes) : falta;
+
+    if(soma>=regra.minimo){
+        bloco.innerHTML=
+            '<div class="aprovacao-box aprovado">'+
+                '<div class="titulo">🎉 Parabéns! Você já está aprovado!</div>'+
+                '<div class="descricao">Você faz parte do seleto grupo que já está aprovado. Seu esforço até aqui é muito valorizado!</div>'+
+                '<div class="aprovacao-numeros">'+
+                    '<div class="mini-card"><span>Sua soma</span><strong>'+formatarNumero(soma,1)+'</strong></div>'+
+                    '<div class="mini-card"><span>Mínimo necessário</span><strong>'+formatarNumero(regra.minimo,0)+'</strong></div>'+
+                    '<div class="mini-card"><span>Acima do mínimo</span><strong>+'+formatarNumero(soma-regra.minimo,1)+'</strong></div>'+
+                '</div>'+
+                '<div class="js-confete" aria-hidden="true"><canvas></canvas></div>'+
+                '<button class="mensagem-aprovado" type="button" onclick="abrirMensagemAprovacao()">💙 Ver mensagem de parabéns</button>'+
+            '</div>';
+        setTimeout(soltarConfete,120);
+    }else{
+        const fraseRestante=restantes>0
+            ?'Nos '+restantes+' bimestre(s) restante(s), você precisa de aproximadamente <strong>'+formatarNumero(mediaRestante,1)+'</strong> ponto(s) por bimestre para alcançar a aprovação.'
+            :'Os bimestres já foram concluídos e a soma ainda não alcançou o mínimo necessário.';
+        bloco.innerHTML=
+            '<div class="aprovacao-box atencao">'+
+                '<div class="titulo" style="color:#1d4ed8">📌 Caminho para a aprovação</div>'+
+                '<div class="descricao">Para '+formatarTipoRegra(regra.tipo)+', a soma necessária para aprovação é <strong>'+formatarNumero(regra.minimo,0)+'</strong> pontos. Você já acumulou <strong>'+formatarNumero(soma,1)+'</strong> e ainda precisa de <strong>'+formatarNumero(falta,1)+'</strong> ponto(s). '+fraseRestante+'</div>'+
+                '<div class="aprovacao-numeros">'+
+                    '<div class="mini-card"><span>Sua soma</span><strong>'+formatarNumero(soma,1)+'</strong></div>'+
+                    '<div class="mini-card"><span>Mínimo necessário</span><strong>'+formatarNumero(regra.minimo,0)+'</strong></div>'+
+                    '<div class="mini-card"><span>Pontos que faltam</span><strong>'+formatarNumero(falta,1)+'</strong></div>'+
+                '</div>'+
+            '</div>';
+    }
 }
 
 async function consultarAluno(){
@@ -365,6 +595,12 @@ function mostrarAba(id,botao){
 
 document.getElementById('codigo').addEventListener('keydown',function(event){
     if(event.key==='Enter')consultarAluno();
+});
+document.getElementById('modalAprovado').addEventListener('click',function(event){
+    if(event.target===this) fecharMensagemAprovacao();
+});
+document.addEventListener('keydown',function(event){
+    if(event.key==='Escape') fecharMensagemAprovacao();
 });
 </script>
 </body>
