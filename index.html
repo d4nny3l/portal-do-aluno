@@ -180,7 +180,22 @@ footer{text-align:center;margin-top:30px;color:#94a3b8;font-size:14px}
   backdrop-filter:blur(6px);
 }
 .modal-aprovado.aberto{display:flex}
+.modal-aprovado-confete{
+  position:absolute;
+  inset:0;
+  width:100%;
+  height:100%;
+  pointer-events:none;
+}
+.modal-aprovado-confete canvas{
+  position:absolute;
+  inset:0;
+  width:100%;
+  height:100%;
+}
 .modal-aprovado-card{
+  position:relative;
+  z-index:2;
   width:min(460px,100%);
   background:#fff;
   border-radius:22px;
@@ -283,6 +298,7 @@ body::before{
 </section>
 
 <div class="modal-aprovado" id="modalAprovado" role="dialog" aria-modal="true" aria-labelledby="tituloModalAprovado">
+  <div class="modal-aprovado-confete" aria-hidden="true"><canvas></canvas></div>
   <div class="modal-aprovado-card">
     <div class="emoji">🎉</div>
     <h4 id="tituloModalAprovado">Parabéns pela aprovação!</h4>
@@ -432,31 +448,76 @@ function fecharMensagemAprovacao(){
 
 function abrirMensagemAprovacao(){
     const modal=document.getElementById('modalAprovado');
-    if(modal) modal.classList.add('aberto');
+    if(modal){
+        modal.classList.add('aberto');
+        requestAnimationFrame(()=>setTimeout(soltarConfeteModal,80));
+    }
 }
 
-function soltarConfete(){
-    const area=document.querySelector('.js-confete');
+function soltarConfeteModal(){
+    const area=document.querySelector('.modal-aprovado-confete');
     if(!area) return;
     const cv=area.querySelector('canvas');
     if(!cv) return;
     const ctx=cv.getContext('2d');
-    cv.width=area.clientWidth; cv.height=area.clientHeight;
+    cv.width=area.clientWidth;
+    cv.height=area.clientHeight;
+
     let papeis=[];
+    let id=null;
     const cores=['#ffffff','#ff4d6a','#a1a1aa','#ffd7a1'];
-    for(let i=0;i<90;i++) papeis.push({x:cv.width/2,y:cv.height/2,vx:(Math.random()-.5)*11,vy:(Math.random()*-9)-3,giro:Math.random()*6,dGiro:(Math.random()-.5)*.3,cor:cores[(Math.random()*cores.length)|0],l:4+Math.random()*5,a:7+Math.random()*7});
+
+    for(let i=0;i<140;i++){
+        papeis.push({
+            x:cv.width/2,
+            y:cv.height*0.38,
+            vx:(Math.random()-.5)*16,
+            vy:(Math.random()*-11)-4,
+            giro:Math.random()*6,
+            dGiro:(Math.random()-.5)*.3,
+            cor:cores[(Math.random()*cores.length)|0],
+            l:4+Math.random()*5,
+            a:7+Math.random()*7
+        });
+    }
+
     function rodar(){
         ctx.clearRect(0,0,cv.width,cv.height);
         let vivos=0;
+
         papeis.forEach(p=>{
-            p.vy+=.32; p.vx*=.995; p.x+=p.vx; p.y+=p.vy; p.giro+=p.dGiro;
-            if(p.y<cv.height+30) vivos++;
-            ctx.save(); ctx.translate(p.x,p.y); ctx.rotate(p.giro); ctx.fillStyle=p.cor; ctx.fillRect(-p.l/2,-p.a/2,p.l,p.a); ctx.restore();
+            p.vy+=.32;
+            p.vx*=.995;
+            p.x+=p.vx;
+            p.y+=p.vy;
+            p.giro+=p.dGiro;
+
+            if(p.y<cv.height+40) vivos++;
+
+            ctx.save();
+            ctx.translate(p.x,p.y);
+            ctx.rotate(p.giro);
+            ctx.fillStyle=p.cor;
+            ctx.fillRect(-p.l/2,-p.a/2,p.l,p.a);
+            ctx.restore();
         });
-        if(vivos) requestAnimationFrame(rodar);
+
+        if(vivos){
+            id=requestAnimationFrame(rodar);
+        }else{
+            id=null;
+            ctx.clearRect(0,0,cv.width,cv.height);
+        }
     }
+
     rodar();
+    return function(){
+        if(id) cancelAnimationFrame(id);
+        id=null;
+        ctx.clearRect(0,0,cv.width,cv.height);
+    };
 }
+
 
 function mostrarResultadoFinal(aluno,quantidade){
     const regra=identificarRegraAprovacao(aluno.turma);
@@ -505,10 +566,8 @@ function mostrarResultadoFinal(aluno,quantidade){
                     '<div class="mini-card"><span>Mínimo necessário</span><strong>'+formatarNumero(regra.minimo,0)+'</strong></div>'+
                     '<div class="mini-card"><span>Acima do mínimo</span><strong>+'+formatarNumero(soma-regra.minimo,1)+'</strong></div>'+
                 '</div>'+
-                '<div class="js-confete" aria-hidden="true"><canvas></canvas></div>'+
                 '<button class="mensagem-aprovado" type="button" onclick="abrirMensagemAprovacao()">💙 Ver mensagem de parabéns</button>'+
             '</div>';
-        setTimeout(soltarConfete,120);
     }else{
         const fraseRestante=restantes>0
             ?'Nos '+restantes+' bimestre(s) restante(s), você precisa de aproximadamente <strong>'+formatarNumero(mediaRestante,1)+'</strong> ponto(s) por bimestre para alcançar a aprovação.'
