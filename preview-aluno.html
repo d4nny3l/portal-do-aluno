@@ -103,7 +103,7 @@ h1{font-size:clamp(28px,4vw,36px);line-height:1.1;letter-spacing:-1.3px;margin:0
 .final-head{display:flex;align-items:center;gap:12px;margin-bottom:18px}
 .final-icon{width:42px;height:42px;border-radius:14px;display:grid;place-items:center;background:var(--good-soft);color:var(--good);font-size:20px}
 .final-head h3{margin-bottom:4px}
-.final-head p{font-size:11px;color:var(--muted);margin:0}
+.final-head p{font-size:11px;color:var(--muted);margin:0}.grade-method-note{margin:0 0 16px;color:var(--muted);font-size:11px;line-height:1.5}
 .goal-labels{display:flex;justify-content:space-between;gap:8px;color:var(--muted);font-size:11px;margin-bottom:9px}
 .goal-labels strong{color:var(--ink);font-variant-numeric:tabular-nums}
 .goal-track{height:10px;background:var(--chip);border-radius:999px;overflow:hidden}
@@ -244,6 +244,7 @@ td:last-child,th:last-child{text-align:right}
    </article>
 
    <article class="panel" id="resultado"><div class="final-head"><div class="final-icon">◎</div><div><h3>Caminho para a aprovação</h3><p id="goalSubtitle">Um resumo simples da sua meta.</p></div></div>
+    <p class="grade-method-note" id="gradeMethodNote">O Worker calcula o critério mínimo de cada turma automaticamente com os dados acadêmicos do D1. A média final considera 4 bimestres no ensino regular ou 2 na EJA.</p>
     <div class="goal-labels"><span>Soma acumulada</span><strong id="goalTargetLabel">— / — pontos</strong></div>
     <div class="goal-track"><span id="goalProgress" style="width:0%"></span></div>
     <div class="goal-nums"><div class="goal-num"><span>Você já acumulou</span><strong id="goalAccumulated">—</strong></div><div class="goal-num"><span>Faltam para a meta</span><strong id="goalMissing">—</strong></div></div>
@@ -273,10 +274,9 @@ td:last-child,th:last-child{text-align:right}
 
 <script>
 const STUDENT_API_URL='https://portal-aluno-api.dannyel-moises.workers.dev';
-const COUNTRY_CLASS_NAMES=["AFEGANISTAO","AFRICA DO SUL","ALBANIA","ALEMANHA","ANDORRA","ANGOLA","ANTIGUA E BARBUDA","ARABIA SAUDITA","ARGELIA","ARGENTINA","ARMENIA","AUSTRALIA","AUSTRIA","AZERBAIJAO","BAHAMAS","BAHREIN","BANGLADESH","BARBADOS","BELARUS","BELGICA","BELIZE","BENIM","BOLIVIA","BOSNIA E HERZEGOVINA","BOTSUANA","BRASIL","BRUNEI","BULGARIA","BURKINA FASO","BURUNDI","BUTAO","CABO VERDE","CAMBOJA","CAMAROES","CANADA","CATAR","CAZAQUISTAO","CHADE","CHILE","CHINA","CHIPRE","COLOMBIA","COMORES","CONGO","COREIA DO NORTE","COREIA DO SUL","COSTA DO MARFIM","COSTA RICA","CROACIA","CUBA","DINAMARCA","DJIBUTI","DOMINICA","EGITO","EL SALVADOR","EMIRADOS ARABES UNIDOS","EQUADOR","ERITREIA","ESLOVAQUIA","ESLOVENIA","ESPANHA","ESTADOS UNIDOS","ESTONIA","ESWATINI","ETIOPIA","FIJI","FILIPINAS","FINLANDIA","FRANCA","GABAO","GAMBIA","GANA","GEORGIA","GRECIA","GRENADA","GUATEMALA","GUIANA","GUINE","GUINE BISSAU","GUINE EQUATORIAL","HAITI","HONDURAS","HUNGRIA","IEMEN","ILHAS MARSHALL","ILHAS SALOMAO","INDIA","INDONESIA","IRA","IRAQUE","IRLANDA","ISLANDIA","ISRAEL","ITALIA","JAMAICA","JAPAO","JORDANIA","KIRIBATI","KUWAIT","LAOS","LESOTO","LETONIA","LIBANO","LIBERIA","LIBIA","LIECHTENSTEIN","LITUANIA","LUXEMBURGO","MACEDONIA DO NORTE","MADAGASCAR","MALASIA","MALAWI","MALDIVAS","MALI","MALTA","MARROCOS","MAURICIO","MAURITANIA","MEXICO","MICRONESIA","MOCAMBIQUE","MOLDAVIA","MONACO","MONGOLIA","MONTENEGRO","MYANMAR","NAMIBIA","NAURU","NEPAL","NICARAGUA","NIGER","NIGERIA","NORUEGA","NOVA ZELANDIA","OMA","PAISES BAIXOS","PALAU","PANAMA","PAPUA NOVA GUINE","PAQUISTAO","PARAGUAI","PERU","POLONIA","PORTUGAL","QUENIA","QUIRGUISTAO","REINO UNIDO","REPUBLICA CENTRO AFRICANA","REPUBLICA DEMOCRATICA DO CONGO","REPUBLICA DOMINICANA","ROMENIA","RUANDA","RUSSIA","SAMOA","SAN MARINO","SANTA LUCIA","SAO CRISTOVAO E NEVIS","SAO MARINHO","SAO TOME E PRINCIPE","SAO VICENTE E GRANADINAS","SEICHELES","SENEGAL","SERRA LEOA","SERVIA","SINGAPURA","SIRIA","SOMALIA","SRI LANKA","SUDAO","SUDAO DO SUL","SURINAME","SUECIA","SUICA","TAILANDIA","TAJIQUISTAO","TANZANIA","TIMOR LESTE","TOGO","TONGA","TRINDADE E TOBAGO","TUNISIA","TURCOMENISTAO","TUVALU","UCRANIA","UGANDA","URUGUAI","UZBEQUISTAO","VATICANO","VENEZUELA","VIETNA","ZAMBIA","ZIMBABUE"];
+const STATS_API_URL='https://salta-stats.dannyel-moises.workers.dev';
 let activeRule=null;
 
-function normalizeText(value){return String(value||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toUpperCase().trim();}
 function numberValue(value){
  if(value===null||value===undefined||value==='')return null;
  if(typeof value==='number')return Number.isFinite(value)?value:null;
@@ -286,11 +286,14 @@ function numberValue(value){
 }
 function fmt(value,places){const n=numberValue(value);return n===null?'—':n.toFixed(places===undefined?1:places).replace('.',',');}
 function parseAssessments(value){if(Array.isArray(value))return value;if(typeof value==='string'&&value.trim()){try{const p=JSON.parse(value);return Array.isArray(p)?p:[];}catch(_){return [];}}return [];}
-function getRule(turma){
- const t=normalizeText(turma);if(t.includes('EJA'))return {type:'EJA',label:'EJA',target:12,count:2};
- const spaced=' '+t.replace(/[^A-Z]+/g,' ')+' ';
- const isCountry=COUNTRY_CLASS_NAMES.some(function(country){return spaced.includes(' '+normalizeText(country).replace(/[^A-Z]+/g,' ')+' ');});
- return isCountry?{type:'DF',label:'Distrito Federal',target:20,count:4}:{type:'GO',label:'Goiás',target:24,count:4};
+function getRule(turma,source){
+ const isEja=String(source?.rede||'').toUpperCase()==='EJA'||String(turma||'').toUpperCase().includes('EJA');
+ const count=Number(source?.quantidadeBimestres)||(isEja?2:4);
+ const minimum=numberValue(source?.mediaMinimaBimestral??source?.mediaMinima);
+ const target=numberValue(source?.somaMinimaFinal);
+ const type=isEja?'EJA':(String(source?.rede||'').toUpperCase()||'REGULAR');
+ const label=type==='DF'?'Distrito Federal':(type==='GO'?'Goiás':(type==='EJA'?'EJA':'ensino regular'));
+ return {type,label,count,minimum,target,available:minimum!==null&&target!==null};
 }
 function getBimestre(student,n){return {n:n,status:String(student['bimestre'+n+'_status']||'nao_iniciado').toLowerCase(),media:numberValue(student['bimestre'+n+'_media']),vistos:numberValue(student['bimestre'+n+'_vistos']),avaliacoes:parseAssessments(student['bimestre'+n+'_avaliacoes'])};}
 function statusLabel(status){if(status==='concluido')return 'Concluído';if(status==='andamento')return 'Em andamento';return 'Não iniciado';}
@@ -298,15 +301,15 @@ function initials(name){const p=String(name||'Aluno').trim().split(/\s+/).filter
 function currentBimNumber(items){const a=items.find(function(b){return b.status==='andamento';});if(a)return a.n;for(let i=items.length-1;i>=0;i--){if(items[i].media!==null||items[i].status==='concluido')return items[i].n;}return 1;}
 function setTag(el,text,kind){el.textContent=text;el.classList.remove('tag-warning','tag-neutral');if(kind==='warning')el.classList.add('tag-warning');if(kind==='neutral')el.classList.add('tag-neutral');}
 
-function renderStudent(student){
- activeRule=getRule(student.turma);
+function renderStudent(student,gradeRule){
+ activeRule=getRule(student.turma,gradeRule);
  const bimestres=[];for(let i=1;i<=activeRule.count;i++)bimestres.push(getBimestre(student,i));
  const sum=bimestres.reduce(function(total,b){return total+(b.media===null?0:b.media);},0);
  const marked=bimestres.filter(function(b){return b.media!==null;});
  const remaining=bimestres.length-marked.length;
  const average=marked.length?sum/marked.length:null;
- const target=activeRule.target,missing=Math.max(0,target-sum),approved=sum>=target;
- const remainingAverage=remaining?missing/remaining:null;
+ const target=activeRule.target,missing=target===null?null:Math.max(0,target-sum),approved=target!==null&&sum>=target;
+ const remainingAverage=remaining&&missing!==null?missing/remaining:null;
  const evalCount=bimestres.reduce(function(total,b){return total+b.avaliacoes.length;},0);
  const vistosEntries=bimestres.filter(function(b){return b.vistos!==null;});
  const vistosTotal=vistosEntries.reduce(function(total,b){return total+b.vistos;},0);
@@ -330,9 +333,9 @@ function renderStudent(student){
  setTag(document.getElementById('evaluationTag'),evalCount?'Registros encontrados':'Sem avaliações registradas',evalCount?'success':'neutral');
  document.getElementById('metricVistos').textContent=vistosEntries.length?fmt(vistosTotal,0):'—';
  setTag(document.getElementById('vistosTag'),vistosEntries.length?'Soma dos bimestres':'Sem registros de vistos',vistosEntries.length?'success':'neutral');
- document.getElementById('metricSituation').textContent=approved?'Aprovado(a)':(remaining?'Em andamento':'Atenção');
- document.getElementById('situationDescription').textContent=approved?'A soma mínima da sua modalidade foi alcançada.':(remaining?'Você ainda pode avançar nos bimestres sem média lançada.':'Confira seu resultado com o Professor Dannyel.');
- setTag(document.getElementById('situationTag'),approved?'Meta alcançada':(remaining?'Continue avançando':'Converse com o Professor Dannyel'),approved?'success':(remaining?'warning':'neutral'));
+ document.getElementById('metricSituation').textContent=approved?'Aprovado(a)':(!activeRule.available?'Critério indisponível':(remaining?'Em andamento':'Atenção'));
+ document.getElementById('situationDescription').textContent=approved?'A soma mínima da sua modalidade foi alcançada.':(!activeRule.available?'A regra da turma não pôde ser consultada agora. Suas notas continuam disponíveis.':(remaining?'Você ainda pode avançar nos bimestres sem média lançada.':'Confira seu resultado com o Professor Dannyel.'));
+ setTag(document.getElementById('situationTag'),approved?'Meta alcançada':(!activeRule.available?'Consulte o professor':(remaining?'Continue avançando':'Converse com o Professor Dannyel')),approved?'success':(activeRule.available&&remaining?'warning':'neutral'));
 
  const chart=document.getElementById('gradeChart');chart.innerHTML='';chart.style.gridTemplateColumns='repeat('+activeRule.count+', minmax(0,1fr))';chart.setAttribute('aria-label','Médias por bimestre para '+name);
  bimestres.forEach(function(b){
@@ -344,12 +347,17 @@ function renderStudent(student){
   col.append(score,track,label);chart.appendChild(col);
  });
  document.getElementById('chartLegendNote').textContent=marked.length+' de '+activeRule.count+' com média';
- document.getElementById('goalSubtitle').textContent='Critério de '+activeRule.label+' · soma mínima de '+fmt(target,0)+' pontos';
- document.getElementById('goalTargetLabel').textContent=fmt(sum,1)+' / '+fmt(target,0)+' pontos';
- document.getElementById('goalProgress').style.width=Math.min(100,Math.max(0,sum/target*100))+'%';
+ document.getElementById('goalSubtitle').textContent=activeRule.available?'Média mínima por bimestre: '+fmt(activeRule.minimum,1)+' · soma final mínima: '+fmt(target,0)+' pontos':'Critério da turma indisponível';
+ document.getElementById('gradeMethodNote').textContent=activeRule.available
+  ?'O Worker calcula o critério da turma com os dados acadêmicos do D1. Mínimo por bimestre: '+fmt(activeRule.minimum,1)+'. A média final considera '+activeRule.count+' bimestres '+(activeRule.type==='EJA'?'da EJA.':'do ensino regular.')
+  :'A média final considera '+activeRule.count+' bimestres. O Worker não retornou o critério da turma; consulte o Professor Dannyel.';
+ document.getElementById('goalTargetLabel').textContent=fmt(sum,1)+' / '+(target===null?'—':fmt(target,0))+' pontos';
+ document.getElementById('goalProgress').style.width=target===null?'0%':Math.min(100,Math.max(0,sum/target*100))+'%';
  document.getElementById('goalAccumulated').textContent=fmt(sum,1);
  document.getElementById('goalMissing').textContent=fmt(missing,1);
- document.getElementById('goalMessageText').innerHTML=approved
+ document.getElementById('goalMessageText').innerHTML=!activeRule.available
+  ?'<b>Notas carregadas.</b><br>O critério de aprovação desta turma está temporariamente indisponível. Consulte o Professor Dannyel.'
+  :approved
   ?'<b>Parabéns! Você já está aprovado(a).</b><br>Sua soma atingiu o mínimo de '+fmt(target,0)+' pontos para '+activeRule.label+'. Seu esforço é valorizado!'
   :(remaining?'<b>Você está no caminho!</b><br>Para '+activeRule.label+', a soma mínima é '+fmt(target,0)+' pontos. Faltam '+fmt(missing,1)+' ponto(s). Nos '+remaining+' bimestre(s) sem média, você precisa de aproximadamente '+fmt(remainingAverage,1)+' por bimestre.'
   :'<b>Vamos conferir isso juntos.</b><br>Suas médias de Matemática somam '+fmt(sum,1)+' ponto(s), abaixo da meta de '+fmt(target,0)+'. Converse com o Professor Dannyel para confirmar sua situação.');
@@ -454,7 +462,13 @@ async function lookupStudent(event){
    throw new Error(data.error||'Não foi possível consultar agora. Tente novamente em alguns instantes.');
   }
   if(!data||!data.nome||!data.turma){if(data&&data.error)throw new Error(data.error);throw new Error('A consulta retornou uma ficha incompleta. Confira o código ou procure o Professor Dannyel.');}
-  input.value=code;renderStudent(data);
+  let gradeRule=null;
+  try{
+   const ruleResponse=await fetch(STATS_API_URL+'/public/grade-rule?codigo='+encodeURIComponent(code),{method:'GET',cache:'no-store'});
+   const ruleData=await ruleResponse.json().catch(()=>({}));
+   if(ruleResponse.ok)gradeRule=ruleData;
+  }catch(_){/* A consulta de notas continua disponível sem o critério calculado. */}
+  input.value=code;renderStudent(data,gradeRule);
   document.getElementById('studentDashboard').scrollIntoView({behavior:'smooth',block:'start'});
  }catch(error){
   status.textContent=error instanceof TypeError?'Não foi possível conectar ao serviço. Verifique sua conexão e tente novamente.':(error.message||'Não foi possível consultar essa ficha.');

@@ -88,6 +88,41 @@ function bCount(turma) {
   return String(turma || "").toUpperCase().includes("EJA") ? 2 : 4;
 }
 
+function inferTurmaRule(turma, assessmentGroups = []) {
+  // D1 armazena as avaliações de cada período; o modelo Bloco identifica Goiás.
+  // DF usa mínimo 5, Goiás 6 e EJA 6 em seus dois períodos.
+  const eja = String(turma || "").toUpperCase().includes("EJA");
+  const assessmentSets = assessmentGroups.flatMap(raw =>
+    Array.isArray(raw) ? [raw] : String(raw || "").split("|||")
+  );
+  const hasBloco = assessmentSets.some(raw =>
+    parseArray(raw).some(av => /\bbloco\b/i.test(String(av?.nome || "")))
+  );
+  const rede = eja ? "EJA" : (hasBloco ? "GO" : "DF");
+  const mediaMinima = eja || hasBloco ? 6 : 5;
+  return {
+    rede,
+    media_minima: mediaMinima,
+    modelo_avaliativo: eja ? "EJA_2_BIMESTRES" : (hasBloco ? "GO_BLOCO" : "DF_SEM_BLOCO")
+  };
+}
+
+function turmaRulePayload(turma, config) {
+  const quantidadeBimestres = bCount(turma);
+  const mediaMinima = numericValue(config?.media_minima) ??
+    (String(turma || "").toUpperCase().includes("EJA") ? 6 : 5);
+  return {
+    turma: String(turma || "").trim(),
+    rede: config?.rede || (String(turma || "").toUpperCase().includes("EJA") ? "EJA" : "DF"),
+    modeloAvaliativo: config?.modelo_avaliativo || "—",
+    quantidadeBimestres,
+    mediaMinima,
+    mediaMinimaBimestral: mediaMinima,
+    mediaMinimaFinal: mediaMinima,
+    somaMinimaFinal: mediaMinima * quantidadeBimestres
+  };
+}
+
 async function ensureTurmaConfig(env) {
   await env.DB.prepare(
     "CREATE TABLE IF NOT EXISTS turma_config (" +
@@ -101,7 +136,10 @@ async function ensureTurmaConfig(env) {
 
   const turmas = await env.DB.prepare(
     "SELECT TRIM(turma) AS turma, " +
-    "GROUP_CONCAT(bimestre1_avaliacoes, '|||') AS conjuntos " +
+    "GROUP_CONCAT(bimestre1_avaliacoes, '|||') AS bimestre1, " +
+    "GROUP_CONCAT(bimestre2_avaliacoes, '|||') AS bimestre2, " +
+    "GROUP_CONCAT(bimestre3_avaliacoes, '|||') AS bimestre3, " +
+    "GROUP_CONCAT(bimestre4_avaliacoes, '|||') AS bimestre4 " +
     "FROM alunos " +
     "WHERE turma IS NOT NULL AND TRIM(turma) <> '' " +
     "GROUP BY TRIM(turma)"
@@ -110,33 +148,18 @@ async function ensureTurmaConfig(env) {
   for (const row of (turmas.results || [])) {
     const turma = String(row.turma || "").trim();
     if (!turma) continue;
-
-    const exists = await env.DB.prepare(
-      "SELECT turma FROM turma_config WHERE turma = ? LIMIT 1"
-    ).bind(turma).first();
-
-    if (exists) continue;
-
-    let temBloco = false;
-    for (const raw of String(row.conjuntos || "").split("|||")) {
-      for (const av of parseArray(raw)) {
-        if (/\bbloco\b/i.test(String(av?.nome || ""))) {
-          temBloco = true;
-          break;
-        }
-      }
-      if (temBloco) break;
-    }
-
-    const rede = temBloco ? "GO" : "DF";
-    const mediaMinima = rede === "GO" ? 6 : 5;
-    const modelo = temBloco ? "GO_BLOCO" : "DF_SEM_BLOCO";
+    const rule = inferTurmaRule(turma, [row.bimestre1, row.bimestre2, row.bimestre3, row.bimestre4]);
 
     await env.DB.prepare(
-      "INSERT INTO turma_config " +
-      "(turma, rede, media_minima, modelo_avaliativo) " +
-      "VALUES (?, ?, ?, ?)"
-    ).bind(turma, rede, mediaMinima, modelo).run();
+      "INSERT INTO turma_config (turma, rede, media_minima, modelo_avaliativo) " +
+      "VALUES (?, ?, ?, ?) " +
+      "ON CONFLICT(turma) DO UPDATE SET " +
+      "rede = excluded.rede, media_minima = excluded.media_minima, " +
+      "modelo_avaliativo = excluded.modelo_avaliativo, atualizado_em = CURRENT_TIMESTAMP " +
+      "WHERE turma_config.rede <> excluded.rede " +
+      "OR turma_config.media_minima <> excluded.media_minima " +
+      "OR turma_config.modelo_avaliativo <> excluded.modelo_avaliativo"
+    ).bind(turma, rule.rede, rule.media_minima, rule.modelo_avaliativo).run();
   }
 }
 
@@ -306,15 +329,20 @@ function buildTurmaStats(rows, config, requestedPeriod = "vigente") {
 
   return {
     turma,
+    rede: config?.rede || "GO",
+    segmento: quantidadeBimestres === 2 ? "EJA" : "REGULAR",
+    quantidadeBimestres,
     bimestreVigente: vigente,
     periodo: periodo.value,
     bimestreSelecionado: periodo.bimestre,
     rotuloPeriodo: reportPeriodLabel(periodo.value, periodo.bimestre, [vigente]),
     detalhePeriodo: periodo.final
-      ? "Soma das médias lançadas dividida pelo total de bimestres da modalidade."
+      ? "Média final calculada pela soma das médias bimestrais dividida pelos " + quantidadeBimestres + " períodos do segmento."
       : "Médias do " + periodo.bimestre + "º bimestre.",
-    rede: config?.rede || "GO",
     mediaMinima: limite,
+    mediaMinimaBimestral: limite,
+    mediaMinimaFinal: limite,
+    somaMinimaFinal: limite * quantidadeBimestres,
     modeloAvaliativo: config?.modelo_avaliativo || "—",
     quantidadeAlunos: alunos.length,
     alunosComMedia: mediasSelecionadas.length,
@@ -353,9 +381,7 @@ function buildGlobalStats(rows, configs, requestedPeriod = "vigente") {
   for (const [turma, turmaRows] of grupos.entries()) {
     const config = configMap.get(turma) || {
       turma,
-      rede: "GO",
-      media_minima: 6,
-      modelo_avaliativo: "—"
+      ...inferTurmaRule(turma)
     };
 
     const vigente = bimestreVigenteDaTurma(turmaRows);
@@ -415,10 +441,11 @@ function buildGlobalStats(rows, configs, requestedPeriod = "vigente") {
 
   const turmas = [];
   for (const [turma, lista] of grupos.entries()) {
-    const cfg = configMap.get(turma) || { rede:"GO", media_minima:6 };
+    const cfg = configMap.get(turma) || { turma, ...inferTurmaRule(turma) };
     const medias = alunos.filter(a => a.turma === turma).map(a => a.media).filter(Number.isFinite);
     const vigente = bimestreVigenteDaTurma(lista);
     const limite = Number(cfg.media_minima ?? 6);
+    const quantidadeBimestres = bCount(turma);
 
     turmas.push({
       turma,
@@ -426,6 +453,10 @@ function buildGlobalStats(rows, configs, requestedPeriod = "vigente") {
       periodo: periodoSolicitado,
       rede: cfg.rede || "GO",
       mediaMinima: limite,
+      mediaMinimaBimestral: limite,
+      mediaMinimaFinal: limite,
+      somaMinimaFinal: limite * quantidadeBimestres,
+      quantidadeBimestres,
       alunos: lista.length,
       alunosComMedia: medias.length,
       media: round1(mean(medias)),
@@ -449,7 +480,7 @@ function buildGlobalStats(rows, configs, requestedPeriod = "vigente") {
     bimestreSelecionado,
     rotuloPeriodo: reportPeriodLabel(periodoSolicitado, bimestreSelecionado, bimestresVigentes),
     detalhePeriodo: periodoSolicitado === "final"
-      ? "Soma das médias lançadas dividida pelo total de bimestres da modalidade."
+      ? "Soma das médias bimestrais dividida pelo total de períodos do segmento de ensino."
       : periodoSolicitado === "vigente"
         ? "Considera o bimestre vigente de cada turma."
         : "Médias do " + periodoSolicitado + "º bimestre.",
@@ -672,6 +703,26 @@ export default {
       return handleCommsRequest(request, env, url);
     }
 
+    if (request.method === "GET" && url.pathname === "/public/grade-rule") {
+      const codigo = (url.searchParams.get("codigo") || "").trim().toUpperCase();
+      if (!/^2026[A-Z]{1,4}$/.test(codigo)) {
+        return json({ error: "Código inválido." }, request, 400);
+      }
+      try {
+        const student = await env.DB.prepare(
+          "SELECT TRIM(turma) AS turma FROM alunos WHERE codigo = ? LIMIT 1"
+        ).bind(codigo).first();
+        if (!student) return json({ error: "Aluno não encontrado." }, request, 404);
+        if (!String(student.turma || "").trim()) {
+          return json({ error: "A turma deste aluno ainda não está definida." }, request, 409);
+        }
+        const config = await turmaConfig(env, student.turma);
+        return json(turmaRulePayload(student.turma, config), request);
+      } catch (error) {
+        return json({ error: "Não foi possível consultar o critério da turma." }, request, 500);
+      }
+    }
+
     if (request.method !== "GET") {
       return json({ error: "Método não permitido." }, request, 405);
     }
@@ -736,7 +787,8 @@ export default {
           "FROM alunos WHERE codigo = ? LIMIT 1"
         ).bind(codigo).first();
         if (!result) return json({ error: "Aluno não encontrado." }, request, 404);
-        return json(result, request);
+        const config = await turmaConfig(env, result.turma);
+        return json({ ...result, ...turmaRulePayload(result.turma, config) }, request);
       }
 
       if (url.pathname === "/admin/turma-estatistica") {

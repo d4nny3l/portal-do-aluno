@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <link rel="icon" type="image/svg+xml" href="../favicon.svg">
 <meta name="theme-color" content="#f4f5fb">
-<title>Relatórios individuais — Área do Professor | SALTA</title>
+<title>Relatório individual — Área do Professor | SALTA</title>
 <style>
 :root{--bg:#f5f5f7;--text:#1d1d1f;--muted:#6e6e73;--line:rgba(0,0,0,.09);--card:rgba(255,255,255,.86);--blue:#0071e3;--shadow:0 20px 60px rgba(0,0,0,.09);--green:#16794a}
 *{box-sizing:border-box}html{scroll-behavior:smooth}body{margin:0;min-height:100vh;background:radial-gradient(circle at 50% -5%,#fff 0,#f5f5f7 52%,#efeff1 100%);font-family:-apple-system,BlinkMacSystemFont,"SF Pro Display","SF Pro Text",Inter,Arial,sans-serif;color:var(--text);-webkit-font-smoothing:antialiased;visibility:hidden}
@@ -27,7 +27,7 @@ main{padding:90px 0 70px}.hero{margin-bottom:24px}.eyebrow{font-size:12px;font-w
 <div class="salta-grid"></div>
 <a class="salta-platform-button" href="./" aria-label="Ir para a Plataforma SALTA" title="Plataforma SALTA">S</a>
 <main><div class="wrap">
-<section class="hero"><div class="eyebrow">MATEMÁTICA · PROFESSOR DANNYEL</div><h1>Relatórios individuais</h1><p>Consulte as médias de cada bimestre, avaliações e média final do aluno.</p></section>
+<section class="hero"><div class="eyebrow">MATEMÁTICA · PROFESSOR DANNYEL</div><h1>Relatório individual</h1><p>Consulte as médias bimestrais, avaliações e média final de um aluno.</p></section>
 
 <section class="controls">
 <div class="select-wrap"><label for="turma">Turma</label><select id="turma"><option value="">Selecione a turma</option></select></div>
@@ -45,7 +45,7 @@ main{padding:90px 0 70px}.hero{margin-bottom:24px}.eyebrow{font-size:12px;font-w
 <a class="back-profile" onclick="fecharPerfil()">← Voltar para a lista</a>
 <div class="bim-tabs" id="bimTabs"></div>
 <div id="bimPanels"></div>
-<div class="final"><span>Média final</span><strong id="pFinal">—</strong><small id="pFinalMethod">Soma das médias lançadas dividida pelo total de bimestres da modalidade.</small></div>
+<div class="final"><span>Média final</span><strong id="pFinal">—</strong><small id="pFinalMethod">Soma das médias bimestrais lançadas dividida pelos períodos do segmento de ensino.</small></div>
 </div>
 </section>
 <a class="back-profile" href="./estatistica.html">← Voltar para Relatórios</a>
@@ -219,9 +219,16 @@ async function abrirPerfil(index) {
           "Última atualização: " + aluno.ultima_atualizacao;
       }
 
-      const quantidade = bCount(aluno.turma);
+      const quantidade = Number(aluno.quantidadeBimestres) || bCount(aluno.turma);
+      const mediaMinima = scoreValue(aluno.mediaMinimaBimestral ?? aluno.mediaMinima);
+      const somaMinima = scoreValue(aluno.somaMinimaFinal);
       document.getElementById("pFinalMethod").textContent =
-        "Soma das médias lançadas dividida pelos " + quantidade + " bimestres da modalidade.";
+        "Média final = soma das médias bimestrais dividida pelos " + quantidade +
+        " bimestres do " + (quantidade === 2 ? "segmento EJA." : "ensino regular.") +
+        (mediaMinima === null
+          ? " Critério da turma não disponível no momento."
+          : " Mínimo calculado pelo Worker com os dados do D1: " + fmt(mediaMinima) +
+            " por bimestre" + (somaMinima === null ? "." : "; soma final de referência: " + fmt(somaMinima, 0) + " pontos."));
 
       for (let i = 1; i <= quantidade; i++) {
         const dados = {

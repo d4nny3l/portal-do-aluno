@@ -22,6 +22,7 @@ main{padding:88px 0 70px;position:relative;z-index:1}.hero{margin-bottom:24px}.e
 .eval-list{display:grid;gap:10px}.eval-row{display:grid;grid-template-columns:minmax(120px,1fr) 70px 60px;gap:10px;align-items:center;padding:12px 0;border-bottom:1px solid #eee}.eval-row:last-child{border-bottom:0}.eval-row strong{text-align:right}.eval-row small{text-align:right;color:var(--muted)}
 .attention{display:grid;gap:8px}.student-row{display:grid;grid-template-columns:minmax(150px,1fr) 80px 70px;gap:10px;align-items:center;padding:12px 14px;border-radius:15px;background:#fff4f4;border:1px solid #f2d5d5}.student-row strong{text-align:right}.student-row small{text-align:right;color:var(--muted)}
 .table-wrap{overflow:auto;border-radius:18px;border:1px solid var(--line);background:#fff}.students-table{width:100%;border-collapse:collapse;min-width:520px}.students-table th,.students-table td{padding:12px 14px;border-bottom:1px solid #eee;font-size:13px}.students-table th{text-align:left;color:var(--muted);font-size:11px;text-transform:uppercase;letter-spacing:.06em}.students-table td:not(:first-child),.students-table th:not(:first-child){text-align:right}.students-table tr:last-child td{border-bottom:0}.muted{color:var(--muted)}.empty{padding:22px;text-align:center;color:var(--muted);font-size:14px}
+#globalDashboard .students-table{min-width:740px}
 .back{display:inline-block;margin-top:24px;font-size:14px;font-weight:650}
 .period-note{max-width:760px;margin:-6px 0 18px;color:var(--muted);font-size:12px;line-height:1.5}
 .salta-grid{position:fixed;inset:0;pointer-events:none;z-index:0;background-image:linear-gradient(rgba(90,90,100,.055) 1px,transparent 1px),linear-gradient(90deg,rgba(90,90,100,.055) 1px,transparent 1px);background-size:32px 32px}
@@ -147,7 +148,7 @@ main{padding:88px 0 70px;position:relative;z-index:1}.hero{margin-bottom:24px}.e
       <h2 class="section-title">Comparação entre turmas</h2>
       <div class="table-wrap">
         <table class="students-table">
-          <thead><tr><th>Turma</th><th>Rede</th><th>Período</th><th>Alunos com média</th><th>Média no período</th><th>Abaixo do mínimo</th></tr></thead>
+          <thead><tr><th>Turma</th><th>Rede</th><th>Período</th><th>Mínimo da turma</th><th>Alunos com média</th><th>Média no período</th><th>Abaixo do mínimo</th></tr></thead>
           <tbody id="globalClasses"></tbody>
         </table>
       </div>
@@ -223,6 +224,9 @@ main{padding:88px 0 70px;position:relative;z-index:1}.hero{margin-bottom:24px}.e
   function renderGlobal(data){
     document.getElementById("dashboard").style.display="none";
     document.getElementById("globalDashboard").style.display="block";
+    document.getElementById("periodNote").textContent=data.periodo==="final"
+      ?"A média final divide a soma das médias bimestrais pelos períodos de cada segmento (4 no ensino regular ou 2 na EJA). Cada turma tem seu mínimo calculado automaticamente com os dados do D1; consulte a coluna Mínimo da turma."
+      :"As comparações usam o mínimo calculado automaticamente para cada turma com os dados acadêmicos do D1; consulte a coluna Mínimo da turma.";
 
     const total=data.quantidadeAlunos||0;
     const comMedia=data.alunosComMedia||0;
@@ -252,13 +256,16 @@ main{padding:88px 0 70px;position:relative;z-index:1}.hero{margin-bottom:24px}.e
     document.getElementById("globalTurmas").textContent="Turmas: "+(data.turmas?.length||0);
 
     document.getElementById("globalClasses").innerHTML=(data.turmas||[]).map(x=>
-      '<tr><td>'+esc(x.turma)+'</td><td>'+esc(x.rede)+'</td><td>'+ (data.periodo==="vigente" ? x.bimestreVigente+"º bim." : data.periodo==="final" ? "Final" : data.periodo+"º bim.") +'</td><td>'+x.alunosComMedia+' / '+x.alunos+'</td><td>'+fmt(x.media)+'</td><td>'+x.abaixo+'</td></tr>'
+      '<tr><td>'+esc(x.turma)+'</td><td>'+esc(x.rede==="DF"?"Distrito Federal":x.rede==="EJA"?"EJA":"Goiás")+'</td><td>'+ (data.periodo==="vigente" ? x.bimestreVigente+"º bim." : data.periodo==="final" ? "Final" : data.periodo+"º bim.") +'</td><td>'+fmt(x.mediaMinima)+'</td><td>'+x.alunosComMedia+' / '+x.alunos+'</td><td>'+fmt(x.media)+'</td><td>'+x.abaixo+'</td></tr>'
     ).join("");
   }
 
   function render(data){
     document.getElementById("globalDashboard").style.display="none";
     dashboard.style.display="block";
+    document.getElementById("periodNote").textContent=data.periodo==="final"
+      ?"Média final = soma das médias bimestrais dividida por "+data.quantidadeBimestres+" períodos. O mínimo de aprovação é "+fmt(data.mediaMinimaFinal??data.mediaMinima)+" na média final, equivalente a "+fmt(data.somaMinimaFinal,0)+" pontos na soma. Regra calculada automaticamente pelo Worker com dados do D1."
+      :"Este relatório mostra a média do período selecionado. O mínimo da turma é calculado automaticamente pelo Worker com dados acadêmicos do D1: "+fmt(data.mediaMinimaBimestral??data.mediaMinima)+" por bimestre.";
     document.getElementById("mTotal").textContent=data.quantidadeAlunos;
     document.getElementById("mComMedia").textContent=data.alunosComMedia+" com média calculável";
     document.getElementById("mMedia").textContent=fmt(data.mediaTurma);
@@ -271,7 +278,7 @@ main{padding:88px 0 70px;position:relative;z-index:1}.hero{margin-bottom:24px}.e
     document.getElementById("studentMediaHeading").textContent="Média · "+(data.rotuloPeriodo||"período");
 
     document.getElementById("meta").innerHTML=
-      '<span class="pill">'+esc(data.rede==="DF"?"Distrito Federal":"Goiás")+'</span>'+
+      '<span class="pill">'+esc(data.rede==="DF"?"Distrito Federal":data.rede==="EJA"?"EJA":"Goiás")+'</span>'+
       '<span class="pill dark">Mínimo '+fmt(data.mediaMinima)+'</span>'+
       '<span class="pill dark">'+esc(data.modeloAvaliativo)+'</span>';
 
@@ -318,10 +325,10 @@ main{padding:88px 0 70px;position:relative;z-index:1}.hero{margin-bottom:24px}.e
     dashboard.style.display="none";
     document.getElementById("globalDashboard").style.display="none";
     document.getElementById("periodNote").textContent=periodo==="final"
-      ?"A média final divide a soma das médias lançadas pelo total de bimestres da modalidade."
+      ?"A média final soma as médias bimestrais e divide pelo total de períodos do segmento: 4 no ensino regular ou 2 na EJA. O Worker calcula automaticamente o mínimo por turma com os dados acadêmicos do D1."
       :periodo==="vigente"
-        ?"No modo vigente, cada turma considera seu próprio bimestre em andamento."
-        :"O relatório considera somente as notas do "+periodo+"º bimestre; campos sem nota lançada ficam fora da média.";
+        ?"No modo vigente, cada turma considera seu próprio bimestre em andamento. O mínimo por turma é calculado automaticamente pelo Worker com os dados acadêmicos do D1."
+        :"O relatório considera somente as notas do "+periodo+"º bimestre; campos sem nota lançada ficam fora da média. O mínimo por turma é calculado automaticamente pelo Worker com os dados acadêmicos do D1.";
     if(!turma){hideStatus();return}
 
     showStatus(turma==="__GLOBAL__" ? "Carregando relatório global..." : "Carregando relatório da turma...");
