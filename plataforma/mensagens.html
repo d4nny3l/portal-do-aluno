@@ -208,6 +208,8 @@ async function loadAnnouncements(){
   const data=await api("/comms/teacher/announcements");
   const list=Array.isArray(data.announcements)?data.announcements:[];
   document.getElementById("statAnnouncements").textContent=list.length;
+  document.getElementById("statGlobal").textContent=list.filter(x=>x.scope==="global").length;
+  document.getElementById("statIndividual").textContent=list.filter(x=>x.scope==="individual").length;
   const target=document.getElementById("announcementList");target.innerHTML="";
   if(!list.length){target.innerHTML='<div class="empty">Nenhum aviso publicado ainda. O primeiro pode ser um lembrete de prova, atividade ou evento escolar.</div>';return;}
   list.forEach(item=>{
