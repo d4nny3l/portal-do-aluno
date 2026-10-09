@@ -154,17 +154,19 @@ async function ensureTurmaConfig(env, onlyTurma = "") {
   for (const row of (turmas.results || [])) {
     const turma = String(row.turma || "").trim();
     if (!turma) continue;
+    // A configuração importada pelo gerar_banco.py é a fonte oficial.
+    // Só inferimos a regra para turmas antigas que ainda não têm T63 no D1.
+    const atual = await env.DB.prepare(
+      "SELECT media_minima FROM turma_config WHERE turma = ? LIMIT 1"
+    ).bind(turma).first();
+    if (numericValue(atual?.media_minima) !== null) continue;
+
     const rule = inferTurmaRule(turma, [row.bimestre1, row.bimestre2, row.bimestre3, row.bimestre4]);
 
     await env.DB.prepare(
       "INSERT INTO turma_config (turma, rede, media_minima, modelo_avaliativo) " +
       "VALUES (?, ?, ?, ?) " +
-      "ON CONFLICT(turma) DO UPDATE SET " +
-      "rede = excluded.rede, media_minima = excluded.media_minima, " +
-      "modelo_avaliativo = excluded.modelo_avaliativo, atualizado_em = CURRENT_TIMESTAMP " +
-      "WHERE turma_config.rede <> excluded.rede " +
-      "OR turma_config.media_minima <> excluded.media_minima " +
-      "OR turma_config.modelo_avaliativo <> excluded.modelo_avaliativo"
+      "ON CONFLICT(turma) DO NOTHING"
     ).bind(turma, rule.rede, rule.media_minima, rule.modelo_avaliativo).run();
   }
 }
