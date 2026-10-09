@@ -285,7 +285,7 @@ td:last-child,th:last-child{text-align:right}
 
 
   <section class="student-comms" id="avisos">
-    <div class="comms-heading"><div><div class="eyebrow">Comunicação</div><h2>Avisos da escola</h2><p>Comunicados do professor, para todos ou direcionados especialmente a você.</p></div><button class="bell-button" id="noticeBell" type="button" aria-label="Ir para os avisos"><span class="bell-icon" aria-hidden="true">♧</span><span>Meus avisos</span><span class="bell-count zero" id="noticeUnreadCount">0</span></button></div>
+    <div class="comms-heading"><div><div class="eyebrow">Comunicação</div><h2>Avisos da escola</h2><p>Comunicados do professor, para todos ou direcionados especialmente a você.</p></div><button class="bell-button" id="noticeBell" type="button" aria-label="Ir para os avisos"><span class="bell-icon" aria-hidden="true">🔔</span><span>Meus avisos</span><span class="bell-count zero" id="noticeUnreadCount">0</span></button></div>
     <div class="comms-grid"><article class="panel comms-panel"><div class="panel-head"><div><h3>Central de avisos</h3><p class="panel-sub" id="noticeSummary">Seus comunicados aparecerão aqui.</p></div><span class="comms-icon" aria-hidden="true">📣</span></div><div class="notice-stack" id="studentAnnouncements"><div class="comms-empty">Consulte seu código para verificar se há avisos.</div></div><div id="noticeStatus" role="status" aria-live="polite" style="font-size:10px;line-height:1.5;margin-top:10px;color:var(--muted)"></div></article></div>
    </section>
 
@@ -421,79 +421,48 @@ function showStudentMessageStatus(message,kind){
  const el=document.getElementById('studentMessageStatus');
  el.textContent=message||'';el.className=kind||'';
 }
-function renderStudentAnnouncements(items){
+function renderStudentAnnouncements(items,code){
  const target=document.getElementById('studentAnnouncements');target.innerHTML='';
- if(!items||!items.length){target.innerHTML='<div class="comms-empty">Nenhum aviso direcionado a você no momento. Quando o professor publicar comunicados, eles aparecerão aqui.</div>';return;}
- items.forEach(item=>{
-  const article=document.createElement('article');article.className='notice-item';
+ const list=Array.isArray(items)?items:[],unread=list.filter(item=>!Number(item.is_read));
+ document.getElementById('noticeUnreadCount').textContent=String(unread.length);
+ document.getElementById('noticeUnreadCount').classList.toggle('zero',unread.length===0);
+ document.getElementById('noticeSummary').textContent=list.length?list.length+' aviso(s) no histórico · '+unread.length+' não lido(s)':'Nenhum comunicado publicado para você no momento.';
+ if(!list.length){target.innerHTML='<div class="comms-empty">Tudo tranquilo por aqui. Quando o professor publicar um aviso global ou direcionado a você, ele aparecerá nesta seção.</div>';return;}
+ list.forEach(item=>{
+  const isRead=!!Number(item.is_read),article=document.createElement('article');article.className='notice-item'+(isRead?'':' unread');
   const meta=document.createElement('div');meta.className='notice-meta';
-  const kind=document.createElement('span');kind.className='notice-kind';
-  kind.textContent=item.scope==='global'?'Aviso global':item.scope==='class'?'Aviso da turma':'Aviso individual';
-  const date=document.createElement('span');date.className='notice-date';date.textContent=commDate(item.created_at);
-  meta.append(kind,date);
+  const kind=document.createElement('span');kind.className='notice-kind';kind.textContent=item.scope==='global'?'Aviso global':'Aviso individual';
+  const date=document.createElement('span');date.className='notice-date';date.textContent=commDate(item.created_at);meta.append(kind,date);
   const title=document.createElement('h4');title.textContent=item.title||'Comunicado';
   const body=document.createElement('p');body.textContent=item.body||'';
   const author=document.createElement('div');author.className='notice-author';author.textContent='Enviado por '+(item.sender_name||'Professor');
-  article.append(meta,title,body,author);target.appendChild(article);
+  const bottom=document.createElement('div');bottom.className='notice-bottom';
+  const state=document.createElement('span');state.className='notice-state';state.textContent=isRead?'Lido':'Ainda não lido';
+  const button=document.createElement('button');button.type='button';button.className='notice-read';button.textContent=isRead?'Lido ✓':'Marcar como lido';button.disabled=isRead;
+  button.addEventListener('click',async()=>{
+   button.disabled=true;button.textContent='Salvando...';
+   try{
+    const response=await fetch(COMMS_API_URL+'/comms/student/read',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({codigo:code,announcement_ids:[item.id]}),cache:'no-store'});
+    const data=await response.json().catch(()=>({}));if(!response.ok)throw new Error(data.error||'Não foi possível atualizar a leitura.');
+    item.is_read=1;item.read_at=new Date().toISOString();renderStudentAnnouncements(items,code);
+   }catch(e){button.disabled=false;button.textContent='Tentar novamente';document.getElementById('noticeStatus').textContent=e.message;}
+  });
+  bottom.append(state,button);article.append(meta,title,body,author,bottom);target.appendChild(article);
  });
-}
-function renderStudentThread(messages){
- const target=document.getElementById('studentThread');target.innerHTML='';
- if(!messages||!messages.length){target.innerHTML='<div class="comms-empty">Você ainda não tem mensagens nesta conversa. Pode escrever ao professor pelo formulário abaixo.</div>';return;}
- messages.forEach(item=>{
-  const bubble=document.createElement('div');bubble.className='student-bubble '+(item.sender_type==='teacher'?'teacher':'student');
-  const title=document.createElement('strong');title.textContent=(item.sender_type==='teacher'?'Professor':'Você')+' · '+(item.title||'Mensagem');
-  const body=document.createElement('span');body.textContent=item.body||'';
-  const date=document.createElement('small');date.textContent=commDate(item.created_at);
-  bubble.append(title,body,date);target.appendChild(bubble);
- });
- target.scrollTop=target.scrollHeight;
 }
 async function loadStudentCommunications(code){
- const announcements=document.getElementById('studentAnnouncements');
- const thread=document.getElementById('studentThread');
- announcements.innerHTML='<div class="comms-empty">Carregando avisos...</div>';
- thread.innerHTML='<div class="comms-empty">Carregando mensagens...</div>';
- showStudentMessageStatus('','');
+ const target=document.getElementById('studentAnnouncements');target.innerHTML='<div class="comms-empty">Carregando avisos...</div>';
+ document.getElementById('noticeStatus').textContent='';
  try{
   const response=await fetch(COMMS_API_URL+'/comms/student?codigo='+encodeURIComponent(code),{method:'GET',cache:'no-store'});
-  const data=await response.json().catch(()=>({}));
-  if(!response.ok)throw new Error(data.error||'O serviço de comunicação ainda não está disponível.');
-  renderStudentAnnouncements(data.announcements||[]);
-  renderStudentThread(data.messages||[]);
-  const hasUnread=(data.messages||[]).some(m=>m.sender_type==='teacher'&&!m.student_read_at);
-  if(hasUnread){
-   fetch(COMMS_API_URL+'/comms/student/read',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({codigo:code}),cache:'no-store'}).catch(()=>{});
-  }
+  const data=await response.json().catch(()=>({}));if(!response.ok)throw new Error(data.error||'O serviço de avisos ainda não está disponível.');
+  renderStudentAnnouncements(data.announcements||[],code);
  }catch(e){
-  announcements.innerHTML='<div class="comms-empty">Os avisos serão exibidos assim que o serviço de comunicação for ativado.</div>';
-  thread.innerHTML='<div class="comms-empty">A caixa de mensagens ainda não está conectada. Suas notas e avaliações continuam funcionando normalmente.</div>';
-  showStudentMessageStatus(e.message,'');
+  target.innerHTML='<div class="comms-empty">Os avisos serão exibidos assim que o serviço de comunicação for ativado. Suas notas continuam funcionando normalmente.</div>';
+  document.getElementById('noticeSummary').textContent='Não foi possível carregar os avisos.';
+  document.getElementById('noticeStatus').textContent=e.message;document.getElementById('noticeUnreadCount').textContent='—';document.getElementById('noticeUnreadCount').classList.add('zero');
  }
 }
-async function sendStudentMessage(event){
- event.preventDefault();
- const code=document.getElementById('studentCode').value.trim().toUpperCase();
- const title=document.getElementById('studentMessageTitle').value.trim();
- const body=document.getElementById('studentMessageBody').value.trim();
- if(!code){showStudentMessageStatus('Consulte seu código antes de enviar uma mensagem.','error');return;}
- if(!title||!body){showStudentMessageStatus('Preencha o assunto e a mensagem.','error');return;}
- const button=document.getElementById('studentMessageSend');button.disabled=true;button.textContent='Enviando...';
- showStudentMessageStatus('Enviando mensagem ao professor...','');
- try{
-  const response=await fetch(COMMS_API_URL+'/comms/student/message',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({codigo:code,title,body}),cache:'no-store'});
-  const data=await response.json().catch(()=>({}));
-  if(!response.ok)throw new Error(data.error||'Não foi possível enviar a mensagem.');
-  document.getElementById('studentMessageTitle').value='';
-  document.getElementById('studentMessageBody').value='';
-  document.getElementById('studentMessageCount').textContent='0';
-  showStudentMessageStatus('Mensagem enviada ao professor.','success');
-  await loadStudentCommunications(code);
-  showStudentMessageStatus('Mensagem enviada ao professor.','success');
- }catch(e){showStudentMessageStatus(e.message,'error');}
- finally{button.disabled=false;button.textContent='Enviar mensagem';}
-}
-
 async function lookupStudent(event){
  event.preventDefault();
  const input=document.getElementById('studentCode'),code=input.value.trim().toUpperCase(),status=document.getElementById('lookupStatus');
@@ -543,6 +512,5 @@ document.getElementById('closeApprovalModal').addEventListener('click',closeAppr
 document.getElementById('approvalModal').addEventListener('click',function(event){if(event.target===this)closeApprovalModal();});
 document.addEventListener('keydown',function(event){if(event.key==='Escape')closeApprovalModal();});
 document.getElementById('studentCode').addEventListener('input',function(){this.value=this.value.toUpperCase();});
-document.getElementById('studentMessageForm').addEventListener('submit',sendStudentMessage);
-document.getElementById('studentMessageBody').addEventListener('input',function(){document.getElementById('studentMessageCount').textContent=String(this.value.length);});
+document.getElementById('noticeBell').addEventListener('click',function(){document.getElementById('avisos').scrollIntoView({behavior:'smooth',block:'start'});});
 </script>
