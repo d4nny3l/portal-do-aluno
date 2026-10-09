@@ -111,58 +111,19 @@ footer .wrap{display:flex;justify-content:space-between;gap:12px}
 <main class="wrap">
  <section id="lockedPanel" class="locked" hidden>Esta central exige uma sessão válida de professor. <a href="./professor.html">Entre pela Área do Professor</a> e abra a central novamente.</section>
  <div id="app" hidden>
-  <div class="page-head"><div><div class="eyebrow">AMBIENTE DO PROFESSOR</div><h1>Comunicação</h1><p class="lead">Publique avisos para todos, para uma turma ou para um aluno. Responda também às mensagens recebidas na Área do Aluno.</p></div></div>
-  <div class="status" id="globalStatus" role="status" aria-live="polite"></div>
-  <section class="stats">
-   <article class="stat"><label>Avisos publicados</label><strong id="statAnnouncements">0</strong><small>Globais, por turma ou individuais</small></article>
-   <article class="stat"><label>Conversas</label><strong id="statConversations">0</strong><small>Alunos que já enviaram mensagens</small></article>
-   <article class="stat"><label>Mensagens aguardando leitura</label><strong id="statUnread">0</strong><small>Mensagens enviadas pelos alunos</small></article>
-  </section>
-
-  <section class="grid">
-   <article class="card">
-    <div class="card-head"><h2>Publicar um aviso</h2><p>O aviso aparece na Área do Aluno de quem estiver dentro do público selecionado.</p></div>
-    <div class="card-body">
-     <form id="announcementForm">
-      <div class="field"><label for="scope">Público do aviso</label><select id="scope" required>
-       <option value="global">Todas as turmas — aviso global</option>
-       <option value="class">Uma turma específica</option>
-       <option value="individual">Um aluno específico</option>
-      </select></div>
-      <div class="field" id="classTarget"><label for="targetClass">Turma</label><select id="targetClass"><option value="">Carregando turmas...</option></select><div class="help">A lista é carregada do cadastro atual de alunos.</div></div>
-      <div class="field" id="individualTarget" hidden><label for="targetCode">Código do aluno</label><div class="inline-row"><input id="targetCode" type="text" maxlength="8" placeholder="Código individual" autocomplete="off"><button class="verify-button" type="button" id="verifyStudent">Validar</button></div><div class="help" id="studentValidation">Valide o código para confirmar o destinatário antes de publicar.</div></div>
-      <div class="field"><label for="announcementTitle">Título</label><input id="announcementTitle" type="text" maxlength="100" placeholder="Ex.: Revisão para a avaliação" required></div>
-      <div class="field"><label for="announcementBody">Mensagem</label><textarea id="announcementBody" maxlength="1500" placeholder="Escreva o aviso com clareza e objetividade..." required></textarea><div class="help"><span id="announcementCount">0</span>/1.500 caracteres. Avisos não aceitam respostas; use a caixa de mensagens para conversar.</div></div>
-      <div class="target-box" id="targetPreview">Este aviso será exibido a todos os alunos cadastrados na Área do Aluno.</div>
-      <button class="primary" id="publishButton" type="submit">Publicar aviso</button>
-     </form>
-    </div>
-   </article>
-
-   <article class="card">
-    <div class="card-head"><h2>Caixa de entrada</h2><p>Mensagens enviadas pelos alunos. Selecione uma conversa para ler e responder.</p></div>
-    <div class="card-body">
-     <div class="inbox-layout">
-      <div><div class="section-title"><h2 style="font-size:13px">Conversas</h2><button class="refresh" type="button" id="refreshInbox">Atualizar</button></div><div class="conversation-list" id="conversationList"><div class="empty">Carregando mensagens...</div></div></div>
-      <div class="thread" id="threadPanel">
-       <div class="thread-head"><strong id="threadName">Nenhuma conversa selecionada</strong><span id="threadSubtitle">As mensagens aparecerão aqui.</span></div>
-       <div class="thread-messages" id="threadMessages"><div class="empty">Escolha uma conversa à esquerda para visualizar as mensagens.</div></div>
-       <form class="reply-form" id="replyForm" hidden>
-        <textarea id="replyBody" maxlength="1200" placeholder="Escreva uma resposta para este aluno..." required></textarea>
-        <div class="reply-actions"><small><span id="replyCount">0</span>/1.200 caracteres</small><button id="replyButton" type="submit">Enviar resposta</button></div>
-       </form>
-      </div>
-     </div>
-    </div>
-   </article>
-  </section>
-
-  <section class="section">
-   <div class="section-title"><div><h2>Avisos publicados</h2><p>Os mais recentes aparecem primeiro.</p></div><button class="refresh" type="button" id="refreshAnnouncements">Atualizar avisos</button></div>
-   <div class="announcements" id="announcementList"><div class="empty">Carregando avisos...</div></div>
-  </section>
- </div>
-</main>
+  <div class="page-head"><div><div class="eyebrow">AMBIENTE DO PROFESSOR</div><h1>Central de avisos</h1><p class="lead">Publique comunicados globais ou avisos individuais. O aluno recebe a notificação na própria Área do Aluno.</p></div></div>
+   <div class="status" id="globalStatus" role="status" aria-live="polite"></div>
+   <section class="stats"><article class="stat"><label>Avisos publicados</label><strong id="statAnnouncements">0</strong><small>Histórico recente</small></article><article class="stat"><label>Avisos globais</label><strong id="statGlobal">0</strong><small>Visíveis para todos</small></article><article class="stat"><label>Avisos individuais</label><strong id="statIndividual">0</strong><small>Direcionados por código</small></article></section>
+   <section class="grid"><article class="card"><div class="card-head"><h2>Publicar um aviso</h2><p>Escolha entre um comunicado para todos ou para um aluno específico.</p></div><div class="card-body"><form id="announcementForm">
+    <div class="field"><label for="scope">Público do aviso</label><select id="scope" required><option value="global">Todas as turmas — aviso global</option><option value="individual">Um aluno específico</option></select></div>
+    <div class="field" id="individualTarget" hidden><label for="targetCode">Código do aluno</label><div class="inline-row"><input id="targetCode" type="text" maxlength="8" placeholder="Código individual" autocomplete="off"><button class="verify-button" type="button" id="verifyStudent">Validar</button></div><div class="help" id="studentValidation">Valide o código para confirmar o destinatário antes de publicar.</div></div>
+    <div class="field"><label for="announcementTitle">Título</label><input id="announcementTitle" type="text" maxlength="100" placeholder="Ex.: Revisão para a avaliação" required></div>
+    <div class="field"><label for="announcementBody">Aviso</label><textarea id="announcementBody" maxlength="1500" placeholder="Escreva o comunicado com clareza..." required></textarea><div class="help"><span id="announcementCount">0</span>/1.500 caracteres.</div></div>
+    <div class="target-box" id="targetPreview">Este aviso será exibido a todos os alunos cadastrados na Área do Aluno.</div><button class="primary" id="publishButton" type="submit">Publicar aviso</button>
+   </form></div></article></section>
+   <section class="section"><div class="section-title"><div><h2>Histórico de avisos</h2><p>Os mais recentes aparecem primeiro.</p></div><button class="refresh" type="button" id="refreshAnnouncements">Atualizar avisos</button></div><div class="announcements" id="announcementList"><div class="empty">Carregando avisos...</div></div></section>
+  </div>
+ </main>
 <footer><div class="wrap"><span><strong>SALTA</strong> · Central de comunicação</span><span>Mensagens de alunos limitadas a 5 envios por hora por código.</span></div></footer>
 <script>
 const AUTH_API_URL="https://salta-auth.dannyel-moises.workers.dev";
