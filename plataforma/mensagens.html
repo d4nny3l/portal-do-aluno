@@ -69,6 +69,13 @@ h1{font-size:clamp(30px,4vw,43px);letter-spacing:-1.8px;line-height:1.05;margin:
 .announcement h3{font-size:14px;line-height:1.4;margin:0 0 7px;overflow-wrap:anywhere}
 .announcement p{font-size:12px;color:#555b68;line-height:1.6;margin:0;white-space:pre-wrap;overflow-wrap:anywhere}
 .announcement-footer{font-size:10px;color:var(--muted);margin-top:13px;padding-top:11px;border-top:1px solid #f0f1f3}
+.announcement-actions{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-top:12px}
+.announcement-state{display:inline-flex;align-items:center;border-radius:999px;padding:5px 8px;background:#e8f7ee;color:#167447;font-size:9px;font-weight:850}
+.announcement-state.inactive{background:#fff1d8;color:#875600}
+.announcement-toggle{border:1px solid #e2c7c7;border-radius:9px;background:#fff;color:#b42336;padding:8px 10px;font-size:10px;font-weight:850;cursor:pointer}
+.announcement-toggle.restore{border-color:#cce8d8;color:#167447}
+.announcement-toggle:disabled{opacity:.6;cursor:wait}
+.announcement.inactive{background:#fafafa;border-style:dashed}
 .empty{padding:28px 14px;border:1px dashed #d7dbe4;border-radius:15px;color:var(--muted);font-size:12px;line-height:1.6;text-align:center;background:#ffffff80}
 .locked{padding:24px;border:1px solid var(--line);border-radius:18px;background:#fff;line-height:1.55;font-size:13px}
 .locked a{color:var(--blue);font-weight:800}.recipient-list{max-height:150px;overflow:auto;margin:5px 0 12px;padding:10px 12px;border:1px solid var(--line);border-radius:12px;background:#f4f4ff;color:var(--ink);font-size:12px;line-height:1.55;white-space:pre-wrap}
@@ -244,7 +251,29 @@ async function loadAnnouncements(){
    const body=document.createElement("p");body.textContent=item.body;
    const foot=document.createElement("div");foot.className="announcement-footer";
    foot.textContent=item.scope==="global"?"Destinatários: todas as turmas":"Aluno: "+(item.student_code||"—");
-   article.append(top,title,body,foot);target.appendChild(article);
+   const isActive=Number(item.active)!==0;
+   if(!isActive)article.classList.add("inactive");
+   const actions=document.createElement("div");actions.className="announcement-actions";
+   const state=document.createElement("span");state.className="announcement-state"+(isActive?"":" inactive");
+   state.textContent=isActive?"Visível aos alunos":"Oculto · pode restaurar";
+   const toggle=document.createElement("button");toggle.type="button";
+   toggle.className="announcement-toggle"+(isActive?"":" restore");
+   toggle.textContent=isActive?"Excluir aviso":"Restaurar aviso";
+   toggle.addEventListener("click",async()=>{
+    const nextActive=!isActive;
+    if(!nextActive&&!window.confirm("Excluir este aviso da Área do Aluno? Ele será ocultado, não apagado definitivamente, e poderá ser restaurado depois."))return;
+    toggle.disabled=true;toggle.textContent=nextActive?"Restaurando...":"Excluindo...";
+    try{
+     const result=await api("/comms/teacher/announcement-status",{method:"POST",body:JSON.stringify({id:Number(item.id),active:nextActive})});
+     setStatus(result.message||"Estado do aviso atualizado.","success");
+     await loadAnnouncements();
+    }catch(e){
+     toggle.disabled=false;toggle.textContent=nextActive?"Restaurar aviso":"Excluir aviso";
+     setStatus(e.message,"error");
+    }
+   });
+   actions.append(state,toggle);
+   article.append(top,title,body,foot,actions);target.appendChild(article);
   });
  }catch(e){document.getElementById("announcementList").innerHTML='<div class="empty">Não foi possível carregar os avisos: '+esc(e.message)+'</div>';}
 }
