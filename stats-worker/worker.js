@@ -73,8 +73,14 @@ function round1(value) {
   return Number.isFinite(value) ? Math.round(value * 10) / 10 : null;
 }
 
+function numericValue(value) {
+  if (value === null || value === undefined || String(value).trim() === "") return null;
+  const parsed = Number(typeof value === "string" ? value.trim().replace(",", ".") : value);
+  return Number.isFinite(parsed) ? parsed : null;
+}
+
 function mean(values) {
-  const valid = values.map(Number).filter(Number.isFinite);
+  const valid = values.map(numericValue).filter(value => value !== null);
   return valid.length ? valid.reduce((a, b) => a + b, 0) / valid.length : null;
 }
 
@@ -147,49 +153,85 @@ function bimestreVigenteDaTurma(rows) {
   for (let i = 1; i <= maxBimestres; i++) {
     if (rows.some(row => String(row["bimestre" + i + "_status"] || "").toLowerCase() === "andamento")) return i;
   }
+  for (let i = maxBimestres; i >= 1; i--) {
+    if (rows.some(row => numericValue(row["bimestre" + i + "_media"]) !== null ||
+      String(row["bimestre" + i + "_status"] || "").toLowerCase() === "concluido")) return i;
+  }
   return 1;
 }
 
+function resolveReportPeriod(requested, vigente) {
+  const value = String(requested || "vigente").trim().toLowerCase();
+  if (value === "vigente") return { value, bimestre: vigente, final: false };
+  if (value === "final") return { value, bimestre: null, final: true };
+  const bimestre = Number(value);
+  if (Number.isInteger(bimestre) && bimestre >= 1 && bimestre <= 4) {
+    return { value: String(bimestre), bimestre, final: false };
+  }
+  return null;
+}
 
-function buildTurmaStats(rows, config) {
+function finalAverage(medias, quantidadeBimestres) {
+  const lancadas = medias.filter(value => value !== null);
+  if (!lancadas.length) return null;
+  return medias.reduce((sum, value) => sum + (value === null ? 0 : value), 0) / quantidadeBimestres;
+}
+
+function selectedVistos(vistos, periodo) {
+  if (periodo.final) {
+    const lancados = vistos.filter(value => value !== null);
+    return lancados.length ? lancados.reduce((sum, value) => sum + value, 0) : null;
+  }
+  return vistos[periodo.bimestre - 1] ?? null;
+}
+
+function reportPeriodLabel(value, bimestre, vigenteSet) {
+  if (value === "final") return "Média final";
+  if (value === "vigente") {
+    return vigenteSet?.length === 1
+      ? vigenteSet[0] + "º bimestre vigente"
+      : "Bimestre vigente de cada turma";
+  }
+  return bimestre + "º bimestre";
+}
+
+
+function buildTurmaStats(rows, config, requestedPeriod = "vigente") {
   const vigente = bimestreVigenteDaTurma(rows);
   const turma = String(config?.turma || rows[0]?.turma || "").trim();
   const limite = Number(config?.media_minima ?? 6);
   const quantidadeBimestres = bCount(turma);
+  const periodo = resolveReportPeriod(requestedPeriod, vigente);
+  if (!periodo) throw new Error("Período de análise inválido.");
 
   const alunos = rows.map(row => {
     const medias = [];
-    const vistos = [];
+    const vistosPorBimestre = [];
     const avaliacoesPorBimestre = {};
 
     for (let i = 1; i <= quantidadeBimestres; i++) {
-      const media = Number(row["bimestre" + i + "_media"]);
-      if (Number.isFinite(media)) medias.push(media);
-      const visto = Number(row["bimestre" + i + "_vistos"]);
-      if (Number.isFinite(visto)) vistos.push(visto);
+      medias.push(numericValue(row["bimestre" + i + "_media"]));
+      vistosPorBimestre.push(numericValue(row["bimestre" + i + "_vistos"]));
       avaliacoesPorBimestre[i] = parseArray(row["bimestre" + i + "_avaliacoes"]);
     }
 
-    const mediaAtual = medias.length ? medias[medias.length - 1] : null;
-    const mediaAtualValor = Number(row["bimestre" + vigente + "_media"]);
-    const mediaFinal = Number.isFinite(mediaAtualValor) ? mediaAtualValor : null;
-    const vistosAtualValor = Number(row["bimestre" + vigente + "_vistos"]);
+    const mediaSelecionada = periodo.final
+      ? finalAverage(medias, quantidadeBimestres)
+      : medias[periodo.bimestre - 1] ?? null;
 
     return {
       codigo: row.codigo,
       nome: row.nome,
       turma: row.turma,
       medias,
-      mediaAtual,
-      mediaFinal,
-      vistos: Number.isFinite(vistosAtualValor) ? vistosAtualValor : null,
+      mediaSelecionada,
+      vistos: selectedVistos(vistosPorBimestre, periodo),
       avaliacoesPorBimestre
     };
   });
 
-  const finais = alunos.map(a => a.mediaFinal).filter(Number.isFinite);
-  const atuais = alunos.map(a => a.mediaAtual).filter(Number.isFinite);
-  const vistos = alunos.map(a => a.vistos).filter(Number.isFinite);
+  const mediasSelecionadas = alunos.map(a => a.mediaSelecionada).filter(value => value !== null);
+  const vistos = alunos.map(a => a.vistos).filter(value => value !== null);
 
   const distribuicao = [
     { faixa: "0,0–2,9", quantidade: 0 },
@@ -199,7 +241,7 @@ function buildTurmaStats(rows, config) {
     { faixa: "9,0–10,0", quantidade: 0 }
   ];
 
-  for (const value of finais) {
+  for (const value of mediasSelecionadas) {
     if (value < 3) distribuicao[0].quantidade++;
     else if (value < 5) distribuicao[1].quantidade++;
     else if (value < 7) distribuicao[2].quantidade++;
@@ -208,7 +250,10 @@ function buildTurmaStats(rows, config) {
   }
 
   const desempenhoAvaliacoes = [];
-  for (let bim = vigente; bim <= vigente; bim++) {
+  const bimestresDasAvaliacoes = periodo.final
+    ? Array.from({ length: quantidadeBimestres }, (_, index) => index + 1)
+    : [periodo.bimestre];
+  for (const bim of bimestresDasAvaliacoes) {
     const mapa = new Map();
     for (const aluno of alunos) {
       for (const av of (aluno.avaliacoesPorBimestre[bim] || [])) {
@@ -240,39 +285,46 @@ function buildTurmaStats(rows, config) {
   }
 
   const acompanhamento = alunos
-    .filter(a => Number.isFinite(a.mediaFinal) && a.mediaFinal < limite)
-    .sort((a, b) => a.mediaFinal - b.mediaFinal)
+    .filter(a => a.mediaSelecionada !== null && a.mediaSelecionada < limite)
+    .sort((a, b) => a.mediaSelecionada - b.mediaSelecionada)
     .map(a => ({
       codigo: a.codigo,
       nome: a.nome,
-      media: round1(a.mediaFinal),
+      media: round1(a.mediaSelecionada),
       vistos: round1(a.vistos)
     }));
 
   const porAluno = alunos
-    .filter(a => Number.isFinite(a.mediaFinal))
-    .sort((a, b) => b.mediaFinal - a.mediaFinal)
+    .filter(a => a.mediaSelecionada !== null)
+    .sort((a, b) => b.mediaSelecionada - a.mediaSelecionada)
     .map(a => ({
       codigo: a.codigo,
       nome: a.nome,
-      media: round1(a.mediaFinal),
+      media: round1(a.mediaSelecionada),
       vistos: round1(a.vistos)
     }));
 
   return {
     turma,
     bimestreVigente: vigente,
+    periodo: periodo.value,
+    bimestreSelecionado: periodo.bimestre,
+    rotuloPeriodo: reportPeriodLabel(periodo.value, periodo.bimestre, [vigente]),
+    detalhePeriodo: periodo.final
+      ? "Soma das médias lançadas dividida pelo total de bimestres da modalidade."
+      : "Médias do " + periodo.bimestre + "º bimestre.",
     rede: config?.rede || "GO",
     mediaMinima: limite,
     modeloAvaliativo: config?.modelo_avaliativo || "—",
     quantidadeAlunos: alunos.length,
-    alunosComMedia: finais.length,
-    mediaTurma: round1(mean(finais)),
-    maiorMedia: finais.length ? round1(Math.max(...finais)) : null,
-    menorMedia: finais.length ? round1(Math.min(...finais)) : null,
+    alunosComMedia: mediasSelecionadas.length,
+    mediaTurma: round1(mean(mediasSelecionadas)),
+    maiorMedia: mediasSelecionadas.length ? round1(Math.max(...mediasSelecionadas)) : null,
+    menorMedia: mediasSelecionadas.length ? round1(Math.min(...mediasSelecionadas)) : null,
     mediaVistos: round1(mean(vistos)),
-    acimaOuIgualMedia: finais.filter(v => v >= limite).length,
-    abaixoMedia: finais.filter(v => v < limite).length,
+    vistosAcumulados: periodo.final,
+    acimaOuIgualMedia: mediasSelecionadas.filter(v => v >= limite).length,
+    abaixoMedia: mediasSelecionadas.filter(v => v < limite).length,
     distribuicao,
     desempenhoAvaliacoes,
     evolucao,
@@ -282,7 +334,11 @@ function buildTurmaStats(rows, config) {
 }
 
 
-function buildGlobalStats(rows, configs) {
+function buildGlobalStats(rows, configs, requestedPeriod = "vigente") {
+  const periodoSolicitado = String(requestedPeriod || "vigente").trim().toLowerCase();
+  if (!(["vigente", "final", "1", "2", "3", "4"].includes(periodoSolicitado))) {
+    throw new Error("Período de análise inválido.");
+  }
   const configMap = new Map(configs.map(c => [String(c.turma).trim(), c]));
   const grupos = new Map();
 
@@ -303,10 +359,17 @@ function buildGlobalStats(rows, configs) {
     };
 
     const vigente = bimestreVigenteDaTurma(turmaRows);
+    const periodo = resolveReportPeriod(periodoSolicitado, vigente);
+    const quantidadeBimestres = bCount(turma);
 
     for (const row of turmaRows) {
-      const mediaValor = Number(row["bimestre" + vigente + "_media"]);
-      const vistosValor = Number(row["bimestre" + vigente + "_vistos"]);
+      const medias = Array.from({ length: quantidadeBimestres }, (_, index) =>
+        numericValue(row["bimestre" + (index + 1) + "_media"]));
+      const vistosPorBimestre = Array.from({ length: quantidadeBimestres }, (_, index) =>
+        numericValue(row["bimestre" + (index + 1) + "_vistos"]));
+      const mediaSelecionada = periodo.final
+        ? finalAverage(medias, quantidadeBimestres)
+        : medias[periodo.bimestre - 1] ?? null;
 
       alunos.push({
         codigo: row.codigo,
@@ -314,8 +377,8 @@ function buildGlobalStats(rows, configs) {
         turma,
         rede: config.rede,
         mediaMinima: Number(config.media_minima),
-        media: Number.isFinite(mediaValor) ? mediaValor : null,
-        vistos: Number.isFinite(vistosValor) ? vistosValor : null,
+        media: mediaSelecionada,
+        vistos: selectedVistos(vistosPorBimestre, periodo),
         bimestreVigente: vigente
       });
     }
@@ -360,6 +423,7 @@ function buildGlobalStats(rows, configs) {
     turmas.push({
       turma,
       bimestreVigente: vigente,
+      periodo: periodoSolicitado,
       rede: cfg.rede || "GO",
       mediaMinima: limite,
       alunos: lista.length,
@@ -376,9 +440,21 @@ function buildGlobalStats(rows, configs) {
     String(a.turma).localeCompare(String(b.turma), "pt-BR"));
 
   const bimestresVigentes = [...new Set(turmas.map(t => t.bimestreVigente))].sort((a,b) => a-b);
+  const bimestreSelecionado = periodoSolicitado === "vigente" && bimestresVigentes.length === 1
+    ? bimestresVigentes[0]
+    : (periodoSolicitado === "vigente" ? null : Number(periodoSolicitado) || null);
 
   return {
+    periodo: periodoSolicitado,
+    bimestreSelecionado,
+    rotuloPeriodo: reportPeriodLabel(periodoSolicitado, bimestreSelecionado, bimestresVigentes),
+    detalhePeriodo: periodoSolicitado === "final"
+      ? "Soma das médias lançadas dividida pelo total de bimestres da modalidade."
+      : periodoSolicitado === "vigente"
+        ? "Considera o bimestre vigente de cada turma."
+        : "Médias do " + periodoSolicitado + "º bimestre.",
     bimestresVigentes,
+    vistosAcumulados: periodoSolicitado === "final",
     quantidadeAlunos: alunos.length,
     alunosComMedia: comMedia.length,
     mediaGlobal: round1(mediaGlobal),
@@ -402,8 +478,6 @@ function buildGlobalStats(rows, configs) {
 
 const COMMS_MAX_TITLE = 100;
 const COMMS_MAX_BODY = 1500;
-const STUDENT_MESSAGE_MAX_PER_HOUR = 5;
-
 async function ensureCommsSchema(env) {
   await env.DB.prepare(
     "CREATE TABLE IF NOT EXISTS salta_comms_messages (" +
@@ -667,7 +741,11 @@ export default {
 
       if (url.pathname === "/admin/turma-estatistica") {
         const turma = (url.searchParams.get("turma") || "").trim();
+        const periodo = (url.searchParams.get("periodo") || "vigente").trim().toLowerCase();
         if (!turma) return json({ error: "Turma não informada." }, request, 400);
+        if (!["vigente", "final", "1", "2", "3", "4"].includes(periodo)) {
+          return json({ error: "Período de análise inválido." }, request, 400);
+        }
 
         const config = await turmaConfig(env, turma);
         const result = await env.DB.prepare(
@@ -683,10 +761,14 @@ export default {
           return json({ error: "Turma não encontrada." }, request, 404);
         }
 
-        return json(buildTurmaStats(result.results, config), request);
+        return json(buildTurmaStats(result.results, config, periodo), request);
       }
 
       if (url.pathname === "/admin/estatistica-global") {
+        const periodo = (url.searchParams.get("periodo") || "vigente").trim().toLowerCase();
+        if (!["vigente", "final", "1", "2", "3", "4"].includes(periodo)) {
+          return json({ error: "Período de análise inválido." }, request, 400);
+        }
         await ensureTurmaConfig(env);
 
         const cfgResult = await env.DB.prepare(
@@ -704,7 +786,7 @@ export default {
           "ORDER BY TRIM(turma), nome"
         ).all();
 
-        return json(buildGlobalStats(result.results || [], cfgResult.results || []), request);
+        return json(buildGlobalStats(result.results || [], cfgResult.results || [], periodo), request);
       }
 
       if (url.pathname === "/admin/turmas-config") {

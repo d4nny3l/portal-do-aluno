@@ -1,51 +1,39 @@
-# Comunicação da SALTA
+# Avisos da SALTA
 
-Esta implementação adiciona avisos e mensagens entre a Área do Aluno e a Área do Professor, sem substituir a página oficial do aluno. A nova interface do estudante continua disponível no laboratório:
+A comunicação é unilateral: somente o professor publica avisos. Não há chat, caixa de entrada de alunos nem respostas.
 
-- Prévia do aluno: https://d4nny3l.github.io/portal-do-aluno/preview-aluno.html
-- Central do professor: https://d4nny3l.github.io/portal-do-aluno/plataforma/mensagens.html
+## Funcionalidades
 
-## O que está incluído
+- Avisos globais e individuais, direcionados pelo código do aluno.
+- Histórico dos avisos mais recentes na Área do Professor e na prévia independente do aluno.
+- Contador de avisos não lidos e registro persistente da leitura por aluno.
+- As tabelas `salta_comms_messages` e `salta_comms_announcement_reads` são criadas no D1 `portal-aluno-2026` pela primeira requisição de comunicação ao Worker.
 
-- Avisos globais para todas as turmas.
-- Avisos direcionados a uma turma.
-- Avisos individuais por código do aluno.
-- Caixa de entrada de mensagens enviadas pelos alunos.
-- Respostas privadas do professor.
-- Histórico das conversas.
-- Limite de cinco mensagens enviadas por aluno por hora.
-- Limites de tamanho para assunto e corpo das mensagens.
-- Rotas administrativas protegidas pela sessão existente da Área do Professor.
+`index.html` continua sendo a página oficial de consulta de notas. A Área do Aluno com avisos está em `preview-aluno.html`.
 
-As tabelas de comunicação são criadas automaticamente no D1 já vinculado ao Worker `salta-stats`, na primeira requisição de comunicação após a implantação.
+## Rotas
 
-## Ativar a API no Cloudflare
+### Aluno
 
-O código-fonte do Worker fica em `stats-worker/worker.js`. Salvar esse arquivo no GitHub não implanta automaticamente o backend até que os segredos do deploy estejam configurados.
-
-1. No painel da Cloudflare, crie um API Token com permissões restritas para implantar Workers na conta correta. Consulte a documentação oficial: https://developers.cloudflare.com/workers/ci-cd/external-cicd/github-actions/
-2. Abra o repositório no GitHub e vá a **Settings → Secrets and variables → Actions**.
-3. Crie estes *repository secrets*:
-   - `CLOUDFLARE_API_TOKEN`: token da Cloudflare.
-   - `CLOUDFLARE_ACCOUNT_ID`: ID da conta Cloudflare onde está o Worker `salta-stats`.
-4. Abra **Actions → Deploy SALTA Stats Worker → Run workflow** para implantar a versão atual.
-5. Confira se a execução terminou com sucesso. Depois, teste a comunicação usando a prévia do aluno e a central do professor.
-
-O workflow também publicará automaticamente futuras alterações em `stats-worker/**` após os segredos serem configurados.
-
-**Segurança:** não coloque o token no código, em commits, no arquivo `wrangler.toml` ou em mensagens de conversa. Guarde-o somente nos segredos do GitHub. Os avisos e mensagens usam o banco D1 existente; nenhuma planilha ou dado escolar é copiado para um novo banco.
-
-## Rotas de comunicação
-
-### Estudantes
-- `GET /comms/student?codigo=...`: avisos e conversa do aluno.
-- `POST /comms/student/message`: enviar uma mensagem ao professor.
-- `POST /comms/student/read`: marcar mensagens do professor como lidas.
+- `GET /comms/student?codigo=...`: retorna os avisos globais e os direcionados ao código informado, incluindo o estado de leitura.
+- `POST /comms/student/read`: registra a leitura dos IDs aplicáveis ao código informado. Repetir a operação não duplica registros.
 
 ### Professor (sessão autenticada)
-- `GET /comms/teacher/announcements`: consultar avisos publicados.
-- `POST /comms/teacher/announcement`: publicar aviso global, por turma ou individual.
-- `GET /comms/teacher/inbox`: consultar mensagens de alunos.
-- `GET /comms/teacher/thread?codigo=...`: abrir uma conversa.
-- `POST /comms/teacher/reply`: responder ao aluno.
-- `POST /comms/teacher/read`: marcar mensagens do aluno como lidas.
+
+- `GET /comms/teacher/announcements`: lista o histórico recente.
+- `POST /comms/teacher/announcement`: publica aviso global ou individual.
+
+As rotas do aluno identificam a ficha pelo código escolar, assim como a consulta existente de notas. Esse código funciona como identificador no fluxo atual; não é uma sessão autenticada do aluno. O Worker valida que o código existe e limita a leitura registrada aos avisos globais ou individuais destinados a ele.
+
+## Implantação
+
+O Worker está em `stats-worker/worker.js`, com o D1 e o serviço de autenticação declarados em `stats-worker/wrangler.toml`. O workflow `.github/workflows/deploy-salta-stats.yml` implanta o Worker ao receber alterações em `stats-worker/**` na branch `main` ou por execução manual.
+
+Para habilitar o deploy automático, configure estes *repository secrets* em **Settings → Secrets and variables → Actions**:
+
+- `CLOUDFLARE_API_TOKEN`: token restrito às permissões necessárias para implantar Workers na conta correta.
+- `CLOUDFLARE_ACCOUNT_ID`: ID dessa conta Cloudflare.
+
+Depois, execute **Actions → Deploy SALTA Stats Worker → Run workflow** e confirme que a execução terminou com sucesso. Não coloque credenciais no código, em commits ou em mensagens. Salvar alterações no GitHub sem esses secrets não comprova a implantação do Worker.
+
+O workflow deste repositório cobre o Worker. A publicação das páginas estáticas depende da configuração de GitHub Pages do repositório; este checkout não contém workflow de deploy de Pages.

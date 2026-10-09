@@ -1,0 +1,110 @@
+:root {
+  --bg: #f4f5fb;
+  --bg1: #ffffff;
+  --bg2: #f4f5fb;
+  --text: #252744;
+  --ink: #252744;
+  --muted: #747995;
+  --line: #e9eafa;
+  --card: rgba(255, 255, 255, .92);
+  --surface: #ffffff;
+  --blue: #5b5bd6;
+  --blue-soft: #efefff;
+  --accent: #5b5bd6;
+  --accent-soft: #efefff;
+  --radius: 25px;
+  --small-radius: 16px;
+  --shadow: 0 14px 36px rgba(72, 75, 145, .09);
+  color-scheme: light;
+}
+
+html {
+  scroll-behavior: smooth;
+  background-color: #f4f5fb;
+}
+
+body {
+  color: #252744;
+  font-family: Inter, -apple-system, BlinkMacSystemFont, "Segoe UI", Arial, sans-serif;
+  -webkit-font-smoothing: antialiased;
+}
+
+button,
+input,
+select,
+textarea {
+  font-family: inherit;
+}
+
+::selection {
+  background: #e3e2ff;
+  color: #252744;
+}
+
+:focus-visible {
+  outline: 3px solid rgba(91, 91, 214, .28);
+  outline-offset: 3px;
+}
+
+.eyebrow,
+.page-head .eyebrow,
+.hero .eyebrow {
+  color: #5b5bd6;
+}
+
+.salta-platform-button {
+  background: #16181d;
+  color: #ffffff;
+  border-color: transparent;
+}
+
+.salta-platform-button:hover {
+  background: #252744;
+  color: #ffffff;
+}
+
+.card.blue .icon,
+.stats-card .mini-icon {
+  background: #5b5bd6;
+}
+
+.bar-track {
+  background: #efefff;
+}
+
+.bar-fill {
+  background: linear-gradient(90deg, #9998ff, #5b5bd6);
+}
+
+.evo-item,
+.summary-card {
+  background: #f4f4ff;
+}
+
+.bim-tab.active {
+  background: #5b5bd6;
+  border-color: #5b5bd6;
+}
+
+.pill:not(.dark),
+.code-pill {
+  background: #efefff;
+  color: #4b4bb7;
+}
+
+.panel,
+.card,
+.metric,
+.welcome,
+.stats-card,
+.profile-box,
+.evals,
+.consulta {
+  border-color: #e9eafa;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  html {
+    scroll-behavior: auto;
+  }
+}

@@ -70,38 +70,15 @@ h1{font-size:clamp(30px,4vw,43px);letter-spacing:-1.8px;line-height:1.05;margin:
 .announcement p{font-size:12px;color:#555b68;line-height:1.6;margin:0;white-space:pre-wrap;overflow-wrap:anywhere}
 .announcement-footer{font-size:10px;color:var(--muted);margin-top:13px;padding-top:11px;border-top:1px solid #f0f1f3}
 .empty{padding:28px 14px;border:1px dashed #d7dbe4;border-radius:15px;color:var(--muted);font-size:12px;line-height:1.6;text-align:center;background:#ffffff80}
-.inbox-layout{display:grid;grid-template-columns:minmax(230px,.7fr) minmax(0,1.3fr);gap:14px;align-items:start}
-.conversation-list{display:flex;flex-direction:column;gap:8px}
-.conversation-button{border:1px solid var(--line);background:#fff;border-radius:14px;padding:13px;text-align:left;color:var(--ink);width:100%;transition:background .15s,border-color .15s}
-.conversation-button.active{background:var(--blue-soft);border-color:#b7cdfa}
-.conversation-name{display:flex;align-items:center;justify-content:space-between;gap:8px;font-size:12px;font-weight:850;margin-bottom:5px}
-.unread{background:#db3445;color:#fff;border-radius:999px;min-width:19px;height:19px;display:inline-grid;place-items:center;padding:0 5px;font-size:10px}
-.conversation-meta,.conversation-preview{font-size:10px;color:var(--muted);line-height:1.45}
-.conversation-preview{margin-top:7px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.thread{border:1px solid var(--line);border-radius:16px;background:#fff;overflow:hidden;min-width:0}
-.thread-head{padding:15px 16px;border-bottom:1px solid #eff0f3}
-.thread-head strong{font-size:13px;display:block;margin-bottom:4px}
-.thread-head span{font-size:10px;color:var(--muted)}
-.thread-messages{padding:14px;max-height:390px;overflow-y:auto;display:flex;flex-direction:column;gap:10px;background:#fafbfe}
-.bubble{max-width:88%;padding:11px 12px;border-radius:13px;font-size:11px;line-height:1.55;white-space:pre-wrap;overflow-wrap:anywhere}
-.bubble.student{align-self:flex-start;background:#fff;border:1px solid var(--line);border-top-left-radius:4px}
-.bubble.teacher{align-self:flex-end;background:#eaf1ff;color:#263f75;border-top-right-radius:4px}
-.bubble-title{font-size:10px;font-weight:850;margin-bottom:5px}
-.bubble-foot{font-size:9px;color:var(--muted);margin-top:7px}
-.reply-form{padding:13px;border-top:1px solid var(--line);background:#fff}
-.reply-form textarea{width:100%;min-height:75px;resize:vertical;border:1px solid #dfe1e7;border-radius:10px;padding:11px;font-size:11px;line-height:1.5;outline:none}
-.reply-form textarea:focus{border-color:var(--blue);box-shadow:0 0 0 3px #2871e81a}
-.reply-actions{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-top:8px}
-.reply-actions small{font-size:10px;color:var(--muted)}
-.reply-actions button{border:0;background:var(--blue);color:white;border-radius:9px;padding:10px 13px;font-size:11px;font-weight:850}
 .locked{padding:24px;border:1px solid var(--line);border-radius:18px;background:#fff;line-height:1.55;font-size:13px}
 .locked a{color:var(--blue);font-weight:800}
 footer{padding:28px 0 34px;border-top:1px solid var(--line);font-size:11px;color:var(--muted)}
 footer .wrap{display:flex;justify-content:space-between;gap:12px}
-@media(max-width:860px){.grid{grid-template-columns:1fr}.inbox-layout{grid-template-columns:minmax(200px,.7fr) minmax(0,1.3fr)}}
-@media(max-width:620px){.wrap{width:calc(100% - 28px)}main{padding-top:25px}.page-head{align-items:flex-start;flex-direction:column}.stats{grid-template-columns:1fr 1fr}.stat{padding:15px}.stat strong{font-size:24px}.announcements{grid-template-columns:1fr}.inbox-layout{grid-template-columns:1fr}.conversation-list{max-height:230px;overflow-y:auto}.card-head,.card-body{padding:18px}footer .wrap{flex-direction:column}.toplink{font-size:11px;padding:8px}}
+@media(max-width:860px){.grid{grid-template-columns:1fr}}
+@media(max-width:620px){.wrap{width:calc(100% - 28px)}main{padding-top:25px}.page-head{align-items:flex-start;flex-direction:column}.stats{grid-template-columns:1fr 1fr}.stat{padding:15px}.stat strong{font-size:24px}.announcements{grid-template-columns:1fr}.card-head,.card-body{padding:18px}footer .wrap{flex-direction:column}.toplink{font-size:11px;padding:8px}}
 [hidden]{display:none!important}
 </style>
+<link rel="stylesheet" href="../salta-theme.css">
 </head>
 <body>
 <header class="topbar"><div class="wrap top-inner">
