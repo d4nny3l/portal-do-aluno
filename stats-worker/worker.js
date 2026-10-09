@@ -664,6 +664,35 @@ async function handleCommsRequest(request, env, url) {
         return json({ announcements: result.results || [] }, request);
       }
 
+      if (path === "/comms/teacher/announcement-status" && method === "POST") {
+        const payload = await request.json().catch(() => null);
+        if (!payload) return json({ error: "Solicitação inválida." }, request, 400);
+
+        const id = Number(payload.id);
+        const active = payload.active === true ? 1 : payload.active === false ? 0 : null;
+        if (!Number.isInteger(id) || id < 1 || active === null) {
+          return json({ error: "Informe um aviso válido e o estado desejado." }, request, 400);
+        }
+
+        const announcement = await env.DB.prepare(
+          "SELECT id FROM salta_comms_messages " +
+          "WHERE id = ? AND kind = 'announcement' AND scope IN ('global', 'individual') LIMIT 1"
+        ).bind(id).first();
+        if (!announcement) return json({ error: "Aviso não encontrado." }, request, 404);
+
+        await env.DB.prepare(
+          "UPDATE salta_comms_messages SET active = ? " +
+          "WHERE id = ? AND kind = 'announcement' AND scope IN ('global', 'individual')"
+        ).bind(active, id).run();
+
+        return json({
+          ok: true,
+          id,
+          active,
+          message: active ? "Aviso restaurado e visível aos destinatários." : "Aviso removido da Área do Aluno. Ele continua no histórico e pode ser restaurado."
+        }, request);
+      }
+
       if (path === "/comms/teacher/announcement-batch" && method === "POST") {
         const payload = await request.json().catch(() => null);
         if (!payload) return json({ error: "Aviso inválido." }, request, 400);
