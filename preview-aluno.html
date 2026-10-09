@@ -177,17 +177,17 @@ td:last-child,th:last-child{text-align:right}
 .comms-heading h2{font-size:24px;letter-spacing:-.7px;margin:0 0 7px}
 .comms-heading p{font-size:12px;line-height:1.55;color:var(--muted);margin:0}
 .comms-live{font-size:10px;font-weight:850;white-space:nowrap;border-radius:999px;padding:8px 10px;background:var(--accent-soft);color:var(--accent)}
-.comms-grid{display:grid;grid-template-columns:minmax(0,.95fr) minmax(0,1.05fr);gap:18px;align-items:start}
+.comms-grid{display:grid;grid-template-columns:minmax(0,1fr);gap:18px;align-items:start}
 .comms-panel{padding:22px}
 .comms-icon{width:36px;height:36px;display:grid;place-items:center;background:var(--accent-soft);border-radius:12px;font-size:17px;flex:0 0 auto}
 .notice-stack{display:flex;flex-direction:column;gap:10px}
-.notice-item{border:1px solid var(--line);border-radius:14px;padding:14px;background:#fff}
+.notice-item{border:1px solid var(--line);border-radius:14px;padding:14px;background:#fff}.notice-item.unread{border-color:var(--accent);box-shadow:0 0 0 2px color-mix(in srgb,var(--accent) 8%,transparent)}
 .notice-meta{display:flex;align-items:center;justify-content:space-between;gap:9px;margin-bottom:9px}
 .notice-kind{font-size:9px;font-weight:850;color:var(--accent);background:var(--accent-soft);padding:5px 7px;border-radius:999px}
 .notice-date{font-size:9px;color:var(--muted)}
 .notice-item h4{font-size:13px;margin:0 0 7px;line-height:1.45}
 .notice-item p{font-size:11px;color:#535b6c;line-height:1.6;margin:0;white-space:pre-wrap;overflow-wrap:anywhere}
-.notice-author{font-size:10px;color:var(--muted);border-top:1px solid var(--line);padding-top:8px;margin-top:11px}
+.notice-author{font-size:10px;color:var(--muted);border-top:1px solid var(--line);padding-top:8px;margin-top:11px}.notice-bottom{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-top:12px}.notice-state{font-size:10px;color:var(--muted)}.notice-read{border:1px solid var(--line);border-radius:9px;background:#fff;color:var(--accent);font-size:10px;font-weight:800;padding:8px 10px;cursor:pointer}.notice-read:disabled{opacity:.6;cursor:default}.bell-button{display:inline-flex;align-items:center;gap:9px;border:1px solid var(--line);background:#fff;color:var(--ink);border-radius:12px;padding:10px 13px;font-size:11px;font-weight:850;cursor:pointer;white-space:nowrap}.bell-icon{font-size:16px}.bell-count{display:inline-grid;place-items:center;min-width:22px;height:22px;padding:0 6px;border-radius:999px;background:var(--accent);color:#fff;font-size:10px}.bell-count.zero{background:#e8eaf1;color:var(--muted)}
 .comms-empty{border:1px dashed #d9dced;background:#ffffff85;border-radius:13px;padding:18px 12px;color:var(--muted);font-size:11px;line-height:1.6;text-align:center}
 .student-thread{display:flex;flex-direction:column;gap:9px;max-height:245px;overflow:auto;margin-bottom:14px}
 .student-bubble{max-width:94%;padding:10px 12px;border-radius:12px;font-size:11px;line-height:1.55;white-space:pre-wrap;overflow-wrap:anywhere}
@@ -208,7 +208,7 @@ td:last-child,th:last-child{text-align:right}
 #studentMessageStatus.error{color:#b42336}
 #studentMessageStatus.success{color:var(--good)}
 @media(max-width:850px){.comms-grid{grid-template-columns:1fr}}
-@media(max-width:560px){.comms-heading{align-items:flex-start;flex-direction:column}.comms-heading h2{font-size:22px}.comms-panel{padding:17px}.message-form-foot{align-items:flex-start;flex-direction:column}.message-form-foot button{width:100%}}
+@media(max-width:560px){.comms-heading{align-items:flex-start;flex-direction:column}.comms-heading h2{font-size:22px}.comms-panel{padding:17px}.bell-button{width:100%;justify-content:center}.notice-bottom{align-items:flex-start;flex-direction:column}}
 </style>
 </head>
 <body>
@@ -284,32 +284,12 @@ td:last-child,th:last-child{text-align:right}
   </section>
 
 
-  <section class="student-comms">
-    <div class="comms-heading">
-      <div><div class="eyebrow">Comunicação</div><h2>Avisos e mensagens</h2><p>Confira comunicados da escola e entre em contato com o professor pela própria plataforma.</p></div>
-      <span class="comms-live">Canal do aluno</span>
-    </div>
-    <div class="comms-grid">
-      <article class="panel comms-panel">
-        <div class="panel-head"><div><h3>Avisos para você</h3><p class="panel-sub">Comunicados globais, da sua turma ou direcionados a você.</p></div><span class="comms-icon">📣</span></div>
-        <div class="notice-stack" id="studentAnnouncements"><div class="comms-empty">Consulte seu código para verificar se há avisos.</div></div>
-      </article>
-      <article class="panel comms-panel">
-        <div class="panel-head"><div><h3>Fale com o professor</h3><p class="panel-sub">Envie uma dúvida ou mensagem particular.</p></div><span class="comms-icon">✉️</span></div>
-        <div class="student-thread" id="studentThread"><div class="comms-empty">Suas mensagens aparecerão aqui após a consulta.</div></div>
-        <form id="studentMessageForm" class="student-message-form">
-          <label for="studentMessageTitle">Assunto</label>
-          <input id="studentMessageTitle" type="text" maxlength="80" placeholder="Ex.: Dúvida sobre uma nota" required>
-          <label for="studentMessageBody">Mensagem</label>
-          <textarea id="studentMessageBody" maxlength="1000" placeholder="Escreva sua mensagem para o professor..." required></textarea>
-          <div class="message-form-foot"><span><span id="studentMessageCount">0</span>/1.000 · Limite de 5 mensagens por hora</span><button id="studentMessageSend" type="submit">Enviar mensagem</button></div>
-          <div id="studentMessageStatus" role="status" aria-live="polite"></div>
-        </form>
-      </article>
-    </div>
-  </section>
+  <section class="student-comms" id="avisos">
+    <div class="comms-heading"><div><div class="eyebrow">Comunicação</div><h2>Avisos da escola</h2><p>Comunicados do professor, para todos ou direcionados especialmente a você.</p></div><button class="bell-button" id="noticeBell" type="button" aria-label="Ir para os avisos"><span class="bell-icon" aria-hidden="true">♧</span><span>Meus avisos</span><span class="bell-count zero" id="noticeUnreadCount">0</span></button></div>
+    <div class="comms-grid"><article class="panel comms-panel"><div class="panel-head"><div><h3>Central de avisos</h3><p class="panel-sub" id="noticeSummary">Seus comunicados aparecerão aqui.</p></div><span class="comms-icon" aria-hidden="true">📣</span></div><div class="notice-stack" id="studentAnnouncements"><div class="comms-empty">Consulte seu código para verificar se há avisos.</div></div><div id="noticeStatus" role="status" aria-live="polite" style="font-size:10px;line-height:1.5;margin-top:10px;color:var(--muted)"></div></article></div>
+   </section>
 
-  <aside class="tip"><div class="tip-icon">🌱</div><div><strong>Pequenos passos também são progresso.</strong><p>Confira suas notas com frequência e converse com seu professor quando tiver dúvidas.</p></div></aside>
+   <aside class="tip"><div class="tip-icon">🌱</div><div><strong>Pequenos passos também são progresso.</strong><p>Confira suas notas com frequência e converse com seu professor quando tiver dúvidas.</p></div></aside>
  </div>
 </main>
 
