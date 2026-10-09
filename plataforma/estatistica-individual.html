@@ -11,13 +11,13 @@
 *{box-sizing:border-box}html{scroll-behavior:smooth}body{margin:0;min-height:100vh;background:radial-gradient(circle at 50% -5%,#fff 0,#f5f5f7 52%,#efeff1 100%);font-family:-apple-system,BlinkMacSystemFont,"SF Pro Display","SF Pro Text",Inter,Arial,sans-serif;color:var(--text);-webkit-font-smoothing:antialiased;visibility:hidden}
 body.auth-ready{visibility:visible}.wrap{width:min(1100px,calc(100% - 32px));margin:auto}
 .salta-platform-button{position:fixed;top:18px;right:18px;z-index:1000;width:42px;height:42px;border-radius:13px;display:grid;place-items:center;background:rgba(255,255,255,.82);color:#1d1d1f;border:1px solid rgba(0,0,0,.08);box-shadow:0 8px 24px rgba(0,0,0,.08);text-decoration:none;font-size:17px;font-weight:800;backdrop-filter:blur(16px) saturate(150%);transition:transform .25s,box-shadow .25s,background .25s}.salta-platform-button:hover{transform:translateY(-2px);box-shadow:0 12px 30px rgba(0,0,0,.12);background:#fff}
-main{padding:90px 0 70px}.hero{margin-bottom:24px}.eyebrow{font-size:12px;font-weight:700;letter-spacing:.1em;color:var(--blue);margin-bottom:10px}.hero h1{font-size:42px;letter-spacing:-1.9px;margin:0 0 10px}.hero p{color:var(--muted);font-size:15px;line-height:1.5;margin:0}
+main{padding:90px 0 70px;position:relative;z-index:1}.hero{margin-bottom:24px}.eyebrow{font-size:12px;font-weight:700;letter-spacing:.1em;color:var(--blue);margin-bottom:10px}.hero h1{font-size:42px;letter-spacing:-1.9px;margin:0 0 10px}.hero p{color:var(--muted);font-size:15px;line-height:1.5;margin:0}
 .controls{display:grid;grid-template-columns:220px 1fr;gap:12px;margin:25px 0 18px}.field,.select-wrap{background:var(--card);border:1px solid var(--line);border-radius:17px;padding:10px 13px;box-shadow:0 10px 30px rgba(0,0,0,.05)}.field label,.select-wrap label{display:block;font-size:11px;color:var(--muted);font-weight:700;margin-bottom:6px;text-transform:uppercase;letter-spacing:.07em}.field input,.select-wrap select{width:100%;border:0;background:transparent;outline:0;font-size:16px;color:var(--text);padding:3px 0}.select-wrap select{cursor:pointer}.select-wrap select:disabled{cursor:not-allowed;color:#9a9aa0}.select-wrap select option{color:var(--text)}
 .status{padding:13px 15px;border-radius:14px;background:#f0f0f2;color:#68686d;font-size:13px;margin-bottom:18px}
 .list{display:grid;gap:10px}.student{display:grid;grid-template-columns:minmax(180px,1fr) auto auto;gap:16px;align-items:center;padding:17px 18px;border-radius:18px;background:rgba(255,255,255,.78);border:1px solid var(--line);box-shadow:0 8px 24px rgba(0,0,0,.04);cursor:pointer;transition:transform .2s,box-shadow .2s}.student:hover{transform:translateY(-2px);box-shadow:0 15px 32px rgba(0,0,0,.08)}.student strong{font-size:15px}.student small{color:var(--muted);display:block;margin-top:3px}.code-pill{background:#eff6ff;color:#1d4ed8;padding:7px 10px;border-radius:999px;font-size:12px;font-weight:700}
-.profile{display:none;margin-top:22px}.profile-box{background:var(--card);border:1px solid var(--line);border-radius:27px;box-shadow:var(--shadow);padding:28px}.profile-head{display:flex;justify-content:space-between;gap:20px;align-items:flex-start}.profile h2{margin:0 0 5px;font-size:30px;letter-spacing:-1px}.profile-sub{margin:0;color:var(--muted);font-size:14px}.code-big{background:#eff6ff;color:#1d4ed8;padding:10px 13px;border-radius:12px;font-weight:800;font-size:14px;white-space:nowrap}.back-profile{display:inline-block;margin-top:18px;color:#555;font-size:13px;font-weight:650;cursor:pointer}.bim-tabs{display:flex;gap:8px;overflow:auto;margin:25px 0 18px}.bim-tab{border:1px solid var(--line);background:#fff;color:#5b5b60;border-radius:999px;padding:10px 14px;font-size:13px;font-weight:700;white-space:nowrap;cursor:pointer}.bim-tab.active{background:#111;color:#fff;border-color:#111}.bim-panel{display:none}.bim-panel.active{display:block}.summary{display:grid;grid-template-columns:repeat(2,1fr);gap:12px;margin-bottom:16px}.summary-card{padding:20px;border-radius:19px;background:#f6f7f9;text-align:center}.summary-card span{display:block;color:var(--muted);font-size:13px;margin-bottom:7px}.summary-card strong{font-size:29px}.evals{padding:20px;border:1px solid var(--line);border-radius:19px;background:#fff}.evals h3{margin:0 0 12px;font-size:17px}.empty{text-align:center;padding:30px;color:var(--muted);font-size:14px}.final{margin-top:16px;padding:20px;border-radius:19px;background:#eff6ff;text-align:center}.final span{display:block;color:#4c5e74;font-size:13px}.final strong{display:block;font-size:34px;margin-top:4px}.final small{display:block;margin-top:7px;color:var(--muted);font-size:11px;line-height:1.5}
+.profile-actions{display:flex;align-items:center;justify-content:space-between;gap:14px;flex-wrap:wrap}.profile-actions .back-profile{margin-top:0}.profile-notice{width:auto;margin:0;padding:10px 14px;border:0;border-radius:12px;background:#5b5bd6;color:#fff;font-size:13px;font-weight:700;cursor:pointer}.profile-notice:hover{background:#4d4dc2}.profile{display:none;margin-top:22px}.profile-box{background:var(--card);border:1px solid var(--line);border-radius:27px;box-shadow:var(--shadow);padding:28px}.profile-head{display:flex;justify-content:space-between;gap:20px;align-items:flex-start}.profile h2{margin:0 0 5px;font-size:30px;letter-spacing:-1px}.profile-sub{margin:0;color:var(--muted);font-size:14px}.code-big{background:#eff6ff;color:#1d4ed8;padding:10px 13px;border-radius:12px;font-weight:800;font-size:14px;white-space:nowrap}.back-profile{display:inline-block;margin-top:18px;color:#555;font-size:13px;font-weight:650;cursor:pointer}.bim-tabs{display:flex;gap:8px;overflow:auto;margin:25px 0 18px}.bim-tab{border:1px solid var(--line);background:#fff;color:#5b5b60;border-radius:999px;padding:10px 14px;font-size:13px;font-weight:700;white-space:nowrap;cursor:pointer}.bim-tab.active{background:#111;color:#fff;border-color:#111}.bim-panel{display:none}.bim-panel.active{display:block}.summary{display:grid;grid-template-columns:repeat(2,1fr);gap:12px;margin-bottom:16px}.summary-card{padding:20px;border-radius:19px;background:#f6f7f9;text-align:center}.summary-card span{display:block;color:var(--muted);font-size:13px;margin-bottom:7px}.summary-card strong{font-size:29px}.evals{padding:20px;border:1px solid var(--line);border-radius:19px;background:#fff}.evals h3{margin:0 0 12px;font-size:17px}.empty{text-align:center;padding:30px;color:var(--muted);font-size:14px}.final{margin-top:16px;padding:20px;border-radius:19px;background:#eff6ff;text-align:center}.final span{display:block;color:#4c5e74;font-size:13px}.final strong{display:block;font-size:34px;margin-top:4px}.final small{display:block;margin-top:7px;color:var(--muted);font-size:11px;line-height:1.5}
 @media(max-width:700px){.controls{grid-template-columns:1fr}.student{grid-template-columns:1fr auto}.student small{font-size:12px}.profile-head{flex-direction:column}.code-big{align-self:flex-start}}@media(max-width:520px){.hero h1{font-size:34px}.profile-box{padding:22px}}
-.salta-grid{position:fixed;inset:0;pointer-events:none;z-index:-1;background-image:linear-gradient(rgba(90,90,100,.055) 1px,transparent 1px),linear-gradient(90deg,rgba(90,90,100,.055) 1px,transparent 1px);background-size:32px 32px}
+body .salta-grid{position:fixed;inset:0;pointer-events:none;z-index:0;background-image:linear-gradient(rgba(91,91,214,.075) 1px,transparent 1px),linear-gradient(90deg,rgba(91,91,214,.075) 1px,transparent 1px);background-size:32px 32px}
 
 
 </style>
@@ -42,7 +42,7 @@ main{padding:90px 0 70px}.hero{margin-bottom:24px}.eyebrow{font-size:12px;font-w
 <section class="profile" id="profile">
 <div class="profile-box">
 <div class="profile-head"><div><h2 id="pNome">—</h2><p class="profile-sub" id="pTurma">—</p><p class="profile-sub" id="pAtualizacao"></p></div><div class="code-big" id="pCodigo">—</div></div>
-<a class="back-profile" onclick="fecharPerfil()">← Voltar para a lista</a>
+<div class="profile-actions"><a class="back-profile" onclick="fecharPerfil()">← Voltar para a lista</a><button class="profile-notice" id="sendProfileNotice" type="button">Preparar aviso individual</button></div>
 <div class="bim-tabs" id="bimTabs"></div>
 <div id="bimPanels"></div>
 <div class="final"><span>Média final</span><strong id="pFinal">—</strong><small id="pFinalMethod">Soma das médias bimestrais lançadas dividida pelos períodos do segmento de ensino.</small></div>
@@ -58,6 +58,7 @@ main{padding:90px 0 70px}.hero{margin-bottom:24px}.eyebrow{font-size:12px;font-w
   const API = "https://salta-stats.dannyel-moises.workers.dev";
 
   let alunos = [];
+  let alunoPerfilAtual = null;
 
   function obterToken() {
     return localStorage.getItem(KEY) || sessionStorage.getItem(KEY) || "";
@@ -194,6 +195,7 @@ async function carregarAlunosTurma() {
 async function abrirPerfil(index) {
     const resumo = alunos[index];
     if (!resumo) return;
+    alunoPerfilAtual = resumo;
 
     const controls = document.querySelector(".controls");
     const profile = document.getElementById("profile");
@@ -308,6 +310,16 @@ async function abrirPerfil(index) {
   window.abrirPerfil = abrirPerfil;
   window.fecharPerfil = fecharPerfil;
   window.showBim = showBim;
+
+  document.getElementById("sendProfileNotice").addEventListener("click", () => {
+    if (!alunoPerfilAtual?.codigo) return;
+    sessionStorage.setItem("saltaReportRecipientCodes", JSON.stringify([{
+      codigo: alunoPerfilAtual.codigo,
+      nome: alunoPerfilAtual.nome || "",
+      turma: alunoPerfilAtual.turma || ""
+    }]));
+    location.href = "./mensagens.html";
+  });
 
   document.getElementById("turma").addEventListener("change", carregarAlunosTurma);
 

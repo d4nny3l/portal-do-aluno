@@ -24,8 +24,16 @@ main{padding:88px 0 70px;position:relative;z-index:1}.hero{margin-bottom:24px}.e
 .table-wrap{overflow:auto;border-radius:18px;border:1px solid var(--line);background:#fff}.students-table{width:100%;border-collapse:collapse;min-width:520px}.students-table th,.students-table td{padding:12px 14px;border-bottom:1px solid #eee;font-size:13px}.students-table th{text-align:left;color:var(--muted);font-size:11px;text-transform:uppercase;letter-spacing:.06em}.students-table td:not(:first-child),.students-table th:not(:first-child){text-align:right}.students-table tr:last-child td{border-bottom:0}.muted{color:var(--muted)}.empty{padding:22px;text-align:center;color:var(--muted);font-size:14px}
 #globalDashboard .students-table{min-width:740px}
 .back{display:inline-block;margin-top:24px;font-size:14px;font-weight:650}
+.selection-toolbar{display:flex;align-items:center;justify-content:space-between;gap:12px;margin:12px 0 14px;padding:12px 14px;border:1px solid var(--line);border-radius:15px;background:#f4f4ff}
+.selection-toolbar p{margin:0;color:var(--muted);font-size:12px}
+.selection-toolbar button{width:auto;margin:0;padding:10px 14px;border:0;border-radius:12px;background:#5b5bd6;color:#fff;font-size:12px;font-weight:750;cursor:pointer}
+.selection-toolbar button:disabled{background:#d9daf0;color:#777995;cursor:not-allowed}
+.report-search{margin:0 0 12px}
+.report-search input{width:100%;border:1px solid var(--line);border-radius:12px;padding:11px 13px;background:#fff;color:var(--text);font:inherit}
+.report-select{width:18px;height:18px;accent-color:#5b5bd6;cursor:pointer}
+@media(max-width:560px){.selection-toolbar{align-items:flex-start;flex-direction:column}.selection-toolbar button{width:100%}}
 .period-note{max-width:760px;margin:-6px 0 18px;color:var(--muted);font-size:12px;line-height:1.5}
-.salta-grid{position:fixed;inset:0;pointer-events:none;z-index:0;background-image:linear-gradient(rgba(90,90,100,.055) 1px,transparent 1px),linear-gradient(90deg,rgba(90,90,100,.055) 1px,transparent 1px);background-size:32px 32px}
+body .salta-grid{position:fixed;inset:0;pointer-events:none;z-index:0;background-image:linear-gradient(rgba(91,91,214,.075) 1px,transparent 1px),linear-gradient(90deg,rgba(91,91,214,.075) 1px,transparent 1px);background-size:32px 32px}
 @media(max-width:850px){.grid{grid-template-columns:repeat(2,1fr)}.two{grid-template-columns:1fr}.evo{grid-template-columns:repeat(2,1fr)}}@media(max-width:700px){.controls{grid-template-columns:1fr}}@media(max-width:560px){.wrap{width:calc(100% - 26px)}main{padding:76px 0 55px}.hero h1{font-size:34px}.grid{grid-template-columns:1fr 1fr}.card{padding:17px;border-radius:19px}.metric strong{font-size:26px}.bar-row{grid-template-columns:78px 1fr 38px}.panel{padding:18px;border-radius:20px}}
 </style>
 <link rel="stylesheet" href="../salta-theme.css?v=b2cb545">
@@ -99,9 +107,13 @@ main{padding:88px 0 70px;position:relative;z-index:1}.hero{margin-bottom:24px}.e
   <section class="section">
     <div class="panel">
       <h2 class="section-title">Resultado por aluno</h2>
+      <div class="selection-toolbar">
+        <p id="classSelectionCount">Nenhum aluno selecionado.</p>
+        <button id="sendClassNotice" type="button" disabled>Preparar aviso aos selecionados</button>
+      </div>
       <div class="table-wrap">
         <table class="students-table">
-          <thead><tr><th>Aluno</th><th id="studentMediaHeading">Média no período</th><th>Vistos</th><th>Situação</th></tr></thead>
+          <thead><tr><th><input class="report-select" id="selectAllClass" type="checkbox" aria-label="Selecionar todos os alunos da turma"></th><th>Aluno</th><th id="studentMediaHeading">Média no período</th><th>Vistos</th><th>Situação</th></tr></thead>
           <tbody id="students"></tbody>
         </table>
       </div>
@@ -145,6 +157,25 @@ main{padding:88px 0 70px;position:relative;z-index:1}.hero{margin-bottom:24px}.e
 
   <section class="section">
     <div class="panel">
+      <h2 class="section-title">Alunos da plataforma</h2>
+      <p class="muted">Selecione um ou mais alunos para preparar avisos individuais a partir deste relatório.</p>
+      <div class="selection-toolbar">
+        <p id="globalSelectionCount">Nenhum aluno selecionado.</p>
+        <button id="sendGlobalNotice" type="button" disabled>Preparar aviso aos selecionados</button>
+      </div>
+      <div class="report-search"><label class="muted" for="globalStudentSearch">Buscar por aluno ou turma</label><input id="globalStudentSearch" type="search" placeholder="Digite um nome ou turma"></div>
+      <div class="table-wrap">
+        <table class="students-table">
+          <thead><tr><th><input class="report-select" id="selectAllGlobal" type="checkbox" aria-label="Selecionar alunos visíveis"></th><th>Aluno</th><th>Turma</th><th>Média no período</th><th>Situação</th></tr></thead>
+          <tbody id="globalStudents"></tbody>
+        </table>
+      </div>
+      <p class="muted" id="globalRosterSummary"></p>
+    </div>
+  </section>
+
+  <section class="section">
+    <div class="panel">
       <h2 class="section-title">Comparação entre turmas</h2>
       <div class="table-wrap">
         <table class="students-table">
@@ -169,6 +200,11 @@ main{padding:88px 0 70px;position:relative;z-index:1}.hero{margin-bottom:24px}.e
   const statusEl=document.getElementById("status");
   const dashboard=document.getElementById("dashboard");
   let statsRequest=0;
+  const NOTICE_RECIPIENTS_KEY="saltaReportRecipientCodes";
+  const MAX_NOTICE_RECIPIENTS=100;
+  const selectedStudents=new Map();
+  let globalStudentRows=[];
+  let visibleGlobalStudentRows=[];
 
   function token(){return localStorage.getItem(KEY)||sessionStorage.getItem(KEY)||""}
   function fmt(v){if(v===null||v===undefined||v==="")return "—";const n=Number(v);return Number.isFinite(n)?n.toFixed(1).replace(".",","):String(v)}
@@ -221,6 +257,89 @@ main{padding:88px 0 70px;position:relative;z-index:1}.hero{margin-bottom:24px}.e
     ).join("")+'</div>';
   }
 
+  function updateSelectionControls(){
+    const count=selectedStudents.size;
+    const label=count ? count+" aluno"+(count===1?" selecionado.":"s selecionados.") : "Nenhum aluno selecionado.";
+    const classLabel=document.getElementById("classSelectionCount");
+    const globalLabel=document.getElementById("globalSelectionCount");
+    const classButton=document.getElementById("sendClassNotice");
+    const globalButton=document.getElementById("sendGlobalNotice");
+    if(classLabel)classLabel.textContent=label;
+    if(globalLabel)globalLabel.textContent=label;
+    if(classButton)classButton.disabled=count===0;
+    if(globalButton)globalButton.disabled=count===0;
+  }
+
+  function queueNoticeForSelected(){
+    const recipients=[...selectedStudents.values()];
+    if(!recipients.length)return;
+    if(recipients.length>MAX_NOTICE_RECIPIENTS){
+      showStatus("Selecione no máximo "+MAX_NOTICE_RECIPIENTS+" alunos por envio.",true);
+      return;
+    }
+    sessionStorage.setItem(NOTICE_RECIPIENTS_KEY,JSON.stringify(recipients));
+    location.href="./mensagens.html";
+  }
+
+  function syncSelectAll(input, rows){
+    if(!input)return;
+    input.checked=rows.length>0&&rows.every(row=>selectedStudents.has(String(row.codigo)));
+    input.indeterminate=rows.some(row=>selectedStudents.has(String(row.codigo)))&&!input.checked;
+  }
+
+  function renderGlobalRoster(rows){
+    globalStudentRows=Array.isArray(rows)?rows:[];
+    const query=(document.getElementById("globalStudentSearch").value||"").trim().toLocaleLowerCase("pt-BR");
+    visibleGlobalStudentRows=globalStudentRows.filter(row=>
+      !query||String(row.nome||"").toLocaleLowerCase("pt-BR").includes(query)||
+      String(row.turma||"").toLocaleLowerCase("pt-BR").includes(query)
+    );
+    const tbody=document.getElementById("globalStudents");
+    tbody.innerHTML=visibleGlobalStudentRows.map(row=>{
+      const code=String(row.codigo||"");
+      const name=String(row.nome||"Aluno sem nome");
+      const turma=String(row.turma||"—");
+      const hasMedia=row.media!==null&&row.media!==undefined&&row.media!=="";
+      const situation=!hasMedia?"Sem média lançada":Number(row.media)>=Number(row.mediaMinima)?"Na média ou acima":"Abaixo da média";
+      return '<tr><td><input class="report-select global-student-select" type="checkbox" data-code="'+esc(code)+'" aria-label="Selecionar '+esc(name)+'" '+(selectedStudents.has(code)?"checked":"")+'></td><td>'+esc(name)+'</td><td>'+esc(turma)+'</td><td>'+fmt(row.media)+'</td><td>'+situation+'</td></tr>';
+    }).join("")||'<tr><td colspan="5" class="empty">Nenhum aluno corresponde à busca.</td></tr>';
+    tbody.querySelectorAll(".global-student-select").forEach(input=>input.addEventListener("change",()=>{
+      const code=input.dataset.code;
+      const row=visibleGlobalStudentRows.find(item=>String(item.codigo)===code);
+      if(input.checked&&row)selectedStudents.set(code,{codigo:code,nome:row.nome||"",turma:row.turma||""});
+      else selectedStudents.delete(code);
+      updateSelectionControls();
+      syncSelectAll(document.getElementById("selectAllGlobal"),visibleGlobalStudentRows);
+    }));
+    syncSelectAll(document.getElementById("selectAllGlobal"),visibleGlobalStudentRows);
+    document.getElementById("globalRosterSummary").textContent=globalStudentRows.length+" alunos no relatório.";
+    updateSelectionControls();
+  }
+
+  function bindClassSelection(rows){
+    const tbody=document.getElementById("students");
+    tbody.querySelectorAll(".class-student-select").forEach(input=>input.addEventListener("change",()=>{
+      const code=input.dataset.code;
+      const row=rows.find(item=>String(item.codigo)===code);
+      if(input.checked&&row)selectedStudents.set(code,{codigo:code,nome:row.nome||"",turma:row.turma||""});
+      else selectedStudents.delete(code);
+      updateSelectionControls();
+      syncSelectAll(document.getElementById("selectAllClass"),rows);
+    }));
+    syncSelectAll(document.getElementById("selectAllClass"),rows);
+    updateSelectionControls();
+  }
+
+  function toggleRows(rows,checked){
+    rows.forEach(row=>{
+      const code=String(row.codigo||"");
+      if(!code)return;
+      if(checked)selectedStudents.set(code,{codigo:code,nome:row.nome||"",turma:row.turma||""});
+      else selectedStudents.delete(code);
+    });
+    return rows;
+  }
+
   function renderGlobal(data){
     document.getElementById("dashboard").style.display="none";
     document.getElementById("globalDashboard").style.display="block";
@@ -246,6 +365,7 @@ main{padding:88px 0 70px;position:relative;z-index:1}.hero{margin-bottom:24px}.e
 
     renderRanking("bestStudents",data.melhores,false);
     renderRanking("worstStudents",data.piores,true);
+    renderGlobalRoster(data.alunos||[]);
 
     const max=Math.max(...(data.distribuicao||[]).map(x=>Number(x.quantidade)||0),1);
     document.getElementById("globalDistribution").innerHTML=(data.distribuicao||[]).map(x=>
@@ -311,11 +431,16 @@ main{padding:88px 0 70px;position:relative;z-index:1}.hero{margin-bottom:24px}.e
     document.getElementById("acima").textContent=(data.acimaOuIgualMedia||0)+" alunos no mínimo ou acima";
 
     const tbody=document.getElementById("students");
-    const rows=(data.porAluno||[]).map(x=>{
-      const ok=Number(x.media)>=Number(data.mediaMinima);
-      return '<tr><td>'+esc(x.nome)+'</td><td>'+fmt(x.media)+'</td><td>'+fmt(x.vistos)+'</td><td>'+ (ok?"Na média ou acima":"Abaixo da média") +'</td></tr>';
+    const porAluno=data.porAluno||[];
+    window.currentClassReportStudents=porAluno;
+    const rows=porAluno.map(x=>{
+      const code=String(x.codigo||"");
+      const hasMedia=x.media!==null&&x.media!==undefined&&x.media!=="";
+      const situation=!hasMedia?"Sem média lançada":Number(x.media)>=Number(data.mediaMinima)?"Na média ou acima":"Abaixo da média";
+      return '<tr><td><input class="report-select class-student-select" type="checkbox" data-code="'+esc(code)+'" aria-label="Selecionar '+esc(x.nome)+'" '+(selectedStudents.has(code)?"checked":"")+'></td><td>'+esc(x.nome)+'</td><td>'+fmt(x.media)+'</td><td>'+fmt(x.vistos)+'</td><td>'+situation+'</td></tr>';
     }).join("");
-    tbody.innerHTML=rows||'<tr><td colspan="4" class="empty">Nenhuma média foi lançada neste período.</td></tr>';
+    tbody.innerHTML=rows||'<tr><td colspan="5" class="empty">Nenhum aluno disponível nesta turma.</td></tr>';
+    bindClassSelection(porAluno);
   }
 
   async function loadStats(){
@@ -349,8 +474,28 @@ main{padding:88px 0 70px;position:relative;z-index:1}.hero{margin-bottom:24px}.e
     }
   }
 
-  turmaSelect.addEventListener("change",loadStats);
-  periodSelect.addEventListener("change",loadStats);
+  document.getElementById("globalStudentSearch").addEventListener("input",()=>renderGlobalRoster(globalStudentRows));
+  document.getElementById("selectAllGlobal").addEventListener("change",event=>{
+    toggleRows(visibleGlobalStudentRows,event.target.checked);
+    renderGlobalRoster(globalStudentRows);
+  });
+  document.getElementById("selectAllClass").addEventListener("change",event=>{
+    const rows=window.currentClassReportStudents||[];
+    toggleRows(rows,event.target.checked);
+    bindClassSelection(rows);
+    document.querySelectorAll("#students .class-student-select").forEach(input=>{
+      input.checked=selectedStudents.has(input.dataset.code);
+    });
+  });
+  document.getElementById("sendClassNotice").addEventListener("click",queueNoticeForSelected);
+  document.getElementById("sendGlobalNotice").addEventListener("click",queueNoticeForSelected);
+
+  function clearReportSelection(){
+    selectedStudents.clear();
+    updateSelectionControls();
+  }
+  turmaSelect.addEventListener("change",()=>{clearReportSelection();loadStats()});
+  periodSelect.addEventListener("change",()=>{clearReportSelection();loadStats()});
   authCheck().then(ok=>{if(ok)loadTurmas()});
 })();
 </script>

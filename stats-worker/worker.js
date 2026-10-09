@@ -325,14 +325,17 @@ function buildTurmaStats(rows, config, requestedPeriod = "vigente") {
       vistos: round1(a.vistos)
     }));
 
-  const porAluno = alunos
-    .filter(a => a.mediaSelecionada !== null)
-    .sort((a, b) => b.mediaSelecionada - a.mediaSelecionada)
+  const porAluno = [...alunos]
+    .sort((a, b) => {
+      const mediaA = Number.isFinite(a.mediaSelecionada) ? a.mediaSelecionada : -Infinity;
+      const mediaB = Number.isFinite(b.mediaSelecionada) ? b.mediaSelecionada : -Infinity;
+      return mediaB - mediaA || String(a.nome).localeCompare(String(b.nome), "pt-BR");
+    })
     .map(a => ({
       codigo: a.codigo,
       nome: a.nome,
-      media: round1(a.mediaSelecionada),
-      vistos: round1(a.vistos)
+      media: Number.isFinite(a.mediaSelecionada) ? round1(a.mediaSelecionada) : null,
+      vistos: Number.isFinite(a.vistos) ? round1(a.vistos) : null
     }));
 
   return {
@@ -501,6 +504,16 @@ function buildGlobalStats(rows, configs, requestedPeriod = "vigente") {
     acimaOuIgualMedia: acima.length,
     abaixoMedia: abaixo.length,
     distribuicao: faixas,
+    alunos: alunos.map(a => ({
+      codigo: a.codigo,
+      nome: a.nome,
+      turma: a.turma,
+      rede: a.rede,
+      bimestreVigente: a.bimestreVigente,
+      mediaMinima: a.mediaMinima,
+      media: Number.isFinite(a.media) ? round1(a.media) : null,
+      vistos: Number.isFinite(a.vistos) ? round1(a.vistos) : null
+    })),
     melhores: melhores.map(a => ({
       codigo:a.codigo, nome:a.nome, turma:a.turma, rede:a.rede,
       bimestreVigente:a.bimestreVigente, media:round1(a.media), vistos:round1(a.vistos)
@@ -649,6 +662,67 @@ async function handleCommsRequest(request, env, url) {
           "ORDER BY datetime(created_at) DESC LIMIT 100"
         ).all();
         return json({ announcements: result.results || [] }, request);
+      }
+
+      if (path === "/comms/teacher/announcement-batch" && method === "POST") {
+        const payload = await request.json().catch(() => null);
+        if (!payload) return json({ error: "Aviso inválido." }, request, 400);
+
+        const title = trimLimited(payload.title, COMMS_MAX_TITLE);
+        const body = trimLimited(payload.body, COMMS_MAX_BODY);
+        if (!title || !body) {
+          return json({ error: "Informe um título e o texto do aviso." }, request, 400);
+        }
+        if (String(payload.title || "").trim().length > COMMS_MAX_TITLE ||
+            String(payload.body || "").trim().length > COMMS_MAX_BODY) {
+          return json({ error: "O título aceita até 100 caracteres e o aviso até 1.500." }, request, 400);
+        }
+
+        const receivedCodes = Array.isArray(payload.student_codes) ? payload.student_codes : [];
+        const codes = [...new Set(receivedCodes.map(code => String(code || "").trim().toUpperCase()))];
+        if (!codes.length) return json({ error: "Selecione ao menos um aluno." }, request, 400);
+        if (codes.length > 100) return json({ error: "Envie no máximo 100 avisos individuais por vez." }, request, 400);
+        if (codes.some(code => !validStudentCode(code))) {
+          return json({ error: "Um ou mais códigos de aluno são inválidos." }, request, 400);
+        }
+
+        const placeholders = codes.map(() => "?").join(",");
+        const found = await env.DB.prepare(
+          "SELECT codigo, TRIM(turma) AS turma FROM alunos WHERE codigo IN (" + placeholders + ")"
+        ).bind(...codes).all();
+        const students = new Map((found.results || []).map(student => [
+          String(student.codigo || "").trim().toUpperCase(),
+          student
+        ]));
+        if (students.size !== codes.length) {
+          return json({ error: "Um ou mais alunos selecionados não foram encontrados. Revise a seleção." }, request, 404);
+        }
+
+        const senderName = String(env.PROFESSOR_DISPLAY_NAME || "Professor").slice(0, 120);
+        const statements = codes.map(code => {
+          const student = students.get(code);
+          return env.DB.prepare(
+            "INSERT INTO salta_comms_messages " +
+            "(kind, scope, turma, student_code, sender_type, sender_name, title, body) " +
+            "VALUES (?, ?, ?, ?, ?, ?, ?, ?)"
+          ).bind(
+            "announcement",
+            "individual",
+            student.turma || null,
+            code,
+            "teacher",
+            senderName,
+            title,
+            body
+          );
+        });
+        const inserted = await env.DB.batch(statements);
+        const published = inserted.filter(result => result.success !== false).length;
+        return json({
+          ok: true,
+          published,
+          message: published + (published === 1 ? " aviso individual publicado." : " avisos individuais publicados.")
+        }, request, 201);
       }
 
       if (path === "/comms/teacher/announcement" && method === "POST") {

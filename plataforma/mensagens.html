@@ -71,7 +71,7 @@ h1{font-size:clamp(30px,4vw,43px);letter-spacing:-1.8px;line-height:1.05;margin:
 .announcement-footer{font-size:10px;color:var(--muted);margin-top:13px;padding-top:11px;border-top:1px solid #f0f1f3}
 .empty{padding:28px 14px;border:1px dashed #d7dbe4;border-radius:15px;color:var(--muted);font-size:12px;line-height:1.6;text-align:center;background:#ffffff80}
 .locked{padding:24px;border:1px solid var(--line);border-radius:18px;background:#fff;line-height:1.55;font-size:13px}
-.locked a{color:var(--blue);font-weight:800}
+.locked a{color:var(--blue);font-weight:800}.recipient-list{max-height:150px;overflow:auto;margin:5px 0 12px;padding:10px 12px;border:1px solid var(--line);border-radius:12px;background:#f4f4ff;color:var(--ink);font-size:12px;line-height:1.55;white-space:pre-wrap}
 footer{padding:28px 0 34px;border-top:1px solid var(--line);font-size:11px;color:var(--muted)}
 footer .wrap{display:flex;justify-content:space-between;gap:12px}
 @media(max-width:860px){.grid{grid-template-columns:1fr}}
@@ -94,6 +94,7 @@ footer .wrap{display:flex;justify-content:space-between;gap:12px}
    <section class="grid"><article class="card"><div class="card-head"><h2>Publicar um aviso</h2><p>Escolha entre um comunicado para todos ou para um aluno específico.</p></div><div class="card-body"><form id="announcementForm">
     <div class="field"><label for="scope">Público do aviso</label><select id="scope" required><option value="global">Todas as turmas — aviso global</option><option value="individual">Um aluno específico</option></select></div>
     <div class="field" id="individualTarget" hidden><label for="targetCode">Código do aluno</label><div class="inline-row"><input id="targetCode" type="text" maxlength="8" placeholder="Código individual" autocomplete="off"><button class="verify-button" type="button" id="verifyStudent">Validar</button></div><div class="help" id="studentValidation">Valide o código para confirmar o destinatário antes de publicar.</div></div>
+    <div class="field" id="reportRecipientTarget" hidden><label for="reportRecipientSummary">Alunos selecionados no relatório</label><div class="recipient-list" id="reportRecipientSummary"></div><button class="secondary" id="clearReportRecipients" type="button">Alterar destinatários</button></div>
     <div class="field"><label for="announcementTitle">Título</label><input id="announcementTitle" type="text" maxlength="100" placeholder="Ex.: Revisão para a avaliação" required></div>
     <div class="field"><label for="announcementBody">Aviso</label><textarea id="announcementBody" maxlength="1500" placeholder="Escreva o comunicado com clareza..." required></textarea><div class="help"><span id="announcementCount">0</span>/1.500 caracteres.</div></div>
     <div class="target-box" id="targetPreview">Este aviso será exibido a todos os alunos cadastrados na Área do Aluno.</div><button class="primary" id="publishButton" type="submit">Publicar aviso</button>
@@ -109,6 +110,9 @@ const SESSION_KEY="saltaProfessorSession";
 const OLD_STORE=window.sessionStorage;
 let token="";
 let validatedStudent=null;
+const REPORT_RECIPIENTS_KEY="saltaReportRecipientCodes";
+const MAX_REPORT_RECIPIENTS=100;
+let reportRecipients=[];
 
 function getToken(){return localStorage.getItem(SESSION_KEY)||OLD_STORE.getItem(SESSION_KEY)||"";}
 function setStatus(message,type){
@@ -136,13 +140,43 @@ async function checkSession(){
   const d=await r.json().catch(()=>({}));
   if(!r.ok||!d.authenticated){localStorage.removeItem(SESSION_KEY);OLD_STORE.removeItem(SESSION_KEY);document.getElementById("lockedPanel").hidden=false;return;}
   document.getElementById("app").hidden=false;
+  await prepareReportRecipients();
   await loadAnnouncements();
  }catch(_){document.getElementById("lockedPanel").hidden=false;}
 }
 function updateScope(){
  const scope=document.getElementById("scope").value;
- document.getElementById("individualTarget").hidden=scope!=="individual";
- document.getElementById("targetPreview").textContent=scope==="global"?"Este aviso será exibido a todos os alunos cadastrados na Área do Aluno.":"Este aviso será exibido apenas ao aluno identificado pelo código validado.";
+ const fromReport=reportRecipients.length>0;
+ document.getElementById("individualTarget").hidden=scope!=="individual"||fromReport;
+ document.getElementById("reportRecipientTarget").hidden=scope!=="individual"||!fromReport;
+ document.getElementById("targetPreview").textContent=scope==="global"?"Este aviso será exibido a todos os alunos cadastrados na Área do Aluno.":fromReport?"Este aviso será enviado individualmente a "+reportRecipients.length+" aluno(s) selecionado(s) no relatório.":"Este aviso será exibido apenas ao aluno identificado pelo código validado.";
+}
+async function prepareReportRecipients(){
+ const stored=OLD_STORE.getItem(REPORT_RECIPIENTS_KEY);
+ if(!stored)return;
+ OLD_STORE.removeItem(REPORT_RECIPIENTS_KEY);
+ let rows=[];
+ try{rows=JSON.parse(stored);}catch(_){setStatus("Não foi possível recuperar a seleção do relatório.","error");return;}
+ if(!Array.isArray(rows)){setStatus("A seleção do relatório está inválida.","error");return;}
+ const unique=new Map();
+ for(const item of rows){
+  const code=String(item?.codigo||"").trim().toUpperCase();
+  if(!/^2026[A-Z]{1,4}$/.test(code))continue;
+  if(!unique.has(code))unique.set(code,{codigo:code,nome:String(item?.nome||"Aluno"),turma:String(item?.turma||"")});
+ }
+ reportRecipients=[...unique.values()].slice(0,MAX_REPORT_RECIPIENTS);
+ if(!reportRecipients.length){setStatus("Nenhum aluno válido foi recebido do relatório.","error");return;}
+ if(unique.size>MAX_REPORT_RECIPIENTS)setStatus("A seleção foi limitada a "+MAX_REPORT_RECIPIENTS+" alunos por aviso.","info");
+ document.getElementById("scope").value="individual";
+ document.getElementById("reportRecipientSummary").textContent=reportRecipients.map((student,index)=>(index+1)+". "+student.nome+(student.turma?" · "+student.turma:"")).join("\n");
+ updateScope();
+}
+function clearReportRecipients(){
+ reportRecipients=[];
+ validatedStudent=null;
+ document.getElementById("reportRecipientSummary").textContent="";
+ updateScope();
+ setStatus("Seleção do relatório removida. Informe e valide um código de aluno.","info");
 }
 async function validateStudent(){
  const code=document.getElementById("targetCode").value.trim().toUpperCase();
@@ -161,21 +195,33 @@ async function publishAnnouncement(event){
  const scope=document.getElementById("scope").value;
  const title=document.getElementById("announcementTitle").value.trim();
  const body=document.getElementById("announcementBody").value.trim();
- const payload={scope,title,body};
+ let path="/comms/teacher/announcement";
+ let payload={scope,title,body};
 
  if(scope==="individual"){
-  const code=document.getElementById("targetCode").value.trim().toUpperCase();
-  if(!validatedStudent||validatedStudent.codigo!==code){setStatus("Valide o código do destinatário antes de publicar.","error");return;}
-  payload.student_code=code;
+  if(reportRecipients.length){
+   if(reportRecipients.length>MAX_REPORT_RECIPIENTS){setStatus("Selecione no máximo "+MAX_REPORT_RECIPIENTS+" alunos por aviso.","error");return;}
+   payload={title,body,student_codes:reportRecipients.map(student=>student.codigo)};
+   path="/comms/teacher/announcement-batch";
+  }else{
+   const code=document.getElementById("targetCode").value.trim().toUpperCase();
+   if(!validatedStudent||validatedStudent.codigo!==code){setStatus("Valide o código do destinatário antes de publicar.","error");return;}
+   payload.student_code=code;
+  }
  }
  const button=document.getElementById("publishButton");
  button.disabled=true;button.textContent="Publicando...";
  try{
-  await api("/comms/teacher/announcement",{method:"POST",body:JSON.stringify(payload)});
+  const result=await api(path,{method:"POST",body:JSON.stringify(payload)});
   document.getElementById("announcementTitle").value="";
   document.getElementById("announcementBody").value="";
   document.getElementById("announcementCount").textContent="0";
-  setStatus("Aviso publicado com sucesso.","success");
+  setStatus(result.message||"Aviso publicado com sucesso.", "success");
+  if(path==="/comms/teacher/announcement-batch"){
+   reportRecipients=[];
+   document.getElementById("reportRecipientSummary").textContent="";
+   updateScope();
+  }
   await loadAnnouncements();
  }catch(e){setStatus(e.message,"error");}
  finally{button.disabled=false;button.textContent="Publicar aviso";}
@@ -203,6 +249,8 @@ async function loadAnnouncements(){
  }catch(e){document.getElementById("announcementList").innerHTML='<div class="empty">Não foi possível carregar os avisos: '+esc(e.message)+'</div>';}
 }
 document.getElementById("scope").addEventListener("change",updateScope);
+document.getElementById("clearReportRecipients").addEventListener("click",clearReportRecipients);
+
 
 document.getElementById("targetCode").addEventListener("input",()=>{validatedStudent=null;document.getElementById("studentValidation").textContent="Valide o código para confirmar o destinatário antes de publicar.";document.getElementById("studentValidation").style.color="var(--muted)";});
 document.getElementById("verifyStudent").addEventListener("click",validateStudent);
