@@ -6,7 +6,6 @@ on:
       - main
     paths:
       - "stats-worker/**"
-      - ".github/workflows/deploy-salta-stats.yml"
   workflow_dispatch:
 
 permissions:
