@@ -4,7 +4,7 @@ const ALLOWED_ORIGIN = "https://d4nny3l.github.io";
 function corsHeaders(request) {
   const origin = request.headers.get("Origin") || "";
   const headers = {
-    "Access-Control-Allow-Methods": "GET, OPTIONS",
+    "Access-Control-Allow-Methods": "GET, POST, OPTIONS",
     "Access-Control-Allow-Headers": "Authorization, Content-Type",
     "Access-Control-Max-Age": "86400",
     "Vary": "Origin"
@@ -399,19 +399,327 @@ function buildGlobalStats(rows, configs) {
 }
 
 
+
+const COMMS_MAX_TITLE = 100;
+const COMMS_MAX_BODY = 1500;
+const STUDENT_MESSAGE_MAX_PER_HOUR = 5;
+
+async function ensureCommsSchema(env) {
+  await env.DB.prepare(
+    "CREATE TABLE IF NOT EXISTS salta_comms_messages (" +
+    "id INTEGER PRIMARY KEY AUTOINCREMENT, " +
+    "kind TEXT NOT NULL, " +
+    "scope TEXT NOT NULL, " +
+    "turma TEXT, " +
+    "student_code TEXT, " +
+    "sender_type TEXT NOT NULL, " +
+    "sender_name TEXT NOT NULL, " +
+    "title TEXT NOT NULL, " +
+    "body TEXT NOT NULL, " +
+    "created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP, " +
+    "active INTEGER NOT NULL DEFAULT 1, " +
+    "student_read_at TEXT, " +
+    "teacher_read_at TEXT)"
+  ).run();
+
+  await env.DB.prepare(
+    "CREATE INDEX IF NOT EXISTS idx_salta_comms_student " +
+    "ON salta_comms_messages(student_code, kind, created_at)"
+  ).run();
+
+  await env.DB.prepare(
+    "CREATE INDEX IF NOT EXISTS idx_salta_comms_scope " +
+    "ON salta_comms_messages(scope, turma, active, created_at)"
+  ).run();
+}
+
+function validStudentCode(value) {
+  return /^2026[A-Z]{1,4}$/.test(String(value || "").trim().toUpperCase());
+}
+
+function trimLimited(value, max) {
+  return String(value || "").trim().slice(0, max);
+}
+
+async function findCommsStudent(env, code) {
+  if (!validStudentCode(code)) return null;
+  return env.DB.prepare(
+    "SELECT codigo, nome, TRIM(turma) AS turma " +
+    "FROM alunos WHERE codigo = ? LIMIT 1"
+  ).bind(String(code).trim().toUpperCase()).first();
+}
+
+async function insertCommsMessage(env, message) {
+  const result = await env.DB.prepare(
+    "INSERT INTO salta_comms_messages " +
+    "(kind, scope, turma, student_code, sender_type, sender_name, title, body) " +
+    "VALUES (?, ?, ?, ?, ?, ?, ?, ?)"
+  ).bind(
+    message.kind,
+    message.scope,
+    message.turma || null,
+    message.student_code || null,
+    message.sender_type,
+    message.sender_name,
+    message.title,
+    message.body
+  ).run();
+
+  return Number(result.meta?.last_row_id || 0);
+}
+
+async function handleCommsRequest(request, env, url) {
+  try {
+    await ensureCommsSchema(env);
+    const path = url.pathname;
+    const method = request.method.toUpperCase();
+
+    // Public student routes require a valid individual school code.
+    if (path === "/comms/student" && method === "GET") {
+      const code = (url.searchParams.get("codigo") || "").trim().toUpperCase();
+      const student = await findCommsStudent(env, code);
+      if (!student) return json({ error: "Código não encontrado." }, request, 404);
+
+      const announcements = await env.DB.prepare(
+        "SELECT id, kind, scope, turma, title, body, sender_name, created_at " +
+        "FROM salta_comms_messages " +
+        "WHERE kind = 'announcement' AND active = 1 AND (" +
+        "scope = 'global' OR " +
+        "(scope = 'class' AND TRIM(turma) = ?) OR " +
+        "(scope = 'individual' AND student_code = ?)) " +
+        "ORDER BY datetime(created_at) DESC LIMIT 100"
+      ).bind(student.turma || "", code).all();
+
+      const direct = await env.DB.prepare(
+        "SELECT id, kind, scope, sender_type, sender_name, title, body, created_at, " +
+        "student_read_at, teacher_read_at " +
+        "FROM salta_comms_messages " +
+        "WHERE kind = 'direct' AND student_code = ? " +
+        "ORDER BY datetime(created_at) DESC LIMIT 100"
+      ).bind(code).all();
+
+      return json({
+        student: { codigo: student.codigo, nome: student.nome, turma: student.turma },
+        announcements: announcements.results || [],
+        messages: (direct.results || []).reverse()
+      }, request);
+    }
+
+    if (path === "/comms/student/message" && method === "POST") {
+      const payload = await request.json().catch(() => null);
+      if (!payload) return json({ error: "Mensagem inválida." }, request, 400);
+      const code = String(payload.codigo || "").trim().toUpperCase();
+      const student = await findCommsStudent(env, code);
+      if (!student) return json({ error: "Código não encontrado." }, request, 404);
+
+      const title = trimLimited(payload.title, 80);
+      const body = trimLimited(payload.body, 1000);
+      if (!title || !body) {
+        return json({ error: "Informe o assunto e escreva sua mensagem." }, request, 400);
+      }
+      if (String(payload.title || "").trim().length > 80 || String(payload.body || "").trim().length > 1000) {
+        return json({ error: "O assunto pode ter até 80 caracteres e a mensagem até 1.000." }, request, 400);
+      }
+
+      const recent = await env.DB.prepare(
+        "SELECT COUNT(*) AS total FROM salta_comms_messages " +
+        "WHERE kind = 'direct' AND sender_type = 'student' AND student_code = ? " +
+        "AND datetime(created_at) >= datetime('now', '-1 hour')"
+      ).bind(code).first();
+
+      if (Number(recent?.total || 0) >= STUDENT_MESSAGE_MAX_PER_HOUR) {
+        return json({
+          error: "Você atingiu o limite de 5 mensagens por hora. Tente novamente mais tarde."
+        }, request, 429);
+      }
+
+      const id = await insertCommsMessage(env, {
+        kind: "direct",
+        scope: "individual",
+        turma: student.turma,
+        student_code: code,
+        sender_type: "student",
+        sender_name: String(student.nome || "Aluno").slice(0, 120),
+        title,
+        body
+      });
+      return json({ ok: true, id, message: "Mensagem enviada ao professor." }, request, 201);
+    }
+
+    if (path === "/comms/student/read" && method === "POST") {
+      const payload = await request.json().catch(() => null);
+      const code = String(payload?.codigo || "").trim().toUpperCase();
+      const student = await findCommsStudent(env, code);
+      if (!student) return json({ error: "Código não encontrado." }, request, 404);
+
+      await env.DB.prepare(
+        "UPDATE salta_comms_messages SET student_read_at = CURRENT_TIMESTAMP " +
+        "WHERE kind = 'direct' AND student_code = ? AND sender_type = 'teacher' " +
+        "AND student_read_at IS NULL"
+      ).bind(code).run();
+      return json({ ok: true }, request);
+    }
+
+    // All remaining communication routes are teacher-only.
+    if (path.startsWith("/comms/teacher/")) {
+      if (!(await authenticated(request, env))) {
+        return json({ error: "Acesso restrito. Entre novamente na Área do Professor." }, request, 401);
+      }
+
+      if (path === "/comms/teacher/announcements" && method === "GET") {
+        const result = await env.DB.prepare(
+          "SELECT id, scope, turma, student_code, sender_name, title, body, created_at, active " +
+          "FROM salta_comms_messages WHERE kind = 'announcement' " +
+          "ORDER BY datetime(created_at) DESC LIMIT 100"
+        ).all();
+        return json({ announcements: result.results || [] }, request);
+      }
+
+      if (path === "/comms/teacher/inbox" && method === "GET") {
+        const result = await env.DB.prepare(
+          "SELECT m.id, m.student_code, m.turma, m.sender_type, m.sender_name, " +
+          "m.title, m.body, m.created_at, m.student_read_at, m.teacher_read_at, " +
+          "a.nome AS student_name " +
+          "FROM salta_comms_messages m " +
+          "LEFT JOIN alunos a ON a.codigo = m.student_code " +
+          "WHERE m.kind = 'direct' " +
+          "ORDER BY datetime(m.created_at) DESC LIMIT 500"
+        ).all();
+        return json({ messages: result.results || [] }, request);
+      }
+
+      if (path === "/comms/teacher/thread" && method === "GET") {
+        const code = (url.searchParams.get("codigo") || "").trim().toUpperCase();
+        const student = await findCommsStudent(env, code);
+        if (!student) return json({ error: "Aluno não encontrado." }, request, 404);
+
+        const result = await env.DB.prepare(
+          "SELECT id, student_code, turma, sender_type, sender_name, title, body, " +
+          "created_at, student_read_at, teacher_read_at " +
+          "FROM salta_comms_messages WHERE kind = 'direct' AND student_code = ? " +
+          "ORDER BY datetime(created_at) ASC LIMIT 200"
+        ).bind(code).all();
+        return json({
+          student: { codigo: student.codigo, nome: student.nome, turma: student.turma },
+          messages: result.results || []
+        }, request);
+      }
+
+      if (path === "/comms/teacher/read" && method === "POST") {
+        const payload = await request.json().catch(() => null);
+        const code = String(payload?.student_code || "").trim().toUpperCase();
+        const student = await findCommsStudent(env, code);
+        if (!student) return json({ error: "Aluno não encontrado." }, request, 404);
+
+        await env.DB.prepare(
+          "UPDATE salta_comms_messages SET teacher_read_at = CURRENT_TIMESTAMP " +
+          "WHERE kind = 'direct' AND student_code = ? AND sender_type = 'student' " +
+          "AND teacher_read_at IS NULL"
+        ).bind(code).run();
+        return json({ ok: true }, request);
+      }
+
+      if (path === "/comms/teacher/announcement" && method === "POST") {
+        const payload = await request.json().catch(() => null);
+        if (!payload) return json({ error: "Aviso inválido." }, request, 400);
+
+        const scope = String(payload.scope || "").trim();
+        const title = trimLimited(payload.title, COMMS_MAX_TITLE);
+        const body = trimLimited(payload.body, COMMS_MAX_BODY);
+        if (!["global", "class", "individual"].includes(scope)) {
+          return json({ error: "Escolha se o aviso é global, por turma ou individual." }, request, 400);
+        }
+        if (!title || !body) {
+          return json({ error: "Informe um título e o texto do aviso." }, request, 400);
+        }
+        if (String(payload.title || "").trim().length > COMMS_MAX_TITLE ||
+            String(payload.body || "").trim().length > COMMS_MAX_BODY) {
+          return json({ error: "O título aceita até 100 caracteres e o aviso até 1.500." }, request, 400);
+        }
+
+        let turma = null;
+        let code = null;
+        if (scope === "class") {
+          turma = String(payload.turma || "").trim();
+          if (!turma) return json({ error: "Selecione uma turma." }, request, 400);
+          const classExists = await env.DB.prepare(
+            "SELECT 1 AS ok FROM alunos WHERE TRIM(turma) = ? LIMIT 1"
+          ).bind(turma).first();
+          if (!classExists) return json({ error: "Turma não encontrada." }, request, 404);
+        }
+        if (scope === "individual") {
+          code = String(payload.student_code || "").trim().toUpperCase();
+          const student = await findCommsStudent(env, code);
+          if (!student) return json({ error: "Código do aluno não encontrado." }, request, 404);
+          turma = student.turma;
+        }
+
+        const id = await insertCommsMessage(env, {
+          kind: "announcement",
+          scope,
+          turma,
+          student_code: code,
+          sender_type: "teacher",
+          sender_name: String(env.PROFESSOR_DISPLAY_NAME || "Professor").slice(0, 120),
+          title,
+          body
+        });
+        return json({ ok: true, id, message: "Aviso publicado." }, request, 201);
+      }
+
+      if (path === "/comms/teacher/reply" && method === "POST") {
+        const payload = await request.json().catch(() => null);
+        if (!payload) return json({ error: "Mensagem inválida." }, request, 400);
+
+        const code = String(payload.student_code || "").trim().toUpperCase();
+        const student = await findCommsStudent(env, code);
+        if (!student) return json({ error: "Aluno não encontrado." }, request, 404);
+
+        const title = trimLimited(payload.title || "Mensagem do professor", 80);
+        const body = trimLimited(payload.body, 1200);
+        if (!body) return json({ error: "Escreva uma mensagem antes de enviar." }, request, 400);
+        if (String(payload.body || "").trim().length > 1200) {
+          return json({ error: "A resposta pode ter até 1.200 caracteres." }, request, 400);
+        }
+
+        const id = await insertCommsMessage(env, {
+          kind: "direct",
+          scope: "individual",
+          turma: student.turma,
+          student_code: code,
+          sender_type: "teacher",
+          sender_name: String(env.PROFESSOR_DISPLAY_NAME || "Professor").slice(0, 120),
+          title,
+          body
+        });
+        return json({ ok: true, id, message: "Resposta enviada ao aluno." }, request, 201);
+      }
+    }
+
+    return json({ error: "Rota de comunicação não encontrada." }, request, 404);
+  } catch (error) {
+    return json({ error: "Falha no serviço de mensagens." }, request, 500);
+  }
+}
+
+
 export default {
   async fetch(request, env) {
     if (request.method === "OPTIONS") {
       return new Response(null, { status: 204, headers: corsHeaders(request) });
     }
+
+    const url = new URL(request.url);
+    if (url.pathname.startsWith("/comms/")) {
+      return handleCommsRequest(request, env, url);
+    }
+
     if (request.method !== "GET") {
       return json({ error: "Método não permitido." }, request, 405);
     }
     if (!(await authenticated(request, env))) {
       return json({ error: "Acesso restrito." }, request, 401);
     }
-
-    const url = new URL(request.url);
 
     try {
       if (url.pathname === "/health") {
