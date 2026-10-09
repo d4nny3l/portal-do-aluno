@@ -1,712 +1,503 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="pt-BR">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#f4f5fb">
 <link rel="icon" type="image/svg+xml" href="./favicon.svg">
-<title>Área do Aluno — Matemática</title>
+<title>Área do Aluno — Matemática com Professor Dannyel | SALTA</title>
 <style>
-*{box-sizing:border-box;margin:0;padding:0}
-body{font-family:Arial,Helvetica,sans-serif;background:linear-gradient(135deg,#f4f7fb,#e9eef6);min-height:100vh;color:#1f2937;padding:30px 15px}
-.container{width:100%;max-width:900px;margin:auto}
-header{text-align:center;margin-bottom:30px;position:relative}
-header h1{font-size:32px;color:#172554;margin-bottom:8px}
-header p{color:#64748b;font-size:16px}
-.professor{margin-top:6px;color:#2563eb;font-size:15px;font-weight:bold}
-.consulta,.aluno,.avaliacoes,.resultado-box{background:#fff;border-radius:18px;box-shadow:0 10px 30px rgba(0,0,0,.08)}
-.consulta{padding:30px;margin-bottom:25px}
-.consulta h2{text-align:center;margin-bottom:20px;color:#172554}
-.campo{display:flex;gap:10px}
-.campo input{flex:1;padding:15px;border:2px solid #dbe3ef;border-radius:10px;font-size:16px;outline:none;text-transform:uppercase}
-.campo input:focus{border-color:#2563eb}
-.campo button{border:0;padding:0 25px;border-radius:10px;background:#2563eb;color:#fff;font-size:16px;font-weight:bold;cursor:pointer}
-.campo button:hover{background:#1d4ed8}
-.resultado{display:none}
-.aluno{padding:25px;margin-bottom:20px}
-.aluno-topo{display:flex;justify-content:space-between;align-items:center;gap:20px}
-.aluno h2{color:#172554;margin-bottom:6px}
-.aluno p{color:#64748b;margin-bottom:5px}
-.atualizacao{font-size:13px}
-.codigo{background:#eff6ff;color:#1d4ed8;padding:8px 12px;border-radius:8px;font-weight:bold;font-size:14px;white-space:nowrap}
-.ano{display:inline-block;margin-top:8px;background:#eef2ff;color:#3730a3;padding:6px 10px;border-radius:8px;font-size:13px;font-weight:bold}
-.abas{display:flex;gap:8px;overflow-x:auto;margin-bottom:20px;padding-bottom:4px}
-.aba{flex:1;min-width:110px;border:0;padding:13px 10px;border-radius:10px;background:#fff;color:#475569;font-weight:bold;cursor:pointer;box-shadow:0 5px 15px rgba(0,0,0,.05)}
-.aba.ativa{background:#2563eb;color:#fff}
-.bimestre,.resultado-final{display:none}
-.bimestre.ativo,.resultado-final.ativo{display:block}
-.status{display:inline-block;padding:8px 13px;border-radius:20px;font-size:13px;font-weight:bold;margin-bottom:18px}
-.concluido{background:#dcfce7;color:#166534}
-.andamento{background:#fef3c7;color:#92400e}
-.nao-iniciado{background:#f1f5f9;color:#64748b}
-.resumo{display:grid;grid-template-columns:repeat(2,1fr);gap:15px;margin-bottom:20px}
-.card{background:#fff;padding:22px;border-radius:16px;text-align:center;box-shadow:0 8px 25px rgba(0,0,0,.07)}
-.card span{display:block;color:#64748b;font-size:14px;margin-bottom:8px}
-.card strong{font-size:28px;color:#172554}
-.avaliacoes{padding:25px}
-.avaliacoes h3{color:#172554;margin-bottom:18px}
-table{width:100%;border-collapse:collapse}
-th,td{padding:14px 10px;text-align:left;border-bottom:1px solid #e5e7eb}
-th{color:#64748b;font-size:14px}
+:root{
+ --page:#f4f5fb;--surface:#fff;--ink:#252744;--muted:#747995;--line:#e9eafa;
+ --accent:#5b5bd6;--accent-soft:#efefff;--good:#18865e;--good-soft:#e5f8ed;
+ --warn:#9b6b13;--warn-soft:#fff4d7;--radius:25px;--small-radius:16px;
+ --shadow:0 14px 36px rgba(72,75,145,.09);--hero-a:#eceeff;--hero-b:#f8edff;--chip:#f0efff;
+}
+*{box-sizing:border-box}
+html{scroll-behavior:smooth}
+body{margin:0;background:var(--page);color:var(--ink);font-family:Inter,-apple-system,BlinkMacSystemFont,"Segoe UI",Arial,sans-serif;-webkit-font-smoothing:antialiased;position:relative;isolation:isolate}
+/* Fundo quadriculado SALTA: fixo na janela, sem acompanhar a rolagem. */
+html{background:var(--page)}
+body::before{content:"";position:fixed;inset:0;pointer-events:none;z-index:-1;background-image:linear-gradient(rgba(90,90,100,.055) 1px,transparent 1px),linear-gradient(90deg,rgba(90,90,100,.055) 1px,transparent 1px);background-size:32px 32px;background-position:0 0}
+[hidden]{display:none!important}
+button,input{font:inherit}
+a{color:inherit}
+.topbar{height:75px;background:rgba(255,255,255,.84);backdrop-filter:blur(20px);border-bottom:1px solid var(--line)}
+.shell{width:min(1160px,calc(100% - 44px));margin:auto}
+.top-inner{height:100%;display:flex;align-items:center;justify-content:space-between;gap:18px}
+.brand{display:flex;align-items:center;gap:11px}
+.logo{width:39px;height:39px;border-radius:13px;background:#16181d;color:#fff;display:grid;place-items:center;font-size:21px;font-weight:900;box-shadow:0 5px 12px #00000016}
+.brand-title{font-size:16px;font-weight:850;letter-spacing:-.3px}
+.brand-sub{font-size:11px;color:var(--muted);margin-top:3px}
+.navlinks{display:flex;align-items:center;gap:6px}
+.navlinks a{text-decoration:none;color:var(--muted);font-size:12px;font-weight:700;padding:10px 12px;border-radius:11px}
+.navlinks a:hover,.navlinks a.active{background:var(--accent-soft);color:var(--accent)}
+.student{display:flex;align-items:center;gap:10px}
+.student-name{font-size:12px;font-weight:850}
+.student-class{font-size:11px;color:var(--muted);margin-top:3px}
+.avatar{width:39px;height:39px;border:2px solid white;border-radius:50%;display:grid;place-items:center;background:linear-gradient(135deg,#ffd7bb,#f2b9db);color:#713e48;font-size:12px;font-weight:900;box-shadow:0 3px 12px #25274412}
+main{padding:30px 0 55px}
+.page-heading{margin-bottom:22px}
+.eyebrow{color:var(--accent);font-size:10px;font-weight:900;letter-spacing:.12em;text-transform:uppercase;margin-bottom:10px}
+h1{font-size:clamp(28px,4vw,36px);line-height:1.1;letter-spacing:-1.3px;margin:0 0 9px;font-weight:850}
+.intro{font-size:14px;line-height:1.65;color:var(--muted);margin:0;max-width:650px}
+.panel,.metric,.welcome{background:var(--surface);border:1px solid var(--line);border-radius:var(--radius);box-shadow:var(--shadow)}
+.lookup-panel{padding:23px;margin-bottom:22px}
+.lookup-head{display:flex;align-items:center;gap:14px;margin-bottom:20px}
+.lookup-icon{width:46px;height:46px;flex:0 0 auto;display:grid;place-items:center;border-radius:15px;background:var(--accent-soft);color:var(--accent);font-size:26px}
+.lookup-head h2{font-size:17px;letter-spacing:-.4px;margin:0 0 5px}
+.lookup-head p{font-size:12px;color:var(--muted);line-height:1.5;margin:0}
+#lookupForm label{display:block;font-size:12px;font-weight:850;margin-bottom:8px}
+.lookup-row{display:flex;gap:10px}
+.lookup-row input{min-width:0;flex:1;border:1px solid var(--line);border-radius:12px;background:#fafaff;padding:14px 15px;outline:none;color:var(--ink);font-size:14px;text-transform:uppercase;transition:border-color .2s,box-shadow .2s}
+.lookup-row input:focus{border-color:var(--accent);box-shadow:0 0 0 3px #5b5bd620}
+.lookup-row button{min-height:48px;display:flex;align-items:center;justify-content:center;gap:9px;border:0;border-radius:12px;padding:0 18px;background:var(--accent);color:#fff;font-size:12px;font-weight:850;cursor:pointer;transition:filter .2s,transform .2s}
+.lookup-row button:hover{filter:brightness(1.06);transform:translateY(-1px)}
+.lookup-row button:disabled{opacity:.65;cursor:wait;transform:none}
+.lookup-status{font-size:11px;line-height:1.5;color:var(--muted);margin-top:12px}
+.lookup-status.error{color:#b42336;background:#fff0f2;border-radius:10px;padding:10px 12px}
+.lookup-status.success{color:var(--good);background:var(--good-soft);border-radius:10px;padding:10px 12px}
+.lookup-status.loading{color:var(--accent)}
+.clear-student{margin-top:10px;border:0;background:transparent;color:var(--accent);font-size:11px;font-weight:850;cursor:pointer;padding:4px 0}
+.spinner{width:15px;height:15px;border:2px solid #ffffff70;border-top-color:white;border-radius:50%;animation:spin .7s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
+#studentDashboard{scroll-margin-top:20px}
+.welcome{display:grid;grid-template-columns:1fr auto;gap:20px;align-items:center;padding:28px 30px;background:linear-gradient(115deg,var(--hero-a),var(--hero-b));margin-bottom:18px;overflow:hidden}
+.welcome h2{font-size:25px;letter-spacing:-.8px;margin:0 0 9px}
+.welcome p{font-size:13px;line-height:1.65;color:var(--muted);margin:0;max-width:600px}
+.welcome-side{display:flex;align-items:center;gap:15px}
+.welcome-caption{font-size:10px;text-transform:uppercase;letter-spacing:.08em;color:var(--muted);font-weight:850}
+.welcome-stat{font-size:19px;font-weight:900;margin-top:6px}
+.welcome-symbol{width:72px;height:72px;display:grid;place-items:center;border-radius:23px;background:#ffffffbf;font-size:35px;box-shadow:inset 0 0 0 1px white}
+.metrics{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:14px;margin-bottom:18px}
+.metric{padding:19px;min-width:0}
+.metric-head{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:18px}
+.metric-label{font-size:12px;font-weight:700;color:var(--muted)}
+.metric-icon{width:32px;height:32px;display:grid;place-items:center;border-radius:11px;background:var(--accent-soft);color:var(--accent);font-size:15px}
+.metric-value{font-size:28px;line-height:1.1;font-weight:900;letter-spacing:-.9px;overflow-wrap:anywhere}
+.metric-unit{font-size:11px;color:var(--muted);font-weight:650;letter-spacing:0}
+.metric-sub{font-size:10px;color:var(--muted);line-height:1.5;margin-top:8px;min-height:30px}
+.mini-progress{height:5px;border-radius:10px;background:var(--chip);overflow:hidden;margin-top:13px}
+.mini-progress span{display:block;height:100%;width:0;background:var(--accent);border-radius:10px;transition:width .4s}
+.status-tag{display:inline-flex;align-items:center;gap:5px;color:var(--good);background:var(--good-soft);font-size:10px;font-weight:850;border-radius:999px;padding:6px 9px;margin-top:10px}
+.status-tag.tag-warning{background:var(--warn-soft);color:var(--warn)}
+.status-tag.tag-neutral{background:var(--chip);color:var(--muted)}
+.status-metric .metric-value{font-size:19px;letter-spacing:-.3px}
+.columns{display:grid;grid-template-columns:minmax(0,1.5fr) minmax(290px,.9fr);gap:18px;align-items:start}
+.panel{padding:22px;min-width:0}
+.panel-head{display:flex;align-items:flex-start;justify-content:space-between;gap:14px;margin-bottom:18px}
+.panel h3{font-size:16px;letter-spacing:-.35px;margin:0 0 6px}
+.panel-sub{font-size:11px;color:var(--muted);line-height:1.5;margin:0}
+.text-link{font-size:11px;font-weight:850;color:var(--accent);white-space:nowrap;text-decoration:none}
+.grade-chart{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px;align-items:end;min-height:195px;padding:13px 4px 0}
+.grade-col{display:flex;flex-direction:column;align-items:center;gap:8px;min-width:0}
+.grade-score{font-size:12px;font-weight:900}
+.bar-track{height:125px;width:min(38px,70%);display:flex;align-items:flex-end;background:var(--chip);border-radius:11px;overflow:hidden}
+.grade-bar{width:100%;border-radius:9px 9px 3px 3px;background:linear-gradient(180deg,#aaa9ff,var(--accent));transition:height .35s}
+.grade-col.current .grade-bar{background:linear-gradient(180deg,#68d0a8,#16865e)}
+.grade-label{font-size:10px;color:var(--muted);font-weight:800}
+.grade-col.current .grade-label{color:var(--good)}
+.chart-legend{display:flex;align-items:center;gap:7px;margin-top:15px;color:var(--muted);font-size:10px}
+.legend-dot{width:7px;height:7px;border-radius:50%;background:var(--good)}
+.chart-empty{grid-column:1/-1;text-align:center;color:var(--muted);font-size:12px;align-self:center;padding:30px 10px}
+.final-head{display:flex;align-items:center;gap:12px;margin-bottom:18px}
+.final-icon{width:42px;height:42px;border-radius:14px;display:grid;place-items:center;background:var(--good-soft);color:var(--good);font-size:20px}
+.final-head h3{margin-bottom:4px}
+.final-head p{font-size:11px;color:var(--muted);margin:0}
+.goal-labels{display:flex;justify-content:space-between;gap:8px;color:var(--muted);font-size:11px;margin-bottom:9px}
+.goal-labels strong{color:var(--ink);font-variant-numeric:tabular-nums}
+.goal-track{height:10px;background:var(--chip);border-radius:999px;overflow:hidden}
+.goal-track span{display:block;width:0;height:100%;border-radius:999px;background:linear-gradient(90deg,#77d9b3,#16845e);transition:width .45s}
+.goal-nums{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:17px}
+.goal-num{padding:13px;border:1px solid var(--line);border-radius:var(--small-radius);background:#fafaff}
+.goal-num span{display:block;font-size:10px;color:var(--muted);margin-bottom:7px}
+.goal-num strong{font-size:20px;letter-spacing:-.5px;font-variant-numeric:tabular-nums}
+.goal-message{display:flex;gap:10px;align-items:flex-start;margin-top:15px;padding:13px;border-radius:var(--small-radius);background:var(--accent-soft);color:var(--accent);font-size:11px;line-height:1.6}
+.goal-message b{font-weight:900}
+.approval-btn{border:0;border-radius:11px;margin-top:13px;padding:11px 14px;background:var(--good);color:#fff;font-size:12px;font-weight:850;cursor:pointer;box-shadow:0 8px 18px #16845e25}
+.approval-btn:hover{filter:brightness(.96);transform:translateY(-1px)}
+.bimestres{display:flex;gap:6px;overflow-x:auto;margin:27px 0 16px;padding-bottom:3px}
+.bim-btn{white-space:nowrap;border:1px solid var(--line);background:var(--surface);color:var(--muted);padding:10px 14px;border-radius:10px;font-size:11px;font-weight:850;cursor:pointer}
+.bim-btn[aria-pressed="true"]{border-color:transparent;background:var(--accent);color:white}
+.assess-panel{padding:0;overflow:hidden}
+.assess-top{padding:21px 22px 15px;display:flex;justify-content:space-between;align-items:center;gap:10px}
+.assess-top h3{font-size:16px;margin:0 0 5px}
+.assess-top p{font-size:11px;color:var(--muted);margin:0}
+.status-tag.small{margin:0}
+.table-wrap{overflow-x:auto}
+table{width:100%;border-collapse:collapse;min-width:380px}
+th,td{padding:14px 22px;border-top:1px solid var(--line);text-align:left;font-size:12px}
+th{font-size:10px;font-weight:900;text-transform:uppercase;letter-spacing:.05em;color:var(--muted);background:#fafaff}
 td:last-child,th:last-child{text-align:right}
-.nota{font-weight:bold;color:#172554}
-.resultado-box{padding:25px}
-.resultado-box h3{color:#172554;margin-bottom:20px}
-.media-final{margin-top:20px;padding:20px;background:#eff6ff;border-radius:12px;text-align:center}
-.media-final span{display:block;color:#475569;margin-bottom:5px}
-.media-final strong{font-size:34px;color:#172554}
-footer{line-height:1.5;max-width:820px;margin-left:auto;margin-right:auto}
-footer small{display:block;margin-top:8px;font-size:12px;color:#94a3b8}
-.erro,.carregando{display:none;margin-top:15px;padding:12px;border-radius:8px;text-align:center}
-.erro{background:#fef2f2;color:#b91c1c}
-.carregando{background:#eff6ff;color:#1d4ed8}
-footer{text-align:center;margin-top:30px;color:#94a3b8;font-size:14px}
-@media(max-width:600px){body{padding:20px 12px}header h1{font-size:26px}.consulta{padding:20px}.campo{flex-direction:column}.campo button{height:50px}.aluno-topo{flex-direction:column;align-items:flex-start}.resumo{grid-template-columns:1fr}.aba{min-width:95px;font-size:12px}table{font-size:14px}}
+.points{font-weight:900;font-variant-numeric:tabular-nums}
+.state{display:inline-flex;align-items:center;gap:5px;font-size:10px;font-weight:800;color:var(--good)}
+.state:before{content:"";width:6px;height:6px;border-radius:50%;background:currentColor}
+.tip{display:flex;gap:12px;align-items:center;padding:17px 19px;margin-top:18px;background:var(--surface);border:1px solid var(--line);border-radius:var(--radius);box-shadow:var(--shadow)}
+.tip-icon{width:38px;height:38px;flex:0 0 auto;border-radius:12px;background:var(--warn-soft);display:grid;place-items:center;font-size:17px}
+.tip strong{font-size:12px;display:block;margin-bottom:4px}
+.tip p{font-size:11px;color:var(--muted);line-height:1.5;margin:0}
+.footer{padding:25px 0 35px;border-top:1px solid var(--line);font-size:11px;color:var(--muted);background:#ffffff70}
+.footer .shell{display:flex;align-items:center;justify-content:space-between;gap:16px}
+.footer strong{color:var(--ink)}
+.modal-aprovado{position:fixed;inset:0;z-index:10000;background:#15192d8c;backdrop-filter:blur(7px);display:flex;align-items:center;justify-content:center;padding:20px}
+.modal-confetti{position:absolute;inset:0;pointer-events:none}
+.modal-confetti canvas{width:100%;height:100%;position:absolute;inset:0}
+.modal-card{position:relative;z-index:2;width:min(450px,100%);border-radius:25px;padding:30px 26px;text-align:center;background:#fff;box-shadow:0 25px 90px #0000003d;animation:modalIn .3s ease}
+.modal-emoji{font-size:43px;margin-bottom:10px}
+.modal-card h2{font-size:24px;letter-spacing:-.7px;margin:0 0 10px;color:#242746}
+.modal-card p{font-size:14px;color:#62697b;line-height:1.65;margin:0}
+.modal-card button{margin-top:20px;border:0;border-radius:11px;padding:11px 16px;background:#252744;color:white;font-size:12px;font-weight:850;cursor:pointer}
+@keyframes modalIn{from{opacity:0;transform:translateY(12px) scale(.97)}to{opacity:1;transform:translateY(0) scale(1)}}
+@media(max-width:900px){.navlinks{display:none}.metrics{grid-template-columns:repeat(2,minmax(0,1fr))}.columns{grid-template-columns:1fr}}
+@media(max-width:560px){
+ .shell{width:calc(100% - 28px)}.topbar{height:66px}
+ .brand-sub{font-size:9px;margin-top:2px}.student-info{display:none}.logo{width:35px;height:35px}.top-inner{gap:8px}
+ main{padding-top:22px}.page-heading h1{font-size:29px}
+ .intro{font-size:13px}.lookup-panel{padding:18px}.lookup-row{flex-direction:column}.lookup-row button{min-height:47px}
+ .lookup-head{align-items:flex-start}.welcome{grid-template-columns:1fr;padding:22px;gap:15px}.welcome h2{font-size:23px}
+ .welcome-side{justify-content:space-between}.welcome-symbol{width:56px;height:56px;border-radius:17px;font-size:27px}
+ .welcome-stat{font-size:16px}.metrics{gap:10px}.metric{padding:15px;border-radius:var(--small-radius)}
+ .metric-head{margin-bottom:15px}.metric-value{font-size:25px}.panel{padding:17px;border-radius:var(--small-radius)}
+ .grade-chart{gap:5px;min-height:170px}.bar-track{height:105px}.grade-score{font-size:11px}.grade-label{font-size:9px}
+ .goal-num{padding:11px}.goal-num strong{font-size:18px}.assess-top{padding:17px}.assess-panel{padding:0}
+ th,td{padding:13px 15px}.tip{align-items:flex-start;padding:14px}.footer .shell{align-items:flex-start;flex-direction:column}
+ .modal-card{padding:25px 20px}
+}
+@media(prefers-reduced-motion:reduce){html{scroll-behavior:auto}.spinner,.modal-card{animation:none}.goal-track span,.grade-bar{transition:none}}
 
-.top-platform{
- position:absolute;
- top:0;
- right:0;
- width:42px;height:42px;
- border-radius:13px;
- display:grid;
- place-items:center;
- background:rgba(255,255,255,.78);
- color:#1d1d1f;
- border:1px solid rgba(0,0,0,.08);
- box-shadow:0 8px 24px rgba(0,0,0,.07);
- text-decoration:none;
- font-size:17px;
- font-weight:800;
- transition:transform .25s ease,box-shadow .25s ease,background .25s ease;
-}
-.top-platform:hover{transform:translateY(-2px);box-shadow:0 12px 30px rgba(0,0,0,.11);background:#fff}
-@media(max-width:600px){
- .top-platform{width:38px;height:38px;top:-2px;right:0;border-radius:12px}
-}
-
-/* Resultado final — aprovação */
-.aprovacao-box{
-  margin-top:20px;
-  padding:22px;
-  border-radius:16px;
-  background:linear-gradient(135deg,#f0fdf4,#ecfdf5);
-  border:1px solid #bbf7d0;
-}
-.aprovacao-box.aprovado{
-  background:linear-gradient(135deg,#f0fdf4,#ffffff);
-  border-color:#86efac;
-}
-.aprovacao-box.atencao{
-  background:linear-gradient(135deg,#eff6ff,#ffffff);
-  border-color:#bfdbfe;
-}
-.aprovacao-box .titulo{
-  font-weight:800;
-  color:#166534;
-  font-size:18px;
-  margin-bottom:8px;
-}
-.aprovacao-box .descricao{
-  color:#475569;
-  line-height:1.5;
-  font-size:14px;
-}
-.aprovacao-numeros{
-  display:grid;
-  grid-template-columns:repeat(3,1fr);
-  gap:10px;
-  margin-top:16px;
-}
-.aprovacao-numeros .mini-card{
-  background:rgba(255,255,255,.82);
-  border:1px solid rgba(22,101,52,.09);
-  border-radius:12px;
-  padding:14px 10px;
-  text-align:center;
-}
-.aprovacao-numeros .mini-card span{
-  display:block;
-  color:#64748b;
-  font-size:12px;
-  margin-bottom:5px;
-}
-.aprovacao-numeros .mini-card strong{
-  font-size:20px;
-  color:#172554;
-}
-.mensagem-aprovado{
-  display:inline-flex;
-  align-items:center;
-  justify-content:center;
-  gap:7px;
-  margin-top:15px;
-  padding:11px 15px;
-  border-radius:10px;
-  background:#166534;
-  color:#fff;
-  font-weight:700;
-  text-decoration:none;
-  cursor:pointer;
-  border:0;
-  font-size:14px;
-}
-.mensagem-aprovado:hover{background:#14532d}
-.js-confete{
-  position:relative;
-  width:100%;
-  height:105px;
-  margin-top:8px;
-  display:flex;
-  align-items:center;
-  justify-content:center;
-  overflow:hidden;
-}
-.js-confete canvas{
-  position:absolute;
-  inset:0;
-  width:100%;
-  height:100%;
-  pointer-events:none;
-}
-.modal-aprovado{
-  display:none;
-  position:fixed;
-  inset:0;
-  z-index:9999;
-  align-items:center;
-  justify-content:center;
-  padding:20px;
-  background:rgba(15,23,42,.48);
-  backdrop-filter:blur(6px);
-}
-.modal-aprovado.aberto{display:flex}
-.modal-aprovado-confete{
-  position:absolute;
-  inset:0;
-  width:100%;
-  height:100%;
-  pointer-events:none;
-}
-.modal-aprovado-confete canvas{
-  position:absolute;
-  inset:0;
-  width:100%;
-  height:100%;
-}
-.modal-aprovado-card{
-  position:relative;
-  z-index:2;
-  width:min(460px,100%);
-  background:#fff;
-  border-radius:22px;
-  padding:28px 24px;
-  text-align:center;
-  box-shadow:0 25px 80px rgba(0,0,0,.22);
-  animation:aprovadoEntrada .35s ease;
-}
-.modal-aprovado-card .emoji{font-size:42px;margin-bottom:10px}
-.modal-aprovado-card h4{font-size:23px;color:#172554;margin-bottom:10px}
-.modal-aprovado-card p{color:#475569;line-height:1.6;font-size:15px}
-.modal-fechar{
-  margin-top:18px;
-  border:0;
-  padding:10px 16px;
-  border-radius:10px;
-  background:#172554;
-  color:#fff;
-  font-weight:700;
-  cursor:pointer;
-}
-@keyframes aprovadoEntrada{
-  from{opacity:0;transform:translateY(12px) scale(.97)}
-  to{opacity:1;transform:translateY(0) scale(1)}
-}
-@media(max-width:600px){
-  .aprovacao-numeros{grid-template-columns:1fr}
-  .js-confete{height:90px}
-}
-</style>
-<style id="salta-grid-global">
-/* SALTA — identidade visual global */
-html{background:#f5f5f7}
-body{position:relative;isolation:isolate;background:transparent}
-body::before{
-  content:"";
-  position:fixed;
-  inset:0;
-  pointer-events:none;
-  z-index:0;
-  background-image:
-    linear-gradient(rgba(90,90,100,.055) 1px,transparent 1px),
-    linear-gradient(90deg,rgba(90,90,100,.055) 1px,transparent 1px);
-  background-size:32px 32px;
-  background-position:0 0;
-}
-.container{position:relative;z-index:1}
+.student-comms{margin:0 0 20px}
+.comms-heading{display:flex;align-items:flex-end;justify-content:space-between;gap:15px;margin:0 0 16px}
+.comms-heading h2{font-size:24px;letter-spacing:-.7px;margin:0 0 7px}
+.comms-heading p{font-size:12px;line-height:1.55;color:var(--muted);margin:0}
+.comms-live{font-size:10px;font-weight:850;white-space:nowrap;border-radius:999px;padding:8px 10px;background:var(--accent-soft);color:var(--accent)}
+.comms-grid{display:grid;grid-template-columns:minmax(0,1fr);gap:18px;align-items:start}
+.comms-panel{padding:22px}
+.comms-icon{width:36px;height:36px;display:grid;place-items:center;background:var(--accent-soft);border-radius:12px;font-size:17px;flex:0 0 auto}
+.notice-stack{display:flex;flex-direction:column;gap:10px}
+.notice-item{border:1px solid var(--line);border-radius:14px;padding:14px;background:#fff}.notice-item.unread{border-color:var(--accent);box-shadow:0 0 0 2px color-mix(in srgb,var(--accent) 8%,transparent)}
+.notice-meta{display:flex;align-items:center;justify-content:space-between;gap:9px;margin-bottom:9px}
+.notice-kind{font-size:9px;font-weight:850;color:var(--accent);background:var(--accent-soft);padding:5px 7px;border-radius:999px}
+.notice-date{font-size:9px;color:var(--muted)}
+.notice-item h4{font-size:13px;margin:0 0 7px;line-height:1.45}
+.notice-item p{font-size:11px;color:#535b6c;line-height:1.6;margin:0;white-space:pre-wrap;overflow-wrap:anywhere}
+.notice-author{font-size:10px;color:var(--muted);border-top:1px solid var(--line);padding-top:8px;margin-top:11px}.notice-bottom{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-top:12px}.notice-state{font-size:10px;color:var(--muted)}.notice-read{border:1px solid var(--line);border-radius:9px;background:#fff;color:var(--accent);font-size:10px;font-weight:800;padding:8px 10px;cursor:pointer}.notice-read:disabled{opacity:.6;cursor:default}.bell-button{display:inline-flex;align-items:center;gap:9px;border:1px solid var(--line);background:#fff;color:var(--ink);border-radius:12px;padding:10px 13px;font-size:11px;font-weight:850;cursor:pointer;white-space:nowrap}.top-bell{padding:7px 9px;gap:6px}.top-bell .bell-icon{font-size:15px}.bell-icon{font-size:16px}.bell-count{display:inline-grid;place-items:center;min-width:22px;height:22px;padding:0 6px;border-radius:999px;background:var(--accent);color:#fff;font-size:10px}.bell-count.zero{background:#e8eaf1;color:var(--muted)}
+.comms-empty{border:1px dashed #d9dced;background:#ffffff85;border-radius:13px;padding:18px 12px;color:var(--muted);font-size:11px;line-height:1.6;text-align:center}
+@media(max-width:850px){.comms-grid{grid-template-columns:1fr}}
+@media(max-width:560px){.comms-heading{align-items:flex-start;flex-direction:column}.comms-heading h2{font-size:22px}.comms-panel{padding:17px}.bell-button{width:100%;justify-content:center}.notice-bottom{align-items:flex-start;flex-direction:column}}
 </style>
 <link rel="stylesheet" href="./salta-theme.css">
 </head>
 <body>
-<div class="container">
-<header>
-<a class="top-platform" href="./plataforma/" aria-label="Ir para a Plataforma SALTA" title="Plataforma SALTA">S</a>
-<h1>📚 Área do Aluno</h1>
-<p>Matemática</p>
-<div class="professor">Prof. Dannyel Moisés</div>
-</header>
+<header class="topbar"><div class="shell top-inner">
+ <div class="brand"><a class="logo" href="./plataforma/" aria-label="Abrir a Plataforma SALTA" title="Plataforma SALTA" style="text-decoration:none">S</a><div><div class="brand-title">SALTA</div><div class="brand-sub">Matemática · Professor Dannyel</div></div></div>
+ <nav class="navlinks" id="studentNav" aria-label="Navegação da Área do Aluno" hidden>
+  <a href="#visao" class="active">Visão geral</a><a href="#notas">Notas e avaliações</a><a href="#resultado">Resultado final</a>
+ </nav>
+ <div class="student"><button class="bell-button top-bell" id="noticeBellTop" type="button" aria-label="Ver avisos não lidos" hidden><span class="bell-icon" aria-hidden="true">🔔</span><span class="bell-count zero" id="noticeUnreadCountTop">0</span></button><div class="student-info" id="studentHeaderInfo" hidden><div class="student-name" id="headerStudentName"></div><div class="student-class" id="headerStudentClass"></div></div><div class="avatar" id="studentAvatar" aria-label="Inicial do aluno" hidden></div></div>
+</div></header>
 
-<section class="consulta">
-<h2>Consulte suas informações</h2>
-<div class="campo">
-<input type="text" id="codigo" placeholder="Digite seu código" maxlength="8" autocomplete="off">
-<button onclick="consultarAluno()">Consultar</button>
-</div>
-<div class="carregando" id="carregando">Consultando suas informações...</div>
-<div class="erro" id="erro">Código não encontrado.</div>
-</section>
+<main class="shell" id="visao">
+ <div class="page-heading">
+  <div><div class="eyebrow">Área do aluno · Matemática</div><h1 id="helloTitle">Acompanhe sua jornada em Matemática. <span aria-hidden="true">👋</span></h1>
+   <p class="intro" id="helloIntro">Consulte suas notas, avaliações e avisos das aulas de Matemática do Professor Dannyel.</p></div>
+ </div>
 
-<section class="resultado" id="resultado">
-<div class="aluno">
-<div class="aluno-topo">
-<div>
-<h2 id="nomeAluno">-</h2>
-<p id="turmaAluno">-</p>
-<p class="atualizacao">Última atualização: <strong id="ultimaAtualizacao">-</strong></p>
-<div class="ano" id="anoAluno">Ano letivo: -</div>
-</div>
-<div class="codigo" id="codigoAluno">-</div>
-</div>
+ <section class="lookup-panel panel" id="lookupPanel" aria-labelledby="lookupTitle">
+  <div class="lookup-head"><div class="lookup-icon" aria-hidden="true">⌕</div><div><h2 id="lookupTitle">Acesse sua Área do Aluno</h2><p>Digite seu código individual para consultar suas notas de Matemática.</p></div></div>
+  <form id="lookupForm" novalidate>
+   <label for="studentCode">Código do aluno</label>
+   <div class="lookup-row"><input id="studentCode" name="codigo" type="text" maxlength="8" autocomplete="off" autocapitalize="characters" spellcheck="false" placeholder="Digite seu código" required>
+    <button id="lookupButton" type="submit"><span id="lookupButtonText">Consultar minhas notas</span><span id="lookupSpinner" class="spinner" hidden aria-hidden="true"></span></button>
+   </div>
+   <div id="lookupStatus" class="lookup-status" role="status" aria-live="polite">Seu código individual identifica a ficha de Matemática consultada.</div>
+   <button id="clearStudentButton" class="clear-student" type="button" hidden>Limpar ficha e consultar outro aluno</button>
+  </form>
+ </section>
+
+ <div id="studentDashboard" hidden>
+  <section class="welcome">
+   <div><div class="eyebrow">Acompanhamento de Matemática</div><h2 id="welcomeHeadline">Seu esforço está construindo resultados.</h2>
+    <p id="welcomeText">Acompanhe suas médias e avaliações da disciplina com o Professor Dannyel.</p></div>
+   <div class="welcome-side"><div><div class="welcome-caption">Bimestre em foco</div><div class="welcome-stat" id="currentPeriod">—</div></div><div class="welcome-symbol" aria-hidden="true">✦</div></div>
+  </section>
+
+  <section class="metrics" aria-label="Resumo acadêmico">
+   <article class="metric"><div class="metric-head"><span class="metric-label">Média em Matemática</span><span class="metric-icon">↗</span></div>
+    <div class="metric-value" id="metricAverage">— <span class="metric-unit">/ 10</span></div><div class="metric-sub">Média dos bimestres que já têm nota</div><div class="mini-progress"><span id="averageProgress" style="width:0%"></span></div></article>
+   <article class="metric"><div class="metric-head"><span class="metric-label">Avaliações de Matemática</span><span class="metric-icon">✓</span></div>
+    <div class="metric-value" id="metricEvaluations">—</div><div class="metric-sub">Avaliações registradas nos bimestres</div><div class="status-tag tag-neutral" id="evaluationTag">Dados da ficha</div></article>
+   <article class="metric"><div class="metric-head"><span class="metric-label">Vistos</span><span class="metric-icon">✎</span></div>
+    <div class="metric-value" id="metricVistos">—</div><div class="metric-sub">Vistos registrados em Matemática</div><div class="status-tag tag-neutral" id="vistosTag">Acompanhamento</div></article>
+   <article class="metric status-metric"><div class="metric-head"><span class="metric-label">Situação atual</span><span class="metric-icon">◎</span></div>
+    <div class="metric-value" id="metricSituation">—</div><div class="metric-sub" id="situationDescription">Sua situação aparecerá após a consulta.</div><div class="status-tag tag-neutral" id="situationTag">Aguardando consulta</div></article>
+  </section>
+
+  <section class="student-comms" id="avisos">
+    <div class="comms-heading"><div><div class="eyebrow">Matemática · Professor Dannyel</div><h2>Avisos do Professor Dannyel</h2><p>Recados das aulas de Matemática, enviados por mim. Alguns são para todos os alunos; outros, só para você. Este canal é informativo, não recebe respostas e não representa comunicados oficiais da escola.</p></div><button class="bell-button" id="noticeBell" type="button" aria-label="Ir para os avisos"><span class="bell-icon" aria-hidden="true">🔔</span><span>Meus avisos</span><span class="bell-count zero" id="noticeUnreadCount">0</span></button></div>
+    <div class="comms-grid"><article class="panel comms-panel"><div class="panel-head"><div><h3>Seus comunicados</h3><p class="panel-sub" id="noticeSummary">Avisos de Matemática do Professor Dannyel aparecerão aqui.</p></div><span class="comms-icon" aria-hidden="true">📣</span></div><div class="notice-stack" id="studentAnnouncements"><div class="comms-empty">Consulte seu código para ver os avisos do Professor Dannyel.</div></div><div id="noticeStatus" role="status" aria-live="polite" style="font-size:10px;line-height:1.5;margin-top:10px;color:var(--muted)"></div></article></div>
+   </section>
+
+  <section class="columns">
+   <article class="panel"><div class="panel-head"><div><h3>Sua evolução</h3><p class="panel-sub">Visualize suas médias bimestrais de um jeito fácil.</p></div><a class="text-link" href="#notas">Ver avaliações ↓</a></div>
+    <div class="grade-chart" id="gradeChart" role="img" aria-label="Médias bimestrais do aluno"><p class="chart-empty">Consulte seu código para ver suas médias.</p></div>
+    <div class="chart-legend"><span class="legend-dot"></span> Bimestre em andamento <span id="chartLegendNote" style="margin-left:auto">Dados reais após consulta</span></div>
+   </article>
+
+   <article class="panel" id="resultado"><div class="final-head"><div class="final-icon">◎</div><div><h3>Caminho para a aprovação</h3><p id="goalSubtitle">Um resumo simples da sua meta.</p></div></div>
+    <div class="goal-labels"><span>Soma acumulada</span><strong id="goalTargetLabel">— / — pontos</strong></div>
+    <div class="goal-track"><span id="goalProgress" style="width:0%"></span></div>
+    <div class="goal-nums"><div class="goal-num"><span>Você já acumulou</span><strong id="goalAccumulated">—</strong></div><div class="goal-num"><span>Faltam para a meta</span><strong id="goalMissing">—</strong></div></div>
+    <div class="goal-message" id="goalMessage"><span aria-hidden="true">💡</span><span id="goalMessageText">Consulte seu código para ver a meta de aprovação da sua modalidade.</span></div>
+    <button class="approval-btn" id="approvalMessageButton" type="button" hidden>💙 Ver mensagem de parabéns</button>
+   </article>
+  </section>
+
+  <div class="bimestres" id="bimestreTabs" aria-label="Selecionar bimestre"></div>
+  <section class="panel assess-panel" id="notas">
+   <div class="assess-top"><div><h3 id="assess-title">Avaliações de Matemática</h3><p id="assess-sub">Notas e registros da disciplina de Matemática.</p></div><span class="status-tag small tag-neutral" id="assess-status">Aguardando consulta</span></div>
+   <div class="table-wrap"><table><thead><tr><th>Avaliação</th><th>Situação</th><th>Pontos</th></tr></thead><tbody id="assess-rows"><tr><td colspan="3" style="text-align:center;color:var(--muted)">Consulte seu código para ver as avaliações.</td></tr></tbody></table></div>
+  </section>
+
+   <aside class="tip"><div class="tip-icon">🌱</div><div><strong>Pequenos passos também são progresso.</strong><p>Confira suas notas de Matemática com frequência e converse com o Professor Dannyel quando tiver dúvidas.</p></div></aside>
+ </div>
+</main>
+
+<div class="modal-aprovado" id="approvalModal" role="dialog" aria-modal="true" aria-labelledby="approvalModalTitle" hidden>
+ <div class="modal-confetti" aria-hidden="true"><canvas id="approvalConfetti"></canvas></div>
+ <div class="modal-card"><div class="modal-emoji" aria-hidden="true">🎉</div><h2 id="approvalModalTitle">Parabéns pela aprovação!</h2>
+  <p>Você alcançou a meta de aprovação em Matemática. Seu esforço é muito valorizado! Continue se dedicando e avançando nos estudos.</p>
+  <button id="closeApprovalModal" type="button">Fechar mensagem</button></div>
 </div>
 
-<div class="abas" id="abas"></div>
-<div id="conteudosBimestres"></div>
-
-<div class="resultado-final" id="final">
-<div class="resultado-box">
-<h3>🏆 Resultado Final</h3>
-<table>
-<thead><tr><th>Bimestre</th><th>Média</th></tr></thead>
-<tbody id="tabelaResultadoFinal"></tbody>
-</table>
-<div class="media-final">
-<span>Média final</span>
-<strong id="mediaAnual">—</strong>
-<p id="textoMediaFinal" style="margin-top:8px;font-size:13px;color:#64748b">—</p>
-</div>
-<div id="blocoAprovacao"></div>
-</div>
-</div>
-</section>
-
-<div class="modal-aprovado" id="modalAprovado" role="dialog" aria-modal="true" aria-labelledby="tituloModalAprovado">
-  <div class="modal-aprovado-confete" aria-hidden="true"><canvas></canvas></div>
-  <div class="modal-aprovado-card">
-    <div class="emoji">🎉</div>
-    <h4 id="tituloModalAprovado">Parabéns pela aprovação!</h4>
-    <p>Você faz parte do seleto grupo que já está aprovado. Seu esforço é muito valorizado! Continue se dedicando e se torne uma excelente pessoa!</p>
-    <button class="modal-fechar" type="button" onclick="fecharMensagemAprovacao()">Fechar</button>
-  </div>
-</div>
-<footer id="rodape">Área do Aluno<small>Este domínio adota medidas de proteção de dados alinhadas aos princípios da LGPD. As informações escolares de cada aluno são disponibilizadas mediante código individual de consulta; não compartilhe seu código.</small></footer>
-</div>
+<footer class="footer"><div class="shell"><span><strong>SALTA</strong> · Matemática com Professor Dannyel</span><span id="footerNote">Notas, avaliações e avisos das aulas de Matemática.</span></div></footer>
 
 <script>
-const API_URL='https://portal-aluno-api.dannyel-moises.workers.dev';
+const STUDENT_API_URL='https://portal-aluno-api.dannyel-moises.workers.dev';
+const STATS_API_URL='https://salta-stats.dannyel-moises.workers.dev';
+let activeRule=null;
 
-function identificarSegmento(turma){
-    return String(turma||'').toUpperCase().includes('EJA')?'EJA':'REGULAR';
+function numberValue(value){
+ if(value===null||value===undefined||value==='')return null;
+ if(typeof value==='number')return Number.isFinite(value)?value:null;
+ let text=String(value).trim().replace(/\s/g,'');if(!text)return null;
+ if(text.includes(',')&&text.includes('.'))text=text.replace(/\./g,'').replace(',','.');else text=text.replace(',','.');
+ const number=Number(text);return Number.isFinite(number)?number:null;
+}
+function fmt(value,places){const n=numberValue(value);return n===null?'—':n.toFixed(places===undefined?1:places).replace('.',',');}
+function fmtCriterion(value){const n=numberValue(value);return fmt(n,n!==null&&Number.isInteger(n)?0:1);}
+function parseAssessments(value){if(Array.isArray(value))return value;if(typeof value==='string'&&value.trim()){try{const p=JSON.parse(value);return Array.isArray(p)?p:[];}catch(_){return [];}}return [];}
+function getRule(turma,source){
+ const isEja=String(source?.rede||'').toUpperCase()==='EJA'||String(turma||'').toUpperCase().includes('EJA');
+ const count=Number(source?.quantidadeBimestres)||(isEja?2:4);
+ const minimum=numberValue(source?.mediaMinimaBimestral??source?.mediaMinima);
+ const target=numberValue(source?.somaMinimaFinal)??(minimum===null?null:minimum*count);
+ const type=isEja?'EJA':(String(source?.rede||'').toUpperCase()||'REGULAR');
+ const label=type==='DF'?'Distrito Federal':(type==='GO'?'Goiás':(type==='EJA'?'EJA':'ensino regular'));
+ return {type,label,count,minimum,target,available:minimum!==null&&target!==null};
+}
+function getBimestre(student,n){return {n:n,status:String(student['bimestre'+n+'_status']||'nao_iniciado').toLowerCase(),media:numberValue(student['bimestre'+n+'_media']),vistos:numberValue(student['bimestre'+n+'_vistos']),avaliacoes:parseAssessments(student['bimestre'+n+'_avaliacoes'])};}
+function statusLabel(status){if(status==='concluido')return 'Concluído';if(status==='andamento')return 'Em andamento';return 'Não iniciado';}
+function initials(name){const p=String(name||'Aluno').trim().split(/\s+/).filter(Boolean);return p.length>1?(p[0][0]+p[p.length-1][0]).toUpperCase():(p[0]||'S').slice(0,2).toUpperCase();}
+function currentBimNumber(items){const a=items.find(function(b){return b.status==='andamento';});if(a)return a.n;for(let i=items.length-1;i>=0;i--){if(items[i].media!==null||items[i].status==='concluido')return items[i].n;}return 1;}
+function setTag(el,text,kind){el.textContent=text;el.classList.remove('tag-warning','tag-neutral');if(kind==='warning')el.classList.add('tag-warning');if(kind==='neutral')el.classList.add('tag-neutral');}
+
+function renderStudent(student,gradeRule){
+ activeRule=getRule(student.turma,gradeRule);
+ const bimestres=[];for(let i=1;i<=activeRule.count;i++)bimestres.push(getBimestre(student,i));
+ const sum=bimestres.reduce(function(total,b){return total+(b.media===null?0:b.media);},0);
+ const marked=bimestres.filter(function(b){return b.media!==null;});
+ const remaining=bimestres.length-marked.length;
+ const average=marked.length?sum/marked.length:null;
+ const target=activeRule.target,missing=target===null?null:Math.max(0,target-sum),approved=target!==null&&sum>=target;
+ const remainingAverage=remaining&&missing!==null?missing/remaining:null;
+ const evalCount=bimestres.reduce(function(total,b){return total+b.avaliacoes.length;},0);
+ const vistosEntries=bimestres.filter(function(b){return b.vistos!==null;});
+ const vistosTotal=vistosEntries.reduce(function(total,b){return total+b.vistos;},0);
+ const current=currentBimNumber(bimestres),name=student.nome||'Aluno';
+
+ document.getElementById('headerStudentName').textContent=name;
+ document.getElementById('headerStudentClass').textContent=student.turma?'Turma '+student.turma:'Turma não informada';
+ document.getElementById('studentAvatar').textContent=initials(name);
+ document.getElementById('studentHeaderInfo').hidden=false;
+ document.getElementById('studentAvatar').hidden=false;
+ document.getElementById('helloTitle').textContent='Olá, '+name.split(/\s+/)[0]+'! 👋';
+ document.getElementById('helloIntro').textContent='Aqui estão suas notas, avaliações e avisos das aulas de Matemática do Professor Dannyel.';
+ document.getElementById('studentNav').hidden=false;
+ document.getElementById('noticeBellTop').hidden=false;
+ document.getElementById('welcomeHeadline').textContent=approved?'Você já alcançou sua meta de aprovação!':'Seu esforço está construindo resultados.';
+ document.getElementById('welcomeText').textContent=approved?'Parabéns! Sua soma em Matemática já alcançou o mínimo previsto para sua modalidade. Continue aprendendo e evoluindo.':'Acompanhe suas médias em Matemática e veja quanto falta para alcançar a soma necessária para aprovação.';
+ document.getElementById('currentPeriod').textContent=current+'º bimestre';
+ document.getElementById('metricAverage').innerHTML=(average===null?'—':fmt(average,2))+' <span class="metric-unit">/ 10</span>';
+ document.getElementById('averageProgress').style.width=(average===null?0:Math.max(0,Math.min(100,average*10)))+'%';
+ document.getElementById('metricEvaluations').textContent=String(evalCount);
+ setTag(document.getElementById('evaluationTag'),evalCount?'Registros encontrados':'Sem avaliações registradas',evalCount?'success':'neutral');
+ document.getElementById('metricVistos').textContent=vistosEntries.length?fmt(vistosTotal,0):'—';
+ setTag(document.getElementById('vistosTag'),vistosEntries.length?'Soma dos bimestres':'Sem registros de vistos',vistosEntries.length?'success':'neutral');
+ document.getElementById('metricSituation').textContent=approved?'Aprovado(a)':(!activeRule.available?'Critério indisponível':(remaining?'Em andamento':'Atenção'));
+ document.getElementById('situationDescription').textContent=approved?'A soma mínima da sua modalidade foi alcançada.':(!activeRule.available?'A regra da turma não pôde ser consultada agora. Suas notas continuam disponíveis.':(remaining?'Você ainda pode avançar nos bimestres sem média lançada.':'Confira seu resultado com o Professor Dannyel.'));
+ setTag(document.getElementById('situationTag'),approved?'Meta alcançada':(!activeRule.available?'Consulte o professor':(remaining?'Continue avançando':'Converse com o Professor Dannyel')),approved?'success':(activeRule.available&&remaining?'warning':'neutral'));
+
+ const chart=document.getElementById('gradeChart');chart.innerHTML='';chart.style.gridTemplateColumns='repeat('+activeRule.count+', minmax(0,1fr))';chart.setAttribute('aria-label','Médias por bimestre para '+name);
+ bimestres.forEach(function(b){
+  const col=document.createElement('div');col.className='grade-col'+(b.n===current?' current':'');
+  const score=document.createElement('span');score.className='grade-score';score.textContent=b.media===null?'—':fmt(b.media,1);
+  const track=document.createElement('div');track.className='bar-track';const bar=document.createElement('div');bar.className='grade-bar';
+  bar.style.height=(b.media===null?0:Math.max(0,Math.min(100,b.media*10)))+'%';track.appendChild(bar);
+  const label=document.createElement('span');label.className='grade-label';label.textContent=b.n+'º bim.';
+  col.append(score,track,label);chart.appendChild(col);
+ });
+ document.getElementById('chartLegendNote').textContent=marked.length+' de '+activeRule.count+' com média';
+ document.getElementById('goalSubtitle').textContent=activeRule.available?'Média mínima por bimestre: '+fmtCriterion(activeRule.minimum)+' · soma final mínima: '+fmtCriterion(target)+' pontos':'Critério da turma indisponível';
+ document.getElementById('goalTargetLabel').textContent=fmt(sum,1)+' / '+fmtCriterion(target)+' pontos';
+ document.getElementById('goalProgress').style.width=target===null?'0%':Math.min(100,Math.max(0,sum/target*100))+'%';
+ document.getElementById('goalAccumulated').textContent=fmt(sum,1);
+ document.getElementById('goalMissing').textContent=fmt(missing,1);
+ document.getElementById('goalMessageText').innerHTML=!activeRule.available
+  ?'<b>Notas carregadas.</b><br>O critério de aprovação desta turma está temporariamente indisponível. Consulte o Professor Dannyel.'
+  :approved
+  ?'<b>Parabéns! Você já está aprovado(a).</b><br>Sua soma atingiu o mínimo de '+fmtCriterion(target)+' pontos para '+activeRule.label+'. Seu esforço é valorizado!'
+  :(remaining?'<b>Você está no caminho!</b><br>Para '+activeRule.label+', a soma mínima é '+fmtCriterion(target)+' pontos. Faltam '+fmt(missing,1)+' ponto(s). Nos '+remaining+' bimestre(s) sem média, você precisa de aproximadamente '+fmt(remainingAverage,1)+' por bimestre.'
+  :'<b>Vamos conferir isso juntos.</b><br>Suas médias de Matemática somam '+fmt(sum,1)+' ponto(s), abaixo da meta de '+fmtCriterion(target)+'. Converse com o Professor Dannyel para confirmar sua situação.');
+ document.getElementById('goalMessage').style.background=approved?'var(--good-soft)':'var(--accent-soft)';
+ document.getElementById('goalMessage').style.color=approved?'var(--good)':'var(--accent)';
+ document.getElementById('approvalMessageButton').hidden=!approved;
+
+ const tabs=document.getElementById('bimestreTabs');tabs.innerHTML='';
+ bimestres.forEach(function(b){const btn=document.createElement('button');btn.className='bim-btn';btn.type='button';btn.dataset.bim=String(b.n);btn.textContent=b.n+'º bimestre';btn.setAttribute('aria-pressed',String(b.n===current));btn.addEventListener('click',function(){renderAssessments(bimestres,b.n);});tabs.appendChild(btn);});
+ renderAssessments(bimestres,current);
+ document.getElementById('studentDashboard').hidden=false;
+ const updateText=student.ultima_atualizacao?'Última atualização: '+String(student.ultima_atualizacao).trim():'';
+ const status=document.getElementById('lookupStatus');status.textContent=updateText;status.className='lookup-status success';
+ document.getElementById('clearStudentButton').hidden=false;
+ document.getElementById('footerNote').textContent='Matemática com Professor Dannyel · Notas, avaliações e avisos.';
+ loadStudentCommunications(document.getElementById('studentCode').value.trim().toUpperCase());
+}
+function renderAssessments(items,n){
+ const b=items.find(function(item){return item.n===n;});if(!b)return;
+ document.querySelectorAll('[data-bim]').forEach(function(btn){btn.setAttribute('aria-pressed',String(Number(btn.dataset.bim)===n));});
+ document.getElementById('assess-title').textContent='Avaliações de Matemática do '+n+'º bimestre';
+ document.getElementById('assess-sub').textContent='Notas e registros da disciplina de Matemática.';
+ setTag(document.getElementById('assess-status'),statusLabel(b.status),b.status==='andamento'?'warning':(b.status==='concluido'?'success':'neutral'));
+ const tbody=document.getElementById('assess-rows');tbody.innerHTML='';
+ if(!b.avaliacoes.length){const tr=document.createElement('tr');tr.innerHTML='<td colspan="3" style="text-align:center;color:var(--muted)">Nenhuma avaliação registrada neste bimestre.</td>';tbody.appendChild(tr);return;}
+ b.avaliacoes.forEach(function(item){
+  const tr=document.createElement('tr'),name=document.createElement('td'),state=document.createElement('td'),dot=document.createElement('span'),points=document.createElement('td');
+  name.textContent=String(item&&item.nome||'Avaliação');dot.className='state';dot.textContent='Registrada';state.appendChild(dot);
+  points.className='points';points.textContent=fmt(item&&item.pontos,1);tr.append(name,state,points);tbody.appendChild(tr);
+ });
 }
 
-function quantidadeBimestres(segmento){
-    return segmento==='EJA'?2:4;
+const COMMS_API_URL='https://salta-stats.dannyel-moises.workers.dev';
+function commDate(value){
+ if(!value)return 'Data não informada';
+ const raw=String(value);
+ const d=new Date(raw.includes('T')?raw:raw.replace(' ','T')+'Z');
+ return Number.isNaN(d.getTime())?raw:d.toLocaleString('pt-BR',{dateStyle:'short',timeStyle:'short'});
 }
-
-function extrairAno(data){
-    const m=String(data||'').match(/\b(20\d{2})\b/);
-    return m?m[1]:'';
+function renderStudentAnnouncements(items,code){
+ const target=document.getElementById('studentAnnouncements');target.innerHTML='';
+ const list=Array.isArray(items)?items:[],unread=list.filter(item=>!Number(item.is_read));
+ document.getElementById('noticeUnreadCount').textContent=String(unread.length);
+ document.getElementById('noticeUnreadCount').classList.toggle('zero',unread.length===0);
+ document.getElementById('noticeUnreadCountTop').textContent=String(unread.length);document.getElementById('noticeUnreadCountTop').classList.toggle('zero',unread.length===0);
+ document.getElementById('noticeSummary').textContent=list.length?list.length+' aviso(s) do Professor Dannyel · '+unread.length+' não lido(s)':'Nenhum aviso do Professor Dannyel disponível para você.';
+ if(!list.length){target.innerHTML='<div class="comms-empty">Quando o Professor Dannyel publicar um aviso de Matemática para todos ou direcionado a você, ele aparecerá aqui.</div>';return;}
+ list.forEach(item=>{
+  const isRead=!!Number(item.is_read),article=document.createElement('article');article.className='notice-item'+(isRead?'':' unread');
+  const meta=document.createElement('div');meta.className='notice-meta';
+  const kind=document.createElement('span');kind.className='notice-kind';kind.textContent=item.scope==='global'?'Aviso global':'Aviso individual';
+  const date=document.createElement('span');date.className='notice-date';date.textContent=commDate(item.created_at);meta.append(kind,date);
+  const title=document.createElement('h4');title.textContent=item.title||'Comunicado';
+  const body=document.createElement('p');body.textContent=item.body||'';
+  const author=document.createElement('div');author.className='notice-author';author.textContent='Aviso do Professor Dannyel';
+  const bottom=document.createElement('div');bottom.className='notice-bottom';
+  const state=document.createElement('span');state.className='notice-state';state.textContent=isRead?'Lido':'Ainda não lido';
+  const button=document.createElement('button');button.type='button';button.className='notice-read';button.textContent=isRead?'Lido ✓':'Marcar como lido';button.disabled=isRead;
+  button.addEventListener('click',async()=>{
+   button.disabled=true;button.textContent='Salvando...';
+   try{
+    const response=await fetch(COMMS_API_URL+'/comms/student/read',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({codigo:code,announcement_ids:[item.id]}),cache:'no-store'});
+    const data=await response.json().catch(()=>({}));if(!response.ok)throw new Error(data.error||'Não foi possível atualizar a leitura.');
+    item.is_read=1;item.read_at=new Date().toISOString();renderStudentAnnouncements(items,code);
+   }catch(e){button.disabled=false;button.textContent='Tentar novamente';document.getElementById('noticeStatus').textContent=e.message;}
+  });
+  bottom.append(state,button);article.append(meta,title,body,author,bottom);target.appendChild(article);
+ });
 }
-
-function formatarNumero(valor,casas){
-    if(valor===null||valor===undefined||valor==='') return '—';
-    const n=converterNota(valor);
-    return Number.isFinite(n)?n.toFixed(casas||1).replace('.',','):'—';
+async function loadStudentCommunications(code){
+ const target=document.getElementById('studentAnnouncements');target.innerHTML='<div class="comms-empty">Carregando avisos...</div>';
+ document.getElementById('noticeStatus').textContent='';
+ try{
+  const response=await fetch(COMMS_API_URL+'/comms/student?codigo='+encodeURIComponent(code),{method:'GET',cache:'no-store'});
+  const data=await response.json().catch(()=>({}));if(!response.ok)throw new Error(data.error||'O serviço de avisos ainda não está disponível.');
+  renderStudentAnnouncements(data.announcements||[],code);
+ }catch(e){
+  target.innerHTML='<div class="comms-empty">Não foi possível carregar os avisos agora. Suas notas de Matemática continuam disponíveis.</div>';
+  document.getElementById('noticeSummary').textContent='Não foi possível carregar os avisos.';
+  document.getElementById('noticeStatus').textContent=e.message;document.getElementById('noticeUnreadCount').textContent='—';document.getElementById('noticeUnreadCount').classList.add('zero');
+  document.getElementById('noticeUnreadCountTop').textContent='—';document.getElementById('noticeUnreadCountTop').classList.add('zero');
+ }
 }
-
-function converterNota(valor){
-    if(valor===null||valor===undefined||valor==='') return null;
-    if(typeof valor==='number') return Number.isFinite(valor)?valor:null;
-
-    let texto=String(valor).trim().replace(/\s/g,'');
-    if(!texto) return null;
-
-    /*
-      Aceita notas vindas da planilha/API como:
-      6,5 | 6.5 | "6,50" | "6.50"
-    */
-    if(texto.includes(',') && texto.includes('.')){
-        texto=texto.replace(/\./g,'').replace(',','.');
-    }else{
-        texto=texto.replace(',','.');
-    }
-
-    const numero=Number(texto);
-    return Number.isFinite(numero)?numero:null;
+async function lookupStudent(event){
+ event.preventDefault();
+ const input=document.getElementById('studentCode'),code=input.value.trim().toUpperCase(),status=document.getElementById('lookupStatus');
+ const button=document.getElementById('lookupButton'),buttonText=document.getElementById('lookupButtonText'),spinner=document.getElementById('lookupSpinner');
+ if(!code){status.textContent='Digite seu código individual para continuar.';status.className='lookup-status error';input.focus();return;}
+ button.disabled=true;buttonText.textContent='Consultando...';spinner.hidden=false;
+ status.textContent='Consultando a ficha escolar...';status.className='lookup-status loading';
+ document.getElementById('studentDashboard').hidden=true;document.getElementById('approvalMessageButton').hidden=true;document.getElementById('studentNav').hidden=true;
+ document.getElementById('studentHeaderInfo').hidden=true;document.getElementById('studentAvatar').hidden=true;
+ document.getElementById('noticeBellTop').hidden=true;
+ document.getElementById('noticeUnreadCount').textContent='0';document.getElementById('noticeUnreadCount').classList.add('zero');
+ document.getElementById('noticeUnreadCountTop').textContent='0';document.getElementById('noticeUnreadCountTop').classList.add('zero');
+ try{
+  const response=await fetch(STUDENT_API_URL+'?codigo='+encodeURIComponent(code),{method:'GET',cache:'no-store'});
+  let data={};try{data=await response.json();}catch(_){}
+  if(!response.ok){
+   if(response.status===404)throw new Error('Código não encontrado. Confira os caracteres e tente novamente.');
+   if(response.status===400)throw new Error(data.error||'O código informado parece inválido. Confira e tente novamente.');
+   throw new Error(data.error||'Não foi possível consultar agora. Tente novamente em alguns instantes.');
+  }
+  if(!data||!data.nome||!data.turma){if(data&&data.error)throw new Error(data.error);throw new Error('A consulta retornou uma ficha incompleta. Confira o código ou procure o Professor Dannyel.');}
+  let gradeRule=null;
+  try{
+   const ruleResponse=await fetch(STATS_API_URL+'/public/grade-rule?codigo='+encodeURIComponent(code),{method:'GET',cache:'no-store'});
+   const ruleData=await ruleResponse.json().catch(()=>({}));
+   if(ruleResponse.ok)gradeRule=ruleData;
+  }catch(_){/* A consulta de notas continua disponível sem o critério calculado. */}
+  input.value=code;renderStudent(data,gradeRule);
+  document.getElementById('studentDashboard').scrollIntoView({behavior:'smooth',block:'start'});
+ }catch(error){
+  status.textContent=error instanceof TypeError?'Não foi possível conectar ao serviço. Verifique sua conexão e tente novamente.':(error.message||'Não foi possível consultar essa ficha.');
+  status.className='lookup-status error';
+ }finally{button.disabled=false;buttonText.textContent='Consultar minhas notas';spinner.hidden=true;}
 }
-
-function normalizarAvaliacoes(valor){
-    if(typeof valor==='string'){
-        try{valor=JSON.parse(valor)}catch(e){return []}
-    }
-    return Array.isArray(valor)?valor:[];
+function clearStudent(){
+ document.getElementById('studentDashboard').hidden=true;document.getElementById('studentNav').hidden=true;document.getElementById('noticeBellTop').hidden=true;
+ document.getElementById('studentHeaderInfo').hidden=true;document.getElementById('studentAvatar').hidden=true;
+ document.getElementById('studentCode').value='';
+ document.getElementById('lookupStatus').textContent='Digite o código individual para consultar outra ficha. O código não é salvo nesta página.';
+ document.getElementById('lookupStatus').className='lookup-status';
+ document.getElementById('clearStudentButton').hidden=true;closeApprovalModal();
+ document.getElementById('studentCode').focus();window.scrollTo({top:0,behavior:'smooth'});
 }
-
-function obterBimestre(aluno,numero){
-    return {
-        status:aluno['bimestre'+numero+'_status']||'nao_iniciado',
-        media:aluno['bimestre'+numero+'_media'],
-        vistos:aluno['bimestre'+numero+'_vistos'],
-        avaliacoes:aluno['bimestre'+numero+'_avaliacoes']
-    };
+function openApprovalModal(){const modal=document.getElementById('approvalModal');modal.hidden=false;document.body.style.overflow='hidden';requestAnimationFrame(function(){setTimeout(fireConfetti,70);});}
+function closeApprovalModal(){document.getElementById('approvalModal').hidden=true;document.body.style.overflow='';const canvas=document.getElementById('approvalConfetti');if(canvas){const ctx=canvas.getContext('2d');ctx.clearRect(0,0,canvas.width,canvas.height);}}
+function fireConfetti(){
+ const canvas=document.getElementById('approvalConfetti'),modal=document.getElementById('approvalModal');if(modal.hidden||!canvas)return;
+ const ctx=canvas.getContext('2d');canvas.width=window.innerWidth;canvas.height=window.innerHeight;
+ const colors=['#fff','#ff4d6a','#7c83fd','#ffd166','#51cf9b','#c084fc'],papers=[];
+ for(let i=0;i<150;i++)papers.push({x:canvas.width/2,y:canvas.height*.38,vx:(Math.random()-.5)*16,vy:(Math.random()*-11)-4,angle:Math.random()*6,spin:(Math.random()-.5)*.3,color:colors[Math.floor(Math.random()*colors.length)],width:4+Math.random()*5,height:7+Math.random()*7});
+ function frame(){if(modal.hidden)return;ctx.clearRect(0,0,canvas.width,canvas.height);let alive=0;papers.forEach(function(p){p.vy+=.32;p.vx*=.995;p.x+=p.vx;p.y+=p.vy;p.angle+=p.spin;if(p.y<canvas.height+35)alive++;ctx.save();ctx.translate(p.x,p.y);ctx.rotate(p.angle);ctx.fillStyle=p.color;ctx.fillRect(-p.width/2,-p.height/2,p.width,p.height);ctx.restore();});if(alive)requestAnimationFrame(frame);}
+ frame();
 }
-
-function mostrarBimestre(numero,dados){
-    const el=document.getElementById('conteudoBim'+numero);
-    if(!el)return;
-
-    let statusTexto='○ Bimestre não iniciado';
-    let statusClasse='nao-iniciado';
-
-    if(dados.status==='concluido'){
-        statusTexto='✓ Bimestre concluído';
-        statusClasse='concluido';
-    }else if(dados.status==='andamento'){
-        statusTexto='⏳ Bimestre em andamento';
-        statusClasse='andamento';
-    }
-
-    const avaliacoes=normalizarAvaliacoes(dados.avaliacoes);
-    let rows='';
-
-    avaliacoes.forEach(a=>{
-        rows+='<tr><td>'+String(a.nome||'Avaliação')+'</td><td class="nota">'+formatarNumero(a.pontos,1)+'</td></tr>';
-    });
-
-    if(!rows){
-        rows='<tr><td colspan="2" style="text-align:center;color:#64748b">Nenhuma avaliação registrada.</td></tr>';
-    }
-
-    let corpo='';
-
-    if(dados.status==='nao_iniciado'){
-        corpo='<p style="color:#64748b;text-align:center;padding:20px">Este bimestre ainda não foi iniciado.</p>';
-    }else{
-        corpo='<table><thead><tr><th>Avaliação</th><th>Pontos</th></tr></thead><tbody>'+rows+'</tbody></table>';
-    }
-
-    el.innerHTML=
-        '<span class="status '+statusClasse+'">'+statusTexto+'</span>'+
-        '<div class="resumo">'+
-            '<div class="card"><span>Média Bimestral</span><strong>'+formatarNumero(dados.media,1)+'</strong></div>'+
-            '<div class="card"><span>Vistos</span><strong>'+((dados.vistos!==null&&dados.vistos!==undefined)?dados.vistos:'—')+'</strong></div>'+
-        '</div>'+
-        '<div class="avaliacoes"><h3>📝 Avaliações do '+numero+'º Bimestre</h3>'+corpo+'</div>';
-}
-
-function criarAbas(quantidade){
-    const abas=document.getElementById('abas');
-    abas.innerHTML='';
-
-    for(let i=1;i<=quantidade;i++){
-        abas.innerHTML+=
-            '<button class="aba" data-bimestre="'+i+'" onclick="mostrarAba(\'bim'+i+'\',this)">'+i+'º Bimestre</button>';
-    }
-
-    abas.innerHTML+=
-        '<button class="aba" onclick="mostrarAba(\'final\',this)">Resultado Final</button>';
-}
-
-function criarConteudos(aluno,quantidade){
-    const container=document.getElementById('conteudosBimestres');
-    container.innerHTML='';
-
-    for(let i=1;i<=quantidade;i++){
-        container.innerHTML+=
-            '<div class="bimestre" id="bim'+i+'"><div id="conteudoBim'+i+'"></div></div>';
-
-        mostrarBimestre(i,obterBimestre(aluno,i));
-    }
-}
-
-function encontrarBimestreVigente(aluno,quantidade){
-    for(let i=1;i<=quantidade;i++){
-        if(aluno['bimestre'+i+'_status']==='andamento') return i;
-    }
-    return 1;
-}
-
-
-function normalizarTexto(valor){
-    return String(valor||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toUpperCase().trim();
-}
-
-function identificarRegraAprovacao(turma){
-    const t=normalizarTexto(turma);
-
-    if(t.includes('EJA')){
-        return {tipo:'EJA',minimo:12,quantidade:2};
-    }
-
-    const ehPais=(["AFEGANISTAO","AFRICA DO SUL","ALBANIA","ALEMANHA","ANDORRA","ANGOLA","ANTIGUA E BARBUDA","ARABIA SAUDITA","ARGELIA","ARGENTINA","ARMENIA","AUSTRALIA","AUSTRIA","AZERBAIJAO","BAHAMAS","BAHREIN","BANGLADESH","BARBADOS","BELARUS","BELGICA","BELIZE","BENIM","BOLIVIA","BOSNIA E HERZEGOVINA","BOTSUANA","BRASIL","BRUNEI","BULGARIA","BURKINA FASO","BURUNDI","BUTAO","CABO VERDE","CAMBOJA","CAMAROES","CANADA","CATAR","CAZAQUISTAO","CHADE","CHILE","CHINA","CHIPRE","COLOMBIA","COMORES","CONGO","COREIA DO NORTE","COREIA DO SUL","COSTA DO MARFIM","COSTA RICA","CROACIA","CUBA","DINAMARCA","DJIBUTI","DOMINICA","EGITO","EL SALVADOR","EMIRADOS ARABES UNIDOS","EQUADOR","ERITREIA","ESLOVAQUIA","ESLOVENIA","ESPANHA","ESTADOS UNIDOS","ESTONIA","ESWATINI","ETIOPIA","FIJI","FILIPINAS","FINLANDIA","FRANCA","GABAO","GAMBIA","GANA","GEORGIA","GRECIA","GRENADA","GUATEMALA","GUIANA","GUINE","GUINE BISSAU","GUINE EQUATORIAL","HAITI","HONDURAS","HUNGRIA","IEMEN","ILHAS MARSHALL","ILHAS SALOMAO","INDIA","INDONESIA","IRA","IRAQUE","IRLANDA","ISLANDIA","ISRAEL","ITALIA","JAMAICA","JAPAO","JORDANIA","KIRIBATI","KUWAIT","LAOS","LESOTO","LETONIA","LIBANO","LIBERIA","LIBIA","LIECHTENSTEIN","LITUANIA","LUXEMBURGO","MACEDONIA DO NORTE","MADAGASCAR","MALASIA","MALAWI","MALDIVAS","MALI","MALTA","MARROCOS","MAURICIO","MAURITANIA","MEXICO","MICRONESIA","MOCAMBIQUE","MOLDAVIA","MONACO","MONGOLIA","MONTENEGRO","MYANMAR","NAMIBIA","NAURU","NEPAL","NICARAGUA","NIGER","NIGERIA","NORUEGA","NOVA ZELANDIA","OMA","PAISES BAIXOS","PALAU","PANAMA","PAPUA NOVA GUINE","PAQUISTAO","PARAGUAI","PERU","POLONIA","PORTUGAL","QUENIA","QUIRGUISTAO","REINO UNIDO","REPUBLICA CENTRO AFRICANA","REPUBLICA DEMOCRATICA DO CONGO","REPUBLICA DOMINICANA","ROMENIA","RUANDA","RUSSIA","SAMOA","SAN MARINO","SANTA LUCIA","SAO CRISTOVAO E NEVIS","SAO MARINHO","SAO TOME E PRINCIPE","SAO VICENTE E GRANADINAS","SEICHELES","SENEGAL","SERRA LEOA","SERVIA","SINGAPURA","SIRIA","SOMALIA","SRI LANKA","SUDAO","SUDAO DO SUL","SURINAME","SUECIA","SUICA","TAILANDIA","TAJIQUISTAO","TANZANIA","TIMOR LESTE","TOGO","TONGA","TRINDADE E TOBAGO","TUNISIA","TURCOMENISTAO","TUVALU","UCRANIA","UGANDA","URUGUAI","UZBEQUISTAO","VATICANO","VENEZUELA","VIETNA","ZAMBIA","ZIMBABUE"]).some(p=>{
-        const esc=p.replace(/[.*+?^$\\{}()|[\]\\]/g,'\\$&');
-        return new RegExp('(^|[^A-Z])'+esc+'([^A-Z]|$)').test(t);
-    });
-
-    if(ehPais){
-        return {tipo:'DF',minimo:20,quantidade:4};
-    }
-
-    return {tipo:'GOIAS',minimo:24,quantidade:4};
-}
-
-
-function formatarTipoRegra(tipo){
-    return tipo==='DF'?'Distrito Federal':(tipo==='EJA'?'EJA':'Goiás');
-}
-
-function fecharMensagemAprovacao(){
-    const modal=document.getElementById('modalAprovado');
-    if(modal) modal.classList.remove('aberto');
-}
-
-function abrirMensagemAprovacao(){
-    const modal=document.getElementById('modalAprovado');
-    if(modal){
-        modal.classList.add('aberto');
-        requestAnimationFrame(()=>setTimeout(soltarConfeteModal,80));
-    }
-}
-
-function soltarConfeteModal(){
-    const area=document.querySelector('.modal-aprovado-confete');
-    if(!area) return;
-    const cv=area.querySelector('canvas');
-    if(!cv) return;
-    const ctx=cv.getContext('2d');
-    cv.width=area.clientWidth;
-    cv.height=area.clientHeight;
-
-    let papeis=[];
-    let id=null;
-    const cores=['#ffffff','#ff4d6a','#a1a1aa','#ffd7a1'];
-
-    for(let i=0;i<140;i++){
-        papeis.push({
-            x:cv.width/2,
-            y:cv.height*0.38,
-            vx:(Math.random()-.5)*16,
-            vy:(Math.random()*-11)-4,
-            giro:Math.random()*6,
-            dGiro:(Math.random()-.5)*.3,
-            cor:cores[(Math.random()*cores.length)|0],
-            l:4+Math.random()*5,
-            a:7+Math.random()*7
-        });
-    }
-
-    function rodar(){
-        ctx.clearRect(0,0,cv.width,cv.height);
-        let vivos=0;
-
-        papeis.forEach(p=>{
-            p.vy+=.32;
-            p.vx*=.995;
-            p.x+=p.vx;
-            p.y+=p.vy;
-            p.giro+=p.dGiro;
-
-            if(p.y<cv.height+40) vivos++;
-
-            ctx.save();
-            ctx.translate(p.x,p.y);
-            ctx.rotate(p.giro);
-            ctx.fillStyle=p.cor;
-            ctx.fillRect(-p.l/2,-p.a/2,p.l,p.a);
-            ctx.restore();
-        });
-
-        if(vivos){
-            id=requestAnimationFrame(rodar);
-        }else{
-            id=null;
-            ctx.clearRect(0,0,cv.width,cv.height);
-        }
-    }
-
-    rodar();
-    return function(){
-        if(id) cancelAnimationFrame(id);
-        id=null;
-        ctx.clearRect(0,0,cv.width,cv.height);
-    };
-}
-
-
-function mostrarResultadoFinal(aluno,quantidade){
-    const regra=identificarRegraAprovacao(aluno.turma);
-    const tabela=document.getElementById('tabelaResultadoFinal');
-    const bloco=document.getElementById('blocoAprovacao');
-    tabela.innerHTML='';
-    bloco.innerHTML='';
-
-    let soma=0;
-    let bimestresComMedia=0;
-
-    for(let i=1;i<=quantidade;i++){
-        const d=obterBimestre(aluno,i);
-        const media=converterNota(d.media);
-        const vazio=(media===null);
-
-        if(media!==null){
-            soma+=media;
-            bimestresComMedia++;
-        }
-
-        tabela.innerHTML+=
-            '<tr><td>'+i+'º Bimestre</td><td class="nota">'+
-            (vazio?'—':formatarNumero(d.media,1))+
-            '</td></tr>';
-    }
-
-    /*
-      A média final é sempre calculada sobre todos os bimestres da modalidade:
-      DF/GO = 4 bimestres; EJA = 2 bimestres.
-      Para descobrir quanto ainda falta, consideramos apenas os bimestres
-      que ainda não têm média lançada.
-    */
-    const final=soma/quantidade;
-    document.getElementById('mediaAnual').textContent=formatarNumero(final,2);
-
-    const mediaMinima=regra.minimo/regra.quantidade;
-
-    document.getElementById('textoMediaFinal').textContent=
-        regra.tipo==='EJA'
-        ?'Média mínima para aprovação: '+formatarNumero(mediaMinima,1)+'. Cálculo considerando os 2 bimestres da EJA.'
-        :'Média mínima para aprovação: '+formatarNumero(mediaMinima,1)+'. Cálculo considerando os 4 bimestres do ensino regular.';
-
-    const falta=Math.max(0,regra.minimo-soma);
-    const restantes=Math.max(0,quantidade-bimestresComMedia);
-    const mediaRestante=restantes>0 ? Math.max(0,falta/restantes) : falta;
-
-    if(soma>=regra.minimo){
-        bloco.innerHTML=
-            '<div class="aprovacao-box aprovado">'+
-                '<div class="titulo">🎉 Parabéns! Você já está aprovado!</div>'+
-                '<div class="descricao">Você faz parte do seleto grupo que já está aprovado. Seu esforço até aqui é muito valorizado!</div>'+
-                '<div class="aprovacao-numeros">'+
-                    '<div class="mini-card"><span>Sua soma</span><strong>'+formatarNumero(soma,1)+'</strong></div>'+
-                    '<div class="mini-card"><span>Mínimo necessário</span><strong>'+formatarNumero(regra.minimo,0)+'</strong></div>'+
-                    '<div class="mini-card"><span>Média mínima</span><strong>'+formatarNumero(mediaMinima,1)+'</strong></div>'+
-                '</div>'+
-                '<button class="mensagem-aprovado" type="button" onclick="abrirMensagemAprovacao()">💙 Ver mensagem de parabéns</button>'+
-            '</div>';
-    }else{
-        let detalhe='';
-
-        if(restantes>0){
-            detalhe='Nos '+restantes+' bimestre(s) que ainda não possuem média, você precisa de aproximadamente <strong>'+formatarNumero(mediaRestante,1)+'</strong> ponto(s) por bimestre para alcançar a aprovação.';
-        }else{
-            detalhe='Todos os bimestres já possuem média lançada e a soma ainda não alcançou o mínimo necessário.';
-        }
-
-        bloco.innerHTML=
-            '<div class="aprovacao-box atencao">'+
-                '<div class="titulo" style="color:#1d4ed8">📌 Caminho para a aprovação</div>'+
-                '<div class="descricao">Para '+formatarTipoRegra(regra.tipo)+', a média mínima é <strong>'+formatarNumero(mediaMinima,1)+'</strong> e a soma necessária é <strong>'+formatarNumero(regra.minimo,0)+'</strong> pontos. Você já acumulou <strong>'+formatarNumero(soma,1)+'</strong> e ainda precisa de <strong>'+formatarNumero(falta,1)+'</strong> ponto(s). '+detalhe+'</div>'+
-                '<div class="aprovacao-numeros">'+
-                    '<div class="mini-card"><span>Sua soma</span><strong>'+formatarNumero(soma,1)+'</strong></div>'+
-                    '<div class="mini-card"><span>Soma mínima</span><strong>'+formatarNumero(regra.minimo,0)+'</strong></div>'+
-                    '<div class="mini-card"><span>Média mínima</span><strong>'+formatarNumero(mediaMinima,1)+'</strong></div>'+
-                '</div>'+
-            '</div>';
-    }
-}
-
-async function consultarAluno(){
-    const codigo=document.getElementById('codigo').value.trim().toUpperCase();
-    const resultado=document.getElementById('resultado');
-    const erro=document.getElementById('erro');
-    const carregando=document.getElementById('carregando');
-
-    resultado.style.display='none';
-    erro.style.display='none';
-
-    if(!codigo){
-        erro.textContent='Digite seu código.';
-        erro.style.display='block';
-        return;
-    }
-
-    carregando.style.display='block';
-
-    try{
-        const resposta=await fetch(API_URL+'?codigo='+encodeURIComponent(codigo));
-
-        if(!resposta.ok){
-            if(resposta.status===404) throw new Error('Código não encontrado.');
-            throw new Error('Não foi possível consultar suas informações.');
-        }
-
-        const aluno=await resposta.json();
-        const segmento=identificarSegmento(aluno.turma);
-        const quantidade=quantidadeBimestres(segmento);
-        const ano=extrairAno(aluno.ultima_atualizacao);
-
-        document.getElementById('nomeAluno').textContent=aluno.nome||'—';
-        document.getElementById('turmaAluno').textContent=aluno.turma||'—';
-        document.getElementById('codigoAluno').textContent=codigo;
-        document.getElementById('ultimaAtualizacao').textContent=aluno.ultima_atualizacao||'—';
-        document.getElementById('anoAluno').textContent=ano?'Ano letivo: '+ano:'Ano letivo';
-        document.getElementById('rodape').textContent=ano?'Área do Aluno • '+ano:'Área do Aluno';
-
-        criarAbas(quantidade);
-        criarConteudos(aluno,quantidade);
-        mostrarResultadoFinal(aluno,quantidade);
-
-        const vigente=encontrarBimestreVigente(aluno,quantidade);
-        const aba=document.querySelector('#abas .aba[data-bimestre="'+vigente+'"]');
-
-        resultado.style.display='block';
-        mostrarAba('bim'+vigente,aba);
-
-        resultado.scrollIntoView({behavior:'smooth'});
-
-    }catch(e){
-        resultado.style.display='none';
-        erro.textContent=e.message||'Não foi possível consultar suas informações.';
-        erro.style.display='block';
-    }finally{
-        carregando.style.display='none';
-    }
-}
-
-function mostrarAba(id,botao){
-    document.querySelectorAll('.bimestre,.resultado-final').forEach(el=>el.classList.remove('ativo'));
-    document.querySelectorAll('.aba').forEach(el=>el.classList.remove('ativa'));
-
-    const selecionado=document.getElementById(id);
-    if(selecionado)selecionado.classList.add('ativo');
-    if(botao)botao.classList.add('ativa');
-}
-
-document.getElementById('codigo').addEventListener('keydown',function(event){
-    if(event.key==='Enter')consultarAluno();
-});
-document.getElementById('modalAprovado').addEventListener('click',function(event){
-    if(event.target===this) fecharMensagemAprovacao();
-});
-document.addEventListener('keydown',function(event){
-    if(event.key==='Escape') fecharMensagemAprovacao();
-});
+document.getElementById('lookupForm').addEventListener('submit',lookupStudent);
+document.getElementById('clearStudentButton').addEventListener('click',clearStudent);
+document.getElementById('approvalMessageButton').addEventListener('click',openApprovalModal);
+document.getElementById('closeApprovalModal').addEventListener('click',closeApprovalModal);
+document.getElementById('approvalModal').addEventListener('click',function(event){if(event.target===this)closeApprovalModal();});
+document.addEventListener('keydown',function(event){if(event.key==='Escape')closeApprovalModal();});
+document.getElementById('studentCode').addEventListener('input',function(){this.value=this.value.toUpperCase();});
+document.getElementById('noticeBell').addEventListener('click',function(){document.getElementById('avisos').scrollIntoView({behavior:'smooth',block:'start'});});
+document.getElementById('noticeBellTop').addEventListener('click',function(){document.getElementById('avisos').scrollIntoView({behavior:'smooth',block:'start'});});
 </script>
-</body>
-</html>
