@@ -1,0 +1,361 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#f5f5f7">
+<link rel="icon" type="image/svg+xml" href="./favicon.svg">
+<title>Prévia da Área do Aluno — SALTA</title>
+<style>
+:root{
+  color-scheme:light;
+  --page:#f4f5fa;--surface:#fff;--card:#fff;--ink:#20243a;--muted:#72788c;
+  --line:#e7e9f1;--accent:#4169e1;--accent-soft:#edf1ff;--good:#13865b;
+  --good-soft:#e8f8f0;--warn:#99630b;--warn-soft:#fff5d9;
+  --radius:22px;--small-radius:15px;--shadow:0 12px 34px rgba(32,43,84,.07);
+  --hero-a:#f0f3ff;--hero-b:#f9f0ff;--chip:#f0f2f8;--nav:#fff;
+}
+*{box-sizing:border-box}
+html{scroll-behavior:smooth}
+body{margin:0;background:var(--page);color:var(--ink);font-family:Inter,-apple-system,BlinkMacSystemFont,"Segoe UI",Arial,sans-serif;-webkit-font-smoothing:antialiased;transition:background .25s,color .25s}
+body[data-theme="academic"]{
+ --page:#f4f5fb;--surface:#fff;--card:#fff;--ink:#252744;--muted:#747995;--line:#e9eafa;
+ --accent:#5b5bd6;--accent-soft:#efefff;--good:#18865e;--good-soft:#e5f8ed;--warn:#9b6b13;--warn-soft:#fff4d7;
+ --radius:26px;--small-radius:19px;--shadow:0 14px 36px rgba(72,75,145,.09);
+ --hero-a:#eceeff;--hero-b:#f8edff;--chip:#f0efff;--nav:rgba(255,255,255,.84);
+}
+body[data-theme="minimal"]{
+ --page:#f7f7f8;--surface:#fff;--card:#fff;--ink:#17181c;--muted:#737780;--line:#e6e7e9;
+ --accent:#2563eb;--accent-soft:#eff6ff;--good:#168052;--good-soft:#ecfdf3;--warn:#996515;--warn-soft:#fff8e6;
+ --radius:15px;--small-radius:11px;--shadow:0 4px 14px rgba(20,25,40,.035);
+ --hero-a:#f9fafb;--hero-b:#f1f5f9;--chip:#f4f4f5;--nav:rgba(255,255,255,.94);
+}
+body[data-theme="hybrid"]{
+ --page:#f5f6fa;--surface:#fff;--card:#fff;--ink:#202433;--muted:#72798a;--line:#e5e8ef;
+ --accent:#3266d5;--accent-soft:#edf3ff;--good:#16845d;--good-soft:#e9f8f0;--warn:#9a6412;--warn-soft:#fff5df;
+ --radius:22px;--small-radius:15px;--shadow:0 12px 30px rgba(28,42,72,.055);
+ --hero-a:#f0f4ff;--hero-b:#fbf2ff;--chip:#f1f3f8;--nav:rgba(255,255,255,.9);
+}
+button{font:inherit}
+.preview-strip{background:#182033;color:#f8fafc;padding:10px 20px;font-size:12px}
+.preview-strip .inner{max-width:1180px;margin:auto;display:flex;align-items:center;justify-content:space-between;gap:12px}
+.preview-label{display:inline-flex;align-items:center;gap:7px;letter-spacing:.09em;text-transform:uppercase;font-size:10px;font-weight:800;color:#b9c8ff}
+.preview-label:before{content:"";width:7px;height:7px;border-radius:50%;background:#72dfb2}
+.preview-note{color:#c8cfde}
+.shell{max-width:1180px;margin:0 auto;padding:0 24px}
+.topbar{height:76px;display:flex;align-items:center;justify-content:space-between;border-bottom:1px solid var(--line);background:var(--nav)}
+.topbar .shell{width:100%;display:flex;align-items:center;justify-content:space-between;gap:20px}
+.brand{display:flex;align-items:center;gap:11px;min-width:190px}
+.logo{width:38px;height:38px;border-radius:12px;background:#16181d;color:white;display:grid;place-items:center;font-size:21px;font-weight:850;box-shadow:0 5px 12px rgba(0,0,0,.12)}
+.brand-title{font-size:16px;font-weight:800;letter-spacing:-.4px}
+.brand-sub{font-size:11px;color:var(--muted);margin-top:3px}
+.navlinks{display:flex;align-items:center;gap:8px}
+.navlinks a{font-size:13px;text-decoration:none;color:var(--muted);padding:10px 12px;border-radius:10px}
+.navlinks a.active{background:var(--accent-soft);color:var(--accent);font-weight:750}
+.student{display:flex;align-items:center;gap:10px}
+.avatar{width:38px;height:38px;border-radius:50%;background:linear-gradient(135deg,#ffd7bb,#f2b9db);display:grid;place-items:center;color:#713e48;font-size:12px;font-weight:850;border:2px solid var(--surface)}
+.student-name{font-size:12px;font-weight:800}
+.student-class{font-size:11px;color:var(--muted);margin-top:3px}
+main{padding:30px 0 58px}
+.page-heading{display:flex;align-items:flex-end;justify-content:space-between;gap:20px;margin-bottom:21px}
+.eyebrow{font-size:11px;font-weight:850;letter-spacing:.1em;text-transform:uppercase;color:var(--accent);margin-bottom:9px}
+h1{font-size:clamp(27px,4vw,36px);line-height:1.1;letter-spacing:-1.2px;margin:0 0 9px;font-weight:820}
+.intro{font-size:14px;line-height:1.6;color:var(--muted);margin:0;max-width:650px}
+.demo-pill{display:inline-flex;align-items:center;gap:7px;white-space:nowrap;padding:9px 12px;border-radius:999px;background:var(--warn-soft);color:var(--warn);font-size:11px;font-weight:800}
+.demo-pill:before{content:"";width:6px;height:6px;border-radius:50%;background:currentColor}
+.version-bar{display:flex;align-items:center;justify-content:space-between;gap:16px;flex-wrap:wrap;background:var(--surface);border:1px solid var(--line);border-radius:var(--small-radius);padding:12px;margin-bottom:22px;box-shadow:var(--shadow)}
+.version-help{padding:0 8px;font-size:12px;color:var(--muted)}
+.version-switch{display:flex;gap:6px;flex-wrap:wrap}
+.version-btn{display:flex;align-items:center;gap:8px;border:1px solid transparent;border-radius:11px;background:transparent;color:var(--muted);padding:10px 13px;cursor:pointer;font-size:12px;font-weight:750;transition:.2s}
+.version-btn:hover{background:var(--chip);color:var(--ink)}
+.version-btn[aria-pressed="true"]{background:var(--accent-soft);border-color:color-mix(in srgb,var(--accent) 20%,transparent);color:var(--accent)}
+.version-num{display:grid;place-items:center;width:22px;height:22px;border-radius:7px;background:var(--chip);font-size:10px;font-weight:900}
+.version-btn[aria-pressed="true"] .version-num{background:var(--accent);color:white}
+.welcome{display:grid;grid-template-columns:1fr auto;gap:20px;align-items:center;padding:28px 30px;border:1px solid var(--line);border-radius:var(--radius);background:linear-gradient(115deg,var(--hero-a),var(--hero-b));box-shadow:var(--shadow);margin-bottom:18px;overflow:hidden}
+.welcome h2{font-size:25px;letter-spacing:-.8px;margin:0 0 9px}
+.welcome p{font-size:13px;line-height:1.6;color:var(--muted);margin:0;max-width:580px}
+.welcome-side{display:flex;align-items:center;gap:15px}
+.welcome-symbol{width:78px;height:78px;display:grid;place-items:center;border-radius:24px;background:rgba(255,255,255,.75);font-size:37px;box-shadow:inset 0 0 0 1px rgba(255,255,255,.95)}
+.welcome-caption{font-size:10px;text-transform:uppercase;letter-spacing:.08em;color:var(--muted);font-weight:800}
+.welcome-stat{font-size:19px;font-weight:850;margin-top:6px}
+.metrics{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:14px;margin-bottom:18px}
+.metric{background:var(--card);border:1px solid var(--line);border-radius:var(--radius);padding:19px;box-shadow:var(--shadow);min-width:0}
+.metric-head{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:18px}
+.metric-label{color:var(--muted);font-size:12px;font-weight:650}
+.metric-icon{width:32px;height:32px;display:grid;place-items:center;border-radius:11px;background:var(--accent-soft);color:var(--accent);font-size:15px}
+.metric-value{font-size:29px;line-height:1;font-weight:850;letter-spacing:-1px}
+.metric-unit{font-size:12px;color:var(--muted);font-weight:600;letter-spacing:0}
+.metric-sub{font-size:11px;color:var(--muted);margin-top:9px;line-height:1.45}
+.mini-progress{height:5px;border-radius:10px;background:var(--chip);overflow:hidden;margin-top:14px}
+.mini-progress span{display:block;height:100%;width:68%;background:var(--accent);border-radius:10px}
+.metric.status-metric .metric-value{font-size:20px;color:var(--good);letter-spacing:-.3px}
+.status-tag{display:inline-flex;align-items:center;gap:5px;color:var(--good);background:var(--good-soft);font-size:10px;font-weight:850;border-radius:999px;padding:6px 9px;margin-top:12px}
+.columns{display:grid;grid-template-columns:minmax(0,1.55fr) minmax(290px,.9fr);gap:18px;align-items:start}
+.panel{background:var(--surface);border:1px solid var(--line);border-radius:var(--radius);box-shadow:var(--shadow);padding:22px;min-width:0}
+.panel-head{display:flex;align-items:flex-start;justify-content:space-between;gap:14px;margin-bottom:18px}
+.panel h3{font-size:16px;letter-spacing:-.35px;margin:0 0 6px}
+.panel-sub{font-size:11px;color:var(--muted);margin:0;line-height:1.5}
+.text-link{font-size:11px;font-weight:800;color:var(--accent);white-space:nowrap;text-decoration:none}
+.grade-chart{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;align-items:end;padding:13px 4px 0;min-height:196px}
+.grade-col{display:flex;flex-direction:column;align-items:center;gap:8px;min-width:0}
+.grade-score{font-size:12px;font-weight:850}
+.bar-track{height:125px;width:min(38px,70%);display:flex;align-items:flex-end;background:var(--chip);border-radius:11px;overflow:hidden}
+.grade-bar{width:100%;border-radius:9px 9px 3px 3px;background:linear-gradient(180deg,color-mix(in srgb,var(--accent) 68%,white),var(--accent));transition:height .3s}
+.grade-col.current .grade-bar{background:linear-gradient(180deg,#65c9a3,#16845d)}
+.grade-label{font-size:10px;color:var(--muted);font-weight:750}
+.grade-col.current .grade-label{color:var(--good)}
+.chart-legend{display:flex;align-items:center;gap:7px;margin-top:15px;color:var(--muted);font-size:10px}
+.legend-dot{width:7px;height:7px;border-radius:50%;background:var(--good)}
+.final-head{display:flex;align-items:center;gap:12px;margin-bottom:18px}
+.final-icon{width:42px;height:42px;border-radius:14px;display:grid;place-items:center;background:var(--good-soft);color:var(--good);font-size:20px}
+.final-head h3{margin-bottom:4px}
+.final-head p{font-size:11px;color:var(--muted);margin:0}
+.goal-labels{display:flex;justify-content:space-between;gap:8px;color:var(--muted);font-size:11px;margin-bottom:9px}
+.goal-labels strong{color:var(--ink)}
+.goal-track{height:10px;background:var(--chip);border-radius:999px;overflow:hidden}
+.goal-track span{display:block;width:85.4%;height:100%;border-radius:999px;background:linear-gradient(90deg,#61c89b,#15845c)}
+.goal-nums{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:17px}
+.goal-num{padding:13px;border:1px solid var(--line);border-radius:var(--small-radius);background:var(--page)}
+.goal-num span{display:block;font-size:10px;color:var(--muted);margin-bottom:7px}
+.goal-num strong{font-size:20px;letter-spacing:-.5px}
+.goal-message{display:flex;gap:10px;align-items:flex-start;margin-top:15px;padding:13px;border-radius:var(--small-radius);background:var(--accent-soft);color:var(--accent);font-size:11px;line-height:1.55}
+.goal-message b{font-weight:850}
+.bimestres{display:flex;gap:6px;overflow-x:auto;margin:28px 0 18px;padding-bottom:3px}
+.bim-btn{white-space:nowrap;border:1px solid var(--line);background:var(--surface);color:var(--muted);padding:10px 14px;border-radius:10px;font-size:11px;font-weight:750;cursor:pointer}
+.bim-btn[aria-pressed="true"]{border-color:transparent;background:var(--accent);color:white}
+.assess-panel{padding:0;overflow:hidden}
+.assess-top{padding:21px 22px 15px;display:flex;justify-content:space-between;align-items:center;gap:10px}
+.assess-top h3{font-size:16px;margin:0 0 5px}
+.assess-top p{font-size:11px;color:var(--muted);margin:0}
+.status-tag.small{margin:0}
+.table-wrap{overflow-x:auto}
+table{width:100%;border-collapse:collapse;min-width:420px}
+th,td{padding:14px 22px;border-top:1px solid var(--line);text-align:left;font-size:12px}
+th{font-size:10px;font-weight:800;text-transform:uppercase;letter-spacing:.05em;color:var(--muted);background:color-mix(in srgb,var(--page) 55%,white)}
+td:last-child,th:last-child{text-align:right}
+.points{font-weight:850;font-variant-numeric:tabular-nums}
+.state{display:inline-flex;align-items:center;gap:5px;font-size:10px;font-weight:750;color:var(--good)}
+.state:before{content:"";width:6px;height:6px;border-radius:50%;background:currentColor}
+.tip{display:flex;gap:12px;align-items:center;padding:17px 19px;margin-top:18px;background:var(--surface);border:1px solid var(--line);border-radius:var(--radius);box-shadow:var(--shadow)}
+.tip-icon{width:38px;height:38px;flex:0 0 auto;border-radius:12px;background:var(--warn-soft);display:grid;place-items:center;font-size:17px}
+.tip strong{font-size:12px;display:block;margin-bottom:4px}
+.tip p{font-size:11px;color:var(--muted);line-height:1.5;margin:0}
+.footer{padding:27px 0 35px;border-top:1px solid var(--line);font-size:11px;color:var(--muted)}
+.footer .shell{display:flex;align-items:center;justify-content:space-between;gap:16px}
+.footer strong{color:var(--ink)}
+@media(max-width:900px){
+ .navlinks{display:none}.metrics{grid-template-columns:repeat(2,minmax(0,1fr))}
+ .columns{grid-template-columns:1fr}.welcome{padding:24px}
+}
+@media(max-width:560px){
+ .preview-strip .inner{align-items:flex-start;flex-direction:column;gap:5px}
+ .shell{padding:0 14px}.topbar{height:66px}.brand{min-width:0}.brand-sub,.student-info{display:none}
+ .logo{width:35px;height:35px}.topbar .shell{gap:8px}
+ main{padding-top:23px}.page-heading{align-items:flex-start;flex-direction:column;gap:12px}
+ .page-heading h1{font-size:29px}.intro{font-size:13px}
+ .version-bar{align-items:flex-start;flex-direction:column;padding:11px}.version-switch{display:grid;grid-template-columns:1fr;width:100%}
+ .version-btn{justify-content:flex-start}.version-help{padding:3px 2px}
+ .welcome{grid-template-columns:1fr;padding:22px;gap:15px}.welcome h2{font-size:23px}.welcome-side{justify-content:space-between}
+ .welcome-symbol{width:56px;height:56px;border-radius:17px;font-size:27px}.welcome-stat{font-size:16px}
+ .metrics{gap:10px}.metric{padding:15px;border-radius:var(--small-radius)}.metric-head{margin-bottom:15px}.metric-value{font-size:25px}
+ .panel{padding:17px;border-radius:var(--small-radius)}.grade-chart{gap:5px;min-height:172px}.bar-track{height:105px}
+ .grade-score{font-size:11px}.grade-label{font-size:9px}
+ .goal-num{padding:11px}.goal-num strong{font-size:18px}
+ .assess-top{padding:17px}.assess-panel{padding:0}
+ th,td{padding:13px 15px}
+ .tip{align-items:flex-start;padding:14px}.footer .shell{align-items:flex-start;flex-direction:column}
+}
+@media(prefers-reduced-motion:reduce){*,*::before,*::after{scroll-behavior:auto!important;transition:none!important;animation:none!important}}
+</style>
+</head>
+<body data-theme="hybrid">
+<div class="preview-strip">
+  <div class="inner">
+    <span class="preview-label">Laboratório de interface SALTA</span>
+    <span class="preview-note">Prévia independente · Não altera a Área do Aluno atual · Dados fictícios</span>
+  </div>
+</div>
+<header class="topbar">
+  <div class="shell">
+    <div class="brand">
+      <div class="logo">S</div>
+      <div><div class="brand-title">SALTA</div><div class="brand-sub">Sua jornada de aprendizagem</div></div>
+    </div>
+    <nav class="navlinks" aria-label="Navegação demonstrativa">
+      <a href="#visao" class="active">Visão geral</a>
+      <a href="#notas">Notas e avaliações</a>
+      <a href="#resultado">Resultado final</a>
+    </nav>
+    <div class="student">
+      <div class="student-info"><div class="student-name">Marina Alves</div><div class="student-class">1ª série · Turma 1A</div></div>
+      <div class="avatar" aria-label="Avatar de demonstração">MA</div>
+    </div>
+  </div>
+</header>
+
+<main class="shell" id="visao">
+  <div class="page-heading">
+    <div>
+      <div class="eyebrow">Área do aluno</div>
+      <h1>Olá, Marina! <span aria-hidden="true">👋</span></h1>
+      <p class="intro">Veja seu progresso, acompanhe suas avaliações e descubra os próximos passos para alcançar seus objetivos.</p>
+    </div>
+    <span class="demo-pill">Demonstração visual</span>
+  </div>
+
+  <section class="version-bar" aria-label="Alternar versão visual">
+    <div class="version-help">Compare três caminhos visuais antes de escolher o novo SALTA.</div>
+    <div class="version-switch">
+      <button class="version-btn" data-theme-choice="academic" aria-pressed="false"><span class="version-num">01</span> Acadêmico moderno</button>
+      <button class="version-btn" data-theme-choice="minimal" aria-pressed="false"><span class="version-num">02</span> Minimalista</button>
+      <button class="version-btn" data-theme-choice="hybrid" aria-pressed="true"><span class="version-num">03</span> Híbrido SALTA</button>
+    </div>
+  </section>
+
+  <section class="welcome">
+    <div>
+      <div class="eyebrow">Seu espaço de aprendizagem</div>
+      <h2>Seu esforço está construindo resultados.</h2>
+      <p>Acompanhe suas médias de forma simples. Cada avaliação é uma oportunidade de aprender, evoluir e chegar mais perto da sua meta.</p>
+    </div>
+    <div class="welcome-side">
+      <div><div class="welcome-caption">Período letivo</div><div class="welcome-stat">3º bimestre</div></div>
+      <div class="welcome-symbol" aria-hidden="true">✦</div>
+    </div>
+  </section>
+
+  <section class="metrics" aria-label="Resumo acadêmico">
+    <article class="metric">
+      <div class="metric-head"><span class="metric-label">Média parcial</span><span class="metric-icon">↗</span></div>
+      <div class="metric-value">6,8 <span class="metric-unit">/ 10</span></div>
+      <div class="metric-sub">Média dos bimestres com nota lançada</div>
+      <div class="mini-progress"><span style="width:68%"></span></div>
+    </article>
+    <article class="metric">
+      <div class="metric-head"><span class="metric-label">Avaliações</span><span class="metric-icon">✓</span></div>
+      <div class="metric-value">8</div>
+      <div class="metric-sub">Registros de avaliação no período</div>
+      <div class="status-tag">● Em dia</div>
+    </article>
+    <article class="metric">
+      <div class="metric-head"><span class="metric-label">Vistos</span><span class="metric-icon">✎</span></div>
+      <div class="metric-value">14</div>
+      <div class="metric-sub">Atividades acompanhadas</div>
+      <div class="status-tag">Bom ritmo</div>
+    </article>
+    <article class="metric status-metric">
+      <div class="metric-head"><span class="metric-label">Situação atual</span><span class="metric-icon">◎</span></div>
+      <div class="metric-value">Em andamento</div>
+      <div class="metric-sub">Continue acompanhando sua evolução</div>
+      <div class="status-tag">Você consegue!</div>
+    </article>
+  </section>
+
+  <section class="columns">
+    <article class="panel">
+      <div class="panel-head">
+        <div><h3>Sua evolução</h3><p class="panel-sub">Visualize suas médias bimestrais de um jeito fácil.</p></div>
+        <a class="text-link" href="#notas">Ver avaliações ↓</a>
+      </div>
+      <div class="grade-chart" role="img" aria-label="Gráfico demonstrativo das médias por bimestre">
+        <div class="grade-col"><span class="grade-score">6,5</span><div class="bar-track"><div class="grade-bar" style="height:65%"></div></div><span class="grade-label">1º bim.</span></div>
+        <div class="grade-col"><span class="grade-score">7,0</span><div class="bar-track"><div class="grade-bar" style="height:70%"></div></div><span class="grade-label">2º bim.</span></div>
+        <div class="grade-col current"><span class="grade-score">7,0</span><div class="bar-track"><div class="grade-bar" style="height:70%"></div></div><span class="grade-label">3º bim.</span></div>
+        <div class="grade-col"><span class="grade-score">—</span><div class="bar-track"><div class="grade-bar" style="height:2%"></div></div><span class="grade-label">4º bim.</span></div>
+      </div>
+      <div class="chart-legend"><span class="legend-dot"></span> Bimestre atual <span style="margin-left:auto">Notas ilustrativas</span></div>
+    </article>
+
+    <article class="panel" id="resultado">
+      <div class="final-head"><div class="final-icon">◎</div><div><h3>Caminho para a aprovação</h3><p>Um resumo simples da sua meta.</p></div></div>
+      <div class="goal-labels"><span>Soma acumulada</span><strong>20,5 / 24 pontos</strong></div>
+      <div class="goal-track"><span></span></div>
+      <div class="goal-nums">
+        <div class="goal-num"><span>Você já acumulou</span><strong>20,5</strong></div>
+        <div class="goal-num"><span>Faltam para a meta</span><strong>3,5</strong></div>
+      </div>
+      <div class="goal-message"><span aria-hidden="true">💡</span><span><b>Você está no caminho!</b><br>Com mais 3,5 pontos no próximo bimestre, alcança a meta ilustrativa de 24 pontos.</span></div>
+    </article>
+  </section>
+
+  <div class="bimestres" aria-label="Selecionar bimestre">
+    <button class="bim-btn" data-bim="1" aria-pressed="false">1º bimestre</button>
+    <button class="bim-btn" data-bim="2" aria-pressed="false">2º bimestre</button>
+    <button class="bim-btn" data-bim="3" aria-pressed="true">3º bimestre</button>
+    <button class="bim-btn" data-bim="4" aria-pressed="false">4º bimestre</button>
+  </div>
+
+  <section class="panel assess-panel" id="notas">
+    <div class="assess-top">
+      <div><h3 id="assess-title">Avaliações do 3º bimestre</h3><p id="assess-sub">Veja os registros e os pontos de cada atividade.</p></div>
+      <span class="status-tag small" id="assess-status">Em andamento</span>
+    </div>
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th>Avaliação</th><th>Situação</th><th>Pontos</th></tr></thead>
+        <tbody id="assess-rows">
+          <tr><td>Atividade de sala</td><td><span class="state">Registrada</span></td><td class="points">2,0</td></tr>
+          <tr><td>Lista de exercícios</td><td><span class="state">Registrada</span></td><td class="points">2,5</td></tr>
+          <tr><td>Avaliação bimestral</td><td><span class="state">Registrada</span></td><td class="points">2,5</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <aside class="tip">
+    <div class="tip-icon">🌱</div>
+    <div><strong>Pequenos passos também são progresso.</strong><p>Confira suas notas com frequência, converse com seu professor quando tiver dúvidas e celebre cada conquista.</p></div>
+  </aside>
+</main>
+
+<footer class="footer"><div class="shell"><span><strong>SALTA</strong> · Plataforma educacional</span><span>Prévia de design independente — dados fictícios, sem conexão com registros reais.</span></div></footer>
+<script>
+const themes = ["academic","minimal","hybrid"];
+document.querySelectorAll("[data-theme-choice]").forEach(button=>{
+  button.addEventListener("click",()=>{
+    const theme=button.dataset.themeChoice;
+    document.body.dataset.theme=theme;
+    document.querySelectorAll("[data-theme-choice]").forEach(item=>{
+      item.setAttribute("aria-pressed",String(item===button));
+    });
+  });
+});
+
+const demo={
+  1:{title:"Avaliações do 1º bimestre",status:"Concluído",rows:[
+    ["Atividade de sala","Registrada","2,0"],
+    ["Lista de exercícios","Registrada","2,0"],
+    ["Avaliação bimestral","Registrada","2,5"]
+  ]},
+  2:{title:"Avaliações do 2º bimestre",status:"Concluído",rows:[
+    ["Estudo dirigido","Registrada","2,0"],
+    ["Exercícios no caderno","Registrada","2,5"],
+    ["Avaliação bimestral","Registrada","2,5"]
+  ]},
+  3:{title:"Avaliações do 3º bimestre",status:"Em andamento",rows:[
+    ["Atividade de sala","Registrada","2,0"],
+    ["Lista de exercícios","Registrada","2,5"],
+    ["Avaliação bimestral","Registrada","2,5"]
+  ]},
+  4:{title:"Avaliações do 4º bimestre",status:"Não iniciado",rows:[]}
+};
+document.querySelectorAll("[data-bim]").forEach(button=>{
+  button.addEventListener("click",()=>{
+    const n=button.dataset.bim;
+    const data=demo[n];
+    document.querySelectorAll("[data-bim]").forEach(item=>{
+      item.setAttribute("aria-pressed",String(item===button));
+    });
+    document.getElementById("assess-title").textContent=data.title;
+    document.getElementById("assess-status").textContent=data.status;
+    const rows=document.getElementById("assess-rows");
+    if(!data.rows.length){
+      rows.innerHTML='<tr><td colspan="3" style="text-align:center;color:var(--muted)">Nenhuma avaliação registrada neste bimestre.</td></tr>';
+    }else{
+      rows.innerHTML=data.rows.map(r=>'<tr><td>'+r[0]+'</td><td><span class="state">'+r[1]+'</span></td><td class="points">'+r[2]+'</td></tr>').join("");
+    }
+  });
+});
+</script>
+</body>
+</html>
