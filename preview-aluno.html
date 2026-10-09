@@ -244,7 +244,7 @@ td:last-child,th:last-child{text-align:right}
    </article>
 
    <article class="panel" id="resultado"><div class="final-head"><div class="final-icon">◎</div><div><h3>Caminho para a aprovação</h3><p id="goalSubtitle">Um resumo simples da sua meta.</p></div></div>
-    <p class="grade-method-note" id="gradeMethodNote">O Worker calcula o critério mínimo de cada turma automaticamente com os dados acadêmicos do D1. A média final considera 4 bimestres no ensino regular ou 2 na EJA.</p>
+    <p class="grade-method-note" id="gradeMethodNote">A média mínima da turma é aplicada a cada bimestre. A média final considera 4 bimestres no ensino regular ou 2 na EJA.</p>
     <div class="goal-labels"><span>Soma acumulada</span><strong id="goalTargetLabel">— / — pontos</strong></div>
     <div class="goal-track"><span id="goalProgress" style="width:0%"></span></div>
     <div class="goal-nums"><div class="goal-num"><span>Você já acumulou</span><strong id="goalAccumulated">—</strong></div><div class="goal-num"><span>Faltam para a meta</span><strong id="goalMissing">—</strong></div></div>
@@ -285,12 +285,13 @@ function numberValue(value){
  const number=Number(text);return Number.isFinite(number)?number:null;
 }
 function fmt(value,places){const n=numberValue(value);return n===null?'—':n.toFixed(places===undefined?1:places).replace('.',',');}
+function fmtCriterion(value){const n=numberValue(value);return fmt(n,n!==null&&Number.isInteger(n)?0:1);}
 function parseAssessments(value){if(Array.isArray(value))return value;if(typeof value==='string'&&value.trim()){try{const p=JSON.parse(value);return Array.isArray(p)?p:[];}catch(_){return [];}}return [];}
 function getRule(turma,source){
  const isEja=String(source?.rede||'').toUpperCase()==='EJA'||String(turma||'').toUpperCase().includes('EJA');
  const count=Number(source?.quantidadeBimestres)||(isEja?2:4);
  const minimum=numberValue(source?.mediaMinimaBimestral??source?.mediaMinima);
- const target=numberValue(source?.somaMinimaFinal);
+ const target=numberValue(source?.somaMinimaFinal)??(minimum===null?null:minimum*count);
  const type=isEja?'EJA':(String(source?.rede||'').toUpperCase()||'REGULAR');
  const label=type==='DF'?'Distrito Federal':(type==='GO'?'Goiás':(type==='EJA'?'EJA':'ensino regular'));
  return {type,label,count,minimum,target,available:minimum!==null&&target!==null};
@@ -347,20 +348,20 @@ function renderStudent(student,gradeRule){
   col.append(score,track,label);chart.appendChild(col);
  });
  document.getElementById('chartLegendNote').textContent=marked.length+' de '+activeRule.count+' com média';
- document.getElementById('goalSubtitle').textContent=activeRule.available?'Média mínima por bimestre: '+fmt(activeRule.minimum,1)+' · soma final mínima: '+fmt(target,0)+' pontos':'Critério da turma indisponível';
+ document.getElementById('goalSubtitle').textContent=activeRule.available?'Média mínima por bimestre: '+fmtCriterion(activeRule.minimum)+' · soma final mínima: '+fmtCriterion(target)+' pontos':'Critério da turma indisponível';
  document.getElementById('gradeMethodNote').textContent=activeRule.available
-  ?'O Worker calcula o critério da turma com os dados acadêmicos do D1. Mínimo por bimestre: '+fmt(activeRule.minimum,1)+'. A média final considera '+activeRule.count+' bimestres '+(activeRule.type==='EJA'?'da EJA.':'do ensino regular.')
-  :'A média final considera '+activeRule.count+' bimestres. O Worker não retornou o critério da turma; consulte o Professor Dannyel.';
- document.getElementById('goalTargetLabel').textContent=fmt(sum,1)+' / '+(target===null?'—':fmt(target,0))+' pontos';
+  ?'Para aprovação, a média mínima da turma é '+fmt(activeRule.minimum,1)+' em cada bimestre. A média final considera '+activeRule.count+' bimestres '+(activeRule.type==='EJA'?'da EJA.':'do ensino regular.')
+  :'O critério de aprovação desta turma ainda não está disponível. Suas notas continuam disponíveis; consulte o Professor Dannyel.';
+ document.getElementById('goalTargetLabel').textContent=fmt(sum,1)+' / '+fmtCriterion(target)+' pontos';
  document.getElementById('goalProgress').style.width=target===null?'0%':Math.min(100,Math.max(0,sum/target*100))+'%';
  document.getElementById('goalAccumulated').textContent=fmt(sum,1);
  document.getElementById('goalMissing').textContent=fmt(missing,1);
  document.getElementById('goalMessageText').innerHTML=!activeRule.available
   ?'<b>Notas carregadas.</b><br>O critério de aprovação desta turma está temporariamente indisponível. Consulte o Professor Dannyel.'
   :approved
-  ?'<b>Parabéns! Você já está aprovado(a).</b><br>Sua soma atingiu o mínimo de '+fmt(target,0)+' pontos para '+activeRule.label+'. Seu esforço é valorizado!'
-  :(remaining?'<b>Você está no caminho!</b><br>Para '+activeRule.label+', a soma mínima é '+fmt(target,0)+' pontos. Faltam '+fmt(missing,1)+' ponto(s). Nos '+remaining+' bimestre(s) sem média, você precisa de aproximadamente '+fmt(remainingAverage,1)+' por bimestre.'
-  :'<b>Vamos conferir isso juntos.</b><br>Suas médias de Matemática somam '+fmt(sum,1)+' ponto(s), abaixo da meta de '+fmt(target,0)+'. Converse com o Professor Dannyel para confirmar sua situação.');
+  ?'<b>Parabéns! Você já está aprovado(a).</b><br>Sua soma atingiu o mínimo de '+fmtCriterion(target)+' pontos para '+activeRule.label+'. Seu esforço é valorizado!'
+  :(remaining?'<b>Você está no caminho!</b><br>Para '+activeRule.label+', a soma mínima é '+fmtCriterion(target)+' pontos. Faltam '+fmt(missing,1)+' ponto(s). Nos '+remaining+' bimestre(s) sem média, você precisa de aproximadamente '+fmt(remainingAverage,1)+' por bimestre.'
+  :'<b>Vamos conferir isso juntos.</b><br>Suas médias de Matemática somam '+fmt(sum,1)+' ponto(s), abaixo da meta de '+fmtCriterion(target)+'. Converse com o Professor Dannyel para confirmar sua situação.');
  document.getElementById('goalMessage').style.background=approved?'var(--good-soft)':'var(--accent-soft)';
  document.getElementById('goalMessage').style.color=approved?'var(--good)':'var(--accent)';
  document.getElementById('approvalMessageButton').hidden=!approved;
