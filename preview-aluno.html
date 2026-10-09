@@ -366,7 +366,7 @@ function renderStudent(student,gradeRule){
  bimestres.forEach(function(b){const btn=document.createElement('button');btn.className='bim-btn';btn.type='button';btn.dataset.bim=String(b.n);btn.textContent=b.n+'º bimestre';btn.setAttribute('aria-pressed',String(b.n===current));btn.addEventListener('click',function(){renderAssessments(bimestres,b.n);});tabs.appendChild(btn);});
  renderAssessments(bimestres,current);
  document.getElementById('studentDashboard').hidden=false;
- const updateText=String(student.ultima_atualizacao||'').trim();
+ const updateText=student.ultima_atualizacao?'Última atualização: '+String(student.ultima_atualizacao).trim():'';
  const status=document.getElementById('lookupStatus');status.textContent=updateText;status.className='lookup-status success';
  document.getElementById('clearStudentButton').hidden=false;
  document.getElementById('footerNote').textContent='Matemática com Professor Dannyel · Notas, avaliações e avisos.';
