@@ -220,6 +220,41 @@ button:not(.secondary):not(.logout):not(.refresh):not(.verify-button):not(.tab):
   border-color: #e9eafa;
 }
 
+body::before,
+body:before,
+.salta-grid {
+  background-image:
+    linear-gradient(var(--grid) 1px, transparent 1px),
+    linear-gradient(90deg, var(--grid) 1px, transparent 1px);
+}
+
+.card.dark .icon {
+  background: linear-gradient(135deg, #7775ed, #5b5bd6);
+}
+
+.auth-screen {
+  background: #f4f5fb;
+}
+
+.auth-box {
+  border-color: #e9eafa;
+  box-shadow: 0 14px 36px rgba(72, 75, 145, .09);
+}
+
+.ring {
+  background: conic-gradient(#5b5bd6 var(--progress), #e9eafa 0);
+  box-shadow: 0 8px 24px rgba(91, 91, 214, .12);
+}
+
+.status-turno {
+  background: #efefff;
+  color: #4b4bb7;
+}
+
+.stats-arrow {
+  color: #5b5bd6;
+}
+
 @media (max-width: 700px) {
   .navpill { padding: 8px 11px; }
 }
