@@ -2,6 +2,7 @@
   --bg: #f4f5fb;
   --bg1: #ffffff;
   --bg2: #f4f5fb;
+  --grid: rgba(91, 91, 214, .045);
   --text: #252744;
   --ink: #252744;
   --muted: #747995;
@@ -12,6 +13,10 @@
   --blue-soft: #efefff;
   --accent: #5b5bd6;
   --accent-soft: #efefff;
+  --green: #16865d;
+  --green-soft: #eaf7f0;
+  --red: #b42335;
+  --red-soft: #fff0f1;
   --radius: 25px;
   --small-radius: 16px;
   --shadow: 0 14px 36px rgba(72, 75, 145, .09);
@@ -27,6 +32,7 @@ body {
   color: #252744;
   font-family: Inter, -apple-system, BlinkMacSystemFont, "Segoe UI", Arial, sans-serif;
   -webkit-font-smoothing: antialiased;
+  background: radial-gradient(circle at 50% -5%, #ffffff 0, #f4f5fb 58%, #eeeffb 100%);
 }
 
 button,
@@ -52,27 +58,138 @@ textarea {
   color: #5b5bd6;
 }
 
+nav,
+.topbar {
+  background: rgba(255, 255, 255, .82);
+  border-bottom-color: rgba(91, 91, 214, .10);
+}
+
+.brand .mark,
+.mark,
+.lock {
+  background: linear-gradient(135deg, #5b5bd6, #8174e8);
+  color: #ffffff;
+  box-shadow: 0 7px 16px rgba(91, 91, 214, .20);
+}
+
 .salta-platform-button {
-  background: #16181d;
+  background: linear-gradient(135deg, #5b5bd6, #8174e8);
   color: #ffffff;
   border-color: transparent;
+  box-shadow: 0 9px 24px rgba(91, 91, 214, .20);
 }
 
 .salta-platform-button:hover {
-  background: #252744;
+  background: #4d4dc2;
   color: #ffffff;
 }
 
+.card .icon,
 .card.blue .icon,
 .stats-card .mini-icon {
+  background: linear-gradient(135deg, #7775ed, #5b5bd6);
+}
+
+.arrow,
+.tool-arrow {
   background: #5b5bd6;
+}
+
+.animated-title {
+  background-image: linear-gradient(120deg, #252744 0%, #5b5bd6 52%, #9a7ce8 72%, #252744 100%);
+}
+
+.primary,
+button:not(.secondary):not(.logout):not(.refresh):not(.verify-button):not(.tab):not(.bim-tab):not(.state-btn):not(.region-tab) {
+  background-color: #5b5bd6;
+  color: #ffffff;
+}
+
+.primary:hover,
+button:not(.secondary):not(.logout):not(.refresh):not(.verify-button):not(.tab):not(.bim-tab):not(.state-btn):not(.region-tab):hover {
+  background-color: #4d4dc2;
+}
+
+.tab.active,
+.bim-tab.active,
+.state-btn.active,
+.region-tab:hover,
+.region-tab.active {
+  background: #5b5bd6;
+  border-color: #5b5bd6;
+  color: #ffffff;
+}
+
+.navpill,
+.badge,
+.pill:not(.dark),
+.code-pill,
+.target-box {
+  background: #efefff;
+  color: #4b4bb7;
+  border-color: #e5e4ff;
+}
+
+.card,
+.panelcard,
+.panel,
+.metric,
+.stats-card,
+.profile-box,
+.evals,
+.consulta,
+.field,
+.select-wrap,
+.tool,
+.announcement {
+  border-color: #e9eafa;
+  box-shadow: 0 14px 36px rgba(72, 75, 145, .08);
+}
+
+.future,
+.evo-item,
+.summary-card,
+.final {
+  background-color: #f4f4ff;
+  border-color: #e5e4ff;
+}
+
+.table-wrap {
+  border-color: #e9eafa;
+  box-shadow: 0 8px 24px rgba(72, 75, 145, .05);
+}
+
+.students-table th,
+.students-table td,
+.eval-row {
+  border-bottom-color: #ececf6;
+}
+
+.status.info,
+.status:not(.error):not(.success) {
+  background: #efefff;
+  color: #4b4bb7;
+}
+
+.status.success,
+.status-eleito {
+  background: var(--green-soft);
+  color: var(--green);
+}
+
+.status.error,
+.error,
+.status-nao {
+  background: var(--red-soft);
+  color: var(--red);
 }
 
 .bar-track {
   background: #efefff;
 }
 
-.bar-fill {
+.bar-fill,
+.fill {
   background: linear-gradient(90deg, #9998ff, #5b5bd6);
 }
 
@@ -101,6 +218,10 @@ textarea {
 .evals,
 .consulta {
   border-color: #e9eafa;
+}
+
+@media (max-width: 700px) {
+  .navpill { padding: 8px 11px; }
 }
 
 @media (prefers-reduced-motion: reduce) {
