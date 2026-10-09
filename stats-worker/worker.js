@@ -470,9 +470,19 @@ async function insertCommsMessage(env, message) {
 
 async function handleCommsRequest(request, env, url) {
   try {
-    await ensureCommsSchema(env);
     const path = url.pathname;
     const method = request.method.toUpperCase();
+
+    if (!["GET", "POST"].includes(method)) {
+      return json({ error: "Método não permitido." }, request, 405);
+    }
+
+    // Check teacher authorization before touching the communications tables.
+    if (path.startsWith("/comms/teacher/") && !(await authenticated(request, env))) {
+      return json({ error: "Acesso restrito. Entre novamente na Área do Professor." }, request, 401);
+    }
+
+    await ensureCommsSchema(env);
 
     // Public student routes require a valid individual school code.
     if (path === "/comms/student" && method === "GET") {
@@ -562,10 +572,6 @@ async function handleCommsRequest(request, env, url) {
 
     // All remaining communication routes are teacher-only.
     if (path.startsWith("/comms/teacher/")) {
-      if (!(await authenticated(request, env))) {
-        return json({ error: "Acesso restrito. Entre novamente na Área do Professor." }, request, 401);
-      }
-
       if (path === "/comms/teacher/announcements" && method === "GET") {
         const result = await env.DB.prepare(
           "SELECT id, scope, turma, student_code, sender_name, title, body, created_at, active " +
