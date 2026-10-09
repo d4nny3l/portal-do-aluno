@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <meta name="theme-color" content="#f4f5fb">
 <link rel="icon" type="image/svg+xml" href="./favicon.svg">
-<title>Área do Aluno — SALTA | Laboratório</title>
+<title>Área do Aluno — Matemática com Professor Dannyel | SALTA</title>
 <style>
 :root{
  --page:#f4f5fb;--surface:#fff;--ink:#252744;--muted:#747995;--line:#e9eafa;
@@ -22,11 +22,6 @@ body::before{content:"";position:fixed;inset:0;pointer-events:none;z-index:-1;ba
 [hidden]{display:none!important}
 button,input{font:inherit}
 a{color:inherit}
-.preview-strip{background:#182033;color:#f8fafc;padding:10px 20px;font-size:12px}
-.strip-inner{max-width:1160px;margin:auto;display:flex;align-items:center;justify-content:space-between;gap:10px}
-.preview-label{display:flex;align-items:center;gap:7px;font-size:10px;font-weight:850;letter-spacing:.1em;text-transform:uppercase;color:#c6cbff}
-.preview-label:before{content:"";width:7px;height:7px;background:#72dfb2;border-radius:50%}
-.preview-note{color:#c8cfde}
 .topbar{height:75px;background:rgba(255,255,255,.84);backdrop-filter:blur(20px);border-bottom:1px solid var(--line)}
 .shell{width:min(1160px,calc(100% - 44px));margin:auto}
 .top-inner{height:100%;display:flex;align-items:center;justify-content:space-between;gap:18px}
@@ -42,12 +37,10 @@ a{color:inherit}
 .student-class{font-size:11px;color:var(--muted);margin-top:3px}
 .avatar{width:39px;height:39px;border:2px solid white;border-radius:50%;display:grid;place-items:center;background:linear-gradient(135deg,#ffd7bb,#f2b9db);color:#713e48;font-size:12px;font-weight:900;box-shadow:0 3px 12px #25274412}
 main{padding:30px 0 55px}
-.page-heading{display:flex;align-items:flex-end;justify-content:space-between;gap:20px;margin-bottom:22px}
+.page-heading{margin-bottom:22px}
 .eyebrow{color:var(--accent);font-size:10px;font-weight:900;letter-spacing:.12em;text-transform:uppercase;margin-bottom:10px}
 h1{font-size:clamp(28px,4vw,36px);line-height:1.1;letter-spacing:-1.3px;margin:0 0 9px;font-weight:850}
 .intro{font-size:14px;line-height:1.65;color:var(--muted);margin:0;max-width:650px}
-.pill{display:inline-flex;align-items:center;gap:7px;white-space:nowrap;border-radius:999px;padding:9px 12px;font-size:10px;font-weight:850;background:var(--warn-soft);color:var(--warn)}
-.pill:before{content:"";width:6px;height:6px;border-radius:50%;background:currentColor}
 .panel,.metric,.welcome{background:var(--surface);border:1px solid var(--line);border-radius:var(--radius);box-shadow:var(--shadow)}
 .lookup-panel{padding:23px;margin-bottom:22px}
 .lookup-head{display:flex;align-items:center;gap:14px;margin-bottom:20px}
@@ -157,9 +150,9 @@ td:last-child,th:last-child{text-align:right}
 @keyframes modalIn{from{opacity:0;transform:translateY(12px) scale(.97)}to{opacity:1;transform:translateY(0) scale(1)}}
 @media(max-width:900px){.navlinks{display:none}.metrics{grid-template-columns:repeat(2,minmax(0,1fr))}.columns{grid-template-columns:1fr}}
 @media(max-width:560px){
- .strip-inner{align-items:flex-start;flex-direction:column;gap:5px}.shell{width:calc(100% - 28px)}.topbar{height:66px}
- .brand-sub,.student-info{display:none}.logo{width:35px;height:35px}.top-inner{gap:8px}
- main{padding-top:22px}.page-heading{align-items:flex-start;flex-direction:column;gap:12px}.page-heading h1{font-size:29px}
+ .shell{width:calc(100% - 28px)}.topbar{height:66px}
+ .brand-sub{font-size:9px;margin-top:2px}.student-info{display:none}.logo{width:35px;height:35px}.top-inner{gap:8px}
+ main{padding-top:22px}.page-heading h1{font-size:29px}
  .intro{font-size:13px}.lookup-panel{padding:18px}.lookup-row{flex-direction:column}.lookup-row button{min-height:47px}
  .lookup-head{align-items:flex-start}.welcome{grid-template-columns:1fr;padding:22px;gap:15px}.welcome h2{font-size:23px}
  .welcome-side{justify-content:space-between}.welcome-symbol{width:56px;height:56px;border-radius:17px;font-size:27px}
@@ -172,8 +165,8 @@ td:last-child,th:last-child{text-align:right}
 }
 @media(prefers-reduced-motion:reduce){html{scroll-behavior:auto}.spinner,.modal-card{animation:none}.goal-track span,.grade-bar{transition:none}}
 
-.student-comms{margin-top:20px}
-.comms-heading{display:flex;align-items:flex-end;justify-content:space-between;gap:15px;margin:28px 0 16px}
+.student-comms{margin:0 0 20px}
+.comms-heading{display:flex;align-items:flex-end;justify-content:space-between;gap:15px;margin:0 0 16px}
 .comms-heading h2{font-size:24px;letter-spacing:-.7px;margin:0 0 7px}
 .comms-heading p{font-size:12px;line-height:1.55;color:var(--muted);margin:0}
 .comms-live{font-size:10px;font-weight:850;white-space:nowrap;border-radius:999px;padding:8px 10px;background:var(--accent-soft);color:var(--accent)}
@@ -189,78 +182,59 @@ td:last-child,th:last-child{text-align:right}
 .notice-item p{font-size:11px;color:#535b6c;line-height:1.6;margin:0;white-space:pre-wrap;overflow-wrap:anywhere}
 .notice-author{font-size:10px;color:var(--muted);border-top:1px solid var(--line);padding-top:8px;margin-top:11px}.notice-bottom{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-top:12px}.notice-state{font-size:10px;color:var(--muted)}.notice-read{border:1px solid var(--line);border-radius:9px;background:#fff;color:var(--accent);font-size:10px;font-weight:800;padding:8px 10px;cursor:pointer}.notice-read:disabled{opacity:.6;cursor:default}.bell-button{display:inline-flex;align-items:center;gap:9px;border:1px solid var(--line);background:#fff;color:var(--ink);border-radius:12px;padding:10px 13px;font-size:11px;font-weight:850;cursor:pointer;white-space:nowrap}.top-bell{padding:7px 9px;gap:6px}.top-bell .bell-icon{font-size:15px}.bell-icon{font-size:16px}.bell-count{display:inline-grid;place-items:center;min-width:22px;height:22px;padding:0 6px;border-radius:999px;background:var(--accent);color:#fff;font-size:10px}.bell-count.zero{background:#e8eaf1;color:var(--muted)}
 .comms-empty{border:1px dashed #d9dced;background:#ffffff85;border-radius:13px;padding:18px 12px;color:var(--muted);font-size:11px;line-height:1.6;text-align:center}
-.student-thread{display:flex;flex-direction:column;gap:9px;max-height:245px;overflow:auto;margin-bottom:14px}
-.student-bubble{max-width:94%;padding:10px 12px;border-radius:12px;font-size:11px;line-height:1.55;white-space:pre-wrap;overflow-wrap:anywhere}
-.student-bubble.teacher{align-self:flex-start;background:var(--good-soft);color:#176948;border:1px solid #d3f0e0}
-.student-bubble.student{align-self:flex-end;background:var(--accent-soft);color:#4140a0;border:1px solid #e0e1ff}
-.student-bubble strong{display:block;font-size:10px;margin-bottom:4px}
-.student-bubble small{display:block;font-size:9px;color:var(--muted);margin-top:5px}
-.student-message-form{border-top:1px solid var(--line);padding-top:15px}
-.student-message-form label{display:block;font-size:11px;font-weight:850;margin:0 0 6px}
-.student-message-form input,.student-message-form textarea{width:100%;font:inherit;font-size:12px;padding:11px 12px;border:1px solid var(--line);border-radius:10px;background:#fff;color:var(--ink);outline:none;margin-bottom:12px}
-.student-message-form textarea{resize:vertical;min-height:85px;line-height:1.5}
-.student-message-form input:focus,.student-message-form textarea:focus{border-color:var(--accent);box-shadow:0 0 0 3px color-mix(in srgb,var(--accent) 12%,transparent)}
-.message-form-foot{display:flex;align-items:center;justify-content:space-between;gap:10px}
-.message-form-foot span{font-size:9px;color:var(--muted);line-height:1.45}
-.message-form-foot button{border:0;border-radius:10px;background:var(--accent);color:white;padding:10px 12px;font-size:10px;font-weight:850;cursor:pointer;white-space:nowrap}
-.message-form-foot button:disabled{opacity:.6;cursor:wait}
-#studentMessageStatus{font-size:10px;line-height:1.5;margin-top:10px;color:var(--muted)}
-#studentMessageStatus.error{color:#b42336}
-#studentMessageStatus.success{color:var(--good)}
 @media(max-width:850px){.comms-grid{grid-template-columns:1fr}}
 @media(max-width:560px){.comms-heading{align-items:flex-start;flex-direction:column}.comms-heading h2{font-size:22px}.comms-panel{padding:17px}.bell-button{width:100%;justify-content:center}.notice-bottom{align-items:flex-start;flex-direction:column}}
 </style>
 </head>
 <body>
-<div class="preview-strip"><div class="strip-inner">
- <span class="preview-label">Laboratório SALTA · Acadêmico moderno</span>
- <span class="preview-note">Prévia independente · Usa dados reais mediante código · Área oficial preservada</span>
-</div></div>
-
 <header class="topbar"><div class="shell top-inner">
- <div class="brand"><div class="logo">S</div><div><div class="brand-title">SALTA</div><div class="brand-sub">Sua jornada de aprendizagem</div></div></div>
+ <div class="brand"><div class="logo">S</div><div><div class="brand-title">SALTA</div><div class="brand-sub">Matemática · Professor Dannyel</div></div></div>
  <nav class="navlinks" id="studentNav" aria-label="Navegação da Área do Aluno" hidden>
   <a href="#visao" class="active">Visão geral</a><a href="#notas">Notas e avaliações</a><a href="#resultado">Resultado final</a>
  </nav>
- <div class="student"><button class="bell-button top-bell" id="noticeBellTop" type="button" aria-label="Ver avisos não lidos" hidden><span class="bell-icon" aria-hidden="true">🔔</span><span class="bell-count zero" id="noticeUnreadCountTop">0</span></button><div class="student-info"><div class="student-name" id="headerStudentName">Aluno ainda não consultado</div><div class="student-class" id="headerStudentClass">Consulte com seu código</div></div><div class="avatar" id="studentAvatar" aria-label="Inicial do aluno">S</div></div>
+ <div class="student"><button class="bell-button top-bell" id="noticeBellTop" type="button" aria-label="Ver avisos não lidos" hidden><span class="bell-icon" aria-hidden="true">🔔</span><span class="bell-count zero" id="noticeUnreadCountTop">0</span></button><div class="student-info" id="studentHeaderInfo" hidden><div class="student-name" id="headerStudentName"></div><div class="student-class" id="headerStudentClass"></div></div><div class="avatar" id="studentAvatar" aria-label="Inicial do aluno" hidden></div></div>
 </div></header>
 
 <main class="shell" id="visao">
  <div class="page-heading">
-  <div><div class="eyebrow">Área do aluno</div><h1 id="helloTitle">Sua vida escolar, em um só lugar. <span aria-hidden="true">👋</span></h1>
-   <p class="intro" id="helloIntro">Informe seu código individual para consultar suas notas, avaliações, vistos e seu caminho para a aprovação.</p></div>
-  <span class="pill">Ambiente de testes</span>
+  <div><div class="eyebrow">Área do aluno · Matemática</div><h1 id="helloTitle">Acompanhe sua jornada em Matemática. <span aria-hidden="true">👋</span></h1>
+   <p class="intro" id="helloIntro">Consulte suas notas, avaliações e avisos das aulas de Matemática do Professor Dannyel.</p></div>
  </div>
 
  <section class="lookup-panel panel" id="lookupPanel" aria-labelledby="lookupTitle">
-  <div class="lookup-head"><div class="lookup-icon" aria-hidden="true">⌕</div><div><h2 id="lookupTitle">Acesse sua Área do Aluno</h2><p>Digite seu código individual para carregar as informações escolares reais.</p></div></div>
+  <div class="lookup-head"><div class="lookup-icon" aria-hidden="true">⌕</div><div><h2 id="lookupTitle">Acesse sua Área do Aluno</h2><p>Digite seu código individual para consultar suas notas de Matemática.</p></div></div>
   <form id="lookupForm" novalidate>
    <label for="studentCode">Código do aluno</label>
    <div class="lookup-row"><input id="studentCode" name="codigo" type="text" maxlength="8" autocomplete="off" autocapitalize="characters" spellcheck="false" placeholder="Digite seu código" required>
     <button id="lookupButton" type="submit"><span id="lookupButtonText">Consultar minhas notas</span><span id="lookupSpinner" class="spinner" hidden aria-hidden="true"></span></button>
    </div>
-   <div id="lookupStatus" class="lookup-status" role="status" aria-live="polite">A consulta usa o mesmo serviço da Área do Aluno atual. O código não é salvo nesta página.</div>
+   <div id="lookupStatus" class="lookup-status" role="status" aria-live="polite">Seu código individual identifica a ficha de Matemática consultada.</div>
    <button id="clearStudentButton" class="clear-student" type="button" hidden>Limpar ficha e consultar outro aluno</button>
   </form>
  </section>
 
  <div id="studentDashboard" hidden>
   <section class="welcome">
-   <div><div class="eyebrow">Seu espaço de aprendizagem</div><h2 id="welcomeHeadline">Seu esforço está construindo resultados.</h2>
-    <p id="welcomeText">Acompanhe suas médias e avaliações. Cada etapa ajuda você a entender seus próximos passos.</p></div>
+   <div><div class="eyebrow">Acompanhamento de Matemática</div><h2 id="welcomeHeadline">Seu esforço está construindo resultados.</h2>
+    <p id="welcomeText">Acompanhe suas médias e avaliações da disciplina com o Professor Dannyel.</p></div>
    <div class="welcome-side"><div><div class="welcome-caption">Bimestre em foco</div><div class="welcome-stat" id="currentPeriod">—</div></div><div class="welcome-symbol" aria-hidden="true">✦</div></div>
   </section>
 
   <section class="metrics" aria-label="Resumo acadêmico">
-   <article class="metric"><div class="metric-head"><span class="metric-label">Média registrada</span><span class="metric-icon">↗</span></div>
+   <article class="metric"><div class="metric-head"><span class="metric-label">Média em Matemática</span><span class="metric-icon">↗</span></div>
     <div class="metric-value" id="metricAverage">— <span class="metric-unit">/ 10</span></div><div class="metric-sub">Média dos bimestres que já têm nota</div><div class="mini-progress"><span id="averageProgress" style="width:0%"></span></div></article>
-   <article class="metric"><div class="metric-head"><span class="metric-label">Avaliações</span><span class="metric-icon">✓</span></div>
+   <article class="metric"><div class="metric-head"><span class="metric-label">Avaliações de Matemática</span><span class="metric-icon">✓</span></div>
     <div class="metric-value" id="metricEvaluations">—</div><div class="metric-sub">Avaliações registradas nos bimestres</div><div class="status-tag tag-neutral" id="evaluationTag">Dados da ficha</div></article>
    <article class="metric"><div class="metric-head"><span class="metric-label">Vistos</span><span class="metric-icon">✎</span></div>
-    <div class="metric-value" id="metricVistos">—</div><div class="metric-sub">Vistos registrados na ficha escolar</div><div class="status-tag tag-neutral" id="vistosTag">Acompanhamento</div></article>
+    <div class="metric-value" id="metricVistos">—</div><div class="metric-sub">Vistos registrados em Matemática</div><div class="status-tag tag-neutral" id="vistosTag">Acompanhamento</div></article>
    <article class="metric status-metric"><div class="metric-head"><span class="metric-label">Situação atual</span><span class="metric-icon">◎</span></div>
     <div class="metric-value" id="metricSituation">—</div><div class="metric-sub" id="situationDescription">Sua situação aparecerá após a consulta.</div><div class="status-tag tag-neutral" id="situationTag">Aguardando consulta</div></article>
   </section>
+
+  <section class="student-comms" id="avisos">
+    <div class="comms-heading"><div><div class="eyebrow">Matemática · Professor Dannyel</div><h2>Avisos do Professor Dannyel</h2><p>Recados das aulas de Matemática, enviados por mim. Alguns são para todos os alunos; outros, só para você. Este canal é informativo, não recebe respostas e não representa comunicados oficiais da escola.</p></div><button class="bell-button" id="noticeBell" type="button" aria-label="Ir para os avisos"><span class="bell-icon" aria-hidden="true">🔔</span><span>Meus avisos</span><span class="bell-count zero" id="noticeUnreadCount">0</span></button></div>
+    <div class="comms-grid"><article class="panel comms-panel"><div class="panel-head"><div><h3>Seus comunicados</h3><p class="panel-sub" id="noticeSummary">Avisos de Matemática do Professor Dannyel aparecerão aqui.</p></div><span class="comms-icon" aria-hidden="true">📣</span></div><div class="notice-stack" id="studentAnnouncements"><div class="comms-empty">Consulte seu código para ver os avisos do Professor Dannyel.</div></div><div id="noticeStatus" role="status" aria-live="polite" style="font-size:10px;line-height:1.5;margin-top:10px;color:var(--muted)"></div></article></div>
+   </section>
 
   <section class="columns">
    <article class="panel"><div class="panel-head"><div><h3>Sua evolução</h3><p class="panel-sub">Visualize suas médias bimestrais de um jeito fácil.</p></div><a class="text-link" href="#notas">Ver avaliações ↓</a></div>
@@ -279,28 +253,22 @@ td:last-child,th:last-child{text-align:right}
 
   <div class="bimestres" id="bimestreTabs" aria-label="Selecionar bimestre"></div>
   <section class="panel assess-panel" id="notas">
-   <div class="assess-top"><div><h3 id="assess-title">Avaliações do bimestre</h3><p id="assess-sub">Notas e registros informados na sua ficha escolar.</p></div><span class="status-tag small tag-neutral" id="assess-status">Aguardando consulta</span></div>
+   <div class="assess-top"><div><h3 id="assess-title">Avaliações de Matemática</h3><p id="assess-sub">Notas e registros da disciplina de Matemática.</p></div><span class="status-tag small tag-neutral" id="assess-status">Aguardando consulta</span></div>
    <div class="table-wrap"><table><thead><tr><th>Avaliação</th><th>Situação</th><th>Pontos</th></tr></thead><tbody id="assess-rows"><tr><td colspan="3" style="text-align:center;color:var(--muted)">Consulte seu código para ver as avaliações.</td></tr></tbody></table></div>
   </section>
 
-
-  <section class="student-comms" id="avisos">
-    <div class="comms-heading"><div><div class="eyebrow">Comunicação</div><h2>Avisos da escola</h2><p>Comunicados do professor, para todos ou direcionados especialmente a você.</p></div><button class="bell-button" id="noticeBell" type="button" aria-label="Ir para os avisos"><span class="bell-icon" aria-hidden="true">🔔</span><span>Meus avisos</span><span class="bell-count zero" id="noticeUnreadCount">0</span></button></div>
-    <div class="comms-grid"><article class="panel comms-panel"><div class="panel-head"><div><h3>Central de avisos</h3><p class="panel-sub" id="noticeSummary">Seus comunicados aparecerão aqui.</p></div><span class="comms-icon" aria-hidden="true">📣</span></div><div class="notice-stack" id="studentAnnouncements"><div class="comms-empty">Consulte seu código para verificar se há avisos.</div></div><div id="noticeStatus" role="status" aria-live="polite" style="font-size:10px;line-height:1.5;margin-top:10px;color:var(--muted)"></div></article></div>
-   </section>
-
-   <aside class="tip"><div class="tip-icon">🌱</div><div><strong>Pequenos passos também são progresso.</strong><p>Confira suas notas com frequência e converse com seu professor quando tiver dúvidas.</p></div></aside>
+   <aside class="tip"><div class="tip-icon">🌱</div><div><strong>Pequenos passos também são progresso.</strong><p>Confira suas notas de Matemática com frequência e converse com o Professor Dannyel quando tiver dúvidas.</p></div></aside>
  </div>
 </main>
 
 <div class="modal-aprovado" id="approvalModal" role="dialog" aria-modal="true" aria-labelledby="approvalModalTitle" hidden>
  <div class="modal-confetti" aria-hidden="true"><canvas id="approvalConfetti"></canvas></div>
  <div class="modal-card"><div class="modal-emoji" aria-hidden="true">🎉</div><h2 id="approvalModalTitle">Parabéns pela aprovação!</h2>
-  <p>Você faz parte do seleto grupo que já está aprovado. Seu esforço é muito valorizado! Continue se dedicando e se torne uma excelente pessoa!</p>
+  <p>Você alcançou a meta de aprovação em Matemática. Seu esforço é muito valorizado! Continue se dedicando e avançando nos estudos.</p>
   <button id="closeApprovalModal" type="button">Fechar mensagem</button></div>
 </div>
 
-<footer class="footer"><div class="shell"><span><strong>SALTA</strong> · Plataforma educacional</span><span id="footerNote">Laboratório independente · Consulta real por código · Área oficial preservada.</span></div></footer>
+<footer class="footer"><div class="shell"><span><strong>SALTA</strong> · Matemática com Professor Dannyel</span><span id="footerNote">Notas, avaliações e avisos das aulas de Matemática.</span></div></footer>
 
 <script>
 const STUDENT_API_URL='https://portal-aluno-api.dannyel-moises.workers.dev';
@@ -346,12 +314,14 @@ function renderStudent(student){
  document.getElementById('headerStudentName').textContent=name;
  document.getElementById('headerStudentClass').textContent=student.turma?'Turma '+student.turma:'Turma não informada';
  document.getElementById('studentAvatar').textContent=initials(name);
+ document.getElementById('studentHeaderInfo').hidden=false;
+ document.getElementById('studentAvatar').hidden=false;
  document.getElementById('helloTitle').textContent='Olá, '+name.split(/\s+/)[0]+'! 👋';
- document.getElementById('helloIntro').textContent='Aqui estão suas notas, avaliações e o acompanhamento da sua trajetória escolar.';
+ document.getElementById('helloIntro').textContent='Aqui estão suas notas, avaliações e avisos das aulas de Matemática do Professor Dannyel.';
  document.getElementById('studentNav').hidden=false;
  document.getElementById('noticeBellTop').hidden=false;
  document.getElementById('welcomeHeadline').textContent=approved?'Você já alcançou sua meta de aprovação!':'Seu esforço está construindo resultados.';
- document.getElementById('welcomeText').textContent=approved?'Parabéns! Sua soma já alcançou o mínimo previsto para sua modalidade. Continue aprendendo e evoluindo.':'Acompanhe suas médias e veja quanto falta para alcançar a soma necessária para aprovação.';
+ document.getElementById('welcomeText').textContent=approved?'Parabéns! Sua soma em Matemática já alcançou o mínimo previsto para sua modalidade. Continue aprendendo e evoluindo.':'Acompanhe suas médias em Matemática e veja quanto falta para alcançar a soma necessária para aprovação.';
  document.getElementById('currentPeriod').textContent=current+'º bimestre';
  document.getElementById('metricAverage').innerHTML=(average===null?'—':fmt(average,2))+' <span class="metric-unit">/ 10</span>';
  document.getElementById('averageProgress').style.width=(average===null?0:Math.max(0,Math.min(100,average*10)))+'%';
@@ -360,8 +330,8 @@ function renderStudent(student){
  document.getElementById('metricVistos').textContent=vistosEntries.length?fmt(vistosTotal,0):'—';
  setTag(document.getElementById('vistosTag'),vistosEntries.length?'Soma dos bimestres':'Sem registros de vistos',vistosEntries.length?'success':'neutral');
  document.getElementById('metricSituation').textContent=approved?'Aprovado(a)':(remaining?'Em andamento':'Atenção');
- document.getElementById('situationDescription').textContent=approved?'A soma mínima da sua modalidade foi alcançada.':(remaining?'Você ainda pode avançar nos bimestres sem média lançada.':'Confira seu resultado com o professor.');
- setTag(document.getElementById('situationTag'),approved?'Meta alcançada':(remaining?'Continue avançando':'Converse com seu professor'),approved?'success':(remaining?'warning':'neutral'));
+ document.getElementById('situationDescription').textContent=approved?'A soma mínima da sua modalidade foi alcançada.':(remaining?'Você ainda pode avançar nos bimestres sem média lançada.':'Confira seu resultado com o Professor Dannyel.');
+ setTag(document.getElementById('situationTag'),approved?'Meta alcançada':(remaining?'Continue avançando':'Converse com o Professor Dannyel'),approved?'success':(remaining?'warning':'neutral'));
 
  const chart=document.getElementById('gradeChart');chart.innerHTML='';chart.style.gridTemplateColumns='repeat('+activeRule.count+', minmax(0,1fr))';chart.setAttribute('aria-label','Médias por bimestre para '+name);
  bimestres.forEach(function(b){
@@ -381,7 +351,7 @@ function renderStudent(student){
  document.getElementById('goalMessageText').innerHTML=approved
   ?'<b>Parabéns! Você já está aprovado(a).</b><br>Sua soma atingiu o mínimo de '+fmt(target,0)+' pontos para '+activeRule.label+'. Seu esforço é valorizado!'
   :(remaining?'<b>Você está no caminho!</b><br>Para '+activeRule.label+', a soma mínima é '+fmt(target,0)+' pontos. Faltam '+fmt(missing,1)+' ponto(s). Nos '+remaining+' bimestre(s) sem média, você precisa de aproximadamente '+fmt(remainingAverage,1)+' por bimestre.'
-  :'<b>Vamos conferir isso juntos.</b><br>Suas médias lançadas somam '+fmt(sum,1)+' ponto(s), abaixo da meta de '+fmt(target,0)+'. Converse com seu professor para confirmar sua situação.');
+  :'<b>Vamos conferir isso juntos.</b><br>Suas médias de Matemática somam '+fmt(sum,1)+' ponto(s), abaixo da meta de '+fmt(target,0)+'. Converse com o Professor Dannyel para confirmar sua situação.');
  document.getElementById('goalMessage').style.background=approved?'var(--good-soft)':'var(--accent-soft)';
  document.getElementById('goalMessage').style.color=approved?'var(--good)':'var(--accent)';
  document.getElementById('approvalMessageButton').hidden=!approved;
@@ -393,14 +363,14 @@ function renderStudent(student){
  const updateText='Dados reais carregados para '+name+'.'+(student.ultima_atualizacao?' Última atualização da ficha: '+student.ultima_atualizacao+'.':'');
  const status=document.getElementById('lookupStatus');status.textContent=updateText;status.className='lookup-status success';
  document.getElementById('clearStudentButton').hidden=false;
- document.getElementById('footerNote').textContent='Laboratório independente · Dados consultados pelo código informado · A Área do Aluno oficial permanece intacta.';
+ document.getElementById('footerNote').textContent='Matemática com Professor Dannyel · Notas, avaliações e avisos.';
  loadStudentCommunications(document.getElementById('studentCode').value.trim().toUpperCase());
 }
 function renderAssessments(items,n){
  const b=items.find(function(item){return item.n===n;});if(!b)return;
  document.querySelectorAll('[data-bim]').forEach(function(btn){btn.setAttribute('aria-pressed',String(Number(btn.dataset.bim)===n));});
- document.getElementById('assess-title').textContent='Avaliações do '+n+'º bimestre';
- document.getElementById('assess-sub').textContent='Notas e registros informados na sua ficha escolar.';
+ document.getElementById('assess-title').textContent='Avaliações de Matemática do '+n+'º bimestre';
+ document.getElementById('assess-sub').textContent='Notas e registros da disciplina de Matemática.';
  setTag(document.getElementById('assess-status'),statusLabel(b.status),b.status==='andamento'?'warning':(b.status==='concluido'?'success':'neutral'));
  const tbody=document.getElementById('assess-rows');tbody.innerHTML='';
  if(!b.avaliacoes.length){const tr=document.createElement('tr');tr.innerHTML='<td colspan="3" style="text-align:center;color:var(--muted)">Nenhuma avaliação registrada neste bimestre.</td>';tbody.appendChild(tr);return;}
@@ -418,18 +388,14 @@ function commDate(value){
  const d=new Date(raw.includes('T')?raw:raw.replace(' ','T')+'Z');
  return Number.isNaN(d.getTime())?raw:d.toLocaleString('pt-BR',{dateStyle:'short',timeStyle:'short'});
 }
-function showStudentMessageStatus(message,kind){
- const el=document.getElementById('studentMessageStatus');
- el.textContent=message||'';el.className=kind||'';
-}
 function renderStudentAnnouncements(items,code){
  const target=document.getElementById('studentAnnouncements');target.innerHTML='';
  const list=Array.isArray(items)?items:[],unread=list.filter(item=>!Number(item.is_read));
  document.getElementById('noticeUnreadCount').textContent=String(unread.length);
  document.getElementById('noticeUnreadCount').classList.toggle('zero',unread.length===0);
  document.getElementById('noticeUnreadCountTop').textContent=String(unread.length);document.getElementById('noticeUnreadCountTop').classList.toggle('zero',unread.length===0);
- document.getElementById('noticeSummary').textContent=list.length?list.length+' aviso(s) no histórico · '+unread.length+' não lido(s)':'Nenhum comunicado publicado para você no momento.';
- if(!list.length){target.innerHTML='<div class="comms-empty">Tudo tranquilo por aqui. Quando o professor publicar um aviso global ou direcionado a você, ele aparecerá nesta seção.</div>';return;}
+ document.getElementById('noticeSummary').textContent=list.length?list.length+' aviso(s) do Professor Dannyel · '+unread.length+' não lido(s)':'Nenhum aviso do Professor Dannyel disponível para você.';
+ if(!list.length){target.innerHTML='<div class="comms-empty">Quando o Professor Dannyel publicar um aviso de Matemática para todos ou direcionado a você, ele aparecerá aqui.</div>';return;}
  list.forEach(item=>{
   const isRead=!!Number(item.is_read),article=document.createElement('article');article.className='notice-item'+(isRead?'':' unread');
   const meta=document.createElement('div');meta.className='notice-meta';
@@ -437,7 +403,7 @@ function renderStudentAnnouncements(items,code){
   const date=document.createElement('span');date.className='notice-date';date.textContent=commDate(item.created_at);meta.append(kind,date);
   const title=document.createElement('h4');title.textContent=item.title||'Comunicado';
   const body=document.createElement('p');body.textContent=item.body||'';
-  const author=document.createElement('div');author.className='notice-author';author.textContent='Enviado por '+(item.sender_name||'Professor');
+  const author=document.createElement('div');author.className='notice-author';author.textContent='Aviso do Professor Dannyel';
   const bottom=document.createElement('div');bottom.className='notice-bottom';
   const state=document.createElement('span');state.className='notice-state';state.textContent=isRead?'Lido':'Ainda não lido';
   const button=document.createElement('button');button.type='button';button.className='notice-read';button.textContent=isRead?'Lido ✓':'Marcar como lido';button.disabled=isRead;
@@ -460,9 +426,10 @@ async function loadStudentCommunications(code){
   const data=await response.json().catch(()=>({}));if(!response.ok)throw new Error(data.error||'O serviço de avisos ainda não está disponível.');
   renderStudentAnnouncements(data.announcements||[],code);
  }catch(e){
-  target.innerHTML='<div class="comms-empty">Os avisos serão exibidos assim que o serviço de comunicação for ativado. Suas notas continuam funcionando normalmente.</div>';
+  target.innerHTML='<div class="comms-empty">Não foi possível carregar os avisos agora. Suas notas de Matemática continuam disponíveis.</div>';
   document.getElementById('noticeSummary').textContent='Não foi possível carregar os avisos.';
   document.getElementById('noticeStatus').textContent=e.message;document.getElementById('noticeUnreadCount').textContent='—';document.getElementById('noticeUnreadCount').classList.add('zero');
+  document.getElementById('noticeUnreadCountTop').textContent='—';document.getElementById('noticeUnreadCountTop').classList.add('zero');
  }
 }
 async function lookupStudent(event){
@@ -473,6 +440,10 @@ async function lookupStudent(event){
  button.disabled=true;buttonText.textContent='Consultando...';spinner.hidden=false;
  status.textContent='Consultando a ficha escolar...';status.className='lookup-status loading';
  document.getElementById('studentDashboard').hidden=true;document.getElementById('approvalMessageButton').hidden=true;document.getElementById('studentNav').hidden=true;
+ document.getElementById('studentHeaderInfo').hidden=true;document.getElementById('studentAvatar').hidden=true;
+ document.getElementById('noticeBellTop').hidden=true;
+ document.getElementById('noticeUnreadCount').textContent='0';document.getElementById('noticeUnreadCount').classList.add('zero');
+ document.getElementById('noticeUnreadCountTop').textContent='0';document.getElementById('noticeUnreadCountTop').classList.add('zero');
  try{
   const response=await fetch(STUDENT_API_URL+'?codigo='+encodeURIComponent(code),{method:'GET',cache:'no-store'});
   let data={};try{data=await response.json();}catch(_){}
@@ -481,7 +452,7 @@ async function lookupStudent(event){
    if(response.status===400)throw new Error(data.error||'O código informado parece inválido. Confira e tente novamente.');
    throw new Error(data.error||'Não foi possível consultar agora. Tente novamente em alguns instantes.');
   }
-  if(!data||!data.nome||!data.turma){if(data&&data.error)throw new Error(data.error);throw new Error('A consulta retornou uma ficha incompleta. Confira o código ou procure seu professor.');}
+  if(!data||!data.nome||!data.turma){if(data&&data.error)throw new Error(data.error);throw new Error('A consulta retornou uma ficha incompleta. Confira o código ou procure o Professor Dannyel.');}
   input.value=code;renderStudent(data);
   document.getElementById('studentDashboard').scrollIntoView({behavior:'smooth',block:'start'});
  }catch(error){
@@ -491,6 +462,7 @@ async function lookupStudent(event){
 }
 function clearStudent(){
  document.getElementById('studentDashboard').hidden=true;document.getElementById('studentNav').hidden=true;document.getElementById('noticeBellTop').hidden=true;
+ document.getElementById('studentHeaderInfo').hidden=true;document.getElementById('studentAvatar').hidden=true;
  document.getElementById('studentCode').value='';
  document.getElementById('lookupStatus').textContent='Digite o código individual para consultar outra ficha. O código não é salvo nesta página.';
  document.getElementById('lookupStatus').className='lookup-status';
