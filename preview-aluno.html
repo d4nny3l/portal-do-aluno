@@ -187,7 +187,7 @@ td:last-child,th:last-child{text-align:right}
 .notice-date{font-size:9px;color:var(--muted)}
 .notice-item h4{font-size:13px;margin:0 0 7px;line-height:1.45}
 .notice-item p{font-size:11px;color:#535b6c;line-height:1.6;margin:0;white-space:pre-wrap;overflow-wrap:anywhere}
-.notice-author{font-size:10px;color:var(--muted);border-top:1px solid var(--line);padding-top:8px;margin-top:11px}.notice-bottom{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-top:12px}.notice-state{font-size:10px;color:var(--muted)}.notice-read{border:1px solid var(--line);border-radius:9px;background:#fff;color:var(--accent);font-size:10px;font-weight:800;padding:8px 10px;cursor:pointer}.notice-read:disabled{opacity:.6;cursor:default}.bell-button{display:inline-flex;align-items:center;gap:9px;border:1px solid var(--line);background:#fff;color:var(--ink);border-radius:12px;padding:10px 13px;font-size:11px;font-weight:850;cursor:pointer;white-space:nowrap}.bell-icon{font-size:16px}.bell-count{display:inline-grid;place-items:center;min-width:22px;height:22px;padding:0 6px;border-radius:999px;background:var(--accent);color:#fff;font-size:10px}.bell-count.zero{background:#e8eaf1;color:var(--muted)}
+.notice-author{font-size:10px;color:var(--muted);border-top:1px solid var(--line);padding-top:8px;margin-top:11px}.notice-bottom{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-top:12px}.notice-state{font-size:10px;color:var(--muted)}.notice-read{border:1px solid var(--line);border-radius:9px;background:#fff;color:var(--accent);font-size:10px;font-weight:800;padding:8px 10px;cursor:pointer}.notice-read:disabled{opacity:.6;cursor:default}.bell-button{display:inline-flex;align-items:center;gap:9px;border:1px solid var(--line);background:#fff;color:var(--ink);border-radius:12px;padding:10px 13px;font-size:11px;font-weight:850;cursor:pointer;white-space:nowrap}.top-bell{padding:7px 9px;gap:6px}.top-bell .bell-icon{font-size:15px}.bell-icon{font-size:16px}.bell-count{display:inline-grid;place-items:center;min-width:22px;height:22px;padding:0 6px;border-radius:999px;background:var(--accent);color:#fff;font-size:10px}.bell-count.zero{background:#e8eaf1;color:var(--muted)}
 .comms-empty{border:1px dashed #d9dced;background:#ffffff85;border-radius:13px;padding:18px 12px;color:var(--muted);font-size:11px;line-height:1.6;text-align:center}
 .student-thread{display:flex;flex-direction:column;gap:9px;max-height:245px;overflow:auto;margin-bottom:14px}
 .student-bubble{max-width:94%;padding:10px 12px;border-radius:12px;font-size:11px;line-height:1.55;white-space:pre-wrap;overflow-wrap:anywhere}
@@ -222,7 +222,7 @@ td:last-child,th:last-child{text-align:right}
  <nav class="navlinks" id="studentNav" aria-label="Navegação da Área do Aluno" hidden>
   <a href="#visao" class="active">Visão geral</a><a href="#notas">Notas e avaliações</a><a href="#resultado">Resultado final</a>
  </nav>
- <div class="student"><div class="student-info"><div class="student-name" id="headerStudentName">Aluno ainda não consultado</div><div class="student-class" id="headerStudentClass">Consulte com seu código</div></div><div class="avatar" id="studentAvatar" aria-label="Inicial do aluno">S</div></div>
+ <div class="student"><button class="bell-button top-bell" id="noticeBellTop" type="button" aria-label="Ver avisos não lidos" hidden><span class="bell-icon" aria-hidden="true">🔔</span><span class="bell-count zero" id="noticeUnreadCountTop">0</span></button><div class="student-info"><div class="student-name" id="headerStudentName">Aluno ainda não consultado</div><div class="student-class" id="headerStudentClass">Consulte com seu código</div></div><div class="avatar" id="studentAvatar" aria-label="Inicial do aluno">S</div></div>
 </div></header>
 
 <main class="shell" id="visao">
@@ -349,6 +349,7 @@ function renderStudent(student){
  document.getElementById('helloTitle').textContent='Olá, '+name.split(/\s+/)[0]+'! 👋';
  document.getElementById('helloIntro').textContent='Aqui estão suas notas, avaliações e o acompanhamento da sua trajetória escolar.';
  document.getElementById('studentNav').hidden=false;
+ document.getElementById('noticeBellTop').hidden=false;
  document.getElementById('welcomeHeadline').textContent=approved?'Você já alcançou sua meta de aprovação!':'Seu esforço está construindo resultados.';
  document.getElementById('welcomeText').textContent=approved?'Parabéns! Sua soma já alcançou o mínimo previsto para sua modalidade. Continue aprendendo e evoluindo.':'Acompanhe suas médias e veja quanto falta para alcançar a soma necessária para aprovação.';
  document.getElementById('currentPeriod').textContent=current+'º bimestre';
@@ -426,6 +427,7 @@ function renderStudentAnnouncements(items,code){
  const list=Array.isArray(items)?items:[],unread=list.filter(item=>!Number(item.is_read));
  document.getElementById('noticeUnreadCount').textContent=String(unread.length);
  document.getElementById('noticeUnreadCount').classList.toggle('zero',unread.length===0);
+ document.getElementById('noticeUnreadCountTop').textContent=String(unread.length);document.getElementById('noticeUnreadCountTop').classList.toggle('zero',unread.length===0);
  document.getElementById('noticeSummary').textContent=list.length?list.length+' aviso(s) no histórico · '+unread.length+' não lido(s)':'Nenhum comunicado publicado para você no momento.';
  if(!list.length){target.innerHTML='<div class="comms-empty">Tudo tranquilo por aqui. Quando o professor publicar um aviso global ou direcionado a você, ele aparecerá nesta seção.</div>';return;}
  list.forEach(item=>{
@@ -488,7 +490,7 @@ async function lookupStudent(event){
  }finally{button.disabled=false;buttonText.textContent='Consultar minhas notas';spinner.hidden=true;}
 }
 function clearStudent(){
- document.getElementById('studentDashboard').hidden=true;document.getElementById('studentNav').hidden=true;
+ document.getElementById('studentDashboard').hidden=true;document.getElementById('studentNav').hidden=true;document.getElementById('noticeBellTop').hidden=true;
  document.getElementById('studentCode').value='';
  document.getElementById('lookupStatus').textContent='Digite o código individual para consultar outra ficha. O código não é salvo nesta página.';
  document.getElementById('lookupStatus').className='lookup-status';
@@ -513,4 +515,5 @@ document.getElementById('approvalModal').addEventListener('click',function(event
 document.addEventListener('keydown',function(event){if(event.key==='Escape')closeApprovalModal();});
 document.getElementById('studentCode').addEventListener('input',function(){this.value=this.value.toUpperCase();});
 document.getElementById('noticeBell').addEventListener('click',function(){document.getElementById('avisos').scrollIntoView({behavior:'smooth',block:'start'});});
+document.getElementById('noticeBellTop').addEventListener('click',function(){document.getElementById('avisos').scrollIntoView({behavior:'smooth',block:'start'});});
 </script>
