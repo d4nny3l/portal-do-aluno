@@ -124,16 +124,13 @@ footer .wrap{display:flex;justify-content:space-between;gap:12px}
    <section class="section"><div class="section-title"><div><h2>Histórico de avisos</h2><p>Os mais recentes aparecem primeiro.</p></div><button class="refresh" type="button" id="refreshAnnouncements">Atualizar avisos</button></div><div class="announcements" id="announcementList"><div class="empty">Carregando avisos...</div></div></section>
   </div>
  </main>
-<footer><div class="wrap"><span><strong>SALTA</strong> · Central de comunicação</span><span>Mensagens de alunos limitadas a 5 envios por hora por código.</span></div></footer>
+<footer><div class="wrap"><span><strong>SALTA</strong> · Central de avisos</span><span>Comunicados globais e individuais.</span></div></footer>
 <script>
 const AUTH_API_URL="https://salta-auth.dannyel-moises.workers.dev";
 const COMMS_API_URL="https://salta-stats.dannyel-moises.workers.dev";
 const SESSION_KEY="saltaProfessorSession";
 const OLD_STORE=window.sessionStorage;
 let token="";
-let allInboxMessages=[];
-let currentStudentCode="";
-let currentStudentName="";
 let validatedStudent=null;
 
 function getToken(){return localStorage.getItem(SESSION_KEY)||OLD_STORE.getItem(SESSION_KEY)||"";}
@@ -162,24 +159,13 @@ async function checkSession(){
   const d=await r.json().catch(()=>({}));
   if(!r.ok||!d.authenticated){localStorage.removeItem(SESSION_KEY);OLD_STORE.removeItem(SESSION_KEY);document.getElementById("lockedPanel").hidden=false;return;}
   document.getElementById("app").hidden=false;
-  await Promise.all([loadClasses(),loadAnnouncements(),loadInbox()]);
+  await loadAnnouncements();
  }catch(_){document.getElementById("lockedPanel").hidden=false;}
-}
-async function loadClasses(){
- try{
-  const data=await api("/admin/turmas");
-  const select=document.getElementById("targetClass");
-  select.innerHTML="";
-  const list=Array.isArray(data.turmas)?data.turmas:[];
-  if(!list.length){select.innerHTML='<option value="">Nenhuma turma disponível</option>';return;}
-  list.forEach(turma=>{const o=document.createElement("option");o.value=turma;o.textContent=turma;select.appendChild(o);});
- }catch(e){document.getElementById("targetClass").innerHTML='<option value="">Falha ao carregar turmas</option>';setStatus("Não consegui carregar a lista de turmas: "+e.message,"error");}
 }
 function updateScope(){
  const scope=document.getElementById("scope").value;
- document.getElementById("classTarget").hidden=scope!=="class";
  document.getElementById("individualTarget").hidden=scope!=="individual";
- document.getElementById("targetPreview").textContent=scope==="global"?"Este aviso será exibido a todos os alunos cadastrados na Área do Aluno.":scope==="class"?"Este aviso será exibido apenas aos alunos da turma selecionada.":"Este aviso será exibido apenas ao aluno identificado pelo código validado.";
+ document.getElementById("targetPreview").textContent=scope==="global"?"Este aviso será exibido a todos os alunos cadastrados na Área do Aluno.":"Este aviso será exibido apenas ao aluno identificado pelo código validado.";
 }
 async function validateStudent(){
  const code=document.getElementById("targetCode").value.trim().toUpperCase();
@@ -199,7 +185,7 @@ async function publishAnnouncement(event){
  const title=document.getElementById("announcementTitle").value.trim();
  const body=document.getElementById("announcementBody").value.trim();
  const payload={scope,title,body};
- if(scope==="class")payload.turma=document.getElementById("targetClass").value;
+
  if(scope==="individual"){
   const code=document.getElementById("targetCode").value.trim().toUpperCase();
   if(!validatedStudent||validatedStudent.codigo!==code){setStatus("Valide o código do destinatário antes de publicar.","error");return;}
@@ -227,117 +213,26 @@ async function loadAnnouncements(){
   list.forEach(item=>{
    const article=document.createElement("article");article.className="announcement";
    const top=document.createElement("div");top.className="announcement-top";
-   const badge=document.createElement("span");badge.className="badge "+(item.scope==="global"?"global":item.scope==="individual"?"individual":"");badge.textContent=item.scope==="global"?"Aviso global":item.scope==="class"?"Por turma":"Individual";
+   const badge=document.createElement("span");badge.className="badge "+(item.scope==="global"?"global":item.scope==="individual"?"individual":"");badge.textContent=item.scope==="global"?"Aviso global":"Individual";
    const date=document.createElement("span");date.className="date";date.textContent=dateLabel(item.created_at);top.append(badge,date);
    const title=document.createElement("h3");title.textContent=item.title;
    const body=document.createElement("p");body.textContent=item.body;
    const foot=document.createElement("div");foot.className="announcement-footer";
-   foot.textContent=item.scope==="global"?"Destinatários: todas as turmas":item.scope==="class"?"Turma: "+(item.turma||"—"):"Aluno: "+(item.student_code||"—");
+   foot.textContent=item.scope==="global"?"Destinatários: todas as turmas":"Aluno: "+(item.student_code||"—");
    article.append(top,title,body,foot);target.appendChild(article);
   });
  }catch(e){document.getElementById("announcementList").innerHTML='<div class="empty">Não foi possível carregar os avisos: '+esc(e.message)+'</div>';}
 }
-function groupInbox(messages){
- const groups=new Map();
- messages.forEach(m=>{
-  const code=String(m.student_code||"");
-  if(!code)return;
-  if(!groups.has(code))groups.set(code,{code,name:m.student_name||m.sender_name||"Aluno",turma:m.turma||"Turma não informada",latest:m,count:0,unread:0,messages:[]});
-  const g=groups.get(code);g.messages.push(m);g.count++;
-  if(m.sender_type==="student"&&!m.teacher_read_at)g.unread++;
-  if(m.created_at&&(!g.latest.created_at||String(m.created_at)>String(g.latest.created_at)))g.latest=m;
-  if(m.student_name)g.name=m.student_name;
- });
- return [...groups.values()].sort((a,b)=>String(b.latest.created_at||"").localeCompare(String(a.latest.created_at||"")));
-}
-function renderInboxList(){
- const list=document.getElementById("conversationList");list.innerHTML="";
- const groups=groupInbox(allInboxMessages);
- document.getElementById("statConversations").textContent=groups.length;
- document.getElementById("statUnread").textContent=groups.reduce((s,g)=>s+g.unread,0);
- if(!groups.length){list.innerHTML='<div class="empty">Nenhuma mensagem de aluno recebida. Quando um aluno escrever pela Área do Aluno, a conversa aparecerá aqui.</div>';return;}
- groups.forEach(g=>{
-  const btn=document.createElement("button");btn.type="button";btn.className="conversation-button"+(g.code===currentStudentCode?" active":"");
-  const name=document.createElement("div");name.className="conversation-name";
-  const label=document.createElement("span");label.textContent=g.name;
-  name.appendChild(label);
-  if(g.unread){const unread=document.createElement("span");unread.className="unread";unread.textContent=g.unread;name.appendChild(unread);}
-  const meta=document.createElement("div");meta.className="conversation-meta";meta.textContent=(g.turma||"Turma não informada")+" · "+g.count+" mensagem(ns)";
-  const snippet=document.createElement("div");snippet.className="conversation-preview";snippet.textContent=(g.latest.sender_type==="teacher"?"Você: ":"")+String(g.latest.body||"");
-  btn.append(name,meta,snippet);btn.addEventListener("click",()=>openThread(g.code,g.name,g.turma));list.appendChild(btn);
- });
-}
-async function loadInbox(){
- try{
-  const data=await api("/comms/teacher/inbox");
-  allInboxMessages=Array.isArray(data.messages)?data.messages:[];
-  renderInboxList();
-  if(currentStudentCode){
-   const g=groupInbox(allInboxMessages).find(x=>x.code===currentStudentCode);
-   if(g)await loadThreadData(currentStudentCode,g.name,g.turma,false);
-  }
- }catch(e){document.getElementById("conversationList").innerHTML='<div class="empty">Não foi possível consultar a caixa de entrada: '+esc(e.message)+'</div>';}
-}
-async function openThread(code,name,turma){
- currentStudentCode=code;currentStudentName=name||"Aluno";
- renderInboxList();
- try{
-  await api("/comms/teacher/read",{method:"POST",body:JSON.stringify({student_code:code})});
-  await loadThreadData(code,name,turma,true);
-  await reloadInboxOnly();
- }catch(e){setStatus(e.message,"error");}
-}
-async function reloadInboxOnly(){
- try{const d=await api("/comms/teacher/inbox");allInboxMessages=Array.isArray(d.messages)?d.messages:[];renderInboxList();}catch(_){}
-}
-async function loadThreadData(code,name,turma,showErrors){
- try{
-  const data=await api("/comms/teacher/thread?codigo="+encodeURIComponent(code));
-  currentStudentCode=code;currentStudentName=data.student?.nome||name||"Aluno";
-  document.getElementById("threadName").textContent=currentStudentName;
-  document.getElementById("threadSubtitle").textContent=(data.student?.turma||turma||"Turma não informada")+" · código "+code;
-  const target=document.getElementById("threadMessages");target.innerHTML="";
-  const messages=Array.isArray(data.messages)?data.messages:[];
-  if(!messages.length){target.innerHTML='<div class="empty">Ainda não há mensagens nesta conversa.</div>';}
-  messages.forEach(m=>{
-   const bubble=document.createElement("div");bubble.className="bubble "+(m.sender_type==="teacher"?"teacher":"student");
-   const title=document.createElement("div");title.className="bubble-title";title.textContent=(m.sender_type==="teacher"?"Você":"Aluno")+": "+String(m.title||"Mensagem");
-   const body=document.createElement("div");body.textContent=String(m.body||"");
-   const foot=document.createElement("div");foot.className="bubble-foot";foot.textContent=dateLabel(m.created_at);
-   bubble.append(title,body,foot);target.appendChild(bubble);
-  });
-  target.scrollTop=target.scrollHeight;
-  document.getElementById("replyForm").hidden=false;
- }catch(e){
-  if(showErrors)setStatus(e.message,"error");
-  document.getElementById("threadMessages").innerHTML='<div class="empty">Não foi possível carregar esta conversa: '+esc(e.message)+'</div>';
- }
-}
-async function sendReply(event){
- event.preventDefault();
- if(!currentStudentCode){setStatus("Selecione uma conversa antes de responder.","error");return;}
- const textarea=document.getElementById("replyBody"),body=textarea.value.trim();
- if(!body){textarea.focus();return;}
- const button=document.getElementById("replyButton");button.disabled=true;button.textContent="Enviando...";
- try{
-  await api("/comms/teacher/reply",{method:"POST",body:JSON.stringify({student_code:currentStudentCode,body})});
-  textarea.value="";document.getElementById("replyCount").textContent="0";
-  setStatus("Resposta enviada ao aluno.","success");
-  await loadThreadData(currentStudentCode,currentStudentName,"",false);
-  await reloadInboxOnly();
- }catch(e){setStatus(e.message,"error");}
- finally{button.disabled=false;button.textContent="Enviar resposta";}
-}
 document.getElementById("scope").addEventListener("change",updateScope);
-document.getElementById("targetClass").addEventListener("change",updateScope);
+
 document.getElementById("targetCode").addEventListener("input",()=>{validatedStudent=null;document.getElementById("studentValidation").textContent="Valide o código para confirmar o destinatário antes de publicar.";document.getElementById("studentValidation").style.color="var(--muted)";});
 document.getElementById("verifyStudent").addEventListener("click",validateStudent);
 document.getElementById("announcementForm").addEventListener("submit",publishAnnouncement);
 document.getElementById("announcementBody").addEventListener("input",e=>document.getElementById("announcementCount").textContent=e.target.value.length);
-document.getElementById("replyBody").addEventListener("input",e=>document.getElementById("replyCount").textContent=e.target.value.length);
+
 document.getElementById("refreshAnnouncements").addEventListener("click",loadAnnouncements);
-document.getElementById("refreshInbox").addEventListener("click",loadInbox);
-document.getElementById("replyForm").addEventListener("submit",sendReply);
+
+
 document.getElementById("logoutButton").addEventListener("click",async()=>{
  const t=getToken();
  try{await fetch(AUTH_API_URL+"/logout",{method:"POST",headers:t?{"Authorization":"Bearer "+t}:{},credentials:"include"});}catch(_){}
