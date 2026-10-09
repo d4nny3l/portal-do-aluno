@@ -123,7 +123,7 @@ function turmaRulePayload(turma, config) {
   };
 }
 
-async function ensureTurmaConfig(env) {
+async function ensureTurmaConfig(env, onlyTurma = "") {
   await env.DB.prepare(
     "CREATE TABLE IF NOT EXISTS turma_config (" +
     "turma TEXT PRIMARY KEY, " +
@@ -134,16 +134,22 @@ async function ensureTurmaConfig(env) {
     "atualizado_em TEXT DEFAULT CURRENT_TIMESTAMP)"
   ).run();
 
-  const turmas = await env.DB.prepare(
+  let query =
     "SELECT TRIM(turma) AS turma, " +
     "GROUP_CONCAT(bimestre1_avaliacoes, '|||') AS bimestre1, " +
     "GROUP_CONCAT(bimestre2_avaliacoes, '|||') AS bimestre2, " +
     "GROUP_CONCAT(bimestre3_avaliacoes, '|||') AS bimestre3, " +
     "GROUP_CONCAT(bimestre4_avaliacoes, '|||') AS bimestre4 " +
     "FROM alunos " +
-    "WHERE turma IS NOT NULL AND TRIM(turma) <> '' " +
-    "GROUP BY TRIM(turma)"
-  ).all();
+    "WHERE turma IS NOT NULL AND TRIM(turma) <> '' ";
+  const binds = [];
+  if (onlyTurma) {
+    query += "AND TRIM(turma) = ? ";
+    binds.push(onlyTurma);
+  }
+  query += "GROUP BY TRIM(turma)";
+  const statement = env.DB.prepare(query);
+  const turmas = await (binds.length ? statement.bind(...binds).all() : statement.all());
 
   for (const row of (turmas.results || [])) {
     const turma = String(row.turma || "").trim();
@@ -164,7 +170,7 @@ async function ensureTurmaConfig(env) {
 }
 
 async function turmaConfig(env, turma) {
-  await ensureTurmaConfig(env);
+  await ensureTurmaConfig(env, turma);
   return env.DB.prepare(
     "SELECT turma, rede, media_minima, modelo_avaliativo, atualizado_em " +
     "FROM turma_config WHERE turma = ? LIMIT 1"
