@@ -33,7 +33,7 @@ O código-fonte do Worker fica em `stats-worker/worker.js`. Salvar esse arquivo 
 
 O workflow também publicará automaticamente futuras alterações em `stats-worker/**` após os segredos serem configurados.
 
-**Segurança:** não coloque o token no código, em commits, no arquivo `wrangler.toml) ou em mensagens de conversa. Guarde-o somente nos segredos do GitHub. Os avisos e mensagens usam o banco D1 existente; nenhuma planilha ou dado escolar é copiado para um novo banco.
+**Segurança:** não coloque o token no código, em commits, no arquivo `wrangler.toml` ou em mensagens de conversa. Guarde-o somente nos segredos do GitHub. Os avisos e mensagens usam o banco D1 existente; nenhuma planilha ou dado escolar é copiado para um novo banco.
 
 ## Rotas de comunicação
 
