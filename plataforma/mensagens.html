@@ -1,0 +1,386 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#f5f5f7">
+<link rel="icon" type="image/svg+xml" href="../favicon.svg">
+<title>Comunicação — SALTA</title>
+<style>
+:root{--bg:#f5f5f7;--surface:rgba(255,255,255,.88);--ink:#202124;--muted:#747780;--line:#e4e5e8;--blue:#2871e8;--blue-soft:#edf4ff;--green:#16794e;--green-soft:#e9f8ef;--red:#b42335;--red-soft:#fff0f1;--radius:22px;--shadow:0 12px 34px rgba(27,35,60,.06)}
+*{box-sizing:border-box}
+body{margin:0;background:radial-gradient(circle at 50% -5%,#fff 0,#f5f5f7 58%,#eff0f3 100%);font-family:-apple-system,BlinkMacSystemFont,"SF Pro Display","SF Pro Text",Inter,Arial,sans-serif;color:var(--ink);-webkit-font-smoothing:antialiased}
+button,input,select,textarea{font:inherit}
+button{cursor:pointer}
+a{text-decoration:none;color:inherit}
+.wrap{width:min(1180px,calc(100% - 36px));margin:auto}
+.topbar{height:70px;display:flex;align-items:center;background:#ffffffc9;backdrop-filter:blur(18px);border-bottom:1px solid #00000009}
+.top-inner{display:flex;align-items:center;justify-content:space-between;gap:15px}
+.brand{display:flex;align-items:center;gap:11px;font-size:15px;font-weight:800}
+.mark{width:35px;height:35px;border-radius:11px;background:#15171b;color:white;display:grid;place-items:center;font-size:18px;font-weight:900}
+.top-actions{display:flex;align-items:center;gap:9px}
+.toplink{font-size:12px;color:var(--muted);padding:10px 12px;border-radius:10px}
+.toplink:hover{background:#f0f1f4;color:var(--ink)}
+main{padding:35px 0 55px}
+.page-head{display:flex;align-items:flex-end;justify-content:space-between;gap:20px;margin-bottom:24px}
+.eyebrow{font-size:10px;letter-spacing:.12em;text-transform:uppercase;color:var(--blue);font-weight:850;margin-bottom:10px}
+h1{font-size:clamp(30px,4vw,43px);letter-spacing:-1.8px;line-height:1.05;margin:0 0 10px}
+.lead{color:var(--muted);font-size:14px;line-height:1.55;margin:0;max-width:660px}
+.status{display:none;margin-bottom:18px;padding:12px 14px;border-radius:12px;font-size:12px;line-height:1.5}
+.status.show{display:block}.status.error{background:var(--red-soft);color:var(--red)}.status.success{background:var(--green-soft);color:var(--green)}.status.info{background:var(--blue-soft);color:#245ab5}
+.stats{display:grid;grid-template-columns:repeat(3,1fr);gap:14px;margin-bottom:20px}
+.stat{padding:19px;border:1px solid var(--line);border-radius:18px;background:var(--surface);box-shadow:var(--shadow)}
+.stat label{display:block;font-size:11px;color:var(--muted);margin-bottom:10px}
+.stat strong{font-size:27px;letter-spacing:-.8px}
+.stat small{display:block;color:var(--muted);font-size:10px;margin-top:5px}
+.grid{display:grid;grid-template-columns:minmax(320px,.86fr) minmax(0,1.35fr);gap:18px;align-items:start}
+.card{background:var(--surface);border:1px solid var(--line);border-radius:var(--radius);box-shadow:var(--shadow);overflow:hidden;min-width:0}
+.card-head{padding:23px 23px 16px;border-bottom:1px solid #00000007}
+.card-head h2{font-size:18px;letter-spacing:-.45px;margin:0 0 6px}
+.card-head p{font-size:12px;line-height:1.5;color:var(--muted);margin:0}
+.card-body{padding:22px}
+.field{margin-bottom:16px}
+.field label{display:block;font-size:12px;font-weight:800;margin-bottom:7px}
+.field input,.field select,.field textarea{width:100%;border:1px solid #dfe1e7;border-radius:12px;background:#fff;padding:12px 13px;color:var(--ink);outline:none;font-size:13px;transition:border-color .18s,box-shadow .18s}
+.field textarea{resize:vertical;min-height:120px;line-height:1.5}
+.field input:focus,.field select:focus,.field textarea:focus{border-color:var(--blue);box-shadow:0 0 0 3px #2871e81a}
+.help{font-size:10px;color:var(--muted);line-height:1.45;margin-top:6px}
+.target-box{padding:12px;border-radius:12px;background:#f3f6fd;border:1px solid #e4eaf8;margin-bottom:16px;font-size:11px;color:#4c5871;line-height:1.5}
+.primary,.secondary{width:100%;border:0;border-radius:12px;padding:13px 15px;font-size:12px;font-weight:850;transition:transform .15s,filter .15s}
+.primary{background:#17191e;color:#fff}.primary:hover{transform:translateY(-1px);filter:brightness(1.08)}
+.secondary{background:#f0f1f5;color:#363943}
+.inline-row{display:flex;gap:8px}.inline-row .field{flex:1}
+.verify-button{white-space:nowrap;border:1px solid var(--line);background:#fff;border-radius:10px;padding:0 12px;font-size:11px;font-weight:800;align-self:flex-start;height:42px}
+.verify-result{font-size:11px;margin-top:-8px;margin-bottom:14px;color:var(--green)}
+.section{margin-top:19px}
+.section-title{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:12px}
+.section-title h2{font-size:20px;letter-spacing:-.5px;margin:0}
+.section-title p{font-size:11px;color:var(--muted);margin:5px 0 0}
+.refresh{border:1px solid var(--line);background:#fff;border-radius:10px;padding:9px 11px;color:#555b68;font-size:11px;font-weight:800}
+.announcements{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}
+.announcement{border:1px solid var(--line);background:#fff;border-radius:16px;padding:17px;min-width:0}
+.announcement-top{display:flex;justify-content:space-between;gap:10px;align-items:center;margin-bottom:12px}
+.badge{display:inline-flex;align-items:center;gap:5px;border-radius:999px;padding:6px 8px;font-size:9px;font-weight:850;background:#edf4ff;color:#275db1}
+.badge.global{background:#efefff;color:#5b50c8}.badge.individual{background:#fff3de;color:#8e5a08}.badge.direct{background:#e9f8ef;color:#16794e}
+.date{font-size:10px;color:var(--muted)}
+.announcement h3{font-size:14px;line-height:1.4;margin:0 0 7px;overflow-wrap:anywhere}
+.announcement p{font-size:12px;color:#555b68;line-height:1.6;margin:0;white-space:pre-wrap;overflow-wrap:anywhere}
+.announcement-footer{font-size:10px;color:var(--muted);margin-top:13px;padding-top:11px;border-top:1px solid #f0f1f3}
+.empty{padding:28px 14px;border:1px dashed #d7dbe4;border-radius:15px;color:var(--muted);font-size:12px;line-height:1.6;text-align:center;background:#ffffff80}
+.inbox-layout{display:grid;grid-template-columns:minmax(230px,.7fr) minmax(0,1.3fr);gap:14px;align-items:start}
+.conversation-list{display:flex;flex-direction:column;gap:8px}
+.conversation-button{border:1px solid var(--line);background:#fff;border-radius:14px;padding:13px;text-align:left;color:var(--ink);width:100%;transition:background .15s,border-color .15s}
+.conversation-button.active{background:var(--blue-soft);border-color:#b7cdfa}
+.conversation-name{display:flex;align-items:center;justify-content:space-between;gap:8px;font-size:12px;font-weight:850;margin-bottom:5px}
+.unread{background:#db3445;color:#fff;border-radius:999px;min-width:19px;height:19px;display:inline-grid;place-items:center;padding:0 5px;font-size:10px}
+.conversation-meta,.conversation-preview{font-size:10px;color:var(--muted);line-height:1.45}
+.conversation-preview{margin-top:7px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.thread{border:1px solid var(--line);border-radius:16px;background:#fff;overflow:hidden;min-width:0}
+.thread-head{padding:15px 16px;border-bottom:1px solid #eff0f3}
+.thread-head strong{font-size:13px;display:block;margin-bottom:4px}
+.thread-head span{font-size:10px;color:var(--muted)}
+.thread-messages{padding:14px;max-height:390px;overflow-y:auto;display:flex;flex-direction:column;gap:10px;background:#fafbfe}
+.bubble{max-width:88%;padding:11px 12px;border-radius:13px;font-size:11px;line-height:1.55;white-space:pre-wrap;overflow-wrap:anywhere}
+.bubble.student{align-self:flex-start;background:#fff;border:1px solid var(--line);border-top-left-radius:4px}
+.bubble.teacher{align-self:flex-end;background:#eaf1ff;color:#263f75;border-top-right-radius:4px}
+.bubble-title{font-size:10px;font-weight:850;margin-bottom:5px}
+.bubble-foot{font-size:9px;color:var(--muted);margin-top:7px}
+.reply-form{padding:13px;border-top:1px solid var(--line);background:#fff}
+.reply-form textarea{width:100%;min-height:75px;resize:vertical;border:1px solid #dfe1e7;border-radius:10px;padding:11px;font-size:11px;line-height:1.5;outline:none}
+.reply-form textarea:focus{border-color:var(--blue);box-shadow:0 0 0 3px #2871e81a}
+.reply-actions{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-top:8px}
+.reply-actions small{font-size:10px;color:var(--muted)}
+.reply-actions button{border:0;background:var(--blue);color:white;border-radius:9px;padding:10px 13px;font-size:11px;font-weight:850}
+.locked{padding:24px;border:1px solid var(--line);border-radius:18px;background:#fff;line-height:1.55;font-size:13px}
+.locked a{color:var(--blue);font-weight:800}
+footer{padding:28px 0 34px;border-top:1px solid var(--line);font-size:11px;color:var(--muted)}
+footer .wrap{display:flex;justify-content:space-between;gap:12px}
+@media(max-width:860px){.grid{grid-template-columns:1fr}.inbox-layout{grid-template-columns:minmax(200px,.7fr) minmax(0,1.3fr)}}
+@media(max-width:620px){.wrap{width:calc(100% - 28px)}main{padding-top:25px}.page-head{align-items:flex-start;flex-direction:column}.stats{grid-template-columns:1fr 1fr}.stat{padding:15px}.stat strong{font-size:24px}.announcements{grid-template-columns:1fr}.inbox-layout{grid-template-columns:1fr}.conversation-list{max-height:230px;overflow-y:auto}.card-head,.card-body{padding:18px}footer .wrap{flex-direction:column}.toplink{font-size:11px;padding:8px}}
+[hidden]{display:none!important}
+</style>
+</head>
+<body>
+<header class="topbar"><div class="wrap top-inner">
+ <a class="brand" href="./"><span class="mark">S</span><span>SALTA <span style="font-weight:500;color:var(--muted)">/ Comunicação</span></span></a>
+ <div class="top-actions"><a class="toplink" href="./professor.html">← Área do Professor</a><button class="refresh" id="logoutButton" type="button">Sair</button></div>
+</div></header>
+<main class="wrap">
+ <section id="lockedPanel" class="locked" hidden>Esta central exige uma sessão válida de professor. <a href="./professor.html">Entre pela Área do Professor</a> e abra a central novamente.</section>
+ <div id="app" hidden>
+  <div class="page-head"><div><div class="eyebrow">AMBIENTE DO PROFESSOR</div><h1>Comunicação</h1><p class="lead">Publique avisos para todos, para uma turma ou para um aluno. Responda também às mensagens recebidas na Área do Aluno.</p></div></div>
+  <div class="status" id="globalStatus" role="status" aria-live="polite"></div>
+  <section class="stats">
+   <article class="stat"><label>Avisos publicados</label><strong id="statAnnouncements">0</strong><small>Globais, por turma ou individuais</small></article>
+   <article class="stat"><label>Conversas</label><strong id="statConversations">0</strong><small>Alunos que já enviaram mensagens</small></article>
+   <article class="stat"><label>Mensagens aguardando leitura</label><strong id="statUnread">0</strong><small>Mensagens enviadas pelos alunos</small></article>
+  </section>
+
+  <section class="grid">
+   <article class="card">
+    <div class="card-head"><h2>Publicar um aviso</h2><p>O aviso aparece na Área do Aluno de quem estiver dentro do público selecionado.</p></div>
+    <div class="card-body">
+     <form id="announcementForm">
+      <div class="field"><label for="scope">Público do aviso</label><select id="scope" required>
+       <option value="global">Todas as turmas — aviso global</option>
+       <option value="class">Uma turma específica</option>
+       <option value="individual">Um aluno específico</option>
+      </select></div>
+      <div class="field" id="classTarget"><label for="targetClass">Turma</label><select id="targetClass"><option value="">Carregando turmas...</option></select><div class="help">A lista é carregada do cadastro atual de alunos.</div></div>
+      <div class="field" id="individualTarget" hidden><label for="targetCode">Código do aluno</label><div class="inline-row"><input id="targetCode" type="text" maxlength="8" placeholder="Código individual" autocomplete="off"><button class="verify-button" type="button" id="verifyStudent">Validar</button></div><div class="help" id="studentValidation">Valide o código para confirmar o destinatário antes de publicar.</div></div>
+      <div class="field"><label for="announcementTitle">Título</label><input id="announcementTitle" type="text" maxlength="100" placeholder="Ex.: Revisão para a avaliação" required></div>
+      <div class="field"><label for="announcementBody">Mensagem</label><textarea id="announcementBody" maxlength="1500" placeholder="Escreva o aviso com clareza e objetividade..." required></textarea><div class="help"><span id="announcementCount">0</span>/1.500 caracteres. Avisos não aceitam respostas; use a caixa de mensagens para conversar.</div></div>
+      <div class="target-box" id="targetPreview">Este aviso será exibido a todos os alunos cadastrados na Área do Aluno.</div>
+      <button class="primary" id="publishButton" type="submit">Publicar aviso</button>
+     </form>
+    </div>
+   </article>
+
+   <article class="card">
+    <div class="card-head"><h2>Caixa de entrada</h2><p>Mensagens enviadas pelos alunos. Selecione uma conversa para ler e responder.</p></div>
+    <div class="card-body">
+     <div class="inbox-layout">
+      <div><div class="section-title"><h2 style="font-size:13px">Conversas</h2><button class="refresh" type="button" id="refreshInbox">Atualizar</button></div><div class="conversation-list" id="conversationList"><div class="empty">Carregando mensagens...</div></div></div>
+      <div class="thread" id="threadPanel">
+       <div class="thread-head"><strong id="threadName">Nenhuma conversa selecionada</strong><span id="threadSubtitle">As mensagens aparecerão aqui.</span></div>
+       <div class="thread-messages" id="threadMessages"><div class="empty">Escolha uma conversa à esquerda para visualizar as mensagens.</div></div>
+       <form class="reply-form" id="replyForm" hidden>
+        <textarea id="replyBody" maxlength="1200" placeholder="Escreva uma resposta para este aluno..." required></textarea>
+        <div class="reply-actions"><small><span id="replyCount">0</span>/1.200 caracteres</small><button id="replyButton" type="submit">Enviar resposta</button></div>
+       </form>
+      </div>
+     </div>
+    </div>
+   </article>
+  </section>
+
+  <section class="section">
+   <div class="section-title"><div><h2>Avisos publicados</h2><p>Os mais recentes aparecem primeiro.</p></div><button class="refresh" type="button" id="refreshAnnouncements">Atualizar avisos</button></div>
+   <div class="announcements" id="announcementList"><div class="empty">Carregando avisos...</div></div>
+  </section>
+ </div>
+</main>
+<footer><div class="wrap"><span><strong>SALTA</strong> · Central de comunicação</span><span>Mensagens de alunos limitadas a 5 envios por hora por código.</span></div></footer>
+<script>
+const AUTH_API_URL="https://salta-auth.dannyel-moises.workers.dev";
+const COMMS_API_URL="https://salta-stats.dannyel-moises.workers.dev";
+const SESSION_KEY="saltaProfessorSession";
+const OLD_STORE=window.sessionStorage;
+let token="";
+let allInboxMessages=[];
+let currentStudentCode="";
+let currentStudentName="";
+let validatedStudent=null;
+
+function getToken(){return localStorage.getItem(SESSION_KEY)||OLD_STORE.getItem(SESSION_KEY)||"";}
+function setStatus(message,type){
+ const el=document.getElementById("globalStatus");el.textContent=message;el.className="status show "+(type||"info");
+}
+function esc(value){return String(value===null||value===undefined?"":value).replace(/[&<>"']/g,ch=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[ch]));}
+function dateLabel(value){
+ if(!value)return "Data não informada";
+ const date=new Date(String(value).replace(" ","T")+"Z");
+ return Number.isNaN(date.getTime())?String(value):date.toLocaleString("pt-BR",{dateStyle:"short",timeStyle:"short"});
+}
+async function api(path,options={}){
+ const headers={"Authorization":"Bearer "+token,...(options.headers||{})};
+ if(options.body)headers["Content-Type"]="application/json";
+ const response=await fetch(COMMS_API_URL+path,{...options,headers,cache:"no-store"});
+ const data=await response.json().catch(()=>({}));
+ if(!response.ok)throw new Error(data.error||"Não foi possível concluir a operação.");
+ return data;
+}
+async function checkSession(){
+ token=getToken();
+ if(!token){document.getElementById("lockedPanel").hidden=false;return;}
+ try{
+  const r=await fetch(AUTH_API_URL+"/session",{headers:{"Authorization":"Bearer "+token},credentials:"include",cache:"no-store"});
+  const d=await r.json().catch(()=>({}));
+  if(!r.ok||!d.authenticated){localStorage.removeItem(SESSION_KEY);OLD_STORE.removeItem(SESSION_KEY);document.getElementById("lockedPanel").hidden=false;return;}
+  document.getElementById("app").hidden=false;
+  await Promise.all([loadClasses(),loadAnnouncements(),loadInbox()]);
+ }catch(_){document.getElementById("lockedPanel").hidden=false;}
+}
+async function loadClasses(){
+ try{
+  const data=await api("/admin/turmas");
+  const select=document.getElementById("targetClass");
+  select.innerHTML="";
+  const list=Array.isArray(data.turmas)?data.turmas:[];
+  if(!list.length){select.innerHTML='<option value="">Nenhuma turma disponível</option>';return;}
+  list.forEach(turma=>{const o=document.createElement("option");o.value=turma;o.textContent=turma;select.appendChild(o);});
+ }catch(e){document.getElementById("targetClass").innerHTML='<option value="">Falha ao carregar turmas</option>';setStatus("Não consegui carregar a lista de turmas: "+e.message,"error");}
+}
+function updateScope(){
+ const scope=document.getElementById("scope").value;
+ document.getElementById("classTarget").hidden=scope!=="class";
+ document.getElementById("individualTarget").hidden=scope!=="individual";
+ document.getElementById("targetPreview").textContent=scope==="global"?"Este aviso será exibido a todos os alunos cadastrados na Área do Aluno.":scope==="class"?"Este aviso será exibido apenas aos alunos da turma selecionada.":"Este aviso será exibido apenas ao aluno identificado pelo código validado.";
+}
+async function validateStudent(){
+ const code=document.getElementById("targetCode").value.trim().toUpperCase();
+ const result=document.getElementById("studentValidation");
+ validatedStudent=null;
+ if(!code){result.textContent="Digite um código para validar.";result.style.color="var(--red)";return;}
+ try{
+  const data=await api("/admin/aluno?codigo="+encodeURIComponent(code));
+  validatedStudent=data;
+  result.textContent="Destinatário confirmado: "+data.nome+" · Turma "+data.turma;
+  result.style.color="var(--green)";
+ }catch(e){result.textContent=e.message;result.style.color="var(--red)";}
+}
+async function publishAnnouncement(event){
+ event.preventDefault();
+ const scope=document.getElementById("scope").value;
+ const title=document.getElementById("announcementTitle").value.trim();
+ const body=document.getElementById("announcementBody").value.trim();
+ const payload={scope,title,body};
+ if(scope==="class")payload.turma=document.getElementById("targetClass").value;
+ if(scope==="individual"){
+  const code=document.getElementById("targetCode").value.trim().toUpperCase();
+  if(!validatedStudent||validatedStudent.codigo!==code){setStatus("Valide o código do destinatário antes de publicar.","error");return;}
+  payload.student_code=code;
+ }
+ const button=document.getElementById("publishButton");
+ button.disabled=true;button.textContent="Publicando...";
+ try{
+  await api("/comms/teacher/announcement",{method:"POST",body:JSON.stringify(payload)});
+  document.getElementById("announcementTitle").value="";
+  document.getElementById("announcementBody").value="";
+  document.getElementById("announcementCount").textContent="0";
+  setStatus("Aviso publicado com sucesso.","success");
+  await loadAnnouncements();
+ }catch(e){setStatus(e.message,"error");}
+ finally{button.disabled=false;button.textContent="Publicar aviso";}
+}
+async function loadAnnouncements(){
+ try{
+  const data=await api("/comms/teacher/announcements");
+  const list=Array.isArray(data.announcements)?data.announcements:[];
+  document.getElementById("statAnnouncements").textContent=list.length;
+  const target=document.getElementById("announcementList");target.innerHTML="";
+  if(!list.length){target.innerHTML='<div class="empty">Nenhum aviso publicado ainda. O primeiro pode ser um lembrete de prova, atividade ou evento escolar.</div>';return;}
+  list.forEach(item=>{
+   const article=document.createElement("article");article.className="announcement";
+   const top=document.createElement("div");top.className="announcement-top";
+   const badge=document.createElement("span");badge.className="badge "+(item.scope==="global"?"global":item.scope==="individual"?"individual":"");badge.textContent=item.scope==="global"?"Aviso global":item.scope==="class"?"Por turma":"Individual";
+   const date=document.createElement("span");date.className="date";date.textContent=dateLabel(item.created_at);top.append(badge,date);
+   const title=document.createElement("h3");title.textContent=item.title;
+   const body=document.createElement("p");body.textContent=item.body;
+   const foot=document.createElement("div");foot.className="announcement-footer";
+   foot.textContent=item.scope==="global"?"Destinatários: todas as turmas":item.scope==="class"?"Turma: "+(item.turma||"—"):"Aluno: "+(item.student_code||"—");
+   article.append(top,title,body,foot);target.appendChild(article);
+  });
+ }catch(e){document.getElementById("announcementList").innerHTML='<div class="empty">Não foi possível carregar os avisos: '+esc(e.message)+'</div>';}
+}
+function groupInbox(messages){
+ const groups=new Map();
+ messages.forEach(m=>{
+  const code=String(m.student_code||"");
+  if(!code)return;
+  if(!groups.has(code))groups.set(code,{code,name:m.student_name||m.sender_name||"Aluno",turma:m.turma||"Turma não informada",latest:m,count:0,unread:0,messages:[]});
+  const g=groups.get(code);g.messages.push(m);g.count++;
+  if(m.sender_type==="student"&&!m.teacher_read_at)g.unread++;
+  if(m.created_at&&(!g.latest.created_at||String(m.created_at)>String(g.latest.created_at)))g.latest=m;
+  if(m.student_name)g.name=m.student_name;
+ });
+ return [...groups.values()].sort((a,b)=>String(b.latest.created_at||"").localeCompare(String(a.latest.created_at||"")));
+}
+function renderInboxList(){
+ const list=document.getElementById("conversationList");list.innerHTML="";
+ const groups=groupInbox(allInboxMessages);
+ document.getElementById("statConversations").textContent=groups.length;
+ document.getElementById("statUnread").textContent=groups.reduce((s,g)=>s+g.unread,0);
+ if(!groups.length){list.innerHTML='<div class="empty">Nenhuma mensagem de aluno recebida. Quando um aluno escrever pela Área do Aluno, a conversa aparecerá aqui.</div>';return;}
+ groups.forEach(g=>{
+  const btn=document.createElement("button");btn.type="button";btn.className="conversation-button"+(g.code===currentStudentCode?" active":"");
+  const name=document.createElement("div");name.className="conversation-name";
+  const label=document.createElement("span");label.textContent=g.name;
+  name.appendChild(label);
+  if(g.unread){const unread=document.createElement("span");unread.className="unread";unread.textContent=g.unread;name.appendChild(unread);}
+  const meta=document.createElement("div");meta.className="conversation-meta";meta.textContent=(g.turma||"Turma não informada")+" · "+g.count+" mensagem(ns)";
+  const snippet=document.createElement("div");snippet.className="conversation-preview";snippet.textContent=(g.latest.sender_type==="teacher"?"Você: ":"")+String(g.latest.body||"");
+  btn.append(name,meta,snippet);btn.addEventListener("click",()=>openThread(g.code,g.name,g.turma));list.appendChild(btn);
+ });
+}
+async function loadInbox(){
+ try{
+  const data=await api("/comms/teacher/inbox");
+  allInboxMessages=Array.isArray(data.messages)?data.messages:[];
+  renderInboxList();
+  if(currentStudentCode){
+   const g=groupInbox(allInboxMessages).find(x=>x.code===currentStudentCode);
+   if(g)await loadThreadData(currentStudentCode,g.name,g.turma,false);
+  }
+ }catch(e){document.getElementById("conversationList").innerHTML='<div class="empty">Não foi possível consultar a caixa de entrada: '+esc(e.message)+'</div>';}
+}
+async function openThread(code,name,turma){
+ currentStudentCode=code;currentStudentName=name||"Aluno";
+ renderInboxList();
+ try{
+  await api("/comms/teacher/read",{method:"POST",body:JSON.stringify({student_code:code})});
+  await loadThreadData(code,name,turma,true);
+  await reloadInboxOnly();
+ }catch(e){setStatus(e.message,"error");}
+}
+async function reloadInboxOnly(){
+ try{const d=await api("/comms/teacher/inbox");allInboxMessages=Array.isArray(d.messages)?d.messages:[];renderInboxList();}catch(_){}
+}
+async function loadThreadData(code,name,turma,showErrors){
+ try{
+  const data=await api("/comms/teacher/thread?codigo="+encodeURIComponent(code));
+  currentStudentCode=code;currentStudentName=data.student?.nome||name||"Aluno";
+  document.getElementById("threadName").textContent=currentStudentName;
+  document.getElementById("threadSubtitle").textContent=(data.student?.turma||turma||"Turma não informada")+" · código "+code;
+  const target=document.getElementById("threadMessages");target.innerHTML="";
+  const messages=Array.isArray(data.messages)?data.messages:[];
+  if(!messages.length){target.innerHTML='<div class="empty">Ainda não há mensagens nesta conversa.</div>';}
+  messages.forEach(m=>{
+   const bubble=document.createElement("div");bubble.className="bubble "+(m.sender_type==="teacher"?"teacher":"student");
+   const title=document.createElement("div");title.className="bubble-title";title.textContent=(m.sender_type==="teacher"?"Você":"Aluno")+": "+String(m.title||"Mensagem");
+   const body=document.createElement("div");body.textContent=String(m.body||"");
+   const foot=document.createElement("div");foot.className="bubble-foot";foot.textContent=dateLabel(m.created_at);
+   bubble.append(title,body,foot);target.appendChild(bubble);
+  });
+  target.scrollTop=target.scrollHeight;
+  document.getElementById("replyForm").hidden=false;
+ }catch(e){
+  if(showErrors)setStatus(e.message,"error");
+  document.getElementById("threadMessages").innerHTML='<div class="empty">Não foi possível carregar esta conversa: '+esc(e.message)+'</div>';
+ }
+}
+async function sendReply(event){
+ event.preventDefault();
+ if(!currentStudentCode){setStatus("Selecione uma conversa antes de responder.","error");return;}
+ const textarea=document.getElementById("replyBody"),body=textarea.value.trim();
+ if(!body){textarea.focus();return;}
+ const button=document.getElementById("replyButton");button.disabled=true;button.textContent="Enviando...";
+ try{
+  await api("/comms/teacher/reply",{method:"POST",body:JSON.stringify({student_code:currentStudentCode,body})});
+  textarea.value="";document.getElementById("replyCount").textContent="0";
+  setStatus("Resposta enviada ao aluno.","success");
+  await loadThreadData(currentStudentCode,currentStudentName,"",false);
+  await reloadInboxOnly();
+ }catch(e){setStatus(e.message,"error");}
+ finally{button.disabled=false;button.textContent="Enviar resposta";}
+}
+document.getElementById("scope").addEventListener("change",updateScope);
+document.getElementById("targetClass").addEventListener("change",updateScope);
+document.getElementById("targetCode").addEventListener("input",()=>{validatedStudent=null;document.getElementById("studentValidation").textContent="Valide o código para confirmar o destinatário antes de publicar.";document.getElementById("studentValidation").style.color="var(--muted)";});
+document.getElementById("verifyStudent").addEventListener("click",validateStudent);
+document.getElementById("announcementForm").addEventListener("submit",publishAnnouncement);
+document.getElementById("announcementBody").addEventListener("input",e=>document.getElementById("announcementCount").textContent=e.target.value.length);
+document.getElementById("replyBody").addEventListener("input",e=>document.getElementById("replyCount").textContent=e.target.value.length);
+document.getElementById("refreshAnnouncements").addEventListener("click",loadAnnouncements);
+document.getElementById("refreshInbox").addEventListener("click",loadInbox);
+document.getElementById("replyForm").addEventListener("submit",sendReply);
+document.getElementById("logoutButton").addEventListener("click",async()=>{
+ const t=getToken();
+ try{await fetch(AUTH_API_URL+"/logout",{method:"POST",headers:t?{"Authorization":"Bearer "+t}:{},credentials:"include"});}catch(_){}
+ localStorage.removeItem(SESSION_KEY);OLD_STORE.removeItem(SESSION_KEY);location.href="./professor.html";
+});
+updateScope();
+checkSession();
+</script>
+</body>
+</html>
