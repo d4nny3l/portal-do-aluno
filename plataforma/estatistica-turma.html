@@ -189,7 +189,7 @@ body .salta-grid{position:fixed;inset:0;pointer-events:none;z-index:0;background
 
 <script>
 (() => {
-  const AUTH="https://salta-auth.dannyel-moises.workers.dev";
+  const AUTH="https://salta-stats.dannyel-moises.workers.dev/auth";
   const API="https://salta-stats.dannyel-moises.workers.dev";
   const KEY="saltaProfessorSession";
   const turmaSelect=document.getElementById("turma");
@@ -203,25 +203,23 @@ body .salta-grid{position:fixed;inset:0;pointer-events:none;z-index:0;background
   let globalStudentRows=[];
   let currentReportClass="";
 
-  function token(){return localStorage.getItem(KEY)||sessionStorage.getItem(KEY)||""}
+  localStorage.removeItem(KEY);sessionStorage.removeItem(KEY);
   function fmt(v){if(v===null||v===undefined||v==="")return "—";const n=Number(v);return Number.isFinite(n)?n.toFixed(1).replace(".",","):String(v)}
   function esc(v){return String(v??"").replace(/[&<>"']/g,ch=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#039;"}[ch]))}
   function showStatus(msg,error=false){statusEl.textContent=msg;statusEl.className="status"+(error?" error":"");statusEl.style.display="block"}
   function hideStatus(){statusEl.style.display="none"}
 
   async function authCheck(){
-    const t=token();
-    if(!t){location.replace("./professor.html");return false}
     try{
-      const r=await fetch(AUTH+"/session",{headers:{Authorization:"Bearer "+t},credentials:"include",cache:"no-store"});
+      const r=await fetch(AUTH+"/session",{credentials:"include",cache:"no-store"});
       const d=await r.json().catch(()=>({}));
-      if(!r.ok||!d.authenticated){localStorage.removeItem(KEY);sessionStorage.removeItem(KEY);location.replace("./professor.html");return false}
+      if(!r.ok||!d.authenticated){location.replace("./professor.html");return false}
       document.body.classList.add("auth-ready");return true;
     }catch{location.replace("./professor.html");return false}
   }
 
   async function api(path){
-    const r=await fetch(API+path,{headers:{Authorization:"Bearer "+token()},credentials:"omit",cache:"no-store"});
+    const r=await fetch(API+path,{credentials:"include",cache:"no-store"});
     const d=await r.json().catch(()=>({}));
     if(!r.ok)throw new Error((d.error||"Falha HTTP "+r.status)+" [HTTP "+r.status+"]");
     return d;
