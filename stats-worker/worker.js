@@ -659,11 +659,40 @@ async function handleCommsRequest(request, env, url) {
     if (path.startsWith("/comms/teacher/")) {
       if (path === "/comms/teacher/announcements" && method === "GET") {
         const result = await env.DB.prepare(
-          "SELECT id, scope, turma, student_code, sender_name, title, body, created_at, active " +
-          "FROM salta_comms_messages WHERE kind = 'announcement' AND scope IN ('global', 'individual', 'class') " +
-          "ORDER BY datetime(created_at) DESC LIMIT 100"
+          "SELECT m.id, m.scope, m.turma, m.student_code, m.sender_name, m.title, m.body, m.created_at, m.active, " +
+          "(SELECT COUNT(*) FROM salta_comms_announcement_reads r WHERE r.announcement_id = m.id) AS read_count, " +
+          "CASE m.scope " +
+          "WHEN 'individual' THEN 1 " +
+          "WHEN 'class' THEN (SELECT COUNT(*) FROM alunos a WHERE TRIM(a.turma) = TRIM(m.turma)) " +
+          "ELSE (SELECT COUNT(*) FROM alunos) END AS recipient_count " +
+          "FROM salta_comms_messages m WHERE m.kind = 'announcement' AND m.scope IN ('global', 'individual', 'class') " +
+          "ORDER BY datetime(m.created_at) DESC LIMIT 100"
         ).all();
         return json({ announcements: result.results || [] }, request);
+      }
+
+      if (path === "/comms/teacher/announcement-readers" && method === "GET") {
+        const id = Number(url.searchParams.get("id"));
+        if (!Number.isInteger(id) || id < 1) {
+          return json({ error: "Informe um aviso válido." }, request, 400);
+        }
+
+        const announcement = await env.DB.prepare(
+          "SELECT id FROM salta_comms_messages " +
+          "WHERE id = ? AND kind = 'announcement' AND scope IN ('global', 'individual', 'class') LIMIT 1"
+        ).bind(id).first();
+        if (!announcement) return json({ error: "Aviso não encontrado." }, request, 404);
+
+        const result = await env.DB.prepare(
+          "SELECT COALESCE(NULLIF(TRIM(a.nome), ''), 'Aluno não identificado') AS nome, " +
+          "COALESCE(TRIM(a.turma), '') AS turma, r.read_at " +
+          "FROM salta_comms_announcement_reads r " +
+          "LEFT JOIN alunos a ON UPPER(TRIM(a.codigo)) = UPPER(TRIM(r.student_code)) " +
+          "WHERE r.announcement_id = ? " +
+          "ORDER BY datetime(r.read_at) DESC, a.nome COLLATE NOCASE"
+        ).bind(id).all();
+
+        return json({ id, readers: result.results || [] }, request);
       }
 
       if (path === "/comms/teacher/announcement-delete" && method === "POST") {
