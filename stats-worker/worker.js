@@ -43,37 +43,28 @@ async function proxyAuth(request, env, url) {
   return new Response(response.body, { status: response.status, statusText: response.statusText, headers });
 }
 
-function cookieToken(request) {
-  const raw = request.headers.get("Cookie") || "";
-  for (const part of raw.split(";")) {
-    const item = part.trim();
-    if (item.startsWith("__Host-salta_session=")) {
-      try { return decodeURIComponent(item.slice("__Host-salta_session=".length)); } catch { return ""; }
-    }
-    if (item.startsWith("salta_session=")) {
-      try { return decodeURIComponent(item.slice("salta_session=".length)); } catch { return ""; }
-    }
-  }
-  return "";
-}
-
 async function authenticated(request, env) {
-  const header = request.headers.get("Authorization") || "";
-  const bearer = header.startsWith("Bearer ") ? header.slice(7).trim() : "";
-  const cookie = cookieToken(request);
-  const token = bearer || cookie;
-  if (!token) return false;
+  const authorization = request.headers.get("Authorization") || "";
+  const bearer = authorization.startsWith("Bearer ") ? authorization.slice(7).trim() : "";
+  const cookie = request.headers.get("Cookie") || "";
+  if (!bearer && !cookie) return false;
+
+  // Validate browser sessions with the original HttpOnly cookie. The Auth Worker
+  // parses both the current __Host cookie and the legacy cookie itself.
+  const authHeaders = new Headers();
+  if (bearer) authHeaders.set("Authorization", "Bearer " + bearer);
+  else authHeaders.set("Cookie", cookie);
 
   const authRequest = new Request("https://salta-auth/session", {
     method: "GET",
-    headers: { Authorization: "Bearer " + token }
+    headers: authHeaders
   });
 
   const response = env.AUTH
     ? await env.AUTH.fetch(authRequest)
     : await fetch(AUTH_API_URL + "/session", {
         method: "GET",
-        headers: { Authorization: "Bearer " + token },
+        headers: authHeaders,
         cache: "no-store"
       });
 
@@ -81,7 +72,6 @@ async function authenticated(request, env) {
   const data = await response.json().catch(() => ({}));
   return data.authenticated === true;
 }
-
 function parseArray(value) {
   if (Array.isArray(value)) return value;
   if (typeof value !== "string" || !value.trim()) return [];
