@@ -53,16 +53,13 @@ body .salta-grid{position:fixed;inset:0;pointer-events:none;z-index:0;background
 
 <script>
 (() => {
-  const AUTH = "https://salta-auth.dannyel-moises.workers.dev";
+  const AUTH = "https://salta-stats.dannyel-moises.workers.dev/auth";
   const KEY = "saltaProfessorSession";
   const API = "https://salta-stats.dannyel-moises.workers.dev";
+  localStorage.removeItem(KEY);sessionStorage.removeItem(KEY);
 
   let alunos = [];
   let alunoPerfilAtual = null;
-
-  function obterToken() {
-    return localStorage.getItem(KEY) || sessionStorage.getItem(KEY) || "";
-  }
 
   function fmt(v) {
     if (v === null || v === undefined || v === "") return "—";
@@ -102,24 +99,15 @@ body .salta-grid{position:fixed;inset:0;pointer-events:none;z-index:0;background
   }
 
   async function authCheck() {
-    const token = obterToken();
-    if (!token) {
-      location.replace("./professor.html");
-      return false;
-    }
-
     try {
       const response = await fetch(AUTH + "/session", {
         method: "GET",
-        headers: { Authorization: "Bearer " + token },
         credentials: "include",
         cache: "no-store"
       });
       const data = await response.json().catch(() => ({}));
 
       if (!response.ok || !data.authenticated) {
-        localStorage.removeItem(KEY);
-        sessionStorage.removeItem(KEY);
         location.replace("./professor.html");
         return false;
       }
@@ -133,13 +121,9 @@ body .salta-grid{position:fixed;inset:0;pointer-events:none;z-index:0;background
   }
 
   async function api(pathname) {
-    const token = obterToken();
-    if (!token) throw new Error("Sessão do professor não encontrada.");
-
     const response = await fetch(API + pathname, {
       method: "GET",
-      headers: { Authorization: "Bearer " + token },
-      credentials: "omit",
+      credentials: "include",
       cache: "no-store"
     });
 

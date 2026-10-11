@@ -91,10 +91,8 @@ body::before{
 </section>
 </div></main>
 <script>
-const AUTH_API_URL = "https://salta-auth.dannyel-moises.workers.dev";
+const AUTH_API_URL = "https://salta-stats.dannyel-moises.workers.dev/auth";
 const SESSION_KEY = "saltaProfessorSession";
-const SESSION_STORE = window.localStorage;
-const OLD_STORE = window.sessionStorage;
 
 function mostrarPainel(){
     document.getElementById("loginBox").style.display="none";
@@ -109,42 +107,16 @@ function mostrarLogin(mensagem=""){
     erro.style.display=mensagem ? "block" : "none";
 }
 
-function salvarToken(token){
-    if(token) SESSION_STORE.setItem(SESSION_KEY,token);
-}
-
-function obterToken(){
-    return SESSION_STORE.getItem(SESSION_KEY) || OLD_STORE.getItem(SESSION_KEY) || "";
-}
+function limparTokensLegados(){ localStorage.removeItem(SESSION_KEY); sessionStorage.removeItem(SESSION_KEY); }
 
 async function verificarSessao(){
-    const token=obterToken();
-    const headers={};
-    if(token) headers.Authorization="Bearer "+token;
-
+    limparTokensLegados();
     try{
-        const resposta=await fetch(AUTH_API_URL+"/session",{
-            method:"GET",
-            headers,
-            credentials:"include"
-        });
-
-        if(!resposta.ok){
-            SESSION_STORE.removeItem(SESSION_KEY); OLD_STORE.removeItem(SESSION_KEY);
-            mostrarLogin();
-            return;
-        }
-
-        const dados=await resposta.json();
-
-        if(dados.authenticated){
-            mostrarPainel();
-        }else{
-            SESSION_STORE.removeItem(SESSION_KEY); OLD_STORE.removeItem(SESSION_KEY);
-            mostrarLogin();
-        }
+        const resposta=await fetch(AUTH_API_URL+"/session",{method:"GET",credentials:"include",cache:"no-store"});
+        const dados=await resposta.json().catch(()=>({}));
+        if(resposta.ok&&dados.authenticated) mostrarPainel();
+        else mostrarLogin();
     }catch(e){
-        // Não libera o ambiente quando o servidor de autenticação não está disponível.
         mostrarLogin("Não foi possível verificar a sessão. Tente novamente.");
     }
 }
@@ -181,7 +153,7 @@ document.getElementById("loginForm").addEventListener("submit",async event=>{
             return;
         }
 
-        salvarToken(dados.token);
+        limparTokensLegados();
         mostrarPainel();
     }catch(e){
         mostrarLogin("Não foi possível conectar ao servidor de autenticação.");
@@ -192,21 +164,12 @@ document.getElementById("loginForm").addEventListener("submit",async event=>{
 });
 
 document.getElementById("sair").addEventListener("click",async()=>{
-    const token=obterToken();
     try{
-        const headers={};
-        if(token) headers.Authorization="Bearer "+token;
-        await fetch(AUTH_API_URL+"/logout",{
-            method:"POST",
-            headers,
-            credentials:"include"
-        });
+        await fetch(AUTH_API_URL+"/logout",{method:"POST",credentials:"include"});
     }catch(e){
-        // Mesmo que a rede falhe, encerramos a sessão local.
+        // Mesmo que a rede falhe, encerramos a sessão na interface.
     }
-
-    SESSION_STORE.removeItem(SESSION_KEY);
-    OLD_STORE.removeItem(SESSION_KEY);
+    limparTokensLegados();
     location.reload();
 });
 

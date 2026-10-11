@@ -1,5 +1,5 @@
 const AUTH_API_URL = "https://salta-auth.dannyel-moises.workers.dev";
-const ALLOWED_ORIGIN = "https://d4nny3l.github.io";
+const ALLOWED_ORIGINS = new Set(["https://d4nny3l.github.io", "http://localhost:5500", "http://127.0.0.1:5500"]);
 
 function corsHeaders(request) {
   const origin = request.headers.get("Origin") || "";
@@ -9,7 +9,7 @@ function corsHeaders(request) {
     "Access-Control-Max-Age": "86400",
     "Vary": "Origin"
   };
-  if (origin === ALLOWED_ORIGIN) headers["Access-Control-Allow-Origin"] = origin;
+  if (ALLOWED_ORIGINS.has(origin)) { headers["Access-Control-Allow-Origin"] = origin; headers["Access-Control-Allow-Credentials"] = "true"; }
   return headers;
 }
 
@@ -24,11 +24,35 @@ function json(data, request, status = 200) {
   });
 }
 
+async function proxyAuth(request, env, url) {
+  const route = url.pathname.slice("/auth".length);
+  if (!["/login", "/session", "/logout"].includes(route)) {
+    return json({ ok: false, error: "Rota de autenticação não encontrada." }, request, 404);
+  }
+  const origin = request.headers.get("Origin") || "";
+  if (request.method !== "GET" && !ALLOWED_ORIGINS.has(origin)) {
+    return json({ ok: false, error: "Origem não autorizada." }, request, 403);
+  }
+  if (!env.AUTH) return json({ ok: false, error: "Serviço de autenticação indisponível." }, request, 503);
+  const target = new URL("https://salta-auth" + route);
+  const upstream = new Request(target, request);
+  const response = await env.AUTH.fetch(upstream);
+  const headers = new Headers(response.headers);
+  for (const [key, value] of Object.entries(corsHeaders(request))) headers.set(key, value);
+  headers.set("Cache-Control", "no-store");
+  return new Response(response.body, { status: response.status, statusText: response.statusText, headers });
+}
+
 function cookieToken(request) {
   const raw = request.headers.get("Cookie") || "";
   for (const part of raw.split(";")) {
     const item = part.trim();
-    if (item.startsWith("salta_session=")) return decodeURIComponent(item.slice("salta_session=".length));
+    if (item.startsWith("__Host-salta_session=")) {
+      try { return decodeURIComponent(item.slice("__Host-salta_session=".length)); } catch { return ""; }
+    }
+    if (item.startsWith("salta_session=")) {
+      try { return decodeURIComponent(item.slice("salta_session=".length)); } catch { return ""; }
+    }
   }
   return "";
 }
@@ -695,6 +719,41 @@ async function handleCommsRequest(request, env, url) {
         return json({ id, readers: result.results || [] }, request);
       }
 
+      if (path === "/comms/teacher/announcement-backup" && method === "GET") {
+        const result = await env.DB.prepare(
+          "SELECT m.id, m.scope, m.turma, m.student_code, m.sender_type, m.sender_name, " +
+          "m.title, m.body, m.created_at, m.active, a.nome AS reader_name, " +
+          "TRIM(a.turma) AS reader_class, r.read_at " +
+          "FROM salta_comms_messages m " +
+          "LEFT JOIN salta_comms_announcement_reads r ON r.announcement_id = m.id " +
+          "LEFT JOIN alunos a ON UPPER(TRIM(a.codigo)) = UPPER(TRIM(r.student_code)) " +
+          "WHERE m.kind = 'announcement' ORDER BY m.id DESC, datetime(r.read_at) ASC"
+        ).all();
+        const announcements = new Map();
+        for (const row of result.results || []) {
+          let item = announcements.get(row.id);
+          if (!item) {
+            item = {
+              id: row.id, scope: row.scope, turma: row.turma, student_code: row.student_code,
+              sender_type: row.sender_type, sender_name: row.sender_name, title: row.title,
+              body: row.body, created_at: row.created_at, active: row.active, readers: []
+            };
+            announcements.set(row.id, item);
+          }
+          if (row.read_at) item.readers.push({
+            nome: row.reader_name || "Aluno não identificado",
+            turma: row.reader_class || "",
+            read_at: row.read_at
+          });
+        }
+        return json({
+          format: "salta-announcement-backup-v1",
+          exported_at: new Date().toISOString(),
+          total: announcements.size,
+          announcements: [...announcements.values()]
+        }, request);
+      }
+
       if (path === "/comms/teacher/announcement-delete" && method === "POST") {
         const payload = await request.json().catch(() => null);
         const id = Number(payload?.id);
@@ -890,6 +949,9 @@ export default {
     }
 
     const url = new URL(request.url);
+    if (url.pathname.startsWith("/auth/")) {
+      return proxyAuth(request, env, url);
+    }
     if (url.pathname.startsWith("/comms/")) {
       return handleCommsRequest(request, env, url);
     }
