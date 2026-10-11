@@ -104,16 +104,16 @@ footer .wrap{display:flex;justify-content:space-between;gap:12px}
     <div class="field"><label for="announcementBody">Aviso</label><textarea id="announcementBody" maxlength="1500" placeholder="Escreva o comunicado com clareza..." required></textarea><div class="help"><span id="announcementCount">0</span>/1.500 caracteres.</div></div>
     <div class="target-box" id="targetPreview">Este aviso será exibido a todos os alunos cadastrados na Área do Aluno.</div><button class="primary" id="publishButton" type="submit">Publicar aviso</button>
    </form></div></article></section>
-   <section class="section"><div class="section-title"><div><h2>Histórico de avisos</h2><p>Ocultar um aviso o remove da Área do Aluno; você também pode apagá-lo definitivamente ou limpar todo o histórico.</p></div><div class="history-actions"><button class="refresh" type="button" id="refreshAnnouncements">Atualizar avisos</button><button class="delete-history" type="button" id="deleteAnnouncementHistory" disabled>Apagar histórico</button></div></div><div class="announcements" id="announcementList"><div class="empty">Carregando avisos...</div></div></section>
+   <section class="section"><div class="section-title"><div><h2>Histórico de avisos</h2><p>Ocultar um aviso o remove da Área do Aluno. Antes de apagar, baixe uma cópia para guardar o histórico e os registros de leitura.</p></div><div class="history-actions"><button class="refresh" type="button" id="downloadAnnouncementBackup">Baixar cópia do histórico</button><button class="refresh" type="button" id="refreshAnnouncements">Atualizar avisos</button><button class="delete-history" type="button" id="deleteAnnouncementHistory" disabled>Apagar histórico</button></div></div><div class="announcements" id="announcementList"><div class="empty">Carregando avisos...</div></div></section>
   </div>
  </main>
 <footer><div class="wrap"><span><strong>SALTA</strong> · Central de avisos</span><span>Comunicados globais, por turma e individuais.</span></div></footer>
 <script>
-const AUTH_API_URL="https://salta-auth.dannyel-moises.workers.dev";
+const AUTH_API_URL="https://salta-stats.dannyel-moises.workers.dev/auth";
 const COMMS_API_URL="https://salta-stats.dannyel-moises.workers.dev";
 const SESSION_KEY="saltaProfessorSession";
 const OLD_STORE=window.sessionStorage;
-let token="";
+localStorage.removeItem(SESSION_KEY);OLD_STORE.removeItem(SESSION_KEY);
 let selectedStudent=null;
 let studentOptions=[];
 let studentRequestId=0;
@@ -124,7 +124,6 @@ let reportClassTarget="";
 let classOptionsPromise=null;
 let reportRecipients=[];
 
-function getToken(){return localStorage.getItem(SESSION_KEY)||OLD_STORE.getItem(SESSION_KEY)||"";}
 function setStatus(message,type){
  const el=document.getElementById("globalStatus");el.textContent=message;el.className="status show "+(type||"info");
 }
@@ -135,20 +134,18 @@ function dateLabel(value){
  return Number.isNaN(date.getTime())?String(value):date.toLocaleString("pt-BR",{dateStyle:"short",timeStyle:"short"});
 }
 async function api(path,options={}){
- const headers={"Authorization":"Bearer "+token,...(options.headers||{})};
+ const headers={...(options.headers||{})};
  if(options.body)headers["Content-Type"]="application/json";
- const response=await fetch(COMMS_API_URL+path,{...options,headers,cache:"no-store"});
+ const response=await fetch(COMMS_API_URL+path,{...options,headers,credentials:"include",cache:"no-store"});
  const data=await response.json().catch(()=>({}));
  if(!response.ok)throw new Error(data.error||"Não foi possível concluir a operação.");
  return data;
 }
 async function checkSession(){
- token=getToken();
- if(!token){document.getElementById("lockedPanel").hidden=false;return;}
  try{
-  const r=await fetch(AUTH_API_URL+"/session",{headers:{"Authorization":"Bearer "+token},credentials:"include",cache:"no-store"});
+  const r=await fetch(AUTH_API_URL+"/session",{credentials:"include",cache:"no-store"});
   const d=await r.json().catch(()=>({}));
-  if(!r.ok||!d.authenticated){localStorage.removeItem(SESSION_KEY);OLD_STORE.removeItem(SESSION_KEY);document.getElementById("lockedPanel").hidden=false;return;}
+  if(!r.ok||!d.authenticated){document.getElementById("lockedPanel").hidden=false;return;}
   document.getElementById("app").hidden=false;
   await prepareReportRecipients();
   await prepareReportClass();
@@ -315,6 +312,25 @@ async function publishAnnouncement(event){
  }catch(e){setStatus(e.message,"error");}
  finally{button.disabled=false;button.textContent="Publicar aviso";}
 }
+async function downloadHistoryBackup(){
+ const button=document.getElementById("downloadAnnouncementBackup");
+ button.disabled=true;button.textContent="Preparando cópia...";
+ try{
+  const data=await api("/comms/teacher/announcement-backup");
+  const blob=new Blob([JSON.stringify(data,null,2)],{type:"application/json;charset=utf-8"});
+  const url=URL.createObjectURL(blob);
+  const link=document.createElement("a");
+  link.href=url;
+  link.download="salta-historico-avisos-"+new Date().toISOString().slice(0,10)+".json";
+  document.body.append(link);link.click();link.remove();
+  setTimeout(()=>URL.revokeObjectURL(url),1000);
+  setStatus("Cópia do histórico baixada com "+Number(data.total||0)+" aviso(s).","success");
+  return true;
+ }catch(error){
+  setStatus("Não foi possível criar a cópia. Nenhum aviso foi apagado. "+error.message,"error");
+  return false;
+ }finally{button.disabled=false;button.textContent="Baixar cópia do histórico";}
+}
 async function loadAnnouncements(){
  try{
   const data=await api("/comms/teacher/announcements");
@@ -396,7 +412,8 @@ async function loadAnnouncements(){
    });
    const remove=document.createElement("button");remove.type="button";remove.className="announcement-delete";remove.textContent="Apagar definitivamente";
    remove.addEventListener("click",async()=>{
-    if(!window.confirm("Apagar este aviso definitivamente? Ele será removido do histórico, da Área do Aluno e dos registros de leitura. Esta ação não pode ser desfeita."))return;
+    if(!await downloadHistoryBackup())return;
+    if(!window.confirm("A cópia do histórico foi baixada. Apagar este aviso definitivamente? Esta ação não pode ser desfeita no portal."))return;
     remove.disabled=true;remove.textContent="Apagando...";
     try{
      const result=await api("/comms/teacher/announcement-delete",{method:"POST",body:JSON.stringify({id:Number(item.id)})});
@@ -423,8 +440,10 @@ document.getElementById("announcementForm").addEventListener("submit",publishAnn
 document.getElementById("announcementBody").addEventListener("input",e=>document.getElementById("announcementCount").textContent=e.target.value.length);
 
 document.getElementById("refreshAnnouncements").addEventListener("click",loadAnnouncements);
+document.getElementById("downloadAnnouncementBackup").addEventListener("click",downloadHistoryBackup);
 document.getElementById("deleteAnnouncementHistory").addEventListener("click",async()=>{
- const confirmed=window.confirm("Apagar definitivamente todo o histórico de avisos, inclusive os ocultos, e todos os respectivos registros de leitura? Esta ação não pode ser desfeita.");
+ if(!await downloadHistoryBackup())return;
+ const confirmed=window.confirm("A cópia do histórico foi baixada. Apagar definitivamente todos os avisos e registros de leitura? Esta ação não pode ser desfeita no portal.");
  if(!confirmed)return;
  const button=document.getElementById("deleteAnnouncementHistory");
  button.disabled=true;button.textContent="Apagando histórico...";
@@ -438,8 +457,7 @@ document.getElementById("deleteAnnouncementHistory").addEventListener("click",as
 
 
 document.getElementById("logoutButton").addEventListener("click",async()=>{
- const t=getToken();
- try{await fetch(AUTH_API_URL+"/logout",{method:"POST",headers:t?{"Authorization":"Bearer "+t}:{},credentials:"include"});}catch(_){}
+ try{await fetch(AUTH_API_URL+"/logout",{method:"POST",credentials:"include"});}catch(_){}
  localStorage.removeItem(SESSION_KEY);OLD_STORE.removeItem(SESSION_KEY);location.href="./professor.html";
 });
 updateScope();
