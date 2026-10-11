@@ -66,6 +66,7 @@ h1{font-size:clamp(30px,4vw,43px);letter-spacing:-1.8px;line-height:1.05;margin:
 .announcement h3{font-size:14px;line-height:1.4;margin:0 0 7px;overflow-wrap:anywhere}
 .announcement p{font-size:12px;color:#555b68;line-height:1.6;margin:0;white-space:pre-wrap;overflow-wrap:anywhere}
 .announcement-footer{font-size:10px;color:var(--muted);margin-top:13px;padding-top:11px;border-top:1px solid #f0f1f3}
+.reader-summary{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-top:12px;font-size:11px;color:var(--muted)}.reader-toggle{border:1px solid #dce5f5;border-radius:9px;background:#f5f8ff;color:#245ab5;padding:8px 10px;font-size:10px;font-weight:850;cursor:pointer;white-space:nowrap}.reader-toggle:disabled{opacity:.6;cursor:wait}.reader-details{margin-top:10px;padding:12px;border:1px solid #e8ebf2;border-radius:12px;background:#fafbfe}.reader-details[hidden]{display:none}.reader-heading{margin:0 0 9px;font-size:11px;font-weight:850;color:#343946}.reader-list{display:grid;gap:8px}.reader-row{display:flex;justify-content:space-between;gap:12px;align-items:flex-start;padding-top:8px;border-top:1px solid #eceef3;font-size:11px}.reader-row:first-child{padding-top:0;border-top:0}.reader-name{font-weight:750;color:var(--ink)}.reader-meta{color:var(--muted);text-align:right;font-size:10px;line-height:1.45}.reader-empty{margin:0;color:var(--muted);font-size:11px;line-height:1.5}
 .announcement-actions{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-top:12px;flex-wrap:wrap}
 .announcement-state{display:inline-flex;align-items:center;border-radius:999px;padding:5px 8px;background:#e8f7ee;color:#167447;font-size:9px;font-weight:850}
 .announcement-state.inactive{background:#fff1d8;color:#875600}
@@ -334,6 +335,44 @@ async function loadAnnouncements(){
    const body=document.createElement("p");body.textContent=item.body;
    const foot=document.createElement("div");foot.className="announcement-footer";
    foot.textContent=item.scope==="global"?"Destinatários: todas as turmas":item.scope==="class"?"Turma: "+(item.turma||"—"):"Aluno: "+(item.student_code||"—");
+   const readCount=Math.max(0,Number(item.read_count)||0);
+   const recipientCount=Math.max(0,Number(item.recipient_count)||0);
+   const readSummary=document.createElement("div");readSummary.className="reader-summary";
+   const readCountLabel=document.createElement("span");
+   readCountLabel.textContent="Leituras registradas: "+readCount+" de "+recipientCount+" destinatários";
+   const readButton=document.createElement("button");readButton.type="button";readButton.className="reader-toggle";
+   readButton.textContent="Ver quem leu";
+   const readerPanel=document.createElement("div");readerPanel.className="reader-details";readerPanel.hidden=true;
+   const readerHeading=document.createElement("h4");readerHeading.className="reader-heading";readerHeading.textContent="Alunos que leram este aviso";
+   const readerList=document.createElement("div");readerList.className="reader-list";
+   readerPanel.append(readerHeading,readerList);
+   readSummary.append(readCountLabel,readButton);
+   readButton.addEventListener("click",async()=>{
+    if(!readerPanel.hidden){readerPanel.hidden=true;readButton.textContent="Ver quem leu";return;}
+    readerPanel.hidden=false;readButton.disabled=true;readButton.textContent="Carregando...";
+    readerList.replaceChildren();
+    try{
+     const data=await api("/comms/teacher/announcement-readers?id="+encodeURIComponent(item.id));
+     const readers=Array.isArray(data.readers)?data.readers:[];
+     if(!readers.length){
+      const empty=document.createElement("p");empty.className="reader-empty";empty.textContent="Nenhum aluno registrou a leitura deste aviso.";
+      readerList.append(empty);
+     }else{
+      readers.forEach(reader=>{
+       const row=document.createElement("div");row.className="reader-row";
+       const name=document.createElement("span");name.className="reader-name";name.textContent=reader.nome||"Aluno não identificado";
+       const meta=document.createElement("span");meta.className="reader-meta";
+       meta.textContent=(reader.turma||"Turma não identificada")+" · "+dateLabel(reader.read_at);
+       row.append(name,meta);readerList.append(row);
+      });
+     }
+     readButton.textContent="Ocultar quem leu";
+    }catch(error){
+     const message=document.createElement("p");message.className="reader-empty";
+     message.textContent="Não foi possível carregar as leituras: "+error.message;readerList.append(message);
+     readButton.textContent="Tentar novamente";
+    }finally{readButton.disabled=false;}
+   });
    const isActive=Number(item.active)!==0;
    if(!isActive)article.classList.add("inactive");
    const actions=document.createElement("div");actions.className="announcement-actions";
@@ -366,7 +405,7 @@ async function loadAnnouncements(){
     }catch(e){remove.disabled=false;remove.textContent="Apagar definitivamente";setStatus(e.message,"error");}
    });
    actions.append(state,toggle,remove);
-   article.append(top,title,body,foot,actions);target.appendChild(article);
+   article.append(top,title,body,foot,readSummary,readerPanel,actions);target.appendChild(article);
   });
  }catch(e){document.getElementById("announcementList").innerHTML='<div class="empty">Não foi possível carregar os avisos: '+esc(e.message)+'</div>';}
 }
