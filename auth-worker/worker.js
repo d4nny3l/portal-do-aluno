@@ -1,28 +1,35 @@
+const SESSION_TTL_SECONDS = 4 * 60 * 60;
+const SESSION_COOKIE = "__Host-salta_session";
+const LEGACY_COOKIE = "salta_session";
+
 export default {
   async fetch(request, env) {
     const url = new URL(request.url);
-
     if (request.method === "OPTIONS") {
-      return new Response(null, { headers: corsHeaders(request) });
+      return new Response(null, { status: 204, headers: corsHeaders(request) });
     }
 
-    if (url.pathname === "/login" && request.method === "POST") {
-      return login(request, env);
+    try {
+      if (url.pathname === "/login" && request.method === "POST") return login(request, env);
+      if (url.pathname === "/session" && request.method === "GET") return session(request, env);
+      if (url.pathname === "/logout" && request.method === "POST") return logout(request, env);
+      return json({ ok: false, error: "Rota não encontrada." }, 404, request);
+    } catch {
+      return json({ ok: false, error: "Não foi possível concluir a autenticação." }, 500, request);
     }
-
-    if (url.pathname === "/session" && request.method === "GET") {
-      return session(request, env);
-    }
-
-    if (url.pathname === "/logout" && request.method === "POST") {
-      return logout(request);
-    }
-
-    return json({ ok: false, error: "Rota não encontrada." }, 404, request);
   }
 };
 
 async function login(request, env) {
+  if (!env.SESSIONS || !env.LOGIN_IP_LIMITER || !env.LOGIN_ACCOUNT_LIMITER) {
+    return json({ ok: false, error: "Autenticação temporariamente indisponível." }, 503, request);
+  }
+
+  const ip = request.headers.get("CF-Connecting-IP") || "";
+  if (!ip) return json({ ok: false, error: "Autenticação temporariamente indisponível." }, 503, request);
+  const ipLimit = await env.LOGIN_IP_LIMITER.limit({ key: ip });
+  if (!ipLimit.success) return rateLimited(request);
+
   let body;
   try {
     body = await request.json();
@@ -32,82 +39,137 @@ async function login(request, env) {
 
   const username = String(body?.username ?? "").trim().toLowerCase();
   const password = String(body?.password ?? "");
-
-  if (!username || !password) {
+  if (!username || !password || username.length > 120 || password.length > 512) {
     return json({ ok: false, error: "Usuário e senha são obrigatórios." }, 400, request);
   }
 
+  const accountLimit = await env.LOGIN_ACCOUNT_LIMITER.limit({ key: username });
+  if (!accountLimit.success) return rateLimited(request);
+
   const expectedUser = String(env.PROFESSOR_USER || "").trim().toLowerCase();
   const expectedPassword = String(env.PROFESSOR_PASSWORD || "");
-
   if (!expectedUser || !expectedPassword) {
-    return json({ ok: false, error: "Autenticação não configurada no servidor." }, 500, request);
+    return json({ ok: false, error: "Autenticação não configurada no servidor." }, 503, request);
   }
 
-  if (username !== expectedUser || !safeEqual(password, expectedPassword)) {
+  const passwordMatches = safeEqual(password, expectedPassword);
+  if (username !== expectedUser || !passwordMatches) {
     return json({ ok: false, error: "Usuário ou senha incorretos." }, 401, request);
   }
 
+  const sessionId = createSessionId();
   const now = Math.floor(Date.now() / 1000);
-  const expires = now + 60 * 60 * 8;
-  const token = await sign({
-    sub: username,
-    iat: now,
-    exp: expires
-  }, env.AUTH_SECRET);
+  const expiresAt = now + SESSION_TTL_SECONDS;
+  await sessionStore(env).fetch("https://sessions/create", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ id: sessionId, user: username, expiresAt })
+  });
 
   const headers = corsHeaders(request);
-  headers.set(
-    "Set-Cookie",
-    "salta_session=" + token +
-    "; Max-Age=28800; Path=/; HttpOnly; Secure; SameSite=None"
-  );
-
-  return new Response(JSON.stringify({ ok: true, user: username, token }), {
-    status: 200,
-    headers: { ...Object.fromEntries(headers), "Content-Type": "application/json" }
-  });
+  headers.set("Set-Cookie", sessionCookie(sessionId, SESSION_TTL_SECONDS));
+  headers.append("Set-Cookie", expiredCookie(LEGACY_COOKIE));
+  headers.set("Cache-Control", "no-store");
+  headers.set("Content-Type", "application/json; charset=utf-8");
+  return new Response(JSON.stringify({ ok: true, user: username }), { status: 200, headers });
 }
 
 async function session(request, env) {
   const cookies = parseCookies(request.headers.get("Cookie") || "");
-  const header = request.headers.get("Authorization") || "";
-  const bearer = header.startsWith("Bearer ") ? header.slice(7).trim() : "";
-  const token = bearer || cookies.salta_session;
+  const authorization = request.headers.get("Authorization") || "";
+  const bearer = authorization.startsWith("Bearer ") ? authorization.slice(7).trim() : "";
+  const sessionId = bearer || cookies[SESSION_COOKIE] || cookies[LEGACY_COOKIE] || "";
+  if (!sessionId || !env.SESSIONS) return json({ ok: false, authenticated: false }, 401, request);
 
-  if (!token) {
+  const response = await sessionStore(env).fetch("https://sessions/read", {
+    headers: { "X-Session-Id": sessionId }
+  });
+  const result = await response.json().catch(() => null);
+  if (!response.ok || !result?.user || Number(result.expiresAt) <= Math.floor(Date.now() / 1000)) {
+    if (result?.expired) {
+      await sessionStore(env).fetch("https://sessions/delete", {
+        method: "POST",
+        headers: { "X-Session-Id": sessionId }
+      });
+    }
     return json({ ok: false, authenticated: false }, 401, request);
   }
-
-  const payload = await verify(token, env.AUTH_SECRET);
-
-  if (!payload) {
-    return json({ ok: false, authenticated: false }, 401, request);
-  }
-
-  return json({
-    ok: true,
-    authenticated: true,
-    user: payload.sub
-  }, 200, request);
+  return json({ ok: true, authenticated: true, user: result.user }, 200, request);
 }
 
-async function logout(request) {
-  const headers = corsHeaders(request);
-  headers.set(
-    "Set-Cookie",
-    "salta_session=; Max-Age=0; Path=/; HttpOnly; Secure; SameSite=None"
-  );
+async function logout(request, env) {
+  const cookies = parseCookies(request.headers.get("Cookie") || "");
+  const authorization = request.headers.get("Authorization") || "";
+  const bearer = authorization.startsWith("Bearer ") ? authorization.slice(7).trim() : "";
+  const sessionId = bearer || cookies[SESSION_COOKIE] || cookies[LEGACY_COOKIE] || "";
+  if (sessionId && env.SESSIONS) {
+    await sessionStore(env).fetch("https://sessions/delete", {
+      method: "POST",
+      headers: { "X-Session-Id": sessionId }
+    });
+  }
 
-  return new Response(JSON.stringify({ ok: true }), {
-    status: 200,
-    headers: { ...Object.fromEntries(headers), "Content-Type": "application/json" }
-  });
+  const headers = corsHeaders(request);
+  headers.set("Set-Cookie", expiredCookie(SESSION_COOKIE));
+  headers.append("Set-Cookie", expiredCookie(LEGACY_COOKIE));
+  headers.set("Cache-Control", "no-store");
+  headers.set("Content-Type", "application/json; charset=utf-8");
+  return new Response(JSON.stringify({ ok: true }), { status: 200, headers });
+}
+
+function sessionStore(env) {
+  const id = env.SESSIONS.idFromName("salta-professor-sessions");
+  return env.SESSIONS.get(id);
+}
+
+class SessionStore {
+  constructor(state) {
+    this.state = state;
+  }
+
+  async fetch(request) {
+    const url = new URL(request.url);
+    const id = request.headers.get("X-Session-Id") || "";
+    if (url.pathname === "/create" && request.method === "POST") {
+      const value = await request.json().catch(() => null);
+      if (!value?.id || !value?.user || !Number.isFinite(Number(value.expiresAt))) {
+        return new Response(null, { status: 400 });
+      }
+      await this.state.storage.put("session:" + value.id, {
+        user: String(value.user),
+        expiresAt: Number(value.expiresAt)
+      });
+      return new Response(null, { status: 204 });
+    }
+    if (!id || id.length > 128) return new Response(null, { status: 400 });
+    const key = "session:" + id;
+    if (url.pathname === "/read" && request.method === "GET") {
+      const value = await this.state.storage.get(key);
+      if (!value) return Response.json({ authenticated: false }, { status: 404 });
+      if (value.expiresAt <= Math.floor(Date.now() / 1000)) {
+        await this.state.storage.delete(key);
+        return Response.json({ expired: true }, { status: 404 });
+      }
+      return Response.json(value);
+    }
+    if (url.pathname === "/delete" && request.method === "POST") {
+      await this.state.storage.delete(key);
+      return new Response(null, { status: 204 });
+    }
+    return new Response(null, { status: 404 });
+  }
+}
+
+function rateLimited(request) {
+  const response = json({ ok: false, error: "Muitas tentativas. Aguarde um minuto e tente novamente." }, 429, request);
+  response.headers.set("Retry-After", "60");
+  return response;
 }
 
 function json(data, status, request) {
   const headers = corsHeaders(request);
-  headers.set("Content-Type", "application/json");
+  headers.set("Content-Type", "application/json; charset=utf-8");
+  headers.set("Cache-Control", "no-store");
   return new Response(JSON.stringify(data), { status, headers });
 }
 
@@ -118,17 +180,29 @@ function corsHeaders(request) {
     "http://localhost:5500",
     "http://127.0.0.1:5500"
   ]);
-
   const headers = new Headers();
   if (allowed.has(origin)) {
     headers.set("Access-Control-Allow-Origin", origin);
     headers.set("Access-Control-Allow-Credentials", "true");
   }
-
   headers.set("Access-Control-Allow-Headers", "Content-Type, Authorization");
   headers.set("Access-Control-Allow-Methods", "GET,POST,OPTIONS");
   headers.set("Vary", "Origin");
   return headers;
+}
+
+function sessionCookie(value, maxAge) {
+  return SESSION_COOKIE + "=" + encodeURIComponent(value) +
+    "; Max-Age=" + maxAge + "; Path=/; HttpOnly; Secure; SameSite=None; Partitioned";
+}
+
+function expiredCookie(name) {
+  return name + "=; Max-Age=0; Path=/; HttpOnly; Secure; SameSite=None; Partitioned";
+}
+
+function createSessionId() {
+  const bytes = crypto.getRandomValues(new Uint8Array(32));
+  return btoa(String.fromCharCode(...bytes)).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/g, "");
 }
 
 function parseCookies(value) {
@@ -136,69 +210,19 @@ function parseCookies(value) {
   for (const part of value.split(";")) {
     const i = part.indexOf("=");
     if (i === -1) continue;
-    out[part.slice(0, i).trim()] = decodeURIComponent(part.slice(i + 1).trim());
+    try { out[part.slice(0, i).trim()] = decodeURIComponent(part.slice(i + 1).trim()); }
+    catch { /* Ignore malformed cookies. */ }
   }
   return out;
 }
 
-function base64url(bytes) {
-  return btoa(String.fromCharCode(...bytes))
-    .replace(/\+/g, "-")
-    .replace(/\//g, "_")
-    .replace(/=+$/g, "");
-}
-
-function base64urlJson(value) {
-  return base64url(new TextEncoder().encode(JSON.stringify(value)));
-}
-
-async function hmac(data, secret) {
-  const key = await crypto.subtle.importKey(
-    "raw",
-    new TextEncoder().encode(secret),
-    { name: "HMAC", hash: "SHA-256" },
-    false,
-    ["sign"]
-  );
-
-  return new Uint8Array(await crypto.subtle.sign(
-    "HMAC",
-    key,
-    new TextEncoder().encode(data)
-  ));
-}
-
-async function sign(payload, secret) {
-  if (!secret) throw new Error("AUTH_SECRET não configurado.");
-  const body = base64urlJson(payload);
-  const signature = base64url(await hmac(body, secret));
-  return body + "." + signature;
-}
-
-async function verify(token, secret) {
-  try {
-    if (!secret) return null;
-    const parts = token.split(".");
-    if (parts.length !== 2) return null;
-
-    const [body, signature] = parts;
-    const expected = base64url(await hmac(body, secret));
-
-    if (!safeEqual(signature, expected)) return null;
-
-    const decoded = atob(body.replace(/-/g, "+").replace(/_/g, "/") + "=".repeat((4 - body.length % 4) % 4));
-    const payload = JSON.parse(new TextDecoder().decode(Uint8Array.from(decoded, c => c.charCodeAt(0))));
-
-    if (!payload?.exp || payload.exp < Math.floor(Date.now() / 1000)) return null;
-    return payload;
-  } catch {
-    return null;
-  }
-}
-
 function safeEqual(a, b) {
-  if (a.length !== b.length) return false;
-  let result = 0;
-  for (let i = 0; i < a.length; i++) result |= a.charCodeAt(i) ^ b.charCodeAt(i);
-  return result === 0;
+  const left = new TextEncoder().encode(String(a));
+  const right = new TextEncoder().encode(String(b));
+  let difference = left.length ^ right.length;
+  const length = Math.max(left.length, right.length);
+  for (let i = 0; i < length; i++) difference |= (left[i] || 0) ^ (right[i] || 0);
+  return difference === 0;
 }
+
+export { SessionStore };
