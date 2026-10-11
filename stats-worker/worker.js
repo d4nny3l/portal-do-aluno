@@ -572,6 +572,8 @@ async function ensureCommsSchema(env) {
     "ON salta_comms_messages(scope, turma, active, created_at)"
   ).run();
   await env.DB.prepare("CREATE TABLE IF NOT EXISTS salta_comms_announcement_reads (announcement_id INTEGER NOT NULL, student_code TEXT NOT NULL, read_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP, PRIMARY KEY (announcement_id, student_code))").run();
+  await env.DB.prepare("CREATE TABLE IF NOT EXISTS salta_student_access_logs (id INTEGER PRIMARY KEY AUTOINCREMENT, student_code TEXT NOT NULL, accessed_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP)").run();
+  await env.DB.prepare("CREATE INDEX IF NOT EXISTS idx_salta_student_access_time ON salta_student_access_logs(accessed_at DESC)").run();
 }
 
 function validStudentCode(value) {
@@ -630,6 +632,9 @@ async function handleCommsRequest(request, env, url) {
       const code = (url.searchParams.get("codigo") || "").trim().toUpperCase();
       const student = await findCommsStudent(env, code);
       if (!student) return json({ error: "Código não encontrado." }, request, 404);
+
+      // Registra uma consulta concluída com código individual válido.
+      await env.DB.prepare("INSERT INTO salta_student_access_logs (student_code) VALUES (?)").bind(student.codigo).run();
 
       const announcements = await env.DB.prepare(
         "SELECT m.id, m.scope, m.title, m.body, m.sender_name, m.created_at, r.read_at, " +
@@ -976,6 +981,15 @@ export default {
     try {
       if (url.pathname === "/health") {
         return json({ ok: true, service: "salta-stats" }, request);
+      }
+
+      if (url.pathname === "/admin/acessos-alunos") {
+        await ensureCommsSchema(env);
+        const [summary, result] = await Promise.all([
+          env.DB.prepare("SELECT COUNT(*) AS total, SUM(CASE WHEN datetime(accessed_at) >= datetime('now', '-30 days') THEN 1 ELSE 0 END) AS ultimos_30_dias, COUNT(DISTINCT CASE WHEN datetime(accessed_at) >= datetime('now', '-30 days') THEN student_code END) AS alunos_ultimos_30_dias FROM salta_student_access_logs").first(),
+          env.DB.prepare("SELECT a.nome, TRIM(a.turma) AS turma, l.accessed_at FROM salta_student_access_logs l INNER JOIN alunos a ON a.codigo = l.student_code ORDER BY datetime(l.accessed_at) DESC LIMIT 500").all()
+        ]);
+        return json({ resumo: { total: Number(summary?.total || 0), acessos30Dias: Number(summary?.ultimos_30_dias || 0), alunos30Dias: Number(summary?.alunos_ultimos_30_dias || 0) }, totalListados: (result.results || []).length, acessos: result.results || [] }, request);
       }
 
       if (url.pathname === "/admin/turmas") {
