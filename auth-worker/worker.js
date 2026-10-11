@@ -127,6 +127,17 @@ class SessionStore {
     this.state = state;
   }
 
+  async alarm() {
+    const entries = await this.state.storage.list({ prefix: "session:" });
+    const now = Math.floor(Date.now() / 1000);
+    let nextExpiry = Infinity;
+    for (const [key, value] of entries) {
+      if (Number(value.expiresAt) <= now) await this.state.storage.delete(key);
+      else nextExpiry = Math.min(nextExpiry, Number(value.expiresAt));
+    }
+    if (Number.isFinite(nextExpiry)) await this.state.storage.setAlarm(nextExpiry * 1000);
+  }
+
   async fetch(request) {
     const url = new URL(request.url);
     const id = request.headers.get("X-Session-Id") || "";
@@ -135,10 +146,15 @@ class SessionStore {
       if (!value?.id || !value?.user || !Number.isFinite(Number(value.expiresAt))) {
         return new Response(null, { status: 400 });
       }
+      const expiresAt = Number(value.expiresAt);
       await this.state.storage.put("session:" + value.id, {
         user: String(value.user),
-        expiresAt: Number(value.expiresAt)
+        expiresAt
       });
+      const currentAlarm = await this.state.storage.getAlarm();
+      if (currentAlarm === null || expiresAt * 1000 < currentAlarm) {
+        await this.state.storage.setAlarm(expiresAt * 1000);
+      }
       return new Response(null, { status: 204 });
     }
     if (!id || id.length > 128) return new Response(null, { status: 400 });
