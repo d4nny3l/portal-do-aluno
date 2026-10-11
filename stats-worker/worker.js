@@ -623,9 +623,10 @@ async function handleCommsRequest(request, env, url) {
         "FROM salta_comms_messages m LEFT JOIN salta_comms_announcement_reads r " +
         "ON r.announcement_id = m.id AND r.student_code = ? " +
         "WHERE m.kind = 'announcement' AND m.active = 1 AND " +
-        "(m.scope = 'global' OR (m.scope = 'individual' AND m.student_code = ?)) " +
+        "(m.scope = 'global' OR (m.scope = 'individual' AND m.student_code = ?) " +
+        "OR (m.scope = 'class' AND TRIM(m.turma) = ?)) " +
         "ORDER BY datetime(m.created_at) DESC LIMIT 100"
-      ).bind(code, code).all();
+      ).bind(code, code, String(student.turma || "").trim()).all();
 
       return json({
         student: { codigo: student.codigo, nome: student.nome, turma: student.turma },
@@ -643,8 +644,9 @@ async function handleCommsRequest(request, env, url) {
       for (const id of ids) {
         const applicable = await env.DB.prepare(
           "SELECT id FROM salta_comms_messages WHERE id = ? AND kind = 'announcement' AND active = 1 AND " +
-          "(scope = 'global' OR (scope = 'individual' AND student_code = ?)) LIMIT 1"
-        ).bind(id, code).first();
+          "(scope = 'global' OR (scope = 'individual' AND student_code = ?) " +
+          "OR (scope = 'class' AND EXISTS (SELECT 1 FROM alunos WHERE codigo = ? AND TRIM(turma) = TRIM(salta_comms_messages.turma)))) LIMIT 1"
+        ).bind(id, code, code).first();
         if (!applicable) continue;
         await env.DB.prepare("INSERT OR IGNORE INTO salta_comms_announcement_reads (announcement_id, student_code) VALUES (?, ?)")
           .bind(id, code).run();
@@ -658,10 +660,49 @@ async function handleCommsRequest(request, env, url) {
       if (path === "/comms/teacher/announcements" && method === "GET") {
         const result = await env.DB.prepare(
           "SELECT id, scope, turma, student_code, sender_name, title, body, created_at, active " +
-          "FROM salta_comms_messages WHERE kind = 'announcement' AND scope IN ('global', 'individual') " +
+          "FROM salta_comms_messages WHERE kind = 'announcement' AND scope IN ('global', 'individual', 'class') " +
           "ORDER BY datetime(created_at) DESC LIMIT 100"
         ).all();
         return json({ announcements: result.results || [] }, request);
+      }
+
+      if (path === "/comms/teacher/announcement-delete" && method === "POST") {
+        const payload = await request.json().catch(() => null);
+        const id = Number(payload?.id);
+        if (!Number.isInteger(id) || id < 1) {
+          return json({ error: "Informe um aviso válido para apagar." }, request, 400);
+        }
+
+        const existing = await env.DB.prepare(
+          "SELECT id FROM salta_comms_messages WHERE id = ? AND kind = 'announcement' LIMIT 1"
+        ).bind(id).first();
+        if (!existing) return json({ error: "Aviso não encontrado no histórico." }, request, 404);
+
+        const deleted = await env.DB.batch([
+          env.DB.prepare("DELETE FROM salta_comms_announcement_reads WHERE announcement_id = ?").bind(id),
+          env.DB.prepare("DELETE FROM salta_comms_messages WHERE id = ? AND kind = 'announcement'").bind(id)
+        ]);
+        const changes = Number(deleted?.[1]?.meta?.changes || 0);
+        if (!changes) return json({ error: "O aviso não foi apagado." }, request, 409);
+        return json({ ok: true, id, deleted: 1, message: "Aviso apagado do histórico e removido da Área do Aluno." }, request);
+      }
+
+      if (path === "/comms/teacher/announcement-history-clear" && method === "POST") {
+        const deleted = await env.DB.batch([
+          env.DB.prepare(
+            "DELETE FROM salta_comms_announcement_reads WHERE announcement_id IN " +
+            "(SELECT id FROM salta_comms_messages WHERE kind = 'announcement')"
+          ),
+          env.DB.prepare("DELETE FROM salta_comms_messages WHERE kind = 'announcement'")
+        ]);
+        const changes = Number(deleted?.[1]?.meta?.changes || 0);
+        return json({
+          ok: true,
+          deleted: changes,
+          message: changes
+            ? changes + (changes === 1 ? " aviso apagado do histórico." : " avisos apagados do histórico.")
+            : "O histórico já estava vazio."
+        }, request);
       }
 
       if (path === "/comms/teacher/announcement-status" && method === "POST") {
@@ -676,13 +717,13 @@ async function handleCommsRequest(request, env, url) {
 
         const announcement = await env.DB.prepare(
           "SELECT id FROM salta_comms_messages " +
-          "WHERE id = ? AND kind = 'announcement' AND scope IN ('global', 'individual') LIMIT 1"
+          "WHERE id = ? AND kind = 'announcement' AND scope IN ('global', 'individual', 'class') LIMIT 1"
         ).bind(id).first();
         if (!announcement) return json({ error: "Aviso não encontrado." }, request, 404);
 
         await env.DB.prepare(
           "UPDATE salta_comms_messages SET active = ? " +
-          "WHERE id = ? AND kind = 'announcement' AND scope IN ('global', 'individual')"
+          "WHERE id = ? AND kind = 'announcement' AND scope IN ('global', 'individual', 'class')"
         ).bind(active, id).run();
 
         return json({
@@ -761,8 +802,8 @@ async function handleCommsRequest(request, env, url) {
         const scope = String(payload.scope || "").trim();
         const title = trimLimited(payload.title, COMMS_MAX_TITLE);
         const body = trimLimited(payload.body, COMMS_MAX_BODY);
-        if (!["global", "individual"].includes(scope)) {
-          return json({ error: "Escolha um aviso global ou individual." }, request, 400);
+        if (!["global", "individual", "class"].includes(scope)) {
+          return json({ error: "Escolha um aviso global, para turma ou individual." }, request, 400);
         }
         if (!title || !body) {
           return json({ error: "Informe um título e o texto do aviso." }, request, 400);
@@ -779,6 +820,16 @@ async function handleCommsRequest(request, env, url) {
           const student = await findCommsStudent(env, code);
           if (!student) return json({ error: "Código do aluno não encontrado." }, request, 404);
           turma = student.turma;
+        } else if (scope === "class") {
+          const requestedClass = String(payload.turma || "").trim();
+          if (!requestedClass || requestedClass.length > 100) {
+            return json({ error: "Selecione uma turma válida para o aviso." }, request, 400);
+          }
+          const classRow = await env.DB.prepare(
+            "SELECT TRIM(turma) AS turma FROM alunos WHERE TRIM(turma) = ? LIMIT 1"
+          ).bind(requestedClass).first();
+          if (!classRow?.turma) return json({ error: "A turma selecionada não foi encontrada." }, request, 404);
+          turma = String(classRow.turma).trim();
         }
 
         const id = await insertCommsMessage(env, {

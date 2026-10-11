@@ -69,13 +69,13 @@ h1{font-size:clamp(30px,4vw,43px);letter-spacing:-1.8px;line-height:1.05;margin:
 .announcement h3{font-size:14px;line-height:1.4;margin:0 0 7px;overflow-wrap:anywhere}
 .announcement p{font-size:12px;color:#555b68;line-height:1.6;margin:0;white-space:pre-wrap;overflow-wrap:anywhere}
 .announcement-footer{font-size:10px;color:var(--muted);margin-top:13px;padding-top:11px;border-top:1px solid #f0f1f3}
-.announcement-actions{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-top:12px}
+.announcement-actions{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-top:12px;flex-wrap:wrap}
 .announcement-state{display:inline-flex;align-items:center;border-radius:999px;padding:5px 8px;background:#e8f7ee;color:#167447;font-size:9px;font-weight:850}
 .announcement-state.inactive{background:#fff1d8;color:#875600}
 .announcement-toggle{border:1px solid #e2c7c7;border-radius:9px;background:#fff;color:#b42336;padding:8px 10px;font-size:10px;font-weight:850;cursor:pointer}
 .announcement-toggle.restore{border-color:#cce8d8;color:#167447}
 .announcement-toggle:disabled{opacity:.6;cursor:wait}
-.announcement.inactive{background:#fafafa;border-style:dashed}
+.announcement.inactive{background:#fafafa;border-style:dashed}.history-actions{display:flex;gap:8px;align-items:center;flex-wrap:wrap}.delete-history,.announcement-delete{border:1px solid #e2c7c7;border-radius:9px;background:#fff;color:#b42336;padding:8px 10px;font-size:10px;font-weight:850;cursor:pointer}.delete-history:disabled,.announcement-delete:disabled{opacity:.55;cursor:not-allowed}.announcement-delete{white-space:nowrap}
 .empty{padding:28px 14px;border:1px dashed #d7dbe4;border-radius:15px;color:var(--muted);font-size:12px;line-height:1.6;text-align:center;background:#ffffff80}
 .locked{padding:24px;border:1px solid var(--line);border-radius:18px;background:#fff;line-height:1.55;font-size:13px}
 .locked a{color:var(--blue);font-weight:800}.recipient-list{max-height:150px;overflow:auto;margin:5px 0 12px;padding:10px 12px;border:1px solid var(--line);border-radius:12px;background:#f4f4ff;color:var(--ink);font-size:12px;line-height:1.55;white-space:pre-wrap}
@@ -95,21 +95,21 @@ footer .wrap{display:flex;justify-content:space-between;gap:12px}
 <main class="wrap">
  <section id="lockedPanel" class="locked" hidden>Esta central exige uma sessão válida de professor. <a href="./professor.html">Entre pela Área do Professor</a> e abra a central novamente.</section>
  <div id="app" hidden>
-  <div class="page-head"><div><div class="eyebrow">AMBIENTE DO PROFESSOR</div><h1>Central de avisos</h1><p class="lead">Publique comunicados globais ou avisos individuais. O aluno recebe a notificação na própria Área do Aluno.</p></div></div>
+  <div class="page-head"><div><div class="eyebrow">AMBIENTE DO PROFESSOR</div><h1>Central de avisos</h1><p class="lead">Publique comunicados para todas as turmas, para uma turma específica ou para alunos selecionados. O aviso aparece na Área do Aluno.</p></div></div>
    <div class="status" id="globalStatus" role="status" aria-live="polite"></div>
-   <section class="stats"><article class="stat"><label>Avisos publicados</label><strong id="statAnnouncements">0</strong><small>Histórico recente</small></article><article class="stat"><label>Avisos globais</label><strong id="statGlobal">0</strong><small>Visíveis para todos</small></article><article class="stat"><label>Avisos individuais</label><strong id="statIndividual">0</strong><small>Direcionados por código</small></article></section>
-   <section class="grid"><article class="card"><div class="card-head"><h2>Publicar um aviso</h2><p>Escolha entre um comunicado para todos ou para um aluno específico.</p></div><div class="card-body"><form id="announcementForm">
-    <div class="field"><label for="scope">Público do aviso</label><select id="scope" required><option value="global">Todas as turmas — aviso global</option><option value="individual">Um aluno específico</option></select></div>
-    <div class="field" id="individualTarget" hidden><label for="targetCode">Código do aluno</label><div class="inline-row"><input id="targetCode" type="text" maxlength="8" placeholder="Código individual" autocomplete="off"><button class="verify-button" type="button" id="verifyStudent">Validar</button></div><div class="help" id="studentValidation">Valide o código para confirmar o destinatário antes de publicar.</div></div>
+   <section class="stats"><article class="stat"><label>Avisos publicados</label><strong id="statAnnouncements">0</strong><small>Histórico recente</small></article><article class="stat"><label>Avisos globais</label><strong id="statGlobal">0</strong><small>Visíveis para todos</small></article><article class="stat"><label>Avisos direcionados</label><strong id="statIndividual">0</strong><small>Para alunos ou turmas</small></article></section>
+   <section class="grid"><article class="card"><div class="card-head"><h2>Publicar um aviso</h2><p>Escolha o público do comunicado. Avisos de turma aparecem somente aos alunos daquela turma.</p></div><div class="card-body"><form id="announcementForm">
+    <div class="field"><label for="scope">Público do aviso</label><select id="scope" required><option value="global">Todas as turmas — aviso global</option><option value="class">Uma turma específica</option><option value="individual">Um aluno específico</option></select></div>
+    <div class="field" id="classTarget" hidden><label for="targetTurma">Turma destinatária</label><select id="targetTurma"><option value="">Carregando turmas...</option></select><div class="help">O aviso ficará visível somente aos alunos desta turma.</div></div><div class="field" id="individualTarget" hidden><label for="targetCode">Código do aluno</label><div class="inline-row"><input id="targetCode" type="text" maxlength="8" placeholder="Código individual" autocomplete="off"><button class="verify-button" type="button" id="verifyStudent">Validar</button></div><div class="help" id="studentValidation">Valide o código para confirmar o destinatário antes de publicar.</div></div>
     <div class="field" id="reportRecipientTarget" hidden><label for="reportRecipientSummary">Alunos selecionados no relatório</label><div class="recipient-list" id="reportRecipientSummary"></div><button class="secondary" id="clearReportRecipients" type="button">Alterar destinatários</button></div>
     <div class="field"><label for="announcementTitle">Título</label><input id="announcementTitle" type="text" maxlength="100" placeholder="Ex.: Revisão para a avaliação" required></div>
     <div class="field"><label for="announcementBody">Aviso</label><textarea id="announcementBody" maxlength="1500" placeholder="Escreva o comunicado com clareza..." required></textarea><div class="help"><span id="announcementCount">0</span>/1.500 caracteres.</div></div>
     <div class="target-box" id="targetPreview">Este aviso será exibido a todos os alunos cadastrados na Área do Aluno.</div><button class="primary" id="publishButton" type="submit">Publicar aviso</button>
    </form></div></article></section>
-   <section class="section"><div class="section-title"><div><h2>Histórico de avisos</h2><p>Os mais recentes aparecem primeiro.</p></div><button class="refresh" type="button" id="refreshAnnouncements">Atualizar avisos</button></div><div class="announcements" id="announcementList"><div class="empty">Carregando avisos...</div></div></section>
+   <section class="section"><div class="section-title"><div><h2>Histórico de avisos</h2><p>Ocultar um aviso o remove da Área do Aluno; você também pode apagá-lo definitivamente ou limpar todo o histórico.</p></div><div class="history-actions"><button class="refresh" type="button" id="refreshAnnouncements">Atualizar avisos</button><button class="delete-history" type="button" id="deleteAnnouncementHistory" disabled>Apagar histórico</button></div></div><div class="announcements" id="announcementList"><div class="empty">Carregando avisos...</div></div></section>
   </div>
  </main>
-<footer><div class="wrap"><span><strong>SALTA</strong> · Central de avisos</span><span>Comunicados globais e individuais.</span></div></footer>
+<footer><div class="wrap"><span><strong>SALTA</strong> · Central de avisos</span><span>Comunicados globais, por turma e individuais.</span></div></footer>
 <script>
 const AUTH_API_URL="https://salta-auth.dannyel-moises.workers.dev";
 const COMMS_API_URL="https://salta-stats.dannyel-moises.workers.dev";
@@ -118,7 +118,10 @@ const OLD_STORE=window.sessionStorage;
 let token="";
 let validatedStudent=null;
 const REPORT_RECIPIENTS_KEY="saltaReportRecipientCodes";
+const REPORT_CLASS_KEY="saltaReportAnnouncementClass";
 const MAX_REPORT_RECIPIENTS=100;
+let reportClassTarget="";
+let classOptionsPromise=null;
 let reportRecipients=[];
 
 function getToken(){return localStorage.getItem(SESSION_KEY)||OLD_STORE.getItem(SESSION_KEY)||"";}
@@ -148,15 +151,57 @@ async function checkSession(){
   if(!r.ok||!d.authenticated){localStorage.removeItem(SESSION_KEY);OLD_STORE.removeItem(SESSION_KEY);document.getElementById("lockedPanel").hidden=false;return;}
   document.getElementById("app").hidden=false;
   await prepareReportRecipients();
+  await prepareReportClass();
   await loadAnnouncements();
  }catch(_){document.getElementById("lockedPanel").hidden=false;}
 }
 function updateScope(){
  const scope=document.getElementById("scope").value;
  const fromReport=reportRecipients.length>0;
+ document.getElementById("classTarget").hidden=scope!=="class";
  document.getElementById("individualTarget").hidden=scope!=="individual"||fromReport;
  document.getElementById("reportRecipientTarget").hidden=scope!=="individual"||!fromReport;
- document.getElementById("targetPreview").textContent=scope==="global"?"Este aviso será exibido a todos os alunos cadastrados na Área do Aluno.":fromReport?"Este aviso será enviado individualmente a "+reportRecipients.length+" aluno(s) selecionado(s) no relatório.":"Este aviso será exibido apenas ao aluno identificado pelo código validado.";
+ const preview=document.getElementById("targetPreview");
+ if(scope==="global")preview.textContent="Este aviso será exibido a todos os alunos cadastrados na Área do Aluno.";
+ else if(scope==="class"){
+  const turma=document.getElementById("targetTurma").value;
+  preview.textContent=turma?"Este aviso será exibido somente aos alunos da turma "+turma+".":"Selecione a turma que receberá o aviso.";
+  if(!classOptionsPromise)loadClassOptions(reportClassTarget).catch(error=>setStatus(error.message,"error"));
+ }else if(fromReport)preview.textContent="Este aviso será enviado individualmente a "+reportRecipients.length+" aluno(s) selecionado(s) no relatório.";
+ else preview.textContent="Este aviso será exibido apenas ao aluno identificado pelo código validado.";
+}
+async function loadClassOptions(selected=""){
+ if(!classOptionsPromise){
+  classOptionsPromise=(async()=>{
+   const data=await api("/admin/turmas");
+   const select=document.getElementById("targetTurma");
+   const turmas=Array.isArray(data.turmas)?data.turmas:[];
+   select.innerHTML='<option value="">Selecione a turma</option>'+turmas.map(t=>'<option value="'+esc(t)+'">'+esc(t)+'</option>').join("");
+   if(!turmas.length)throw new Error("Nenhuma turma disponível para receber o aviso.");
+  })();
+ }
+ try{await classOptionsPromise;}
+ catch(error){classOptionsPromise=null;throw error;}
+ if(selected){
+  const select=document.getElementById("targetTurma");
+  const option=[...select.options].find(item=>item.value===selected);
+  if(option)select.value=selected;
+  else throw new Error("A turma recebida do relatório não está disponível. Selecione outra turma.");
+ }
+}
+async function prepareReportClass(){
+ const stored=OLD_STORE.getItem(REPORT_CLASS_KEY);
+ if(!stored)return;
+ OLD_STORE.removeItem(REPORT_CLASS_KEY);
+ let target;
+ try{target=JSON.parse(stored);}catch(_){setStatus("Não foi possível recuperar a turma do relatório.","error");return;}
+ reportClassTarget=String(target?.turma||"").trim();
+ if(!reportClassTarget||reportClassTarget.length>100){setStatus("A turma recebida do relatório é inválida.","error");return;}
+ try{
+  await loadClassOptions(reportClassTarget);
+  document.getElementById("scope").value="class";
+  updateScope();
+ }catch(error){setStatus(error.message,"error");}
 }
 async function prepareReportRecipients(){
  const stored=OLD_STORE.getItem(REPORT_RECIPIENTS_KEY);
@@ -205,11 +250,19 @@ async function publishAnnouncement(event){
  let path="/comms/teacher/announcement";
  let payload={scope,title,body};
 
+ if(scope==="class"){
+  const turma=document.getElementById("targetTurma").value.trim();
+  if(!turma){setStatus("Selecione a turma que receberá o aviso.","error");return;}
+  payload.turma=turma;
+ }
  if(scope==="individual"){
   if(reportRecipients.length){
    if(reportRecipients.length>MAX_REPORT_RECIPIENTS){setStatus("Selecione no máximo "+MAX_REPORT_RECIPIENTS+" alunos por aviso.","error");return;}
-   payload={title,body,student_codes:reportRecipients.map(student=>student.codigo)};
-   path="/comms/teacher/announcement-batch";
+   if(reportRecipients.length===1)payload={scope:"individual",title,body,student_code:reportRecipients[0].codigo};
+   else{
+    payload={title,body,student_codes:reportRecipients.map(student=>student.codigo)};
+    path="/comms/teacher/announcement-batch";
+   }
   }else{
    const code=document.getElementById("targetCode").value.trim().toUpperCase();
    if(!validatedStudent||validatedStudent.codigo!==code){setStatus("Valide o código do destinatário antes de publicar.","error");return;}
@@ -239,18 +292,20 @@ async function loadAnnouncements(){
   const list=Array.isArray(data.announcements)?data.announcements:[];
   document.getElementById("statAnnouncements").textContent=list.length;
   document.getElementById("statGlobal").textContent=list.filter(x=>x.scope==="global").length;
-  document.getElementById("statIndividual").textContent=list.filter(x=>x.scope==="individual").length;
+  document.getElementById("statIndividual").textContent=list.filter(x=>x.scope==="individual"||x.scope==="class").length;
   const target=document.getElementById("announcementList");target.innerHTML="";
+  const clearHistoryButton=document.getElementById("deleteAnnouncementHistory");
+  clearHistoryButton.disabled=!list.length;
   if(!list.length){target.innerHTML='<div class="empty">Nenhum aviso publicado ainda. O primeiro pode ser um lembrete de prova, atividade ou evento escolar.</div>';return;}
   list.forEach(item=>{
    const article=document.createElement("article");article.className="announcement";
    const top=document.createElement("div");top.className="announcement-top";
-   const badge=document.createElement("span");badge.className="badge "+(item.scope==="global"?"global":item.scope==="individual"?"individual":"");badge.textContent=item.scope==="global"?"Aviso global":"Individual";
+   const badge=document.createElement("span");badge.className="badge "+(item.scope==="global"?"global":item.scope==="individual"?"individual":"");badge.textContent=item.scope==="global"?"Aviso global":item.scope==="class"?"Aviso de turma":"Individual";
    const date=document.createElement("span");date.className="date";date.textContent=dateLabel(item.created_at);top.append(badge,date);
    const title=document.createElement("h3");title.textContent=item.title;
    const body=document.createElement("p");body.textContent=item.body;
    const foot=document.createElement("div");foot.className="announcement-footer";
-   foot.textContent=item.scope==="global"?"Destinatários: todas as turmas":"Aluno: "+(item.student_code||"—");
+   foot.textContent=item.scope==="global"?"Destinatários: todas as turmas":item.scope==="class"?"Turma: "+(item.turma||"—"):"Aluno: "+(item.student_code||"—");
    const isActive=Number(item.active)!==0;
    if(!isActive)article.classList.add("inactive");
    const actions=document.createElement("div");actions.className="announcement-actions";
@@ -258,26 +313,37 @@ async function loadAnnouncements(){
    state.textContent=isActive?"Visível aos alunos":"Oculto · pode restaurar";
    const toggle=document.createElement("button");toggle.type="button";
    toggle.className="announcement-toggle"+(isActive?"":" restore");
-   toggle.textContent=isActive?"Excluir aviso":"Restaurar aviso";
+   toggle.textContent=isActive?"Ocultar aviso":"Restaurar aviso";
    toggle.addEventListener("click",async()=>{
     const nextActive=!isActive;
-    if(!nextActive&&!window.confirm("Excluir este aviso da Área do Aluno? Ele será ocultado, não apagado definitivamente, e poderá ser restaurado depois."))return;
-    toggle.disabled=true;toggle.textContent=nextActive?"Restaurando...":"Excluindo...";
+    if(!nextActive&&!window.confirm("Ocultar este aviso da Área do Aluno? Ele continuará no histórico e poderá ser restaurado ou apagado definitivamente."))return;
+    toggle.disabled=true;toggle.textContent=nextActive?"Restaurando...":"Ocultando...";
     try{
      const result=await api("/comms/teacher/announcement-status",{method:"POST",body:JSON.stringify({id:Number(item.id),active:nextActive})});
      setStatus(result.message||"Estado do aviso atualizado.","success");
      await loadAnnouncements();
     }catch(e){
-     toggle.disabled=false;toggle.textContent=nextActive?"Restaurar aviso":"Excluir aviso";
+     toggle.disabled=false;toggle.textContent=nextActive?"Restaurar aviso":"Ocultar aviso";
      setStatus(e.message,"error");
     }
    });
-   actions.append(state,toggle);
+   const remove=document.createElement("button");remove.type="button";remove.className="announcement-delete";remove.textContent="Apagar definitivamente";
+   remove.addEventListener("click",async()=>{
+    if(!window.confirm("Apagar este aviso definitivamente? Ele será removido do histórico, da Área do Aluno e dos registros de leitura. Esta ação não pode ser desfeita."))return;
+    remove.disabled=true;remove.textContent="Apagando...";
+    try{
+     const result=await api("/comms/teacher/announcement-delete",{method:"POST",body:JSON.stringify({id:Number(item.id)})});
+     setStatus(result.message||"Aviso apagado definitivamente.","success");
+     await loadAnnouncements();
+    }catch(e){remove.disabled=false;remove.textContent="Apagar definitivamente";setStatus(e.message,"error");}
+   });
+   actions.append(state,toggle,remove);
    article.append(top,title,body,foot,actions);target.appendChild(article);
   });
  }catch(e){document.getElementById("announcementList").innerHTML='<div class="empty">Não foi possível carregar os avisos: '+esc(e.message)+'</div>';}
 }
 document.getElementById("scope").addEventListener("change",updateScope);
+document.getElementById("targetTurma").addEventListener("change",updateScope);
 document.getElementById("clearReportRecipients").addEventListener("click",clearReportRecipients);
 
 
@@ -287,6 +353,18 @@ document.getElementById("announcementForm").addEventListener("submit",publishAnn
 document.getElementById("announcementBody").addEventListener("input",e=>document.getElementById("announcementCount").textContent=e.target.value.length);
 
 document.getElementById("refreshAnnouncements").addEventListener("click",loadAnnouncements);
+document.getElementById("deleteAnnouncementHistory").addEventListener("click",async()=>{
+ const confirmed=window.confirm("Apagar definitivamente todo o histórico de avisos, inclusive os ocultos, e todos os respectivos registros de leitura? Esta ação não pode ser desfeita.");
+ if(!confirmed)return;
+ const button=document.getElementById("deleteAnnouncementHistory");
+ button.disabled=true;button.textContent="Apagando histórico...";
+ try{
+  const result=await api("/comms/teacher/announcement-history-clear",{method:"POST",body:JSON.stringify({})});
+  setStatus(result.message||"Histórico apagado.","success");
+  await loadAnnouncements();
+ }catch(e){setStatus(e.message,"error");}
+ finally{button.textContent="Apagar histórico";}
+});
 
 
 document.getElementById("logoutButton").addEventListener("click",async()=>{

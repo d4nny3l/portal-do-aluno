@@ -30,7 +30,7 @@ main{padding:88px 0 70px;position:relative;z-index:1}.hero{margin-bottom:24px}.e
 .selection-toolbar button:disabled{background:#d9daf0;color:#777995;cursor:not-allowed}
 .report-search{margin:0 0 12px}
 .report-search input{width:100%;border:1px solid var(--line);border-radius:12px;padding:11px 13px;background:#fff;color:var(--text);font:inherit}
-.report-select{width:18px;height:18px;accent-color:#5b5bd6;cursor:pointer}
+.report-select{width:18px;height:18px;accent-color:#5b5bd6;cursor:pointer}.notice-actions{display:flex;gap:9px;flex-wrap:wrap}.notice-actions button,.notice-row-button{width:auto;margin:0;padding:9px 12px;border:0;border-radius:11px;background:#5b5bd6;color:#fff;font-size:12px;font-weight:750;cursor:pointer}.notice-actions button:hover,.notice-row-button:hover{background:#4d4dc2}.notice-row-button{white-space:nowrap}@media(max-width:560px){.notice-actions{width:100%}.notice-actions button{width:100%}}
 @media(max-width:560px){.selection-toolbar{align-items:flex-start;flex-direction:column}.selection-toolbar button{width:100%}}
 .period-note{max-width:760px;margin:-6px 0 18px;color:var(--muted);font-size:12px;line-height:1.5}
 body .salta-grid{position:fixed;inset:0;pointer-events:none;z-index:0;background-image:linear-gradient(rgba(91,91,214,.075) 1px,transparent 1px),linear-gradient(90deg,rgba(91,91,214,.075) 1px,transparent 1px);background-size:32px 32px}
@@ -109,7 +109,10 @@ body .salta-grid{position:fixed;inset:0;pointer-events:none;z-index:0;background
       <h2 class="section-title">Resultado por aluno</h2>
       <div class="selection-toolbar">
         <p id="classSelectionCount">Nenhum aluno selecionado.</p>
-        <button id="sendClassNotice" type="button" disabled>Preparar aviso aos selecionados</button>
+        <div class="notice-actions">
+          <button id="sendWholeClassNotice" type="button">Preparar aviso para toda a turma</button>
+          <button id="sendClassNotice" type="button" disabled>Preparar aviso aos selecionados</button>
+        </div>
       </div>
       <div class="table-wrap">
         <table class="students-table">
@@ -158,19 +161,13 @@ body .salta-grid{position:fixed;inset:0;pointer-events:none;z-index:0;background
   <section class="section">
     <div class="panel">
       <h2 class="section-title">Alunos da plataforma</h2>
-      <p class="muted">Selecione um ou mais alunos para preparar avisos individuais a partir deste relatório.</p>
-      <div class="selection-toolbar">
-        <p id="globalSelectionCount">Nenhum aluno selecionado.</p>
-        <button id="sendGlobalNotice" type="button" disabled>Preparar aviso aos selecionados</button>
-      </div>
-      <div class="report-search"><label class="muted" for="globalStudentSearch">Buscar por aluno ou turma</label><input id="globalStudentSearch" type="search" placeholder="Digite um nome ou turma"></div>
+      <p class="muted">Prepare um aviso individual diretamente pelo aluno. Para falar com uma turma inteira, use a comparação abaixo.</p>
       <div class="table-wrap">
         <table class="students-table">
-          <thead><tr><th><input class="report-select" id="selectAllGlobal" type="checkbox" aria-label="Selecionar alunos visíveis"></th><th>Aluno</th><th>Turma</th><th>Média no período</th><th>Situação</th></tr></thead>
+          <thead><tr><th>Aluno</th><th>Turma</th><th>Média no período</th><th>Situação</th><th>Aviso</th></tr></thead>
           <tbody id="globalStudents"></tbody>
         </table>
       </div>
-      <p class="muted" id="globalRosterSummary"></p>
     </div>
   </section>
 
@@ -179,7 +176,7 @@ body .salta-grid{position:fixed;inset:0;pointer-events:none;z-index:0;background
       <h2 class="section-title">Comparação entre turmas</h2>
       <div class="table-wrap">
         <table class="students-table">
-          <thead><tr><th>Turma</th><th>Rede</th><th>Período</th><th>Mínimo da turma</th><th>Alunos com média</th><th>Média no período</th><th>Abaixo do mínimo</th></tr></thead>
+          <thead><tr><th>Turma</th><th>Rede</th><th>Período</th><th>Mínimo da turma</th><th>Alunos com média</th><th>Média no período</th><th>Abaixo do mínimo</th><th>Aviso</th></tr></thead>
           <tbody id="globalClasses"></tbody>
         </table>
       </div>
@@ -204,7 +201,7 @@ body .salta-grid{position:fixed;inset:0;pointer-events:none;z-index:0;background
   const MAX_NOTICE_RECIPIENTS=100;
   const selectedStudents=new Map();
   let globalStudentRows=[];
-  let visibleGlobalStudentRows=[];
+  let currentReportClass="";
 
   function token(){return localStorage.getItem(KEY)||sessionStorage.getItem(KEY)||""}
   function fmt(v){if(v===null||v===undefined||v==="")return "—";const n=Number(v);return Number.isFinite(n)?n.toFixed(1).replace(".",","):String(v)}
@@ -261,13 +258,9 @@ body .salta-grid{position:fixed;inset:0;pointer-events:none;z-index:0;background
     const count=selectedStudents.size;
     const label=count ? count+" aluno"+(count===1?" selecionado.":"s selecionados.") : "Nenhum aluno selecionado.";
     const classLabel=document.getElementById("classSelectionCount");
-    const globalLabel=document.getElementById("globalSelectionCount");
     const classButton=document.getElementById("sendClassNotice");
-    const globalButton=document.getElementById("sendGlobalNotice");
     if(classLabel)classLabel.textContent=label;
-    if(globalLabel)globalLabel.textContent=label;
     if(classButton)classButton.disabled=count===0;
-    if(globalButton)globalButton.disabled=count===0;
   }
 
   function queueNoticeForSelected(){
@@ -281,6 +274,25 @@ body .salta-grid{position:fixed;inset:0;pointer-events:none;z-index:0;background
     location.href="./mensagens.html";
   }
 
+  function queueNoticeForStudent(student){
+    if(!student?.codigo)return;
+    sessionStorage.removeItem("saltaReportAnnouncementClass");
+    sessionStorage.setItem(NOTICE_RECIPIENTS_KEY,JSON.stringify([{
+      codigo:String(student.codigo),
+      nome:String(student.nome||""),
+      turma:String(student.turma||"")
+    }]));
+    location.href="./mensagens.html";
+  }
+
+  function queueNoticeForClass(turma){
+    const target=String(turma||"").trim();
+    if(!target)return;
+    sessionStorage.removeItem(NOTICE_RECIPIENTS_KEY);
+    sessionStorage.setItem("saltaReportAnnouncementClass",JSON.stringify({turma:target}));
+    location.href="./mensagens.html";
+  }
+
   function syncSelectAll(input, rows){
     if(!input)return;
     input.checked=rows.length>0&&rows.every(row=>selectedStudents.has(String(row.codigo)));
@@ -288,32 +300,20 @@ body .salta-grid{position:fixed;inset:0;pointer-events:none;z-index:0;background
   }
 
   function renderGlobalRoster(rows){
-    globalStudentRows=Array.isArray(rows)?rows:[];
-    const query=(document.getElementById("globalStudentSearch").value||"").trim().toLocaleLowerCase("pt-BR");
-    visibleGlobalStudentRows=globalStudentRows.filter(row=>
-      !query||String(row.nome||"").toLocaleLowerCase("pt-BR").includes(query)||
-      String(row.turma||"").toLocaleLowerCase("pt-BR").includes(query)
-    );
+    const globalRows=Array.isArray(rows)?rows:[];
     const tbody=document.getElementById("globalStudents");
-    tbody.innerHTML=visibleGlobalStudentRows.map(row=>{
+    tbody.innerHTML=globalRows.map(row=>{
       const code=String(row.codigo||"");
       const name=String(row.nome||"Aluno sem nome");
       const turma=String(row.turma||"—");
       const hasMedia=row.media!==null&&row.media!==undefined&&row.media!=="";
       const situation=!hasMedia?"Sem média lançada":Number(row.media)>=Number(row.mediaMinima)?"Na média ou acima":"Abaixo da média";
-      return '<tr><td><input class="report-select global-student-select" type="checkbox" data-code="'+esc(code)+'" aria-label="Selecionar '+esc(name)+'" '+(selectedStudents.has(code)?"checked":"")+'></td><td>'+esc(name)+'</td><td>'+esc(turma)+'</td><td>'+fmt(row.media)+'</td><td>'+situation+'</td></tr>';
-    }).join("")||'<tr><td colspan="5" class="empty">Nenhum aluno corresponde à busca.</td></tr>';
-    tbody.querySelectorAll(".global-student-select").forEach(input=>input.addEventListener("change",()=>{
-      const code=input.dataset.code;
-      const row=visibleGlobalStudentRows.find(item=>String(item.codigo)===code);
-      if(input.checked&&row)selectedStudents.set(code,{codigo:code,nome:row.nome||"",turma:row.turma||""});
-      else selectedStudents.delete(code);
-      updateSelectionControls();
-      syncSelectAll(document.getElementById("selectAllGlobal"),visibleGlobalStudentRows);
+      return '<tr><td>'+esc(name)+'</td><td>'+esc(turma)+'</td><td>'+fmt(row.media)+'</td><td>'+situation+'</td><td><button class="notice-row-button global-student-notice" type="button" data-code="'+esc(code)+'">Preparar aviso</button></td></tr>';
+    }).join("")||'<tr><td colspan="5" class="empty">Nenhum aluno disponível no relatório.</td></tr>';
+    tbody.querySelectorAll(".global-student-notice").forEach(button=>button.addEventListener("click",()=>{
+      const student=globalRows.find(row=>String(row.codigo)===button.dataset.code);
+      if(student)queueNoticeForStudent(student);
     }));
-    syncSelectAll(document.getElementById("selectAllGlobal"),visibleGlobalStudentRows);
-    document.getElementById("globalRosterSummary").textContent=globalStudentRows.length+" alunos no relatório.";
-    updateSelectionControls();
   }
 
   function bindClassSelection(rows){
@@ -375,9 +375,13 @@ body .salta-grid{position:fixed;inset:0;pointer-events:none;z-index:0;background
     document.getElementById("globalVistos").textContent=(data.vistosAcumulados?"Média de vistos acumulados: ":"Média de vistos: ")+fmt(data.mediaVistos);
     document.getElementById("globalTurmas").textContent="Turmas: "+(data.turmas?.length||0);
 
-    document.getElementById("globalClasses").innerHTML=(data.turmas||[]).map(x=>
-      '<tr><td>'+esc(x.turma)+'</td><td>'+esc(x.rede==="DF"?"Distrito Federal":x.rede==="EJA"?"EJA":"Goiás")+'</td><td>'+ (data.periodo==="vigente" ? x.bimestreVigente+"º bim." : data.periodo==="final" ? "Final" : data.periodo+"º bim.") +'</td><td>'+fmt(x.mediaMinima)+'</td><td>'+x.alunosComMedia+' / '+x.alunos+'</td><td>'+fmt(x.media)+'</td><td>'+x.abaixo+'</td></tr>'
-    ).join("");
+    const classRows=data.turmas||[];
+    document.getElementById("globalClasses").innerHTML=classRows.map(x=>
+      '<tr><td>'+esc(x.turma)+'</td><td>'+esc(x.rede==="DF"?"Distrito Federal":x.rede==="EJA"?"EJA":"Goiás")+'</td><td>'+ (data.periodo==="vigente" ? x.bimestreVigente+"º bim." : data.periodo==="final" ? "Final" : data.periodo+"º bim.") +'</td><td>'+fmt(x.mediaMinima)+'</td><td>'+x.alunosComMedia+' / '+x.alunos+'</td><td>'+fmt(x.media)+'</td><td>'+x.abaixo+'</td><td><button class="notice-row-button global-class-notice" type="button" data-class="'+esc(x.turma)+'">Avisar turma</button></td></tr>'
+    ).join("")||'<tr><td colspan="8" class="empty">Nenhuma turma disponível no relatório.</td></tr>';
+    document.querySelectorAll(".global-class-notice").forEach(button=>button.addEventListener("click",()=>{
+      queueNoticeForClass(button.dataset.class);
+    }));
   }
 
   function render(data){
@@ -430,6 +434,7 @@ body .salta-grid{position:fixed;inset:0;pointer-events:none;z-index:0;background
     document.getElementById("vistos").textContent=(data.vistosAcumulados?"Média de vistos acumulados: ":"Média de vistos: ")+fmt(data.mediaVistos);
     document.getElementById("acima").textContent=(data.acimaOuIgualMedia||0)+" alunos no mínimo ou acima";
 
+    currentReportClass=String(data.turma||turmaSelect.value||"").trim();
     const tbody=document.getElementById("students");
     const porAluno=data.porAluno||[];
     window.currentClassReportStudents=porAluno;
@@ -474,11 +479,6 @@ body .salta-grid{position:fixed;inset:0;pointer-events:none;z-index:0;background
     }
   }
 
-  document.getElementById("globalStudentSearch").addEventListener("input",()=>renderGlobalRoster(globalStudentRows));
-  document.getElementById("selectAllGlobal").addEventListener("change",event=>{
-    toggleRows(visibleGlobalStudentRows,event.target.checked);
-    renderGlobalRoster(globalStudentRows);
-  });
   document.getElementById("selectAllClass").addEventListener("change",event=>{
     const rows=window.currentClassReportStudents||[];
     toggleRows(rows,event.target.checked);
@@ -488,7 +488,7 @@ body .salta-grid{position:fixed;inset:0;pointer-events:none;z-index:0;background
     });
   });
   document.getElementById("sendClassNotice").addEventListener("click",queueNoticeForSelected);
-  document.getElementById("sendGlobalNotice").addEventListener("click",queueNoticeForSelected);
+  document.getElementById("sendWholeClassNotice").addEventListener("click",()=>queueNoticeForClass(currentReportClass));
 
   function clearReportSelection(){
     selectedStudents.clear();
