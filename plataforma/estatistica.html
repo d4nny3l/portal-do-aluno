@@ -73,36 +73,19 @@ body.auth-ready{visibility:visible}body{visibility:hidden}
 </div></main>
 <script>
 (() => {
- const AUTH_API_URL="https://salta-auth.dannyel-moises.workers.dev";
+ const AUTH_API_URL="https://salta-stats.dannyel-moises.workers.dev/auth";
  const KEY="saltaProfessorSession";
- const token=localStorage.getItem(KEY)||sessionStorage.getItem(KEY);
+ localStorage.removeItem(KEY);sessionStorage.removeItem(KEY);
 
  async function abrirIndividual(event){
   event.preventDefault();
-  const token = localStorage.getItem(KEY) || sessionStorage.getItem(KEY) || "";
-  if(!token){
-    location.replace("./professor.html");
-    return;
-  }
   try{
-    const r = await fetch(AUTH_API_URL + "/session", {
-      method:"GET",
-      headers:{Authorization:"Bearer "+token},
-      credentials:"include",
-      cache:"no-store"
-    });
+    const r = await fetch(AUTH_API_URL + "/session", {method:"GET",credentials:"include",cache:"no-store"});
     const d = await r.json().catch(()=>({}));
-    if(!r.ok || !d.authenticated){
-      localStorage.removeItem(KEY);
-      sessionStorage.removeItem(KEY);
-      location.replace("./professor.html");
-      return;
-    }
+    if(!r.ok || !d.authenticated){location.replace("./professor.html");return;}
     sessionStorage.setItem("saltaProfessorModule","estatistica-individual");
     location.assign("./estatistica-individual.html");
-  }catch(e){
-    location.replace("./professor.html");
-  }
+  }catch(e){location.replace("./professor.html");}
 }
 
 const individualLink=document.getElementById("individualLink");
@@ -110,10 +93,9 @@ if(individualLink) individualLink.addEventListener("click",abrirIndividual);
 
 async function check(){
    try{
-     const headers=token?{Authorization:"Bearer "+token}:{};
-     const r=await fetch(AUTH_API_URL+"/session",{method:"GET",headers,credentials:"include",cache:"no-store"});
+     const r=await fetch(AUTH_API_URL+"/session",{method:"GET",credentials:"include",cache:"no-store"});
      const d=await r.json().catch(()=>({}));
-     if(!r.ok||!d.authenticated){localStorage.removeItem(KEY);sessionStorage.removeItem(KEY);location.replace("./professor.html");return;}
+     if(!r.ok||!d.authenticated){location.replace("./professor.html");return;}
      document.body.classList.add("auth-ready");
 
      const revealItems=document.querySelectorAll(".reveal");
