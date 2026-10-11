@@ -22,11 +22,11 @@ h1{font-size:clamp(34px,5vw,52px);letter-spacing:-2px;line-height:1.04;margin:0 
 .metric,.panel{background:rgba(255,255,255,.82);border:1px solid var(--line);border-radius:22px;box-shadow:0 12px 36px rgba(0,0,0,.055)}
 .metric{padding:20px 22px}.metric span{display:block;color:var(--muted);font-size:13px}.metric strong{display:block;font-size:30px;letter-spacing:-1px;margin-top:7px}
 .panel{overflow:hidden}.toolbar{display:flex;align-items:center;justify-content:space-between;gap:16px;padding:18px 20px;border-bottom:1px solid var(--line)}
-.toolbar h2{font-size:17px;margin:0}.toolbar input{width:min(340px,100%);border:1px solid #d7d7dc;border-radius:12px;padding:11px 13px;font:inherit;background:#fff;outline:none}.toolbar input:focus{border-color:var(--blue);box-shadow:0 0 0 3px rgba(0,113,227,.12)}
+.toolbar h2{font-size:17px;margin:0}.filters{display:flex;align-items:end;justify-content:flex-end;gap:10px;flex:1}.filters label{display:grid;gap:5px;color:var(--muted);font-size:11px;font-weight:700}.filters select{min-width:180px;border:1px solid #d7d7dc;border-radius:11px;padding:10px 12px;font:inherit;font-size:13px;background:#fff;color:var(--text);outline:none}.filters select:focus{border-color:var(--blue);box-shadow:0 0 0 3px rgba(0,113,227,.12)}.clear-button{border:1px solid #e7c7c4;background:#fff;color:#a32f25;border-radius:11px;padding:10px 13px;font:inherit;font-size:12px;font-weight:700;white-space:nowrap}.clear-button:hover{background:#fff5f4}.clear-button:disabled{opacity:.55;cursor:wait}
 .table-wrap{overflow:auto}table{width:100%;border-collapse:collapse;min-width:570px}th,td{text-align:left;padding:14px 20px;border-bottom:1px solid rgba(0,0,0,.06)}th{font-size:11px;letter-spacing:.07em;text-transform:uppercase;color:var(--muted);background:rgba(245,245,247,.65)}td{font-size:14px}td:first-child{font-weight:650}.empty{padding:34px 20px;text-align:center;color:var(--muted);line-height:1.5}.footnote{padding:14px 20px;color:var(--muted);font-size:12px;line-height:1.5}
 .status{min-height:22px;margin:12px 2px;color:var(--muted);font-size:13px}
 .salta-grid{position:fixed;inset:0;pointer-events:none;z-index:0;background-image:linear-gradient(rgba(90,90,100,.055) 1px,transparent 1px),linear-gradient(90deg,rgba(90,90,100,.055) 1px,transparent 1px);background-size:32px 32px}
-@media(max-width:650px){main{padding-top:60px}.summary{grid-template-columns:1fr;gap:10px}.metric{padding:16px 18px}.metric strong{font-size:26px}.toolbar{align-items:stretch;flex-direction:column}.toolbar input{width:100%}.top{align-items:flex-start;flex-direction:column}}
+@media(max-width:760px){main{padding-top:60px}.summary{grid-template-columns:1fr;gap:10px}.metric{padding:16px 18px}.metric strong{font-size:26px}.toolbar{align-items:stretch;flex-direction:column}.filters{align-items:stretch;flex-direction:column}.filters label,.filters select{width:100%}.top{align-items:flex-start;flex-direction:column}}
 </style>
 </head>
 <body>
@@ -41,7 +41,14 @@ h1{font-size:clamp(34px,5vw,52px);letter-spacing:-2px;line-height:1.04;margin:0 
 </section>
 <div class="status" id="status" role="status" aria-live="polite">Carregando relatório…</div>
 <section class="panel">
-<div class="toolbar"><h2>Consultas recentes</h2><input id="filter" type="search" placeholder="Filtrar por aluno ou turma" aria-label="Filtrar por aluno ou turma"></div>
+<div class="toolbar">
+<h2>Consultas recentes</h2>
+<div class="filters">
+<label>Turma<select id="classFilter"><option value="">Todas as turmas</option></select></label>
+<label>Aluno<select id="studentFilter" disabled><option value="">Selecione primeiro a turma</option></select></label>
+<button id="clearHistory" class="clear-button" type="button">Apagar histórico</button>
+</div>
+</div>
 <div class="table-wrap"><table><thead><tr><th>Aluno</th><th>Turma</th><th>Data e hora</th></tr></thead><tbody id="rows"></tbody></table><div class="empty" id="empty" hidden>Nenhuma consulta encontrada.</div></div>
 <div class="footnote" id="footnote">Exibindo até as 500 consultas mais recentes. O relatório não registra endereço IP ou informações do dispositivo.</div>
 </section>
@@ -60,8 +67,9 @@ h1{font-size:clamp(34px,5vw,52px);letter-spacing:-2px;line-height:1.04;margin:0 
   return Number.isNaN(date.getTime())?raw:date.toLocaleString("pt-BR",{dateStyle:"short",timeStyle:"short"});
  }
  function render(){
-  const query=document.getElementById("filter").value.trim().toLocaleLowerCase("pt-BR");
-  const filtered=accesses.filter(item=>(String(item.nome||"")+" "+String(item.turma||"")).toLocaleLowerCase("pt-BR").includes(query));
+  const turma=document.getElementById("classFilter").value;
+  const codigo=document.getElementById("studentFilter").value;
+  const filtered=accesses.filter(item=>(!turma||String(item.turma||"").trim()===turma)&&(!codigo||String(item.student_code||"")===codigo));
   rows.replaceChildren();
   for(const item of filtered){
    const tr=document.createElement("tr");
@@ -72,6 +80,47 @@ h1{font-size:clamp(34px,5vw,52px);letter-spacing:-2px;line-height:1.04;margin:0 
   }
   empty.hidden=filtered.length>0;
   document.getElementById("footnote").textContent="Exibindo "+filtered.length+" de "+accesses.length+" consultas recentes. O relatório não registra endereço IP ou informações do dispositivo.";
+ }
+ async function loadClasses(){
+  const response=await fetch(API+"/admin/turmas",{method:"GET",credentials:"include",cache:"no-store"});
+  const data=await response.json().catch(()=>({}));
+  if(!response.ok)throw new Error(data.error||"Não foi possível carregar as turmas.");
+  const select=document.getElementById("classFilter");
+  select.replaceChildren(new Option("Todas as turmas",""));
+  (Array.isArray(data.turmas)?data.turmas:[]).forEach(turma=>select.add(new Option(turma,turma)));
+ }
+ let studentRequest=0;
+ async function loadStudents(turma){
+  const requestId=++studentRequest,select=document.getElementById("studentFilter");
+  select.replaceChildren(new Option(turma?"Carregando alunos…":"Selecione primeiro a turma",""));
+  select.disabled=true;
+  if(!turma)return;
+  try{
+   const response=await fetch(API+"/admin/alunos?turma="+encodeURIComponent(turma),{method:"GET",credentials:"include",cache:"no-store"});
+   const data=await response.json().catch(()=>({}));
+   if(!response.ok)throw new Error(data.error||"Não foi possível carregar os alunos.");
+   if(requestId!==studentRequest||document.getElementById("classFilter").value!==turma)return;
+   select.replaceChildren(new Option("Todos os alunos da turma",""));
+   (Array.isArray(data.alunos)?data.alunos:[]).forEach(student=>select.add(new Option(student.nome,student.codigo)));
+   select.disabled=false;
+  }catch(error){
+   if(requestId!==studentRequest)return;
+   select.replaceChildren(new Option("Falha ao carregar alunos",""));
+   status.textContent=error.message||"Não foi possível carregar os alunos.";
+  }
+ }
+ async function clearHistory(){
+  if(!window.confirm("Apagar todo o histórico de acessos dos alunos? Esta ação não pode ser desfeita."))return;
+  const button=document.getElementById("clearHistory");
+  button.disabled=true;button.textContent="Apagando…";
+  try{
+   const response=await fetch(API+"/admin/acessos-alunos/limpar",{method:"POST",headers:{"Content-Type":"application/json"},credentials:"include",cache:"no-store",body:JSON.stringify({confirm:"apagar-historico"})});
+   const data=await response.json().catch(()=>({}));
+   if(!response.ok||!data.ok)throw new Error(data.error||"Não foi possível apagar o histórico.");
+   status.textContent="Histórico de acessos apagado.";
+   await load();
+  }catch(error){status.textContent=error.message||"Não foi possível apagar o histórico.";}
+  finally{button.disabled=false;button.textContent="Apagar histórico";}
  }
  async function load(){
   try{
@@ -87,6 +136,7 @@ h1{font-size:clamp(34px,5vw,52px);letter-spacing:-2px;line-height:1.04;margin:0 
    document.getElementById("totalAccesses").textContent=Number(summary.total||0).toLocaleString("pt-BR");
    document.getElementById("recentAccesses").textContent=Number(summary.acessos30Dias||0).toLocaleString("pt-BR");
    document.getElementById("recentStudents").textContent=Number(summary.alunos30Dias||0).toLocaleString("pt-BR");
+   try{await loadClasses();}catch(error){status.textContent=error.message||"Não foi possível carregar as turmas.";}
    status.textContent=accesses.length?"":"Ainda não há consultas registradas. Os acessos válidos começarão a aparecer após esta atualização.";
    render();
   }catch(error){
@@ -94,7 +144,9 @@ h1{font-size:clamp(34px,5vw,52px);letter-spacing:-2px;line-height:1.04;margin:0 
    status.textContent=error.message||"Falha ao consultar os acessos.";
   }
  }
- document.getElementById("filter").addEventListener("input",render);
+ document.getElementById("classFilter").addEventListener("change",event=>{document.getElementById("studentFilter").value="";loadStudents(event.target.value);render();});
+ document.getElementById("studentFilter").addEventListener("change",render);
+ document.getElementById("clearHistory").addEventListener("click",clearHistory);
  load();
 })();
 </script>

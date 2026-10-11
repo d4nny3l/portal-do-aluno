@@ -971,7 +971,8 @@ export default {
       }
     }
 
-    if (request.method !== "GET") {
+    const clearingAccessHistory = url.pathname === "/admin/acessos-alunos/limpar" && request.method === "POST";
+    if (request.method !== "GET" && !clearingAccessHistory) {
       return json({ error: "Método não permitido." }, request, 405);
     }
     if (!(await authenticated(request, env))) {
@@ -979,6 +980,19 @@ export default {
     }
 
     try {
+      if (clearingAccessHistory) {
+        const contentType = (request.headers.get("Content-Type") || "").split(";")[0].trim().toLowerCase();
+        if (contentType !== "application/json") {
+          return json({ error: "Formato de confirmação inválido." }, request, 415);
+        }
+        const payload = await request.json().catch(() => null);
+        if (payload?.confirm !== "apagar-historico") {
+          return json({ error: "Confirme a exclusão do histórico." }, request, 400);
+        }
+        await ensureCommsSchema(env);
+        await env.DB.prepare("DELETE FROM salta_student_access_logs").run();
+        return json({ ok: true }, request);
+      }
       if (url.pathname === "/health") {
         return json({ ok: true, service: "salta-stats" }, request);
       }
@@ -987,7 +1001,7 @@ export default {
         await ensureCommsSchema(env);
         const [summary, result] = await Promise.all([
           env.DB.prepare("SELECT COUNT(*) AS total, SUM(CASE WHEN datetime(accessed_at) >= datetime('now', '-30 days') THEN 1 ELSE 0 END) AS ultimos_30_dias, COUNT(DISTINCT CASE WHEN datetime(accessed_at) >= datetime('now', '-30 days') THEN student_code END) AS alunos_ultimos_30_dias FROM salta_student_access_logs").first(),
-          env.DB.prepare("SELECT a.nome, TRIM(a.turma) AS turma, l.accessed_at FROM salta_student_access_logs l INNER JOIN alunos a ON a.codigo = l.student_code ORDER BY datetime(l.accessed_at) DESC LIMIT 500").all()
+          env.DB.prepare("SELECT a.nome, TRIM(a.turma) AS turma, l.student_code, l.accessed_at FROM salta_student_access_logs l INNER JOIN alunos a ON a.codigo = l.student_code ORDER BY datetime(l.accessed_at) DESC LIMIT 500").all()
         ]);
         return json({ resumo: { total: Number(summary?.total || 0), acessos30Dias: Number(summary?.ultimos_30_dias || 0), alunos30Dias: Number(summary?.alunos_ultimos_30_dias || 0) }, totalListados: (result.results || []).length, acessos: result.results || [] }, request);
       }
