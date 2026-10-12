@@ -158,6 +158,16 @@ body.auth-check{visibility:hidden}
 <main>
 
 <section class="card">
+<span class="badge">MODELO OFICIAL · EJA</span>
+<h2>Cartão de respostas</h2>
+<p class="help">Cartão final de 20 questões do 1º semestre do EJA. Abra para imprimir ou baixe o PDF para preencher e incluir na prova.</p>
+<div class="actions">
+<a class="file" href="./cartao-respostas-eja-20q-final.pdf" target="_blank" rel="noopener">Abrir cartão oficial (PDF)</a>
+<a class="file secondary" href="./cartao-respostas-eja-20q-final.pdf" download>Baixar PDF</a>
+</div>
+</section>
+
+<section class="card">
 <span class="badge">GABARITO</span>
 <h2>1. Informe o gabarito</h2>
 <p class="help">Você pode preencher manualmente ou simplesmente fotografar seu gabarito preenchido. O SALTA reconhece o mesmo cartão de respostas que você já usa.</p>
@@ -252,8 +262,8 @@ function matFromImage(im){
  return cv.imread(c);
 }
 
-/* Detecta a grade real da folha: 2 blocos x 10 questões x 5 linhas.
-   Não depende de quatro marcadores nos cantos. */
+/* Posições proporcionais do cartão final EJA, página A4 inteira.
+   As proporções funcionam em fotos e digitalizações de tamanhos diferentes. */
 function cluster1D(values,k){
  const data=cv.matFromArray(values.length,1,cv.CV_32F,values);
  const labels=new cv.Mat(),centers=new cv.Mat();
@@ -295,20 +305,13 @@ function buildYGroups(points,gap){
 }
 
 function detectGrid(src){
-  // MODELO OFICIAL SALTA — cartão 20×5.
-  // Coordenadas calibradas sobre a folha real enviada pelo professor
-  // (página 768×1024), convertidas para proporção da imagem recebida.
-  const W=768,H=1024;
+  // MODELO FINAL EJA — cartão 20×5 fornecido pelo professor, página A4.
+  const xLeft=[.174,.209,.244,.280,.316,.351,.386,.422,.458,.493];
+  const xRight=[.599,.635,.670,.705,.741,.777,.813,.848,.883,.919];
+  const yRows=[.506,.536,.565,.593,.622];
 
-  const xLeft=[48,80,113,145,177,209,241,273,305,338];
-  const xRight=[438,470,502,535,567,599,631,663,695,728];
-  const yRows=[469,497,526,555,584];
-
-  const sx=src.cols/W;
-  const sy=src.rows/H;
-
-  const xs=xLeft.concat(xRight).map(x=>x*sx);
-  const ys=yRows.map(y=>y*sy);
+  const xs=xLeft.concat(xRight).map(x=>x*src.cols);
+  const ys=yRows.map(y=>y*src.rows);
 
   // Raio proporcional ao cartão. Usamos uma região interna para ignorar
   // o contorno impresso da bolha e enxergar apenas a tinta do preenchimento.
@@ -320,8 +323,8 @@ function detectGrid(src){
     ys,
     blocks:2,
     questions:20,
-    headerY:443*sy,
-    colGap:32*sx,
+    headerY:.49*src.rows,
+    colGap:.035*src.cols,
     bubbleRadius:radius,
     rowPoints:ys.map(y=>xs.map(x=>({x,y,r:radius}))),
     template:true
