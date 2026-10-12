@@ -20,6 +20,7 @@ table{width:100%;border-collapse:collapse;margin-top:18px}th,td{text-align:left;
 footer{text-align:center;color:#777;font-size:13px;padding:10px 10px 45px}@media(max-width:650px){.grid{grid-template-columns:repeat(2,1fr)}.card{padding:20px}.brand{font-size:42px}}
 
 .camera-box{display:none;margin-top:18px;position:relative;border-radius:20px;overflow:hidden;background:#111;border:1px solid #ddd}.camera-box video{display:block;width:100%;max-height:560px;object-fit:cover}.camera-guide{position:absolute;inset:12% 10%;border:2px solid rgba(255,255,255,.8);border-radius:18px;box-shadow:0 0 0 999px rgba(0,0,0,.22);pointer-events:none}.camera-actions{position:absolute;left:0;right:0;bottom:0;padding:14px;display:flex;justify-content:center;gap:8px;background:linear-gradient(transparent,rgba(0,0,0,.8))}.camera-actions button{margin:0}.detected{display:none;margin-top:15px;padding:15px 17px;border-radius:16px;background:#f4f4f6;border:1px solid #e4e4e7}.detected strong{font-size:22px;letter-spacing:-.5px}.detected small{display:block;color:#707070;margin-top:4px}.
+.setup-row{display:flex;align-items:end;gap:12px;flex-wrap:wrap;margin:16px 0}.setup-row label{display:grid;gap:6px;color:#555;font-size:13px;font-weight:600}.setup-row input{width:140px;border:1px solid #ddd;border-radius:11px;padding:12px;font:inherit}.note{font-size:13px;color:#666;line-height:1.5;margin:12px 0 0}.field{width:210px;border:1px solid #ddd;border-radius:11px;padding:10px;font:inherit}.page-input{width:90px}
 
 /* SALTA — acesso rápido à plataforma */
 .salta-platform-button{
@@ -144,24 +145,24 @@ body.auth-check{visibility:hidden}
 <main>
 
 <section class="card">
-<span class="badge">MODELO OFICIAL · EJA</span>
-<h2>Cartão de respostas</h2>
-<p class="help">Cartão final de 20 questões do 1º semestre do EJA. Abra para imprimir ou baixe o PDF para preencher e incluir na prova.</p>
-<div class="actions">
-<a class="file" href="./cartao-respostas-eja-20q-final.pdf" target="_blank" rel="noopener">Abrir cartão oficial (PDF)</a>
-<a class="file secondary" href="./cartao-respostas-eja-20q-final.pdf" download>Baixar PDF</a>
-</div>
+<span class="badge">MODELO EDITÁVEL</span>
+<h2>Monte o cartão da prova</h2>
+<p class="help">Escolha de 1 a 150 questões e baixe um cartão simples, sem identificação da plataforma, com campos editáveis para cabeçalho. Cada página tem até 20 questões.</p>
+<div class="setup-row"><label>Quantidade de questões<input id="questionCount" type="number" min="1" max="150" value="20"></label><button onclick="updateQuestionCount()">Aplicar quantidade</button></div>
+<div class="actions"><button class="secondary" onclick="downloadAnswerSheet()">Baixar cartão editável (.html)</button><button class="secondary" onclick="printAnswerSheet()">Imprimir / salvar em PDF</button><a class="file secondary" href="./cartao-respostas-eja-20q-final.pdf" target="_blank" rel="noopener">Abrir cartão oficial EJA · 20 questões</a></div>
+<p class="note">No arquivo baixado, clique nos campos do cabeçalho para editar. O cartão oficial EJA continua disponível acima.</p>
 </section>
 
 <section class="card">
 <span class="badge">GABARITO</span>
-<h2>1. Informe o gabarito</h2>
-<p class="help">Você pode preencher manualmente ou simplesmente fotografar seu gabarito preenchido. O SALTA reconhece o mesmo cartão de respostas que você já usa.</p>
+<h2>1. Informe as respostas corretas</h2>
+<p class="help">Defina o gabarito manualmente ou envie uma foto/PDF do cartão preenchido. A leitura automática usa o modelo de cartão disponível nesta página; em outras folhas, confira e ajuste as respostas manualmente.</p>
 <div id="grid" class="grid"></div>
 <div class="actions">
 <button onclick="saveKey()">Salvar gabarito</button>
 <button class="secondary" onclick="clearKey()">Limpar</button>
-<label class="file secondary">Ler gabarito por foto<input id="keyPhoto" type="file" accept="image/*" capture="environment"></label>
+<label class="file secondary">Ler gabarito por foto/PDF<input id="keyPhoto" type="file" accept="image/*,application/pdf" capture="environment"></label>
+<button class="secondary" onclick="readKeyPhoto()">Tentar leitura novamente</button>
 </div>
 <div id="keyStatus" class="status"></div>
 </section>
@@ -169,9 +170,10 @@ body.auth-check{visibility:hidden}
 <section class="card">
 <span class="badge">CORREÇÃO AUTOMÁTICA</span>
 <h2>2. Leia o cartão do aluno</h2>
-<p class="help">O SALTA tenta reconhecer a estrutura do cartão automaticamente. Você pode usar uma foto ou abrir a câmera e corrigir diretamente pela tela.</p>
+<p class="help">Envie foto ou PDF do cartão do aluno. PDFs do modelo são lidos página por página; em fotos de provas com mais de 20 questões, escolha a página fotografada.</p>
 <div class="actions">
-<label class="file">Escolher cartão<input id="photo" type="file" accept="image/*" capture="environment"></label>
+<label class="file">Escolher cartão<input id="photo" type="file" accept="image/*,application/pdf" capture="environment"></label>
+<label class="setup-row" style="margin:0;align-items:center">Página da foto <input class="field page-input" id="photoPage" type="number" min="1" value="1"></label>
 <button class="secondary" id="cameraBtn" onclick="toggleCamera()">Abrir câmera</button>
 <button class="secondary" onclick="scanStudent()">Corrigir cartão</button>
 </div>
@@ -202,34 +204,71 @@ function renderKeyGrid(n){
 }
 
 let key=JSON.parse(localStorage.getItem("saltaKey")||"null")||[];
-if(!Array.isArray(key))key=[];
-renderKeyGrid(key.length||20);
+if(!Array.isArray(key)){questionCount=Number(key.count)||20;key=Array.isArray(key.answers)?key.answers:[];}
+questionCount=Math.min(150,Math.max(1,key.length||questionCount));
+document.getElementById("questionCount").value=questionCount;
+renderKeyGrid(questionCount);
 key.forEach((x,i)=>{if(x&&document.getElementById("q"+(i+1)))document.getElementById("q"+(i+1)).value=x;});
 
 function msg(t,id="status"){const s=document.getElementById(id);s.textContent=t;s.classList.add("show");}
+function updateQuestionCount(){
+ const n=Number(document.getElementById("questionCount").value);
+ if(!Number.isInteger(n)||n<1||n>150){msg("Escolha uma quantidade entre 1 e 150.","keyStatus");return}
+ const previous=Array.from({length:questionCount},(_,i)=>document.getElementById("q"+(i+1))?.value||"");
+ renderKeyGrid(n);previous.slice(0,n).forEach((x,i)=>{document.getElementById("q"+(i+1)).value=x;});
+ key=Array.from({length:n},(_,i)=>previous[i]||"");msg(`Gabarito preparado para ${n} questões.`,"keyStatus");
+}
+function answerSheetHtml(count){
+ const left=[.174,.209,.244,.280,.316,.351,.386,.422,.458,.493],right=[.599,.635,.670,.705,.741,.777,.813,.848,.883,.919],ys=[.506,.536,.565,.593,.622],pages=[];
+ for(let start=1;start<=count;start+=20){
+  const end=Math.min(count,start+19),marks=[];
+  for(let q=start;q<=end;q++){const local=q-start,x=(local<10?left:right)[local%10]*210;marks.push(`<text x="${x}" y="145" text-anchor="middle" font-size="3.1">${q}</text>`);ys.forEach((y,r)=>marks.push(`<circle cx="${x}" cy="${y*297}" r="3.55" fill="white" stroke="#222" stroke-width=".55"/><text x="${x}" y="${y*297+1.1}" text-anchor="middle" font-size="2.6">${L[r]}</text>`));}
+  pages.push(`<section class="sheet"><header><h1 contenteditable="true">CARTÃO-RESPOSTA</h1><div class="fields"><span contenteditable="true">Professor(a): __________________________________</span><span contenteditable="true">Disciplina: _____________________</span><span contenteditable="true">Turma: ________________________</span><span contenteditable="true">Data: ____ / ____ / ______</span><span contenteditable="true">Aluno(a): _________________________________________________________</span></div><p>Marque uma alternativa por questão preenchendo completamente o círculo.</p><p>Questões ${start} a ${end} · Página ${pages.length+1}</p></header><svg viewBox="0 0 210 297" aria-label="Grade de respostas">${marks.join("")}</svg></section>`);
+ }
+ return `<!doctype html><html lang="pt-BR"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Cartão-resposta</title><style>*{box-sizing:border-box}@page{size:A4;margin:0}body{margin:0;background:#eee;color:#111;font:12pt Arial,sans-serif}.sheet{position:relative;width:210mm;height:297mm;margin:10mm auto;background:white;padding:18mm}.sheet header{height:122mm;border-bottom:1px solid #aaa}.sheet h1{font-size:18pt;margin:0 0 12mm}.fields{display:flex;flex-wrap:wrap;gap:9mm 5mm}.fields span{min-width:44%;outline:none}.fields span:last-child{min-width:100%}header p{font-size:9pt;margin:7mm 0 0;color:#333}.sheet svg{position:absolute;inset:0;width:100%;height:100%}svg text{fill:#111;font-family:Arial,sans-serif}.sheet svg circle{vector-effect:non-scaling-stroke}@media print{body{background:white}.sheet{margin:0;break-after:page;page-break-after:always}.sheet:last-child{break-after:auto;page-break-after:auto}}@media screen{.sheet{box-shadow:0 4px 30px #0002}}</style><body>${pages.join("")}</body></html>`;
+}
+function openAnswerSheet(){const n=Number(document.getElementById("questionCount").value);if(!Number.isInteger(n)||n<1||n>150){msg("Escolha uma quantidade entre 1 e 150.","keyStatus");return null}return answerSheetHtml(n);}
+function downloadAnswerSheet(){const html=openAnswerSheet();if(!html)return;const a=document.createElement("a");a.href=URL.createObjectURL(new Blob([html],{type:"text/html;charset=utf-8"}));a.download=`cartao-resposta-${Number(document.getElementById("questionCount").value)}-questoes.html`;a.click();setTimeout(()=>URL.revokeObjectURL(a.href),1000);}
+function printAnswerSheet(){const html=openAnswerSheet();if(!html)return;const w=window.open("","_blank");if(!w){msg("Permita a abertura da janela para imprimir o cartão.","keyStatus");return}w.document.open();w.document.write(html);w.document.close();w.onload=()=>w.print();}
 function saveKey(){
  key=Array.from({length:questionCount},(_,i)=>document.getElementById("q"+(i+1)).value);
  if(key.some(x=>!x)){msg("Preencha todas as respostas antes de salvar.","keyStatus");return}
- localStorage.setItem("saltaKey",JSON.stringify(key));msg("Gabarito salvo com sucesso.","keyStatus");
+ localStorage.setItem("saltaKey",JSON.stringify({count:questionCount,answers:key}));msg(`Gabarito de ${questionCount} questões salvo neste navegador.`,"keyStatus");
 }
 function clearKey(){
- key=[];localStorage.removeItem("saltaKey");renderKeyGrid(20);
+ key=[];localStorage.removeItem("saltaKey");renderKeyGrid(questionCount);
  msg("Gabarito limpo.","keyStatus");
 }
 
 let studentImage=null,keyImage=null;
-function loadFile(input,kind){
+let studentPages=[],keyPages=[],pdfJsPromise=null;
+async function loadPdfJs(){
+ if(!pdfJsPromise)pdfJsPromise=import("https://cdn.jsdelivr.net/npm/pdfjs-dist@4.10.38/build/pdf.min.mjs").then(lib=>{lib.GlobalWorkerOptions.workerSrc="https://cdn.jsdelivr.net/npm/pdfjs-dist@4.10.38/build/pdf.worker.min.mjs";return lib;});
+ return pdfJsPromise;
+}
+function inferPdfQuestionCount(items,pageCount){
+ const numbers=[];
+ for(const item of items){const text=(item.str||"").trim();let match=text.match(/quest(?:ões|oes|ão|ao)?\s*(\d{1,3})\s*(?:a|até|-)\s*(\d{1,3})/i);if(match){numbers.push(Number(match[2]));continue}match=text.match(/^(\d{1,3})\s*[.)]$/);if(!match)match=text.match(/(?:quest[aã]o|quest\.?|n[ºo.]?)\s*(\d{1,3})/i);if(match){const n=Number(match[1]);if(n>=1&&n<=150)numbers.push(n);}}
+ return numbers.length?Math.max(...numbers):Math.min(150,pageCount*20);
+}
+async function renderPdf(file){
+ const lib=await loadPdfJs(),pdf=await lib.getDocument({data:new Uint8Array(await file.arrayBuffer())}).promise,textItems=[];
+ if(pdf.numPages>8)throw new Error("PDF excede o limite de 8 páginas do cartão.");
+ for(let n=1;n<=pdf.numPages;n++){const page=await pdf.getPage(n),text=await page.getTextContent();textItems.push(...text.items);}
+ const count=inferPdfQuestionCount(textItems,pdf.numPages),pages=[];
+ for(let n=1;n<=pdf.numPages;n++){const page=await pdf.getPage(n),base=page.getViewport({scale:1}),viewport=page.getViewport({scale:Math.min(2,1800/base.width)}),canvas=document.createElement("canvas");canvas.width=Math.floor(viewport.width);canvas.height=Math.floor(viewport.height);await page.render({canvasContext:canvas.getContext("2d"),viewport}).promise;pages.push(canvas);}
+ return {pages,count};
+}
+async function loadFile(input,kind){
  const f=input.files[0];if(!f)return;
- const im=new Image();
- im.onload=()=>{
-   if(kind==="student"){
-     studentImage=im;drawPreview(im);msg("Cartão carregado. O SALTA pode detectar a quantidade antes da correção.");
-   }else{
-     keyImage=im;msg("Gabarito carregado. Toque novamente em “Ler gabarito por foto”.","keyStatus");
-     readKeyPhoto();
-   }
- };
- im.src=URL.createObjectURL(f);
+ if(f.size>25*1024*1024){msg("O arquivo precisa ter até 25 MB.",kind==="student"?"status":"keyStatus");input.value="";return}
+ try{
+  const isPdf=f.type==="application/pdf"||f.name.toLowerCase().endsWith(".pdf");let pages,count=questionCount;
+  if(isPdf){msg("Lendo o PDF...",kind==="student"?"status":"keyStatus");const parsed=await renderPdf(f);pages=parsed.pages;count=parsed.count;}
+  else{const im=new Image();im.src=URL.createObjectURL(f);await im.decode();pages=[im];}
+  if(kind==="student"){studentPages=pages;studentImage=pages[0];drawPreview(pages[0]);msg(isPdf?`PDF carregado com ${pages.length} páginas e cerca de ${count} questões.`:"Foto carregada. Para mais de 20 questões, selecione a página fotografada.");}
+  else{keyPages=pages;keyImage=pages[0];if(isPdf&&count!==questionCount){document.getElementById("questionCount").value=count;updateQuestionCount();}readKeyPhoto();}
+ }catch(error){console.error(error);msg("Não consegui abrir o arquivo. Confira se é uma imagem ou PDF válido.",kind==="student"?"status":"keyStatus");}
 }
 document.getElementById("photo").onchange=e=>loadFile(e.target,"student");
 document.getElementById("keyPhoto").onchange=e=>loadFile(e.target,"key");
@@ -413,9 +452,8 @@ function detectQuestionCountFromCircles(im){
 }
 function showDetected(n,label="estrutura detectada"){
  const box=document.getElementById("detected");
- box.innerHTML="<strong>"+n+" questões</strong><small>"+label+". O gabarito e a correção usarão essa quantidade.</small>";
+ box.textContent=n+" questões · "+label;
  box.style.display="block";
- renderKeyGrid(n);
 }
 
 let cameraStream=null;
@@ -447,44 +485,43 @@ function readKeyPhoto(){
  if(typeof cv==="undefined"||!cv.Mat){msg("O leitor ainda está carregando. Tente novamente.","keyStatus");return}
  try{
    msg("Lendo o gabarito...","keyStatus");
-   const detectedCount=detectQuestionCountFromCircles(keyImage);
-   showDetected(detectedCount,"gabarito reconhecido automaticamente");
-   const r=readSheet(keyImage);
-   const found=r.map(x=>x.answer);
-   if(found.some(x=>x==="?")){
-     msg("Consegui ler a folha, mas há marcações ambíguas. Confira e salve manualmente.","keyStatus");
-   }else{
-     found.forEach((x,i)=>document.getElementById("q"+(i+1)).value=x);
-     key=found;localStorage.setItem("saltaKey",JSON.stringify(key));
-     msg("Gabarito lido e salvo automaticamente. Confira as 20 respostas antes de corrigir.","keyStatus");
-   }
- }catch(e){msg("Não consegui localizar a grade 20×5. Fotografe a folha inteira, de frente e com boa iluminação.","keyStatus");}
+   const found=Array.from({length:questionCount},(_,i)=>document.getElementById("q"+(i+1))?.value||""),pages=keyPages.length?keyPages:[keyImage];
+   for(let p=0;p<pages.length;p++){const pageAnswers=readSheet(pages[p]).map(x=>x.answer);for(let i=0;i<pageAnswers.length&&p*20+i<questionCount;i++)if(pageAnswers[i]!=="?")found[p*20+i]=pageAnswers[i];}
+   found.forEach((x,i)=>{const el=document.getElementById("q"+(i+1));if(el)el.value=x;});
+   key=found.slice();
+   showDetected(questionCount,"quantidade definida ou estimada pelo arquivo");
+   msg(key.some(x=>!x)?"Leitura preliminar concluída. Confira as respostas ambíguas e complete manualmente.":"Respostas lidas. Confira e salve o gabarito.","keyStatus");
+ }catch(e){console.error(e);msg("Não consegui ler esse modelo. Use o cartão disponibilizado aqui ou preencha as respostas manualmente.","keyStatus");}
 }
 
 function scanStudent(){
  if(!key.length||key.some(x=>!x)){msg("Primeiro informe e salve o gabarito completo.");return}
- if(!studentImage){msg("Escolha uma foto primeiro.");return}
+ if(!studentImage||!studentPages.length){msg("Escolha uma foto ou PDF primeiro.");return}
  if(typeof cv==="undefined"||!cv.Mat){msg("O leitor ainda está carregando. Tente novamente em alguns segundos.");return}
  try{
    msg("Lendo a folha...");
-   const detectedCount=detectQuestionCountFromCircles(studentImage);
-   showDetected(detectedCount,"cartão do aluno reconhecido automaticamente");
-   if(detectedCount!==key.length){
-     msg("A quantidade detectada no cartão ("+detectedCount+") não coincide com o gabarito ("+key.length+"). Confira as folhas.");
-     return;
+   let offset=0,r=[];
+   if(studentPages.length>1){
+     for(const page of studentPages)r.push(...readSheet(page).map(x=>x.answer));
+     r=r.slice(0,key.length);
+   }else{
+     const page=Number(document.getElementById("photoPage").value);
+     if(!Number.isInteger(page)||page<1){msg("Informe um número de página válido.");return}
+     offset=(page-1)*20;if(offset>=key.length){msg("Essa página está fora da quantidade de questões do gabarito.");return}
+     r=readSheet(studentImage).map(x=>x.answer).slice(0,Math.min(20,key.length-offset));
    }
-   const r=readSheet(studentImage).map(x=>x.answer).slice(0,key.length);
-   showResult(r);
+   showDetected(r.length,studentPages.length>1?"questões lidas no PDF":"questões nesta página da foto");
+   showResult(r,offset);
    msg(r.some(x=>x==="?")?"Folha lida. Confira as questões com Revisar.":"Folha lida com sucesso.");
  }catch(e){console.error(e);msg("Não consegui localizar a grade. Use a folha inteira, sem cortar a região das respostas, e tente com boa iluminação.")}
 }
 
-function showResult(r){
+function showResult(r,offset=0){
  let hits=0;
  document.getElementById("body").innerHTML=r.map((x,i)=>{
-   const cl=x==="?"?"warn":x===key[i]?"ok":"err";
-   if(x===key[i])hits++;
-   return `<tr><td>${i+1}</td><td>${x}</td><td>${key[i]}</td><td class="${cl}">${x==="?"?"⚠ Revisar":x===key[i]?"✓ Acerto":"✕ Erro"}</td></tr>`;
+   const answerIndex=offset+i,cl=x==="?"?"warn":x===key[answerIndex]?"ok":"err";
+   if(x===key[answerIndex])hits++;
+   return `<tr><td>${answerIndex+1}</td><td>${x}</td><td>${key[answerIndex]}</td><td class="${cl}">${x==="?"?"⚠ Revisar":x===key[answerIndex]?"✓ Acerto":"✕ Erro"}</td></tr>`;
  }).join("");
  document.getElementById("score").innerHTML=hits+"/"+r.length+"<small>questões acertadas</small>";
  document.getElementById("results").style.display="block";
