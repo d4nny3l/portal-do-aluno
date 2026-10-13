@@ -33,8 +33,10 @@ main{padding:88px 0 70px;position:relative;z-index:1}.hero{margin-bottom:24px}.e
 .report-select{width:18px;height:18px;accent-color:#5b5bd6;cursor:pointer}.notice-actions{display:flex;gap:9px;flex-wrap:wrap}.notice-actions button,.notice-row-button{width:auto;margin:0;padding:9px 12px;border:0;border-radius:11px;background:#5b5bd6;color:#fff;font-size:12px;font-weight:750;cursor:pointer}.notice-actions button:hover,.notice-row-button:hover{background:#4d4dc2}.notice-row-button{white-space:nowrap}@media(max-width:560px){.notice-actions{width:100%}.notice-actions button{width:100%}}
 @media(max-width:560px){.selection-toolbar{align-items:flex-start;flex-direction:column}.selection-toolbar button{width:100%}}
 .period-note{max-width:760px;margin:-6px 0 18px;color:var(--muted);font-size:12px;line-height:1.5}
+.pdf-toolbar{display:flex;align-items:center;justify-content:space-between;gap:12px;margin:14px 0 18px;padding:13px 15px;border:1px solid #e5e4ff;border-radius:16px;background:#fafaff}.pdf-toolbar p{margin:0;color:var(--muted);font-size:12px;line-height:1.45}.pdf-actions{display:flex;gap:8px;flex-wrap:wrap}.pdf-actions button{width:auto;margin:0;padding:10px 13px;border:0;border-radius:11px;background:#5b5bd6;color:#fff;font-size:11px;font-weight:800;cursor:pointer}.pdf-actions button.secondary-pdf{background:#ececff;color:#4b4bb7}.pdf-actions button:disabled{opacity:.55;cursor:wait}
 body .salta-grid{position:fixed;inset:0;pointer-events:none;z-index:0;background-image:linear-gradient(rgba(91,91,214,.075) 1px,transparent 1px),linear-gradient(90deg,rgba(91,91,214,.075) 1px,transparent 1px);background-size:32px 32px}
 @media(max-width:850px){.grid{grid-template-columns:repeat(2,1fr)}.two{grid-template-columns:1fr}.evo{grid-template-columns:repeat(2,1fr)}}@media(max-width:700px){.controls{grid-template-columns:1fr}}@media(max-width:560px){.wrap{width:calc(100% - 26px)}main{padding:76px 0 55px}.hero h1{font-size:34px}.grid{grid-template-columns:1fr 1fr}.card{padding:17px;border-radius:19px}.metric strong{font-size:26px}.bar-row{grid-template-columns:78px 1fr 38px}.panel{padding:18px;border-radius:20px}}
+@media(max-width:700px){.pdf-toolbar{align-items:flex-start;flex-direction:column}.pdf-actions{width:100%}.pdf-actions button{flex:1}}
 </style>
 <link rel="stylesheet" href="../salta-theme.css?v=b2cb545">
 </head>
@@ -70,6 +72,10 @@ body .salta-grid{position:fixed;inset:0;pointer-events:none;z-index:0;background
 <div id="status" class="status" style="display:none"></div>
 <div id="dashboard" style="display:none">
   <div id="meta" class="meta"></div>
+  <section class="pdf-toolbar" id="classPdfToolbar" aria-label="Exportar relatório em PDF">
+    <p>Exporte as notas da turma para imprimir ou salvar em PDF.</p>
+    <div class="pdf-actions"><button class="secondary-pdf" id="exportSelectedPeriodPdf" type="button">PDF do período</button><button id="exportAllPeriodsPdf" type="button">PDF de todos os bimestres</button></div>
+  </section>
 
   <section class="grid">
     <div class="card metric"><span>Total de alunos</span><strong id="mTotal">—</strong><small id="mComMedia">—</small></div>
@@ -202,6 +208,7 @@ body .salta-grid{position:fixed;inset:0;pointer-events:none;z-index:0;background
   const selectedStudents=new Map();
   let globalStudentRows=[];
   let currentReportClass="";
+  let currentClassReportData=null;
 
   localStorage.removeItem(KEY);sessionStorage.removeItem(KEY);
   function fmt(v){if(v===null||v===undefined||v==="")return "—";const n=Number(v);return Number.isFinite(n)?n.toFixed(1).replace(".",","):String(v)}
@@ -385,6 +392,7 @@ body .salta-grid{position:fixed;inset:0;pointer-events:none;z-index:0;background
   function render(data){
     document.getElementById("globalDashboard").style.display="none";
     dashboard.style.display="block";
+    currentClassReportData=data;
     document.getElementById("periodNote").textContent=data.periodo==="final"
       ?"Média final = soma das médias bimestrais dividida por "+data.quantidadeBimestres+" períodos. O mínimo de aprovação é "+fmt(data.mediaMinimaFinal??data.mediaMinima)+" na média final, equivalente a "+fmt(data.somaMinimaFinal,0)+" pontos na soma. Regra calculada automaticamente pelo Worker com dados do D1."
       :"Este relatório mostra a média do período selecionado. O mínimo da turma é calculado automaticamente pelo Worker com dados acadêmicos do D1: "+fmt(data.mediaMinimaBimestral??data.mediaMinima)+" por bimestre.";
@@ -446,6 +454,83 @@ body .salta-grid{position:fixed;inset:0;pointer-events:none;z-index:0;background
     bindClassSelection(porAluno);
   }
 
+  function reportNumber(value){
+    if(value===null||value===undefined||value==="")return null;
+    const parsed=typeof value==="number"?value:Number(String(value).trim().replace(",","."));
+    return Number.isFinite(parsed)?parsed:null;
+  }
+
+  function openPdfWindow(){
+    const popup=window.open("","_blank");
+    if(!popup)showStatus("O navegador bloqueou a janela do relatório. Permita pop-ups para salvar o PDF.",true);
+    return popup;
+  }
+
+  function printClassReport(popup,{title,periodLabels,rows,includeFinal,periodCount,data,className}){
+    const headers=periodLabels.map(label=>"<th>"+esc(label)+"</th>").join("");
+    const finalHeader=includeFinal?"<th>Média final</th>":"";
+    const body=rows.map(student=>{
+      const grades=periodLabels.map((_,index)=>{
+        const value=reportNumber(student.medias[index]);
+        return "<td>"+(value===null?"—":fmt(value))+"</td>";
+      }).join("");
+      const final=reportNumber(student.mediaFinal);
+      return "<tr><td>"+esc(student.nome||"Aluno sem nome")+"</td>"+grades+(includeFinal?"<td class=\"final\">"+(final===null?"—":fmt(final))+"</td>":"")+"</tr>";
+    }).join("");
+    const network=data.rede==="DF"?"Distrito Federal":data.rede==="EJA"?"EJA":"Goiás";
+    const generated=new Intl.DateTimeFormat("pt-BR",{dateStyle:"short",timeStyle:"short"}).format(new Date());
+    const explanation=includeFinal?"Média final: soma das médias bimestrais lançadas dividida pelo total de períodos do segmento ("+periodCount+").":
+      "Notas e médias do período selecionado no relatório da turma.";
+    const html="<!doctype html><html lang=\"pt-BR\"><head><meta charset=\"utf-8\"><meta name=\"viewport\" content=\"width=device-width,initial-scale=1\"><title>"+esc(title)+" · SALTA</title><style>"+
+      "@page{size:A4 "+(includeFinal?"landscape":"portrait")+";margin:14mm}*{box-sizing:border-box}body{margin:0;color:#202033;font:12px Arial,sans-serif}header{border-bottom:3px solid #5b5bd6;padding-bottom:12px;margin-bottom:16px}h1{font-size:21px;margin:0 0 5px;color:#29294a}p{margin:4px 0;color:#626276}.brand{font-size:10px;font-weight:bold;letter-spacing:.14em;color:#5b5bd6}.meta{display:flex;gap:18px;flex-wrap:wrap;margin-top:12px;font-size:11px}.meta strong{color:#29294a}table{width:100%;border-collapse:collapse;margin-top:14px}thead{display:table-header-group}th{background:#efefff;color:#37376c;text-align:left;font-size:10px;text-transform:uppercase;letter-spacing:.04em}th,td{padding:8px 9px;border:1px solid #dedeee}td:not(:first-child),th:not(:first-child){text-align:center}tbody tr:nth-child(even){background:#fafaff}tr{break-inside:avoid}.final{font-weight:bold;color:#37376c}footer{margin-top:12px;font-size:10px;color:#777} @media print{body{-webkit-print-color-adjust:exact;print-color-adjust:exact}}</style></head><body><header><div class=\"brand\">SALTA · MATEMÁTICA · PROFESSOR DANNYEL</div><h1>"+esc(title)+"</h1><p>Relatório acadêmico da turma · " +esc(network)+"</p><div class=\"meta\"><span><strong>Turma:</strong> "+esc(className||currentReportClass)+"</span><span><strong>Alunos:</strong> "+rows.length+"</span><span><strong>Modelo:</strong> "+esc(data.modeloAvaliativo||"—")+"</span><span><strong>Mínimo:</strong> "+fmt(data.mediaMinima)+"</span></div></header><p>"+esc(explanation)+"</p><table><thead><tr><th>Aluno</th>"+headers+finalHeader+"</tr></thead><tbody>"+(body||"<tr><td colspan=\""+(periodLabels.length+1+(includeFinal?1:0))+"\">Nenhum aluno disponível.</td></tr>")+"</tbody></table><footer>Emitido em "+esc(generated)+" · SALTA — Matemática com Professor Dannyel</footer></body></html>";
+    popup.document.open();popup.document.write(html);popup.document.close();
+    popup.document.title=title+" · SALTA";
+    setTimeout(()=>{if(!popup.closed){popup.focus();popup.print()}},500);
+  }
+
+  function exportSelectedPeriodPdf(){
+    if(!currentClassReportData||!currentReportClass){showStatus("Selecione uma turma e aguarde o relatório carregar.",true);return}
+    const popup=openPdfWindow();if(!popup)return;
+    const data=currentClassReportData;
+    const periodLabel=data.rotuloPeriodo||"Período selecionado";
+    const rows=(data.porAluno||[]).map(student=>({nome:student.nome,medias:[student.media]}));
+    hideStatus();
+    printClassReport(popup,{title:"Notas — "+periodLabel,periodLabels:[periodLabel],rows,includeFinal:false,periodCount:data.quantidadeBimestres||1,data,className:currentReportClass});
+  }
+
+  async function exportAllPeriodsPdf(){
+    if(!currentClassReportData||!currentReportClass){showStatus("Selecione uma turma e aguarde o relatório carregar.",true);return}
+    const popup=openPdfWindow();if(!popup)return;
+    const reportClass=currentReportClass;
+    const reportData=currentClassReportData;
+    const button=document.getElementById("exportAllPeriodsPdf");
+    const previousText=button.textContent;button.disabled=true;button.textContent="Preparando…";
+    try{
+      const count=Number(reportData.quantidadeBimestres)||4;
+      const [reports,finalReport]=await Promise.all([Promise.all(Array.from({length:count},(_,index)=>
+        api("/admin/turma-estatistica?turma="+encodeURIComponent(reportClass)+"&periodo="+(index+1))
+      )),api("/admin/turma-estatistica?turma="+encodeURIComponent(reportClass)+"&periodo=final")]);
+      const students=new Map();
+      reports.forEach((report,index)=>{
+        (report.porAluno||[]).forEach(student=>{
+          const code=String(student.codigo||student.nome||"");
+          if(!students.has(code))students.set(code,{nome:student.nome||"Aluno sem nome",medias:Array(count).fill(null),mediaFinal:null});
+          const item=students.get(code);item.nome=student.nome||item.nome;item.medias[index]=reportNumber(student.media);
+        });
+      });
+      (finalReport.porAluno||[]).forEach(student=>{
+        const code=String(student.codigo||student.nome||"");
+        if(!students.has(code))students.set(code,{nome:student.nome||"Aluno sem nome",medias:Array(count).fill(null),mediaFinal:null});
+        const item=students.get(code);item.nome=student.nome||item.nome;item.mediaFinal=reportNumber(student.media);
+      });
+      const rows=[...students.values()].sort((a,b)=>a.nome.localeCompare(b.nome,"pt-BR"));
+      printClassReport(popup,{title:"Notas — todos os bimestres",periodLabels:Array.from({length:count},(_,index)=>(index+1)+"º bimestre"),rows,includeFinal:true,periodCount:count,data:finalReport||reportData,className:reportClass});
+      hideStatus();
+    }catch(error){
+      popup.close();showStatus("Não foi possível preparar o relatório completo: "+error.message,true);
+    }finally{button.disabled=false;button.textContent=previousText}
+  }
+
   async function loadStats(){
     const requestId=++statsRequest;
     const turma=turmaSelect.value;
@@ -487,6 +572,8 @@ body .salta-grid{position:fixed;inset:0;pointer-events:none;z-index:0;background
   });
   document.getElementById("sendClassNotice").addEventListener("click",queueNoticeForSelected);
   document.getElementById("sendWholeClassNotice").addEventListener("click",()=>queueNoticeForClass(currentReportClass));
+  document.getElementById("exportSelectedPeriodPdf").addEventListener("click",exportSelectedPeriodPdf);
+  document.getElementById("exportAllPeriodsPdf").addEventListener("click",exportAllPeriodsPdf);
 
   function clearReportSelection(){
     selectedStudents.clear();
