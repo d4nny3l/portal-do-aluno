@@ -149,11 +149,11 @@ body.auth-check{visibility:hidden}
 <section class="card">
 <span class="badge">GRADE DE RESPOSTAS</span>
 <h2>Monte a grade da prova</h2>
-<p class="help">Escolha de 1 a 50 questões. O modelo organiza todas em uma única folha A4, com uma linha contínua por questão e somente as alternativas para marcação.</p>
+<p class="help">Escolha de 1 a 50 questões. As marcações ficam próximas da grade, com bolhas maiores para preencher e facilitar a leitura no PDF ou na foto.</p>
 <div class="setup-row"><label>Quantidade de questões<input id="questionCount" type="number" min="1" max="50" value="20"></label><button onclick="updateQuestionCount()">Aplicar quantidade</button></div>
 <div class="answer-template-preview"><canvas id="answerTemplateCanvas" aria-label="Prévia da folha de respostas A4"></canvas></div>
 <div class="actions"><button class="secondary" onclick="downloadAnswerSheet()">Baixar grade de respostas (.jpg)</button></div>
-<p class="note">A imagem traz apenas a grade de respostas e marcas discretas de alinhamento para leitura automática. Ao inserir na prova, preserve o tamanho e as marcas. Para ler as respostas, selecione a mesma quantidade de questões usada no modelo.</p>
+<p class="note">A imagem traz somente as respostas e quatro marcas próximas à grade para leitura automática. Ao inserir na prova, mantenha a imagem inteira e não remova as marcas. Use a mesma quantidade de questões no gabarito.</p>
 </section>
 
 <section class="card">
@@ -218,19 +218,22 @@ const answerTemplateCanvas=document.getElementById("answerTemplateCanvas");
 function answerTemplateLayout(count,width,height){
  const pxPerMm=width/210,marginY=15*pxPerMm,pitch=Math.min(10*pxPerMm,(height-2*marginY)/count);
  const startY=(height-(count-1)*pitch)/2;
+ const markerTop=Math.max(7*pxPerMm,startY-12*pxPerMm);
+ const markerBottom=Math.min(height-7*pxPerMm,startY+(count-1)*pitch+12*pxPerMm);
  return {pxPerMm,pitch,startY,questionX:width*.32,bubbleXs:[.395,.4475,.5,.5525,.605].map(x=>x*width),
-   markerCenters:[[7,7],[203,7],[7,290],[203,290]].map(([x,y])=>({x:x*pxPerMm,y:y*pxPerMm}))};
+   bubbleRadius:Math.min(2.7*pxPerMm,pitch/2-.35*pxPerMm),
+   markerCenters:[[30,markerTop/pxPerMm],[180,markerTop/pxPerMm],[180,markerBottom/pxPerMm],[30,markerBottom/pxPerMm]].map(([x,y])=>({x:x*pxPerMm,y:y*pxPerMm}))};
 }
 
 function drawAnswerTemplate(count){
  const width=2480,height=3508,scale=width/210,layout=answerTemplateLayout(count,width,height),ctx=answerTemplateCanvas.getContext("2d");
  answerTemplateCanvas.width=width;answerTemplateCanvas.height=height;
  ctx.fillStyle="#fff";ctx.fillRect(0,0,width,height);ctx.fillStyle="#111";
- const marker=4.2*scale;
+ const marker=4.8*scale;
  layout.markerCenters.forEach(point=>ctx.fillRect(point.x-marker/2,point.y-marker/2,marker,marker));
  const questionFont=`600 ${Math.max(28,Math.min(40,layout.pitch*.52))}px Arial,sans-serif`;
  ctx.textBaseline="middle";ctx.textAlign="right";ctx.font=questionFont;
- const radius=1.8*scale;
+ const radius=layout.bubbleRadius;
  const labelY=Math.max(10*scale,layout.startY-layout.pitch*.62);
  ctx.textAlign="center";ctx.font=`600 ${Math.max(22,Math.min(30,layout.pitch*.38))}px Arial,sans-serif`;
  layout.bubbleXs.forEach((x,index)=>ctx.fillText(L[index],x,labelY));
@@ -265,20 +268,55 @@ function clearKey(){
 }
 
 let studentImage=null,keyImage=null;
-let studentPages=[],keyPages=[],pdfJsPromise=null;
+let studentPages=[],keyPages=[],pdfJsPromise=null,openCvReadyPromise=null;
 async function loadPdfJs(){
- if(!pdfJsPromise)pdfJsPromise=import("https://cdn.jsdelivr.net/npm/pdfjs-dist@4.10.38/build/pdf.min.mjs").then(lib=>{lib.GlobalWorkerOptions.workerSrc="https://cdn.jsdelivr.net/npm/pdfjs-dist@4.10.38/build/pdf.worker.min.mjs";return lib;});
+ if(!pdfJsPromise)pdfJsPromise=(async()=>{
+  const cdns=["https://cdn.jsdelivr.net/npm/pdfjs-dist@4.10.38/build/","https://unpkg.com/pdfjs-dist@4.10.38/build/"];
+  let lastError;
+  for(const base of cdns){try{const lib=await import(base+"pdf.min.mjs");lib.GlobalWorkerOptions.workerSrc=base+"pdf.worker.min.mjs";return lib;}catch(error){lastError=error;}}
+  throw new Error("Não foi possível carregar o leitor de PDF. Confira sua conexão e tente novamente.",{cause:lastError});
+ })();
  return pdfJsPromise;
+}
+function ensureOpenCvReady(timeoutMs=30000){
+ if(window.cv?.Mat)return Promise.resolve(window.cv);
+ if(!openCvReadyPromise)openCvReadyPromise=new Promise((resolve,reject)=>{
+  const deadline=Date.now()+timeoutMs;
+  const check=()=>{
+   const api=window.cv;
+   if(api?.Mat){resolve(api);return}
+   if(api&&typeof api.then==="function")api.then(value=>{window.cv=value;if(value?.Mat)resolve(value);}).catch(()=>{});
+   if(Date.now()>=deadline){reject(new Error("O leitor óptico não terminou de carregar. Atualize a página e tente novamente."));return}
+   setTimeout(check,150);
+  };
+  check();
+ });
+ return openCvReadyPromise;
+}
+async function openPdfDocument(lib,data){
+ try{return await lib.getDocument({data}).promise;}
+ catch(workerError){
+  console.warn("Falha no leitor PDF com worker; tentando sem worker.",workerError);
+  return await lib.getDocument({data,disableWorker:true}).promise;
+ }
 }
 function inferPdfQuestionCount(items,pageCount){
  const numbers=[];
- for(const item of items){const text=(item.str||"").trim();let match=text.match(/quest(?:ões|oes|ão|ao)?\s*(\d{1,3})\s*(?:a|até|-)\s*(\d{1,3})/i);if(match){numbers.push(Number(match[2]));continue}match=text.match(/^(\d{1,3})\s*[.)]$/);if(!match)match=text.match(/(?:quest[aã]o|quest\.?|n[ºo.]?)\s*(\d{1,3})/i);if(match){const n=Number(match[1]);if(n>=1&&n<=50)numbers.push(n);}}
+ for(const item of items){
+  const text=(item.str||"").trim();
+  let match=text.match(/quest(?:ões|oes|ão|ao)?\s*(\d{1,3})\s*(?:a|até|-)\s*(\d{1,3})/i);
+  if(match){numbers.push(Number(match[2]));continue}
+  match=text.match(/^(\d{1,3})\s*[.)]$/);
+  if(!match)match=text.match(/(?:quest[aã]o|quest\.?|n[ºo.]?)\s*(\d{1,3})/i);
+  if(match){const n=Number(match[1]);if(n>=1&&n<=50)numbers.push(n);continue}
+  if(/^\d{1,2}$/.test(text)){const n=Number(text);if(n>=1&&n<=50)numbers.push(n);}
+ }
  return numbers.length?Math.min(50,Math.max(...numbers)):pageCount>1?Math.min(50,pageCount*20):null;
 }
 async function renderPdf(file){
- const lib=await loadPdfJs(),pdf=await lib.getDocument({data:new Uint8Array(await file.arrayBuffer())}).promise,textItems=[];
+ const lib=await loadPdfJs(),data=new Uint8Array(await file.arrayBuffer()),pdf=await openPdfDocument(lib,data),textItems=[];
  if(pdf.numPages>8)throw new Error("PDF excede o limite de 8 páginas.");
- for(let n=1;n<=pdf.numPages;n++){const page=await pdf.getPage(n),text=await page.getTextContent();textItems.push(...text.items);}
+ for(let n=1;n<=pdf.numPages;n++){try{const page=await pdf.getPage(n),text=await page.getTextContent();textItems.push(...text.items);}catch(error){console.warn("Não foi possível extrair texto da página",n,error);}}
  const count=inferPdfQuestionCount(textItems,pdf.numPages),pages=[];
  for(let n=1;n<=pdf.numPages;n++){const page=await pdf.getPage(n),base=page.getViewport({scale:1}),viewport=page.getViewport({scale:Math.min(2,1800/base.width)}),canvas=document.createElement("canvas");canvas.width=Math.floor(viewport.width);canvas.height=Math.floor(viewport.height);await page.render({canvasContext:canvas.getContext("2d"),viewport}).promise;pages.push(canvas);}
  return {pages,count};
@@ -286,15 +324,16 @@ async function renderPdf(file){
 async function loadFile(input,kind){
  const f=input.files[0];if(!f)return;
  if(f.size>25*1024*1024){msg("O arquivo precisa ter até 25 MB.",kind==="student"?"status":"keyStatus");input.value="";return}
+ const isPdf=f.type==="application/pdf"||f.name.toLowerCase().endsWith(".pdf");
  try{
-  const isPdf=f.type==="application/pdf"||f.name.toLowerCase().endsWith(".pdf");let pages,count=questionCount;
+  let pages,count=questionCount;
   const nameCount=f.name.match(/cart[aã]o[-_ ]resposta[-_ ](\d{1,2})[-_ ]quest(?:o|ã)es/i);
   if(nameCount){const n=Number(nameCount[1]);if(n>=1&&n<=50){count=n;if(kind==="key"){document.getElementById("questionCount").value=n;if(n!==questionCount)updateQuestionCount();}}}
   if(isPdf){msg("Lendo o PDF...",kind==="student"?"status":"keyStatus");const parsed=await renderPdf(f);pages=parsed.pages;count=parsed.count||count;}
-  else{const im=new Image();im.src=URL.createObjectURL(f);await im.decode();pages=[im];}
+  else{const im=new Image(),url=URL.createObjectURL(f);im.src=url;await im.decode();URL.revokeObjectURL(url);pages=[im];}
   if(kind==="student"){studentPages=pages;studentImage=pages[0];drawPreview(pages[0]);msg(isPdf?`PDF carregado com ${pages.length} páginas. O corretor localizará a grade SALTA.`:"Foto carregada. O corretor localizará a grade SALTA.");}
   else{keyPages=pages;keyImage=pages[0];if(isPdf&&count&&count!==questionCount){document.getElementById("questionCount").value=count;updateQuestionCount();}readKeyPhoto();}
- }catch(error){console.error(error);msg("Não consegui abrir o arquivo. Confira se é uma imagem ou PDF válido.",kind==="student"?"status":"keyStatus");}
+ }catch(error){console.error(error);const detail=error?.message?` ${error.message}`:" Confira se o arquivo não está protegido ou corrompido.";msg(`Não consegui abrir ${isPdf?"o PDF":"a imagem"}.${detail}`,kind==="student"?"status":"keyStatus");}
 }
 document.getElementById("photo").onchange=e=>loadFile(e.target,"student");
 document.getElementById("keyPhoto").onchange=e=>loadFile(e.target,"key");
@@ -313,9 +352,11 @@ function matFromImage(im){
  return cv.imread(c);
 }
 
-function locateAnswerTemplate(src){
+function locateAnswerTemplate(src,count=questionCount){
  const gray=new cv.Mat(),binary=new cv.Mat(),contours=new cv.MatVector(),hierarchy=new cv.Mat();
  const candidates=[];
+ const expected=answerTemplateLayout(count,src.cols,src.rows).markerCenters;
+ const expectedWidth=expected[1].x-expected[0].x,expectedHeight=expected[3].y-expected[0].y,expectedAspect=expectedWidth/expectedHeight;
  try{
   cv.cvtColor(src,gray,cv.COLOR_RGBA2GRAY);
   cv.threshold(gray,binary,0,255,cv.THRESH_BINARY_INV+cv.THRESH_OTSU);
@@ -340,23 +381,23 @@ function locateAnswerTemplate(src){
   let best=null;
   for(const top of pairs)for(const bottom of pairs){
    const height=bottom.y-top.y,width=(top.width+bottom.width)/2;
-   if(height<src.rows*.16||bottom.y<=top.y||Math.abs(top.width-bottom.width)>width*.16||Math.abs(top.left.x-bottom.left.x)>width*.18||Math.abs(top.right.x-bottom.right.x)>width*.18)continue;
-   const aspect=width/height;if(aspect<.56||aspect>.84)continue;
+   if(height<Math.max(10,src.rows*.025)||bottom.y<=top.y||Math.abs(width-expectedWidth)>expectedWidth*.28||Math.abs(height-expectedHeight)>expectedHeight*.32||Math.abs(top.width-bottom.width)>width*.16||Math.abs(top.left.x-bottom.left.x)>width*.18||Math.abs(top.right.x-bottom.right.x)>width*.18)continue;
+   const aspect=width/height;if(aspect<.25||aspect>8)continue;
    const points=[top.left,top.right,bottom.right,bottom.left];
    if(new Set(points).size!==4)continue;
    const sizes=points.map(point=>point.size),mean=sizes.reduce((sum,value)=>sum+value,0)/4;
    if(Math.min(...sizes)<mean*.65||Math.max(...sizes)>mean*1.45)continue;
-   const score=Math.abs(aspect-.695)+Math.abs(top.left.x-bottom.left.x)/width+Math.abs(top.right.x-bottom.right.x)/width+Math.abs(top.width-bottom.width)/width;
+   const score=Math.abs(aspect-expectedAspect)/Math.max(.6,expectedAspect)+Math.abs(top.left.x-bottom.left.x)/width+Math.abs(top.right.x-bottom.right.x)/width+Math.abs(top.width-bottom.width)/width;
    if(!best||score<best.score)best={points,score};
   }
   return best&&best.score<.38?best.points:null;
  }finally{gray.delete();binary.delete();contours.delete();hierarchy.delete()}
 }
 
-function rectifyAnswerTemplate(src,markers){
+function rectifyAnswerTemplate(src,markers,count){
  const width=1800,height=2546;
  const source=cv.matFromArray(4,1,cv.CV_32FC2,markers.flatMap(point=>[point.x,point.y]));
- const layout=answerTemplateLayout(1,width,height),target=cv.matFromArray(4,1,cv.CV_32FC2,layout.markerCenters.flatMap(point=>[point.x,point.y]));
+ const layout=answerTemplateLayout(count,width,height),target=cv.matFromArray(4,1,cv.CV_32FC2,layout.markerCenters.flatMap(point=>[point.x,point.y]));
  const transform=cv.getPerspectiveTransform(source,target),normalized=new cv.Mat();
  cv.warpPerspective(src,normalized,transform,new cv.Size(width,height),cv.INTER_CUBIC,cv.BORDER_CONSTANT,new cv.Scalar(255,255,255,255));
  source.delete();target.delete();transform.delete();
@@ -494,7 +535,7 @@ function detectTemplateRows(src,layout){
 }
 
 function answerScoresFromGrid(src,rowCenters,layout){
- const scores=[],radius=1.8*layout.pxPerMm;
+ const scores=[],radius=layout.bubbleRadius;
  rowCenters.forEach(y=>{
   const vals=layout.bubbleXs.map(x=>sampleAt(src,x,y,radius));
   const ordered=vals.map((v,i)=>({v,i})).sort((a,b)=>b.v-a.v),best=ordered[0],second=ordered[1];
@@ -505,14 +546,14 @@ function answerScoresFromGrid(src,rowCenters,layout){
 }
 
 function readSheet(im,count=questionCount){
- const src=matFromImage(im),markers=locateAnswerTemplate(src);
+ const src=matFromImage(im),markers=locateAnswerTemplate(src,count);
  let normalized=null,layout=null,rowCenters=[];
- if(markers){normalized=rectifyAnswerTemplate(src,markers);layout=answerTemplateLayout(count,normalized.cols,normalized.rows);rowCenters=detectTemplateRows(normalized,layout);}
+ if(markers){normalized=rectifyAnswerTemplate(src,markers,count);layout=answerTemplateLayout(count,normalized.cols,normalized.rows);rowCenters=detectTemplateRows(normalized,layout);}
  else if(src.rows&&src.cols/src.rows>=.62&&src.cols/src.rows<=.78){
-  // Se a foto mostrar a folha A4 inteira, ainda tentamos ler a grade sem
-  // os quatro marcadores. Em recortes de provas, os marcadores são exigidos.
+  // Sem as marcas, exigimos várias linhas para não confundir o cartão antigo,
+  // cujos números das questões ficam alinhados numa única faixa.
   layout=answerTemplateLayout(count,src.cols,src.rows);rowCenters=detectTemplateRows(src,layout);
-  if(rowCenters.length)normalized=src;
+  if(rowCenters.length>=2||(count===1&&rowCenters.length===1))normalized=src;
  }
  if(normalized){
   const detectedCount=rowCenters.length||count;
@@ -536,6 +577,19 @@ function showDetected(n,label="estrutura detectada"){
  const box=document.getElementById("detected");
  box.textContent=n+" questões · "+label;
  box.style.display="block";
+}
+function scoreSheet(scores){
+ const answers=scores.filter(item=>item.answer!=="?").length;
+ const confidence=scores.reduce((sum,item)=>sum+(item.confidence||0),0);
+ return {answers,confidence,rank:answers*10+confidence};
+}
+function bestSheetFromPages(pages,count){
+ let best=null;
+ for(let index=0;index<pages.length;index++){
+  const scores=readSheet(pages[index],count),quality=scoreSheet(scores);
+  if(!best||quality.rank>best.quality.rank)best={scores,quality,index};
+ }
+ return best;
 }
 
 let cameraStream=null;
@@ -562,54 +616,48 @@ function captureFrame(){
  im.src=c.toDataURL("image/jpeg",.92);
 }
 
-function readKeyPhoto(){
+async function readKeyPhoto(){
  if(!keyImage)return;
- if(typeof cv==="undefined"||!cv.Mat){msg("O leitor ainda está carregando. Tente novamente.","keyStatus");return}
  try{
-   msg("Lendo o gabarito...","keyStatus");
-   const pages=keyPages.length?keyPages:[keyImage];let detectedAnswers=null,detectedCount=null,countInferred=false;
-   for(let p=0;p<pages.length;p++){
-    const pageScores=readSheet(pages[p],questionCount);
-    if(pageScores.answerTemplate){detectedAnswers=pageScores.map(x=>x.answer);detectedCount=pageScores.questionCount;countInferred=pageScores.countInferred;break}
-   }
-   if(countInferred&&detectedCount&&detectedCount!==questionCount){document.getElementById("questionCount").value=detectedCount;updateQuestionCount();}
-   const found=Array.from({length:questionCount},(_,i)=>document.getElementById("q"+(i+1))?.value||"");
-   if(detectedAnswers){detectedAnswers.forEach((answer,i)=>{if(i<found.length&&answer!=="?")found[i]=answer;});}
-   else for(let p=0;p<pages.length;p++){
-    const pageAnswers=readSheet(pages[p]).map(x=>x.answer),offset=pages.length===1?0:p*20;
-    for(let i=0;i<pageAnswers.length&&offset+i<questionCount;i++)if(pageAnswers[i]!=="?")found[offset+i]=pageAnswers[i];
-   }
-   found.forEach((x,i)=>{const el=document.getElementById("q"+(i+1));if(el)el.value=x;});
-   key=found.slice();
-   showDetected(questionCount,countInferred?"questões reconhecidas pela grade":detectedCount?"quantidade selecionada; confira as respostas":"quantidade definida pelo arquivo");
-   msg(key.some(x=>!x)?"Leitura preliminar concluída. Confira as respostas ambíguas e complete manualmente.":"Respostas lidas. Confira e salve o gabarito.","keyStatus");
- }catch(e){console.error(e);msg("Não consegui ler esse modelo. Use o cartão disponibilizado aqui ou preencha as respostas manualmente.","keyStatus");}
+  msg("Preparando a leitura óptica...","keyStatus");
+  await ensureOpenCvReady();
+  msg("Lendo o gabarito...","keyStatus");
+  const pages=keyPages.length?keyPages:[keyImage],best=bestSheetFromPages(pages,questionCount),pageScores=best?.scores||[];
+  const detectedAnswers=pageScores.length?pageScores.map(x=>x.answer):null,detectedCount=pageScores.questionCount||null,countInferred=!!pageScores.countInferred;
+  if(countInferred&&detectedCount&&detectedCount!==questionCount){document.getElementById("questionCount").value=detectedCount;updateQuestionCount();}
+  const found=Array.from({length:questionCount},(_,i)=>document.getElementById("q"+(i+1))?.value||"");
+  if(detectedAnswers)detectedAnswers.forEach((answer,i)=>{if(i<found.length&&answer!=="?")found[i]=answer;});
+  found.forEach((x,i)=>{const el=document.getElementById("q"+(i+1));if(el)el.value=x;});
+  key=found.slice();
+  showDetected(questionCount,`${pages.length>1?`página ${best.index+1} de ${pages.length} · `:""}${countInferred?"questões reconhecidas pela grade":detectedCount?"grade reconhecida; confira as respostas":"quantidade selecionada; confira as respostas"}`);
+  msg(best.quality.answers===0?"O arquivo abriu, mas não encontrei marcações preenchidas. Confira se a grade aparece na página selecionada.":key.some(x=>!x)?`Leitura preliminar: ${best.quality.answers} marcações reconhecidas. Confira e complete as respostas restantes.`:"Respostas lidas. Confira e salve o gabarito.","keyStatus");
+ }catch(e){console.error(e);msg(e?.message||"Não consegui ler este PDF ou imagem.","keyStatus");}
 }
 
-function scanStudent(){
+async function scanStudent(){
  if(!key.length||key.some(x=>!x)){msg("Primeiro informe e salve o gabarito completo.");return}
  if(!studentImage||!studentPages.length){msg("Escolha uma foto ou PDF primeiro.");return}
- if(typeof cv==="undefined"||!cv.Mat){msg("O leitor ainda está carregando. Tente novamente em alguns segundos.");return}
  try{
-   msg("Lendo a folha...");
-   let offset=0,r=[];
-   if(studentPages.length>1){
-     let templateAnswers=null,templateCount=null;
-     for(const page of studentPages){const pageScores=readSheet(page,questionCount);if(pageScores.answerTemplate){templateAnswers=pageScores.map(x=>x.answer);templateCount=pageScores.questionCount;break}}
-     if(templateCount&&templateCount!==key.length){msg("A grade da folha tem "+templateCount+" questões, mas o gabarito salvo tem "+key.length+". Confira o modelo e o gabarito antes de corrigir.");return}
-     if(templateAnswers)r=templateAnswers.slice(0,key.length);
-     else{for(const page of studentPages)r.push(...readSheet(page).map(x=>x.answer));r=r.slice(0,key.length)}
-   }else{
-     const page=Number(document.getElementById("photoPage").value);
-     if(!Number.isInteger(page)||page<1){msg("Informe um número de página válido.");return}
-     const pageScores=readSheet(studentImage,questionCount);
-     if(pageScores.answerTemplate){if(pageScores.questionCount!==key.length){msg("A grade da folha tem "+pageScores.questionCount+" questões, mas o gabarito salvo tem "+key.length+". Confira o modelo e o gabarito antes de corrigir.");return}r=pageScores.map(x=>x.answer).slice(0,key.length);}
-     else{offset=(page-1)*20;if(offset>=key.length){msg("Essa página está fora da quantidade de questões do gabarito.");return}r=pageScores.map(x=>x.answer).slice(0,Math.min(20,key.length-offset));}
-   }
-   showDetected(r.length,"questões localizadas na folha");
-   showResult(r,offset);
-   msg(r.some(x=>x==="?")?"Folha lida. Confira as questões com Revisar.":"Folha lida com sucesso.");
- }catch(e){console.error(e);msg("Não consegui localizar a grade. Use a folha inteira, sem cortar a região das respostas, e tente com boa iluminação.")}
+  msg("Preparando a leitura óptica...");
+  await ensureOpenCvReady();
+  msg("Lendo a folha...");
+  let offset=0,r=[];
+  if(studentPages.length>1){
+   const best=bestSheetFromPages(studentPages,questionCount),pageScores=best?.scores||[],templateCount=pageScores.questionCount||null;
+   if(templateCount&&templateCount!==key.length){msg("A grade da folha tem "+templateCount+" questões, mas o gabarito salvo tem "+key.length+". Confira o modelo e o gabarito antes de corrigir.");return}
+   r=pageScores.map(x=>x.answer).slice(0,key.length);
+   if(best)msg(`Grade mais legível encontrada na página ${best.index+1} de ${studentPages.length}.`);
+  }else{
+   const page=Number(document.getElementById("photoPage").value);
+   if(!Number.isInteger(page)||page<1){msg("Informe um número de página válido.");return}
+   const pageScores=readSheet(studentImage,questionCount);
+   if(pageScores.answerTemplate){if(pageScores.questionCount!==key.length){msg("A grade da folha tem "+pageScores.questionCount+" questões, mas o gabarito salvo tem "+key.length+". Confira o modelo e o gabarito antes de corrigir.");return}r=pageScores.map(x=>x.answer).slice(0,key.length);}
+   else{offset=(page-1)*20;if(offset>=key.length){msg("Essa página está fora da quantidade de questões do gabarito.");return}r=pageScores.map(x=>x.answer).slice(0,Math.min(20,key.length-offset));}
+  }
+  showDetected(r.length,"questões localizadas na folha");
+  showResult(r,offset);
+  msg(r.some(x=>x==="?")?"Folha lida. Confira as questões com Revisar.":"Folha lida com sucesso.");
+ }catch(e){console.error(e);msg(e?.message||"Não consegui localizar a grade. Use a folha inteira, sem cortar a região das respostas, e tente com boa iluminação.")}
 }
 
 function showResult(r,offset=0){
