@@ -21,6 +21,7 @@ footer{text-align:center;color:#777;font-size:13px;padding:10px 10px 45px}@media
 
 .camera-box{display:none;margin-top:18px;position:relative;border-radius:20px;overflow:hidden;background:#111;border:1px solid #ddd}.camera-box video{display:block;width:100%;max-height:560px;object-fit:cover}.camera-guide{position:absolute;inset:12% 10%;border:2px solid rgba(255,255,255,.8);border-radius:18px;box-shadow:0 0 0 999px rgba(0,0,0,.22);pointer-events:none}.camera-actions{position:absolute;left:0;right:0;bottom:0;padding:14px;display:flex;justify-content:center;gap:8px;background:linear-gradient(transparent,rgba(0,0,0,.8))}.camera-actions button{margin:0}.detected{display:none;margin-top:15px;padding:15px 17px;border-radius:16px;background:#f4f4f6;border:1px solid #e4e4e7}.detected strong{font-size:22px;letter-spacing:-.5px}.detected small{display:block;color:#707070;margin-top:4px}.
 .setup-row{display:flex;align-items:end;gap:12px;flex-wrap:wrap;margin:16px 0}.setup-row label{display:grid;gap:6px;color:#555;font-size:13px;font-weight:600}.setup-row input{width:140px;border:1px solid #ddd;border-radius:11px;padding:12px;font:inherit}.note{font-size:13px;color:#666;line-height:1.5;margin:12px 0 0}.field{width:210px;border:1px solid #ddd;border-radius:11px;padding:10px;font:inherit}.page-input{width:90px}
+.answer-template-preview{margin:16px 0;padding:18px;border:1px solid #e8e8ed;border-radius:18px;background:#f7f7f9;text-align:center}.answer-template-preview canvas{display:block;width:min(100%,360px);height:auto;margin:auto;border:1px solid #ddd;box-shadow:0 8px 26px #00000012;background:#fff}
 
 /* SALTA — acesso rápido à plataforma */
 .salta-platform-button{
@@ -145,12 +146,13 @@ body.auth-check{visibility:hidden}
 <main>
 
 <section class="card">
-<span class="badge">MODELO EDITÁVEL</span>
-<h2>Monte o cartão da prova</h2>
-<p class="help">Escolha de 1 a 150 questões e baixe um cartão simples, sem identificação da plataforma, com campos editáveis para cabeçalho. Cada página tem até 20 questões.</p>
-<div class="setup-row"><label>Quantidade de questões<input id="questionCount" type="number" min="1" max="150" value="20"></label><button onclick="updateQuestionCount()">Aplicar quantidade</button></div>
-<div class="actions"><button class="secondary" onclick="downloadAnswerSheet()">Baixar cartão editável (.html)</button><button class="secondary" onclick="printAnswerSheet()">Imprimir / salvar em PDF</button><a class="file secondary" href="./cartao-respostas-eja-20q-final.pdf" target="_blank" rel="noopener">Abrir cartão oficial EJA · 20 questões</a></div>
-<p class="note">No arquivo baixado, clique nos campos do cabeçalho para editar. O cartão oficial EJA continua disponível acima.</p>
+<span class="badge">GRADE DE RESPOSTAS</span>
+<h2>Monte a grade da prova</h2>
+<p class="help">Escolha de 1 a 50 questões. O modelo organiza todas em uma única folha A4, com uma linha contínua por questão e somente as alternativas para marcação.</p>
+<div class="setup-row"><label>Quantidade de questões<input id="questionCount" type="number" min="1" max="50" value="20"></label><button onclick="updateQuestionCount()">Aplicar quantidade</button></div>
+<div class="answer-template-preview"><canvas id="answerTemplateCanvas" aria-label="Prévia da folha de respostas A4"></canvas></div>
+<div class="actions"><button class="secondary" onclick="downloadAnswerSheet()">Baixar grade de respostas (.jpg)</button></div>
+<p class="note">A imagem traz apenas a grade de respostas e marcas discretas de alinhamento para leitura automática. Ao inserir na prova, preserve o tamanho e as marcas. Para ler as respostas, selecione a mesma quantidade de questões usada no modelo.</p>
 </section>
 
 <section class="card">
@@ -170,7 +172,7 @@ body.auth-check{visibility:hidden}
 <section class="card">
 <span class="badge">CORREÇÃO AUTOMÁTICA</span>
 <h2>2. Leia o cartão do aluno</h2>
-<p class="help">Envie foto ou PDF do cartão do aluno. PDFs do modelo são lidos página por página; em fotos de provas com mais de 20 questões, escolha a página fotografada.</p>
+<p class="help">Envie uma foto ou PDF da folha que contém a grade de respostas SALTA. Se o PDF tiver várias páginas, o corretor procura a grade marcada automaticamente; use a mesma quantidade de questões do gabarito.</p>
 <div class="actions">
 <label class="file">Escolher cartão<input id="photo" type="file" accept="image/*,application/pdf" capture="environment"></label>
 <label class="setup-row" style="margin:0;align-items:center">Página da foto <input class="field page-input" id="photoPage" type="number" min="1" value="1"></label>
@@ -205,31 +207,52 @@ function renderKeyGrid(n){
 
 let key=JSON.parse(localStorage.getItem("saltaKey")||"null")||[];
 if(!Array.isArray(key)){questionCount=Number(key.count)||20;key=Array.isArray(key.answers)?key.answers:[];}
-questionCount=Math.min(150,Math.max(1,key.length||questionCount));
+questionCount=Math.min(50,Math.max(1,key.length||questionCount));
+key=key.slice(0,questionCount);
 document.getElementById("questionCount").value=questionCount;
 renderKeyGrid(questionCount);
 key.forEach((x,i)=>{if(x&&document.getElementById("q"+(i+1)))document.getElementById("q"+(i+1)).value=x;});
+const answerTemplateCanvas=document.getElementById("answerTemplateCanvas");
+
+function answerTemplateLayout(count,width,height){
+ const pxPerMm=width/210,marginY=15*pxPerMm,pitch=Math.min(10*pxPerMm,(height-2*marginY)/count);
+ const startY=(height-(count-1)*pitch)/2;
+ return {pxPerMm,pitch,startY,questionX:width*.32,bubbleXs:[.395,.4475,.5,.5525,.605].map(x=>x*width),
+   markerCenters:[[7,7],[203,7],[7,290],[203,290]].map(([x,y])=>({x:x*pxPerMm,y:y*pxPerMm}))};
+}
+
+function drawAnswerTemplate(count){
+ const width=2480,height=3508,scale=width/210,layout=answerTemplateLayout(count,width,height),ctx=answerTemplateCanvas.getContext("2d");
+ answerTemplateCanvas.width=width;answerTemplateCanvas.height=height;
+ ctx.fillStyle="#fff";ctx.fillRect(0,0,width,height);ctx.fillStyle="#111";
+ const marker=4.2*scale;
+ layout.markerCenters.forEach(point=>ctx.fillRect(point.x-marker/2,point.y-marker/2,marker,marker));
+ ctx.textBaseline="middle";ctx.textAlign="right";ctx.font=`600 ${Math.max(28,Math.min(40,layout.pitch*.52))}px Arial,sans-serif`;
+ const radius=1.8*scale;
+ const labelY=Math.max(10*scale,layout.startY-layout.pitch*.62);
+ ctx.textAlign="center";ctx.font=`600 ${Math.max(22,Math.min(30,layout.pitch*.38))}px Arial,sans-serif`;
+ layout.bubbleXs.forEach((x,index)=>ctx.fillText(L[index],x,labelY));
+ for(let q=1;q<=count;q++){
+   const y=layout.startY+(q-1)*layout.pitch;
+   ctx.fillStyle="#111";ctx.textAlign="right";ctx.fillText(String(q).padStart(2,"0"),layout.questionX,y);
+   layout.bubbleXs.forEach((x,index)=>{
+     ctx.beginPath();ctx.arc(x,y,radius,0,Math.PI*2);ctx.fillStyle="#fff";ctx.fill();ctx.lineWidth=Math.max(2,scale*.16);ctx.strokeStyle="#222";ctx.stroke();
+   });
+   ctx.textAlign="right";ctx.font=`600 ${Math.max(28,Math.min(40,layout.pitch*.52))}px Arial,sans-serif`;
+ }
+}
+drawAnswerTemplate(questionCount);
 
 function msg(t,id="status"){const s=document.getElementById(id);s.textContent=t;s.classList.add("show");}
 function updateQuestionCount(){
  const n=Number(document.getElementById("questionCount").value);
- if(!Number.isInteger(n)||n<1||n>150){msg("Escolha uma quantidade entre 1 e 150.","keyStatus");return}
+ if(!Number.isInteger(n)||n<1||n>50){msg("Escolha uma quantidade entre 1 e 50.","keyStatus");return}
  const previous=Array.from({length:questionCount},(_,i)=>document.getElementById("q"+(i+1))?.value||"");
  renderKeyGrid(n);previous.slice(0,n).forEach((x,i)=>{document.getElementById("q"+(i+1)).value=x;});
- key=Array.from({length:n},(_,i)=>previous[i]||"");msg(`Gabarito preparado para ${n} questões.`,"keyStatus");
+ key=Array.from({length:n},(_,i)=>previous[i]||"");drawAnswerTemplate(n);msg(`Gabarito preparado para ${n} questões.`,"keyStatus");
 }
-function answerSheetHtml(count){
- const left=[.174,.209,.244,.280,.316,.351,.386,.422,.458,.493],right=[.599,.635,.670,.705,.741,.777,.813,.848,.883,.919],ys=[.506,.536,.565,.593,.622],pages=[];
- for(let start=1;start<=count;start+=20){
-  const end=Math.min(count,start+19),marks=[];
-  for(let q=start;q<=end;q++){const local=q-start,x=(local<10?left:right)[local%10]*210;marks.push(`<text x="${x}" y="145" text-anchor="middle" font-size="3.1">${q}</text>`);ys.forEach((y,r)=>marks.push(`<circle cx="${x}" cy="${y*297}" r="3.55" fill="white" stroke="#222" stroke-width=".55"/><text x="${x}" y="${y*297+1.1}" text-anchor="middle" font-size="2.6">${L[r]}</text>`));}
-  pages.push(`<section class="sheet"><header><h1 contenteditable="true">CARTÃO-RESPOSTA</h1><div class="fields"><span contenteditable="true">Professor(a): __________________________________</span><span contenteditable="true">Disciplina: _____________________</span><span contenteditable="true">Turma: ________________________</span><span contenteditable="true">Data: ____ / ____ / ______</span><span contenteditable="true">Aluno(a): _________________________________________________________</span></div><p>Marque uma alternativa por questão preenchendo completamente o círculo.</p><p>Questões ${start} a ${end} · Página ${pages.length+1}</p></header><svg viewBox="0 0 210 297" aria-label="Grade de respostas">${marks.join("")}</svg></section>`);
- }
- return `<!doctype html><html lang="pt-BR"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Cartão-resposta</title><style>*{box-sizing:border-box}@page{size:A4;margin:0}body{margin:0;background:#eee;color:#111;font:12pt Arial,sans-serif}.sheet{position:relative;width:210mm;height:297mm;margin:10mm auto;background:white;padding:18mm}.sheet header{height:122mm;border-bottom:1px solid #aaa}.sheet h1{font-size:18pt;margin:0 0 12mm}.fields{display:flex;flex-wrap:wrap;gap:9mm 5mm}.fields span{min-width:44%;outline:none}.fields span:last-child{min-width:100%}header p{font-size:9pt;margin:7mm 0 0;color:#333}.sheet svg{position:absolute;inset:0;width:100%;height:100%}svg text{fill:#111;font-family:Arial,sans-serif}.sheet svg circle{vector-effect:non-scaling-stroke}@media print{body{background:white}.sheet{margin:0;break-after:page;page-break-after:always}.sheet:last-child{break-after:auto;page-break-after:auto}}@media screen{.sheet{box-shadow:0 4px 30px #0002}}</style><body>${pages.join("")}</body></html>`;
-}
-function openAnswerSheet(){const n=Number(document.getElementById("questionCount").value);if(!Number.isInteger(n)||n<1||n>150){msg("Escolha uma quantidade entre 1 e 150.","keyStatus");return null}return answerSheetHtml(n);}
-function downloadAnswerSheet(){const html=openAnswerSheet();if(!html)return;const a=document.createElement("a");a.href=URL.createObjectURL(new Blob([html],{type:"text/html;charset=utf-8"}));a.download=`cartao-resposta-${Number(document.getElementById("questionCount").value)}-questoes.html`;a.click();setTimeout(()=>URL.revokeObjectURL(a.href),1000);}
-function printAnswerSheet(){const html=openAnswerSheet();if(!html)return;const w=window.open("","_blank");if(!w){msg("Permita a abertura da janela para imprimir o cartão.","keyStatus");return}w.document.open();w.document.write(html);w.document.close();w.onload=()=>w.print();}
+function openAnswerSheet(){const n=Number(document.getElementById("questionCount").value);if(!Number.isInteger(n)||n<1||n>50){msg("Escolha uma quantidade entre 1 e 50.","keyStatus");return null}if(n!==questionCount)drawAnswerTemplate(n);return n;}
+function downloadAnswerSheet(){const n=openAnswerSheet();if(!n)return;answerTemplateCanvas.toBlob(blob=>{if(!blob){msg("Não consegui gerar a imagem JPG.","keyStatus");return}const url=URL.createObjectURL(blob),a=document.createElement("a");a.href=url;a.download=`cartao-resposta-${n}-questoes.jpg`;a.click();setTimeout(()=>URL.revokeObjectURL(url),1500);msg(`Imagem JPG A4 gerada para ${n} questões.`,"keyStatus");},"image/jpeg",.98);}
 function saveKey(){
  key=Array.from({length:questionCount},(_,i)=>document.getElementById("q"+(i+1)).value);
  if(key.some(x=>!x)){msg("Preencha todas as respostas antes de salvar.","keyStatus");return}
@@ -248,12 +271,12 @@ async function loadPdfJs(){
 }
 function inferPdfQuestionCount(items,pageCount){
  const numbers=[];
- for(const item of items){const text=(item.str||"").trim();let match=text.match(/quest(?:ões|oes|ão|ao)?\s*(\d{1,3})\s*(?:a|até|-)\s*(\d{1,3})/i);if(match){numbers.push(Number(match[2]));continue}match=text.match(/^(\d{1,3})\s*[.)]$/);if(!match)match=text.match(/(?:quest[aã]o|quest\.?|n[ºo.]?)\s*(\d{1,3})/i);if(match){const n=Number(match[1]);if(n>=1&&n<=150)numbers.push(n);}}
- return numbers.length?Math.max(...numbers):Math.min(150,pageCount*20);
+ for(const item of items){const text=(item.str||"").trim();let match=text.match(/quest(?:ões|oes|ão|ao)?\s*(\d{1,3})\s*(?:a|até|-)\s*(\d{1,3})/i);if(match){numbers.push(Number(match[2]));continue}match=text.match(/^(\d{1,3})\s*[.)]$/);if(!match)match=text.match(/(?:quest[aã]o|quest\.?|n[ºo.]?)\s*(\d{1,3})/i);if(match){const n=Number(match[1]);if(n>=1&&n<=50)numbers.push(n);}}
+ return numbers.length?Math.min(50,Math.max(...numbers)):pageCount>1?Math.min(50,pageCount*20):null;
 }
 async function renderPdf(file){
  const lib=await loadPdfJs(),pdf=await lib.getDocument({data:new Uint8Array(await file.arrayBuffer())}).promise,textItems=[];
- if(pdf.numPages>8)throw new Error("PDF excede o limite de 8 páginas do cartão.");
+ if(pdf.numPages>8)throw new Error("PDF excede o limite de 8 páginas.");
  for(let n=1;n<=pdf.numPages;n++){const page=await pdf.getPage(n),text=await page.getTextContent();textItems.push(...text.items);}
  const count=inferPdfQuestionCount(textItems,pdf.numPages),pages=[];
  for(let n=1;n<=pdf.numPages;n++){const page=await pdf.getPage(n),base=page.getViewport({scale:1}),viewport=page.getViewport({scale:Math.min(2,1800/base.width)}),canvas=document.createElement("canvas");canvas.width=Math.floor(viewport.width);canvas.height=Math.floor(viewport.height);await page.render({canvasContext:canvas.getContext("2d"),viewport}).promise;pages.push(canvas);}
@@ -264,10 +287,12 @@ async function loadFile(input,kind){
  if(f.size>25*1024*1024){msg("O arquivo precisa ter até 25 MB.",kind==="student"?"status":"keyStatus");input.value="";return}
  try{
   const isPdf=f.type==="application/pdf"||f.name.toLowerCase().endsWith(".pdf");let pages,count=questionCount;
-  if(isPdf){msg("Lendo o PDF...",kind==="student"?"status":"keyStatus");const parsed=await renderPdf(f);pages=parsed.pages;count=parsed.count;}
+  const nameCount=f.name.match(/cart[aã]o[-_ ]resposta[-_ ](\d{1,2})[-_ ]quest(?:o|ã)es/i);
+  if(nameCount){const n=Number(nameCount[1]);if(n>=1&&n<=50){count=n;if(kind==="key"){document.getElementById("questionCount").value=n;if(n!==questionCount)updateQuestionCount();}}}
+  if(isPdf){msg("Lendo o PDF...",kind==="student"?"status":"keyStatus");const parsed=await renderPdf(f);pages=parsed.pages;count=parsed.count||count;}
   else{const im=new Image();im.src=URL.createObjectURL(f);await im.decode();pages=[im];}
-  if(kind==="student"){studentPages=pages;studentImage=pages[0];drawPreview(pages[0]);msg(isPdf?`PDF carregado com ${pages.length} páginas e cerca de ${count} questões.`:"Foto carregada. Para mais de 20 questões, selecione a página fotografada.");}
-  else{keyPages=pages;keyImage=pages[0];if(isPdf&&count!==questionCount){document.getElementById("questionCount").value=count;updateQuestionCount();}readKeyPhoto();}
+  if(kind==="student"){studentPages=pages;studentImage=pages[0];drawPreview(pages[0]);msg(isPdf?`PDF carregado com ${pages.length} páginas. O corretor localizará a grade SALTA.`:"Foto carregada. O corretor localizará a grade SALTA.");}
+  else{keyPages=pages;keyImage=pages[0];if(isPdf&&count&&count!==questionCount){document.getElementById("questionCount").value=count;updateQuestionCount();}readKeyPhoto();}
  }catch(error){console.error(error);msg("Não consegui abrir o arquivo. Confira se é uma imagem ou PDF válido.",kind==="student"?"status":"keyStatus");}
 }
 document.getElementById("photo").onchange=e=>loadFile(e.target,"student");
@@ -285,6 +310,56 @@ function matFromImage(im){
  c.width=Math.round(im.width*sc);c.height=Math.round(im.height*sc);
  c.getContext("2d").drawImage(im,0,0,c.width,c.height);
  return cv.imread(c);
+}
+
+function locateAnswerTemplate(src){
+ const gray=new cv.Mat(),binary=new cv.Mat(),contours=new cv.MatVector(),hierarchy=new cv.Mat();
+ const candidates=[];
+ try{
+  cv.cvtColor(src,gray,cv.COLOR_RGBA2GRAY);
+  cv.threshold(gray,binary,0,255,cv.THRESH_BINARY_INV+cv.THRESH_OTSU);
+  cv.findContours(binary,contours,hierarchy,cv.RETR_LIST,cv.CHAIN_APPROX_SIMPLE);
+  const minSide=Math.max(6,src.cols*.004),maxSide=src.cols*.05;
+  for(let i=0;i<contours.size();i++){
+   const contour=contours.get(i),area=cv.contourArea(contour),perimeter=cv.arcLength(contour,true),rect=cv.boundingRect(contour);
+   if(rect.width<minSide||rect.height<minSide||rect.width>maxSide||rect.height>maxSide||Math.abs(rect.width-rect.height)>Math.max(3,rect.width*.2)||area<rect.width*rect.height*.66){contour.delete();continue}
+   const approx=new cv.Mat();cv.approxPolyDP(contour,approx,.035*perimeter,true);
+   const square=approx.rows===4&&cv.isContourConvex(approx);approx.delete();contour.delete();
+   if(!square)continue;
+   const point={x:rect.x+rect.width/2,y:rect.y+rect.height/2,size:(rect.width+rect.height)/2,area};
+   if(!candidates.some(other=>Math.hypot(point.x-other.x,point.y-other.y)<Math.min(point.size,other.size)*.45))candidates.push(point);
+  }
+  candidates.sort((a,b)=>b.area-a.area);candidates.length=Math.min(candidates.length,60);
+  const pairs=[];
+  for(let i=0;i<candidates.length;i++)for(let j=i+1;j<candidates.length;j++){
+   const a=candidates[i],b=candidates[j],left=a.x<b.x?a:b,right=a.x<b.x?b:a;
+   if(Math.abs(a.y-b.y)>Math.max(8,(a.size+b.size)*.7)||right.x-left.x<src.cols*.2)continue;
+   pairs.push({left,right,y:(a.y+b.y)/2,width:right.x-left.x,size:(a.size+b.size)/2});
+  }
+  let best=null;
+  for(const top of pairs)for(const bottom of pairs){
+   const height=bottom.y-top.y,width=(top.width+bottom.width)/2;
+   if(height<src.rows*.16||bottom.y<=top.y||Math.abs(top.width-bottom.width)>width*.16||Math.abs(top.left.x-bottom.left.x)>width*.18||Math.abs(top.right.x-bottom.right.x)>width*.18)continue;
+   const aspect=width/height;if(aspect<.56||aspect>.84)continue;
+   const points=[top.left,top.right,bottom.right,bottom.left];
+   if(new Set(points).size!==4)continue;
+   const sizes=points.map(point=>point.size),mean=sizes.reduce((sum,value)=>sum+value,0)/4;
+   if(Math.min(...sizes)<mean*.65||Math.max(...sizes)>mean*1.45)continue;
+   const score=Math.abs(aspect-.695)+Math.abs(top.left.x-bottom.left.x)/width+Math.abs(top.right.x-bottom.right.x)/width+Math.abs(top.width-bottom.width)/width;
+   if(!best||score<best.score)best={points,score};
+  }
+  return best&&best.score<.38?best.points:null;
+ }finally{gray.delete();binary.delete();contours.delete();hierarchy.delete()}
+}
+
+function rectifyAnswerTemplate(src,markers){
+ const width=1800,height=2546;
+ const source=cv.matFromArray(4,1,cv.CV_32FC2,markers.flatMap(point=>[point.x,point.y]));
+ const layout=answerTemplateLayout(1,width,height),target=cv.matFromArray(4,1,cv.CV_32FC2,layout.markerCenters.flatMap(point=>[point.x,point.y]));
+ const transform=cv.getPerspectiveTransform(source,target),normalized=new cv.Mat();
+ cv.warpPerspective(src,normalized,transform,new cv.Size(width,height),cv.INTER_CUBIC,cv.BORDER_CONSTANT,new cv.Scalar(255,255,255,255));
+ source.delete();target.delete();transform.delete();
+ return normalized;
 }
 
 /* Posições proporcionais do cartão final EJA, página A4 inteira.
@@ -357,9 +432,6 @@ function detectGrid(src){
 }
 
 function sampleAt(src,x,y,radiusHint=14){
-  const hsv=new cv.Mat();
-  cv.cvtColor(src,hsv,cv.COLOR_RGBA2HSV);
-
   const radius=Math.max(7,Math.min(42,radiusHint));
   // Só o miolo da bolha. O anel e a letra impressos ficam parcialmente
   // fora desta área; uma marca preenchida ocupa muito mais pixels.
@@ -379,18 +451,16 @@ function sampleAt(src,x,y,radiusHint=14){
 
       const p=src.ucharPtr(yy,xx);
       const lum=.299*p[0]+.587*p[1]+.114*p[2];
-      const hp=hsv.ucharPtr(yy,xx);
 
       total++;
       lumSum+=lum;
 
-      // Caneta preta/azul.
-      if(lum<165)dark++;
-      if(hp[1]>35 && hp[2]<245)blue++;
+      // Preto e azul escuro ficam visíveis sem converter a imagem inteira
+      // para HSV a cada uma das centenas de amostras da folha.
+      if(lum<170)dark++;
+      if(p[2]>p[0]*1.15&&p[2]>p[1]*1.08&&p[2]<245)blue++;
     }
   }
-
-  hsv.delete();
 
   const darkRatio=dark/Math.max(1,total);
   const blueRatio=blue/Math.max(1,total);
@@ -401,55 +471,66 @@ function sampleAt(src,x,y,radiusHint=14){
          Math.max(0,(190-meanLum)/255)*.28;
 }
 
-function readSheet(im){
-  const src=matFromImage(im);
-  const grid=detectGrid(src);
-
-  const scores=[];
-
-  for(let q=0;q<20;q++){
-    const vals=[];
-
-    for(let r=0;r<5;r++){
-      const point=grid.rowPoints[r][q];
-      vals.push(sampleAt(src,point.x,point.y,grid.bubbleRadius));
-    }
-
-    const ordered=vals.map((v,i)=>({v,i}))
-      .sort((a,b)=>b.v-a.v);
-
-    const best=ordered[0];
-    const second=ordered[1];
-
-    // Em uma folha vazia todas as cinco posições ficam próximas.
-    // Em uma questão marcada, a bolha preenchida se distancia claramente.
-    const avg=vals.reduce((a,b)=>a+b,0)/vals.length;
-    const spread=best.v-avg;
-    const gap=best.v-second.v;
-
-    let answer="?";
-
-    // Limiares deliberadamente baixos: o desempate é feito pela diferença
-    // entre a melhor bolha e as demais, não por um valor absoluto.
-    if(spread>=.055 && gap>=.025){
-      answer=L[best.i];
-    }
-
-    scores.push({
-      answer,
-      values:vals,
-      confidence:Math.max(0,gap),
-      points:grid.rowPoints.map(row=>row[q])
-    });
+function detectTemplateRows(src,layout){
+ const halfWidth=Math.round(7*layout.pxPerMm),halfHeight=Math.round(1.2*layout.pxPerMm),minY=Math.round(12*layout.pxPerMm),maxY=Math.round(src.rows-12*layout.pxPerMm),step=2,threshold=.025,signals=[];
+ for(let y=minY;y<=maxY;y+=step){
+  let ink=0,total=0;
+  for(let dy=-halfHeight;dy<=halfHeight;dy++)for(let dx=-halfWidth;dx<=0;dx++){
+    const px=Math.round(layout.questionX)+dx,py=y+dy;if(px<0||px>=src.cols||py<0||py>=src.rows)continue;
+    const row=src.ucharPtr(py),index=px*4,lum=.299*row[index]+.587*row[index+1]+.114*row[index+2];
+    if(lum<185)ink++;total++;
   }
-
-  src.delete();
-  return scores;
+  signals.push({y,score:ink/Math.max(1,total)});
+ }
+ const groups=[];let group=null,lastY=0,maxGap=layout.pxPerMm*1.8;
+ for(const signal of signals){
+  if(signal.score<threshold)continue;
+  if(!group||signal.y-lastY>maxGap){group={peak:signal};groups.push(group)}
+  else if(signal.score>group.peak.score)group.peak=signal;
+  lastY=signal.y;
+ }
+ return groups.map(item=>item.peak.y).filter((y,index,all)=>index===0||y-all[index-1]>layout.pxPerMm*3).slice(0,50);
 }
 
-function detectQuestionCountFromCircles(im){
-  return 20;
+function answerScoresFromGrid(src,rowCenters,layout){
+ const scores=[],radius=1.8*layout.pxPerMm;
+ rowCenters.forEach(y=>{
+  const vals=layout.bubbleXs.map(x=>sampleAt(src,x,y,radius));
+  const ordered=vals.map((v,i)=>({v,i})).sort((a,b)=>b.v-a.v),best=ordered[0],second=ordered[1];
+  const avg=vals.reduce((a,b)=>a+b,0)/vals.length,spread=best.v-avg,gap=best.v-second.v;
+  scores.push({answer:spread>=.055&&gap>=.025?L[best.i]:"?",values:vals,confidence:Math.max(0,gap)});
+ });
+ return scores;
 }
+
+function readSheet(im,count=questionCount){
+ const src=matFromImage(im),markers=locateAnswerTemplate(src);
+ let normalized=null,layout=null,rowCenters=[];
+ if(markers){normalized=rectifyAnswerTemplate(src,markers);layout=answerTemplateLayout(count,normalized.cols,normalized.rows);rowCenters=detectTemplateRows(normalized,layout);}
+ else if(src.rows&&src.cols/src.rows>=.62&&src.cols/src.rows<=.78){
+  // Se a foto mostrar a folha A4 inteira, ainda tentamos ler a grade sem
+  // os quatro marcadores. Em recortes de provas, os marcadores são exigidos.
+  layout=answerTemplateLayout(count,src.cols,src.rows);rowCenters=detectTemplateRows(src,layout);
+  if(rowCenters.length)normalized=src;
+ }
+ if(normalized){
+  const detectedCount=rowCenters.length||count;
+  const scores=answerScoresFromGrid(normalized,rowCenters.length?rowCenters:Array.from({length:count},(_,index)=>layout.startY+index*layout.pitch),layout);
+  scores.answerTemplate=true;scores.questionCount=detectedCount;scores.countInferred=rowCenters.length>0;
+  if(normalized!==src)normalized.delete();src.delete();return scores;
+ }
+
+ // Compatibilidade com o cartão EJA anterior, sem marcas de alinhamento.
+ const grid=detectGrid(src),scores=[];
+ for(let q=0;q<20;q++){
+  const vals=grid.rowPoints.map(row=>sampleAt(src,row[q].x,row[q].y,grid.bubbleRadius));
+  const ordered=vals.map((v,i)=>({v,i})).sort((a,b)=>b.v-a.v),best=ordered[0],second=ordered[1];
+  const avg=vals.reduce((a,b)=>a+b,0)/vals.length,spread=best.v-avg,gap=best.v-second.v;
+  scores.push({answer:spread>=.055&&gap>=.025?L[best.i]:"?",values:vals,confidence:Math.max(0,gap)});
+ }
+ src.delete();return scores;
+}
+
 function showDetected(n,label="estrutura detectada"){
  const box=document.getElementById("detected");
  box.textContent=n+" questões · "+label;
@@ -485,11 +566,21 @@ function readKeyPhoto(){
  if(typeof cv==="undefined"||!cv.Mat){msg("O leitor ainda está carregando. Tente novamente.","keyStatus");return}
  try{
    msg("Lendo o gabarito...","keyStatus");
-   const found=Array.from({length:questionCount},(_,i)=>document.getElementById("q"+(i+1))?.value||""),pages=keyPages.length?keyPages:[keyImage];
-   for(let p=0;p<pages.length;p++){const pageAnswers=readSheet(pages[p]).map(x=>x.answer);for(let i=0;i<pageAnswers.length&&p*20+i<questionCount;i++)if(pageAnswers[i]!=="?")found[p*20+i]=pageAnswers[i];}
+   const pages=keyPages.length?keyPages:[keyImage];let detectedAnswers=null,detectedCount=null,countInferred=false;
+   for(let p=0;p<pages.length;p++){
+    const pageScores=readSheet(pages[p],questionCount);
+    if(pageScores.answerTemplate){detectedAnswers=pageScores.map(x=>x.answer);detectedCount=pageScores.questionCount;countInferred=pageScores.countInferred;break}
+   }
+   if(countInferred&&detectedCount&&detectedCount!==questionCount){document.getElementById("questionCount").value=detectedCount;updateQuestionCount();}
+   const found=Array.from({length:questionCount},(_,i)=>document.getElementById("q"+(i+1))?.value||"");
+   if(detectedAnswers){detectedAnswers.forEach((answer,i)=>{if(i<found.length&&answer!=="?")found[i]=answer;});}
+   else for(let p=0;p<pages.length;p++){
+    const pageAnswers=readSheet(pages[p]).map(x=>x.answer),offset=pages.length===1?0:p*20;
+    for(let i=0;i<pageAnswers.length&&offset+i<questionCount;i++)if(pageAnswers[i]!=="?")found[offset+i]=pageAnswers[i];
+   }
    found.forEach((x,i)=>{const el=document.getElementById("q"+(i+1));if(el)el.value=x;});
    key=found.slice();
-   showDetected(questionCount,"quantidade definida ou estimada pelo arquivo");
+   showDetected(questionCount,countInferred?"questões reconhecidas pela grade":detectedCount?"quantidade selecionada; confira as respostas":"quantidade definida pelo arquivo");
    msg(key.some(x=>!x)?"Leitura preliminar concluída. Confira as respostas ambíguas e complete manualmente.":"Respostas lidas. Confira e salve o gabarito.","keyStatus");
  }catch(e){console.error(e);msg("Não consegui ler esse modelo. Use o cartão disponibilizado aqui ou preencha as respostas manualmente.","keyStatus");}
 }
@@ -502,15 +593,19 @@ function scanStudent(){
    msg("Lendo a folha...");
    let offset=0,r=[];
    if(studentPages.length>1){
-     for(const page of studentPages)r.push(...readSheet(page).map(x=>x.answer));
-     r=r.slice(0,key.length);
+     let templateAnswers=null,templateCount=null;
+     for(const page of studentPages){const pageScores=readSheet(page,questionCount);if(pageScores.answerTemplate){templateAnswers=pageScores.map(x=>x.answer);templateCount=pageScores.questionCount;break}}
+     if(templateCount&&templateCount!==key.length){msg("A grade da folha tem "+templateCount+" questões, mas o gabarito salvo tem "+key.length+". Confira o modelo e o gabarito antes de corrigir.");return}
+     if(templateAnswers)r=templateAnswers.slice(0,key.length);
+     else{for(const page of studentPages)r.push(...readSheet(page).map(x=>x.answer));r=r.slice(0,key.length)}
    }else{
      const page=Number(document.getElementById("photoPage").value);
      if(!Number.isInteger(page)||page<1){msg("Informe um número de página válido.");return}
-     offset=(page-1)*20;if(offset>=key.length){msg("Essa página está fora da quantidade de questões do gabarito.");return}
-     r=readSheet(studentImage).map(x=>x.answer).slice(0,Math.min(20,key.length-offset));
+     const pageScores=readSheet(studentImage,questionCount);
+     if(pageScores.answerTemplate){if(pageScores.questionCount!==key.length){msg("A grade da folha tem "+pageScores.questionCount+" questões, mas o gabarito salvo tem "+key.length+". Confira o modelo e o gabarito antes de corrigir.");return}r=pageScores.map(x=>x.answer).slice(0,key.length);}
+     else{offset=(page-1)*20;if(offset>=key.length){msg("Essa página está fora da quantidade de questões do gabarito.");return}r=pageScores.map(x=>x.answer).slice(0,Math.min(20,key.length-offset));}
    }
-   showDetected(r.length,studentPages.length>1?"questões lidas no PDF":"questões nesta página da foto");
+   showDetected(r.length,"questões localizadas na folha");
    showResult(r,offset);
    msg(r.some(x=>x==="?")?"Folha lida. Confira as questões com Revisar.":"Folha lida com sucesso.");
  }catch(e){console.error(e);msg("Não consegui localizar a grade. Use a folha inteira, sem cortar a região das respostas, e tente com boa iluminação.")}
