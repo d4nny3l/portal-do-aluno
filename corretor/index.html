@@ -8,7 +8,7 @@
 <style>
 *{box-sizing:border-box}html{scroll-behavior:smooth}body{margin:0;background:#f5f5f7;color:#171717;font-family:-apple-system,BlinkMacSystemFont,"SF Pro Display","SF Pro Text",Arial,sans-serif}
 header{background:#111;color:#fff;padding:42px 20px 52px}.wrap{max-width:940px;margin:auto}.brand{font-size:48px;font-weight:700;letter-spacing:-2px}.sub{color:#aaa;margin-top:6px;font-size:16px}
-main{max-width:940px;margin:-24px auto 55px;padding:0 15px}.card{background:#fff;border:1px solid #e5e5e5;border-radius:24px;padding:25px;margin-bottom:16px;box-shadow:0 8px 30px #0000000b}
+main{max-width:940px;margin:-24px auto 55px;padding:0 15px}.teacher-back{display:inline-flex;align-items:center;gap:7px;margin:0 0 16px;padding:10px 13px;border:1px solid #e5e5e5;border-radius:12px;background:#fff;color:#222;text-decoration:none;font-size:14px;font-weight:650}.teacher-back:hover{background:#f7f7f9}.card{background:#fff;border:1px solid #e5e5e5;border-radius:24px;padding:25px;margin-bottom:16px;box-shadow:0 8px 30px #0000000b}
 h2{margin:0 0 7px;font-size:22px;letter-spacing:-.5px}.help{color:#707070;line-height:1.5;margin:0 0 20px}
 .grid{display:grid;grid-template-columns:repeat(5,1fr);gap:9px}.q{background:#fafafa;border:1px solid #e7e7e7;border-radius:13px;padding:9px}.q label{display:block;font-size:12px;color:#777;margin-bottom:6px}
 select{width:100%;border:0;background:#fff;border-radius:8px;padding:9px;font-size:16px}button,.file{display:inline-block;border:0;border-radius:13px;padding:13px 17px;font-weight:600;font-size:15px;cursor:pointer;background:#111;color:#fff}.secondary{background:#eee;color:#111}.actions{display:flex;gap:9px;flex-wrap:wrap;margin-top:16px}.file input{display:none}
@@ -144,6 +144,7 @@ body.auth-check{visibility:hidden}
 
 <header><div class="wrap"><div class="brand">SALTA</div><div class="sub">Corretor de Avaliações</div></div></header>
 <main>
+<a class="teacher-back" href="../plataforma/professor.html">← Voltar para a Área do Professor</a>
 
 <section class="card">
 <span class="badge">GRADE DE RESPOSTAS</span>
@@ -227,18 +228,18 @@ function drawAnswerTemplate(count){
  ctx.fillStyle="#fff";ctx.fillRect(0,0,width,height);ctx.fillStyle="#111";
  const marker=4.2*scale;
  layout.markerCenters.forEach(point=>ctx.fillRect(point.x-marker/2,point.y-marker/2,marker,marker));
- ctx.textBaseline="middle";ctx.textAlign="right";ctx.font=`600 ${Math.max(28,Math.min(40,layout.pitch*.52))}px Arial,sans-serif`;
+ const questionFont=`600 ${Math.max(28,Math.min(40,layout.pitch*.52))}px Arial,sans-serif`;
+ ctx.textBaseline="middle";ctx.textAlign="right";ctx.font=questionFont;
  const radius=1.8*scale;
  const labelY=Math.max(10*scale,layout.startY-layout.pitch*.62);
  ctx.textAlign="center";ctx.font=`600 ${Math.max(22,Math.min(30,layout.pitch*.38))}px Arial,sans-serif`;
  layout.bubbleXs.forEach((x,index)=>ctx.fillText(L[index],x,labelY));
  for(let q=1;q<=count;q++){
    const y=layout.startY+(q-1)*layout.pitch;
-   ctx.fillStyle="#111";ctx.textAlign="right";ctx.fillText(String(q).padStart(2,"0"),layout.questionX,y);
+   ctx.fillStyle="#111";ctx.textAlign="right";ctx.font=questionFont;ctx.fillText(String(q).padStart(2,"0"),layout.questionX,y);
    layout.bubbleXs.forEach((x,index)=>{
      ctx.beginPath();ctx.arc(x,y,radius,0,Math.PI*2);ctx.fillStyle="#fff";ctx.fill();ctx.lineWidth=Math.max(2,scale*.16);ctx.strokeStyle="#222";ctx.stroke();
    });
-   ctx.textAlign="right";ctx.font=`600 ${Math.max(28,Math.min(40,layout.pitch*.52))}px Arial,sans-serif`;
  }
 }
 drawAnswerTemplate(questionCount);
