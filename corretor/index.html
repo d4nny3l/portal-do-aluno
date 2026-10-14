@@ -4,7 +4,6 @@
 <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
 <link rel="icon" type="image/svg+xml" href="../favicon.svg">
 <title>SALTA — Corretor de Avaliações</title>
-<script async src="https://docs.opencv.org/4.x/opencv.js"></script>
 <style>
 *{box-sizing:border-box}html{scroll-behavior:smooth}body{margin:0;background:#f5f5f7;color:#171717;font-family:-apple-system,BlinkMacSystemFont,"SF Pro Display","SF Pro Text",Arial,sans-serif}
 header{background:#111;color:#fff;padding:42px 20px 52px}.wrap{max-width:940px;margin:auto}.brand{font-size:48px;font-weight:700;letter-spacing:-2px}.sub{color:#aaa;margin-top:6px;font-size:16px}
@@ -268,7 +267,7 @@ function clearKey(){
 }
 
 let studentImage=null,keyImage=null;
-let studentPages=[],keyPages=[],pdfJsPromise=null,openCvReadyPromise=null;
+let studentPages=[],keyPages=[],pdfJsPromise=null,openCvReadyPromise=null,openCvScriptPromise=null;
 async function loadPdfJs(){
  if(!pdfJsPromise)pdfJsPromise=(async()=>{
   const cdns=["https://cdn.jsdelivr.net/npm/pdfjs-dist@4.10.38/build/","https://unpkg.com/pdfjs-dist@4.10.38/build/"];
@@ -280,17 +279,28 @@ async function loadPdfJs(){
 }
 function ensureOpenCvReady(timeoutMs=30000){
  if(window.cv?.Mat)return Promise.resolve(window.cv);
- if(!openCvReadyPromise)openCvReadyPromise=new Promise((resolve,reject)=>{
-  const deadline=Date.now()+timeoutMs;
-  const check=()=>{
-   const api=window.cv;
-   if(api?.Mat){resolve(api);return}
-   if(api&&typeof api.then==="function")api.then(value=>{window.cv=value;if(value?.Mat)resolve(value);}).catch(()=>{});
-   if(Date.now()>=deadline){reject(new Error("O leitor óptico não terminou de carregar. Atualize a página e tente novamente."));return}
-   setTimeout(check,150);
-  };
-  check();
- });
+ if(!openCvReadyPromise)openCvReadyPromise=(async()=>{
+  if(!openCvScriptPromise){
+   openCvScriptPromise=new Promise((resolve,reject)=>{
+    const existing=document.querySelector('script[data-salta-opencv]');
+    if(existing){existing.addEventListener("load",resolve,{once:true});existing.addEventListener("error",()=>reject(new Error("Não foi possível carregar o leitor óptico.")),{once:true});return}
+    const script=document.createElement("script");script.src="https://docs.opencv.org/4.x/opencv.js";script.async=true;script.dataset.saltaOpencv="true";
+    script.onload=resolve;script.onerror=()=>reject(new Error("Não foi possível carregar o leitor óptico. Confira sua conexão e tente novamente."));document.head.appendChild(script);
+   }).catch(error=>{openCvScriptPromise=null;throw error;});
+  }
+  await openCvScriptPromise;
+  return await new Promise((resolve,reject)=>{
+   const deadline=Date.now()+timeoutMs;
+   const check=()=>{
+    const api=window.cv;
+    if(api?.Mat){resolve(api);return}
+    if(api&&typeof api.then==="function")api.then(value=>{window.cv=value;if(value?.Mat)resolve(value);}).catch(()=>{});
+    if(Date.now()>=deadline){openCvReadyPromise=null;reject(new Error("O leitor óptico não terminou de carregar. Atualize a página e tente novamente."));return}
+    setTimeout(check,150);
+   };
+   check();
+  });
+ })().catch(error=>{openCvReadyPromise=null;throw error;});
  return openCvReadyPromise;
 }
 async function openPdfDocument(lib,data){
@@ -381,7 +391,9 @@ function locateAnswerTemplate(src,count=questionCount){
    const point={x:rect.x+rect.width/2,y:rect.y+rect.height/2,size:(rect.width+rect.height)/2,area};
    if(!candidates.some(other=>Math.hypot(point.x-other.x,point.y-other.y)<Math.min(point.size,other.size)*.45))candidates.push(point);
   }
-  candidates.sort((a,b)=>b.area-a.area);candidates.length=Math.min(candidates.length,60);
+  // A combinação de pares cresce ao quadrado; limitar os marcadores candidatos
+  // evita bloquear a página quando a prova tem muitos elementos quadrados.
+  candidates.sort((a,b)=>b.area-a.area);candidates.length=Math.min(candidates.length,24);
   const pairs=[];
   for(let i=0;i<candidates.length;i++)for(let j=i+1;j<candidates.length;j++){
    const a=candidates[i],b=candidates[j],left=a.x<b.x?a:b,right=a.x<b.x?b:a;
