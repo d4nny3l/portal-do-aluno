@@ -29,7 +29,8 @@ function getWorker() {
   if (!worker) {
     worker = new Worker(new URL("./spellcheck-worker.bundle.js", import.meta.url), { type: "module" });
     worker.addEventListener("message", handleWorkerMessage);
-    worker.addEventListener("error", () => {
+    worker.addEventListener("error", event => {
+      console.error("Falha no corretor ortográfico do SALTA.", event.message, event.filename, event.lineno);
       worker?.terminate();
       worker = null;
     }, { once: true });
@@ -165,6 +166,8 @@ function handleWorkerMessage(event) {
     const current = wordAtCursor(state.control);
     if (!current || current.start !== range.start || current.word !== range.word) return;
     showSuggestionPopup(state, range, message.suggestions || []);
+  } else if (message.type === "error") {
+    console.error("Falha no corretor ortográfico do SALTA.", message.message);
   }
 }
 
