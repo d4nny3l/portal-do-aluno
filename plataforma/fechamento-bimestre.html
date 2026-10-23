@@ -1,0 +1,82 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#f5f5f7">
+<link rel="icon" type="image/svg+xml" href="../favicon.svg">
+<link rel="stylesheet" href="../salta-theme.css?v=fechamento-1">
+<title>Fechamento de bimestre — SALTA</title>
+<style>
+:root{--paper:#fff;--ink:#202033;--muted:#686879;--line:#e3e3ec;--accent:#5757c8;--soft:#f1f1fb;--danger:#a33b35}
+*{box-sizing:border-box}body{margin:0;min-height:100vh;background-color:#f5f5f7;color:var(--ink);font-family:-apple-system,BlinkMacSystemFont,"SF Pro Text",Inter,Arial,sans-serif}
+.wrap{width:min(1120px,calc(100% - 32px));margin:auto}.top{padding:18px 0;border-bottom:1px solid rgba(0,0,0,.08);background:rgba(255,255,255,.78);backdrop-filter:blur(16px)}.top .wrap{display:flex;justify-content:space-between;align-items:center;gap:16px}.brand{font-size:13px;font-weight:750;letter-spacing:.04em}.brand small{display:block;font-size:11px;color:var(--muted);font-weight:500;letter-spacing:0;margin-top:3px}.back{font-size:13px;color:var(--accent);font-weight:650;text-decoration:none}
+main{padding:42px 0 72px}.eyebrow{font-size:11px;letter-spacing:.14em;font-weight:750;color:var(--accent);text-transform:uppercase}.intro{margin-bottom:24px}.intro h1{font-size:clamp(30px,5vw,44px);letter-spacing:-1.7px;margin:8px 0}.intro p{max-width:760px;color:var(--muted);line-height:1.6;margin:0}.layout{display:grid;grid-template-columns:minmax(0,1.05fr) minmax(320px,.95fr);gap:18px;align-items:start}.card{background:rgba(255,255,255,.9);border:1px solid var(--line);border-radius:22px;padding:23px;box-shadow:0 14px 38px rgba(31,31,65,.055);backdrop-filter:blur(12px)}.card h2{font-size:19px;margin:0 0 8px;letter-spacing:-.3px}.muted{color:var(--muted);font-size:13px;line-height:1.5}.fields{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin:20px 0 15px}.field label{display:block;font-size:12px;font-weight:700;margin:0 0 7px}.field input,.field select{width:100%;border:1px solid #d8d8e3;background:#fff;border-radius:12px;padding:12px 13px;font:inherit;color:var(--ink)}button{font:inherit;cursor:pointer}.button{border:0;border-radius:12px;background:var(--accent);color:#fff;font-size:13px;font-weight:700;padding:12px 16px}.button.secondary{background:#fff;color:var(--accent);border:1px solid #cecee8}.button:disabled{opacity:.55;cursor:wait}.buttonline{display:flex;gap:9px;flex-wrap:wrap;margin-top:14px}.notice{margin-top:15px;border-radius:13px;padding:12px 14px;background:var(--soft);font-size:13px;line-height:1.5;color:#3a3a66}.notice.warn{background:#fff5e8;color:#725222}.status{display:none;margin:14px 0 0;border-radius:12px;padding:11px 13px;font-size:13px;background:#f0f0f7;color:var(--ink)}.status.error{display:block;background:#fff0ef;color:var(--danger)}.status.show{display:block}.summary{display:none;margin-top:18px}.summary h3,.history h3{font-size:14px;margin:0 0 9px}.stats{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin:12px 0}.stat{background:#f7f7fb;border:1px solid #ececf3;border-radius:13px;padding:11px}.stat strong{display:block;font-size:20px}.stat span{font-size:11px;color:var(--muted)}.tablewrap{overflow:auto;border:1px solid var(--line);border-radius:13px}table{border-collapse:collapse;width:100%;font-size:12px;min-width:500px}th,td{text-align:left;padding:10px 11px;border-bottom:1px solid #ededf2}th{background:#f5f5fb;color:#48486c;font-size:10px;text-transform:uppercase;letter-spacing:.05em}tbody tr:last-child td{border-bottom:0}.history{margin-top:18px}.history-list{display:grid;gap:8px;margin-top:12px}.history-item{width:100%;text-align:left;background:#fff;border:1px solid var(--line);border-radius:13px;padding:12px 14px;color:var(--ink)}.history-item:hover,.history-item[aria-current=true]{border-color:#b9b9e4;background:#f9f9ff}.history-item strong{display:block;font-size:13px}.history-item span{display:block;color:var(--muted);font-size:11px;margin-top:4px}.detail{margin-top:18px}.detail-head{display:flex;justify-content:space-between;align-items:flex-start;gap:12px;margin-bottom:12px}.empty{font-size:13px;color:var(--muted);padding:14px;background:#f8f8fb;border-radius:12px}.footnote{font-size:11px;color:var(--muted);line-height:1.5;margin-top:12px}@media(max-width:820px){.layout{grid-template-columns:1fr}.top .wrap{align-items:flex-start}.card{padding:19px}}@media(max-width:480px){.fields{grid-template-columns:1fr}.top .wrap{flex-direction:column}.stats{grid-template-columns:1fr 1fr}.detail-head{flex-direction:column}}
+</style>
+</head>
+<body>
+<header class="top"><div class="wrap"><div class="brand">SALTA · MATEMÁTICA<small>Área do Professor</small></div><a class="back" href="./professor.html">← Voltar à Área do Professor</a></div></header>
+<main class="wrap">
+  <div class="intro"><div class="eyebrow">Organização acadêmica</div><h1>Fechamento de bimestre</h1><p>Guarde uma cópia das notas, dos vistos e das atividades do D1 antes de importar os dados da próxima planilha. O fechamento acrescenta um registro histórico e não apaga nem altera os dados atuais.</p></div>
+  <div class="layout">
+    <section class="card" aria-labelledby="closeTitle">
+      <h2 id="closeTitle">Preparar um fechamento</h2>
+      <p class="muted">Faça esta etapa antes de executar o gerar_banco.py com a próxima planilha. O arquivo gerado apaga e recria a tabela atual de alunos; os fechamentos salvos aqui permanecem no D1.</p>
+      <div class="fields">
+        <div class="field"><label for="year">Ano letivo</label><input id="year" type="number" min="2000" max="2100"></div>
+        <div class="field"><label for="period">Bimestre letivo que terminou</label><select id="period"><option value="1">1º bimestre</option><option value="2">2º bimestre</option><option value="3" selected>3º bimestre</option><option value="4">4º bimestre</option></select></div>
+      </div>
+      <button class="button" id="previewButton" type="button">Conferir dados para arquivar</button>
+      <div class="status" id="status" role="status" aria-live="polite"></div>
+      <div class="summary" id="summary">
+        <div class="notice" id="periodMapping"></div>
+        <div class="stats"><div class="stat"><strong id="studentCount">0</strong><span>alunos no arquivo</span></div><div class="stat"><strong id="activityCount">0</strong><span>avaliações registradas</span></div><div class="stat"><strong id="gradeCount">0</strong><span>alunos com média</span></div></div>
+        <h3>Resumo por turma</h3><div class="tablewrap"><table><thead><tr><th>Turma</th><th>Alunos</th><th>Avaliações</th><th>Com média</th></tr></thead><tbody id="classSummary"></tbody></table></div>
+        <div class="notice warn" id="priorWarning" hidden></div>
+        <div class="buttonline"><button class="button" id="closeButton" type="button">Salvar fechamento no D1</button></div>
+        <p class="footnote">O registro é uma fotografia dos dados existentes no momento. Se precisar fechar de novo, uma nova versão será guardada sem substituir a anterior.</p>
+      </div>
+    </section>
+    <section class="card history" aria-labelledby="historyTitle">
+      <h2 id="historyTitle">Histórico de fechamentos</h2>
+      <p class="muted">Consulte, visualize e baixe os dados arquivados para guardar uma cópia fora do portal.</p>
+      <div class="history-list" id="historyList"><div class="empty">Carregando histórico…</div></div>
+      <div class="detail" id="detail" hidden></div>
+    </section>
+  </div>
+</main>
+<script>
+const API="https://salta-stats.dannyel-moises.workers.dev";
+const AUTH_API=API+"/auth";
+const $=id=>document.getElementById(id);
+let currentPreview=null;
+let selectedClosure=null;
+
+function esc(value){return String(value??"").replace(/[&<>"']/g,ch=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[ch]))}
+function setStatus(message,error=false){const box=$("status");box.textContent=message;box.className="status show"+(error?" error":"")}
+function clearStatus(){const box=$("status");box.textContent="";box.className="status"}
+function fmtDate(value){if(!value)return "Data não informada";const date=new Date(value.includes("T")?value:value.replace(" ","T")+"Z");return Number.isNaN(date.valueOf())?value:new Intl.DateTimeFormat("pt-BR",{dateStyle:"short",timeStyle:"short"}).format(date)}
+function fmtNumber(value){if(value===null||value===undefined||value==="")return "—";const number=Number(value);return Number.isFinite(number)?number.toLocaleString("pt-BR",{maximumFractionDigits:1}):"—"}
+async function api(path,options={}){const response=await fetch(API+path,{...options,credentials:"include",cache:"no-store",headers:{...(options.body?{"Content-Type":"application/json"}:{}),...(options.headers||{})}});const data=await response.json().catch(()=>({}));if(!response.ok)throw new Error(data.error||"Não foi possível acessar o serviço.");return data}
+
+async function checkSession(){const response=await fetch(AUTH_API+"/session",{credentials:"include",cache:"no-store"});const data=await response.json().catch(()=>({}));if(!response.ok||!data.authenticated)throw new Error("Sua sessão expirou. Entre novamente na Área do Professor.")}
+
+async function preview(){clearStatus();currentPreview=null;$("summary").style.display="none";const button=$("previewButton");button.disabled=true;button.textContent="Consultando D1…";try{const year=Number($("year").value),period=Number($("period").value);if(!Number.isInteger(year)||year<2000||year>2100)throw new Error("Informe um ano letivo válido.");const data=await api(`/admin/fechamento-bimestre?ano=${year}&bimestre=${period}`);currentPreview=data;$("studentCount").textContent=data.quantidadeAlunos;$("activityCount").textContent=data.quantidadeAtividades;$("gradeCount").textContent=data.alunosComMedia;$("periodMapping").textContent=period===3||period===1?`Serão arquivados o ${period}º bimestre regular e o ${data.bimestreEja}º bimestre da EJA.`:`Serão arquivados o ${period}º bimestre regular e o ${data.bimestreEja}º bimestre da EJA.`;$("classSummary").innerHTML=(data.turmas||[]).map(row=>`<tr><td>${esc(row.turma)}</td><td>${row.alunos}</td><td>${row.atividades}</td><td>${row.comMedia}</td></tr>`).join("")||'<tr><td colspan="4">Nenhum dado encontrado.</td></tr>';const warning=$("priorWarning");warning.hidden=!data.fechamentosAnteriores;warning.textContent=data.fechamentosAnteriores?`Já existe(m) ${data.fechamentosAnteriores} fechamento(s) deste ano e bimestre. Salvar agora criará outro registro histórico e manterá os anteriores.`:"";$("summary").style.display="block";setStatus("Prévia carregada. Confira as turmas e os totais antes de salvar.");}catch(error){setStatus(error.message,true)}finally{button.disabled=false;button.textContent="Conferir dados para arquivar"}}
+
+async function saveClosure(){if(!currentPreview) return;const data=currentPreview;const confirmText=`Salvar uma cópia histórica do ${data.bimestre}º bimestre de ${data.anoLetivo}?\n\n${data.quantidadeAlunos} alunos · ${data.quantidadeAtividades} avaliações · ${data.turmas.length} turmas.\n\nIsso não apaga os dados atuais. Faça o fechamento antes de importar a planilha seguinte.`;if(!window.confirm(confirmText))return;const button=$("closeButton");button.disabled=true;button.textContent="Salvando…";clearStatus();try{const result=await api("/admin/fechamento-bimestre",{method:"POST",body:JSON.stringify({anoLetivo:data.anoLetivo,bimestre:data.bimestre,confirm:"fechar-bimestre"})});setStatus(`Fechamento salvo. Registro #${result.fechamento.id}: ${result.fechamento.alunos} alunos e ${result.fechamento.atividades} avaliações.`);currentPreview=null;$("summary").style.display="none";await loadHistory();await showClosure(result.fechamento.id)}catch(error){setStatus(error.message,true)}finally{button.disabled=false;button.textContent="Salvar fechamento no D1"}}
+
+async function loadHistory(){const data=await api("/admin/fechamentos-bimestre");const list=$("historyList");if(!data.fechamentos?.length){list.innerHTML='<div class="empty">Ainda não há fechamentos arquivados.</div>';return}list.innerHTML=data.fechamentos.map(item=>`<button class="history-item" type="button" data-id="${item.id}" aria-current="${selectedClosure===item.id}"><strong>${item.academic_year} · ${item.calendar_period}º bimestre <span style="display:inline;color:#5757c8">#${item.id}</span></strong><span>${fmtDate(item.created_at)} · ${item.student_count} alunos · ${item.activity_count} avaliações</span></button>`).join("");list.querySelectorAll(".history-item").forEach(button=>button.addEventListener("click",()=>showClosure(Number(button.dataset.id))))}
+
+async function showClosure(id){selectedClosure=id;const detail=$("detail");detail.hidden=false;detail.innerHTML='<div class="empty">Carregando arquivo…</div>';try{const data=await api(`/admin/fechamentos-bimestre/${id}`);const closure=data.fechamento;detail.innerHTML=`<div class="detail-head"><div><h3>Arquivo #${closure.id} · ${closure.academic_year} · ${closure.calendar_period}º bimestre</h3><div class="muted">Salvo em ${esc(fmtDate(closure.created_at))} · ${closure.student_count} alunos</div></div><div class="buttonline" style="margin:0"><button class="button secondary" id="downloadJson" type="button">Baixar JSON</button><button class="button secondary" id="downloadCsv" type="button">Baixar CSV</button></div></div><div class="tablewrap"><table><thead><tr><th>Aluno</th><th>Turma</th><th>Período</th><th>Média</th><th>Vistos</th><th>Avaliações</th></tr></thead><tbody>${(data.alunos||[]).map(student=>`<tr><td>${esc(student.student_name)}</td><td>${esc(student.turma)}</td><td>${esc(student.segment)} ${student.segment_period}º</td><td>${fmtNumber(student.media)}</td><td>${fmtNumber(student.vistos)}</td><td>${student.avaliacoes.map(item=>`${esc(item.nome)}: ${fmtNumber(item.pontos)}`).join("; ")||"—"}</td></tr>`).join("")||'<tr><td colspan="6">Arquivo vazio.</td></tr>'}</tbody></table></div>`;$("downloadJson").addEventListener("click",()=>download(`salta-fechamento-${closure.academic_year}-bim${closure.calendar_period}-${closure.id}.json`,JSON.stringify(data,null,2),"application/json;charset=utf-8"));$("downloadCsv").addEventListener("click",()=>download(`salta-fechamento-${closure.academic_year}-bim${closure.calendar_period}-${closure.id}.csv`,toCsv(data),"text/csv;charset=utf-8"));await loadHistory()}catch(error){detail.innerHTML=`<div class="status error">${esc(error.message)}</div>`}}
+
+function download(name,content,type){const blob=new Blob(["\ufeff",content],{type});const url=URL.createObjectURL(blob);const link=document.createElement("a");link.href=url;link.download=name;link.click();URL.revokeObjectURL(url)}
+function csvCell(value){let text=String(value??"");if(/^[=+\-@]/.test(text))text="'"+text;return '"'+text.replace(/"/g,'""')+'"'}
+function toCsv(data){const rows=[["Código","Aluno","Turma","Segmento","Bimestre letivo","Bimestre do segmento","Status","Média","Vistos","Avaliações","Atualizado na planilha"]];for(const student of data.alunos||[]){const assessments=(student.avaliacoes||[]).map(item=>`${item.nome}: ${item.pontos}`).join(" | ");rows.push([student.student_code,student.student_name,student.turma,student.segment,student.calendar_period,student.segment_period,student.period_status,student.media,student.vistos,assessments,student.source_updated_at])}return rows.map(row=>row.map(csvCell).join(",")).join("\r\n")}
+
+$("year").value=String(new Date().getFullYear());
+$("previewButton").addEventListener("click",preview);$("closeButton").addEventListener("click",saveClosure);
+for(const input of [$("year"),$("period")])input.addEventListener("change",()=>{currentPreview=null;$("summary").style.display="none";clearStatus()});
+checkSession().then(loadHistory).catch(error=>{$("historyList").innerHTML=`<div class="status error">${esc(error.message)} <a href="./professor.html">Voltar para entrar.</a></div>`});
+</script>
+</body>
+</html>

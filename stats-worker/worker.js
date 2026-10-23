@@ -584,6 +584,204 @@ function trimLimited(value, max) {
   return String(value || "").trim().slice(0, max);
 }
 
+async function ensurePeriodClosureSchema(env) {
+  await env.DB.prepare(
+    "CREATE TABLE IF NOT EXISTS salta_period_closures (" +
+    "id INTEGER PRIMARY KEY AUTOINCREMENT, " +
+    "academic_year INTEGER NOT NULL, " +
+    "calendar_period INTEGER NOT NULL, " +
+    "student_count INTEGER NOT NULL DEFAULT 0, " +
+    "activity_count INTEGER NOT NULL DEFAULT 0, " +
+    "students_with_grade INTEGER NOT NULL DEFAULT 0, " +
+    "created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP, " +
+    "status TEXT NOT NULL DEFAULT 'complete')"
+  ).run();
+  await env.DB.prepare(
+    "CREATE TABLE IF NOT EXISTS salta_period_closure_students (" +
+    "closure_id INTEGER NOT NULL, " +
+    "student_code TEXT NOT NULL, " +
+    "student_name TEXT NOT NULL, " +
+    "turma TEXT NOT NULL, " +
+    "segment TEXT NOT NULL, " +
+    "calendar_period INTEGER NOT NULL, " +
+    "segment_period INTEGER NOT NULL, " +
+    "period_status TEXT, " +
+    "media REAL, " +
+    "vistos REAL, " +
+    "assessments_json TEXT NOT NULL DEFAULT '[]', " +
+    "source_updated_at TEXT, " +
+    "PRIMARY KEY (closure_id, student_code))"
+  ).run();
+  await env.DB.prepare(
+    "CREATE INDEX IF NOT EXISTS idx_salta_period_closures_year_period " +
+    "ON salta_period_closures(academic_year, calendar_period, created_at DESC)"
+  ).run();
+  await env.DB.prepare(
+    "CREATE INDEX IF NOT EXISTS idx_salta_period_closure_students_code " +
+    "ON salta_period_closure_students(student_code, closure_id)"
+  ).run();
+}
+
+function closurePeriodFields(calendarPeriod) {
+  const ejaPeriod = calendarPeriod === 1 || calendarPeriod === 3 ? 1 : 2;
+  const regular = "bimestre" + calendarPeriod + "_";
+  const eja = "bimestre" + ejaPeriod + "_";
+  const field = suffix =>
+    "CASE WHEN UPPER(COALESCE(turma, '')) LIKE '%EJA%' THEN " + eja + suffix +
+    " ELSE " + regular + suffix + " END";
+  return { ejaPeriod, field };
+}
+
+async function periodClosureSource(env, calendarPeriod) {
+  const { ejaPeriod, field } = closurePeriodFields(calendarPeriod);
+  const result = await env.DB.prepare(
+    "SELECT codigo, nome, TRIM(turma) AS turma, ultima_atualizacao, " +
+    field("status") + " AS period_status, " +
+    field("media") + " AS media, " +
+    field("vistos") + " AS vistos, " +
+    field("avaliacoes") + " AS avaliacoes " +
+    "FROM alunos WHERE turma IS NOT NULL AND TRIM(turma) <> '' " +
+    "ORDER BY TRIM(turma), nome"
+  ).all();
+  const rows = result.results || [];
+  const classes = new Map();
+  let activityCount = 0;
+  let studentsWithGrade = 0;
+  for (const row of rows) {
+    const turma = String(row.turma || "").trim();
+    const assessments = parseArray(row.avaliacoes);
+    activityCount += assessments.length;
+    if (numericValue(row.media) !== null) studentsWithGrade++;
+    if (!classes.has(turma)) classes.set(turma, { turma, alunos: 0, atividades: 0, comMedia: 0 });
+    const group = classes.get(turma);
+    group.alunos++;
+    group.atividades += assessments.length;
+    if (numericValue(row.media) !== null) group.comMedia++;
+  }
+  return {
+    rows, ejaPeriod, activityCount, studentsWithGrade,
+    classes: [...classes.values()].sort((a, b) => a.turma.localeCompare(b.turma, "pt-BR"))
+  };
+}
+
+async function handlePeriodClosure(request, env, url) {
+  await ensurePeriodClosureSchema(env);
+  const path = url.pathname;
+  if (request.method === "GET" && path === "/admin/fechamentos-bimestre") {
+    const result = await env.DB.prepare(
+      "SELECT id, academic_year, calendar_period, student_count, activity_count, " +
+      "students_with_grade, created_at, status FROM salta_period_closures " +
+      "WHERE status = 'complete' ORDER BY academic_year DESC, calendar_period DESC, id DESC LIMIT 100"
+    ).all();
+    return json({ fechamentos: result.results || [] }, request);
+  }
+
+  const detailMatch = path.match(/^\/admin\/fechamentos-bimestre\/(\d+)$/);
+  if (request.method === "GET" && detailMatch) {
+    const id = Number(detailMatch[1]);
+    const closure = await env.DB.prepare(
+      "SELECT id, academic_year, calendar_period, student_count, activity_count, " +
+      "students_with_grade, created_at, status FROM salta_period_closures " +
+      "WHERE id = ? AND status = 'complete' LIMIT 1"
+    ).bind(id).first();
+    if (!closure) return json({ error: "Fechamento não encontrado." }, request, 404);
+    const result = await env.DB.prepare(
+      "SELECT student_code, student_name, turma, segment, calendar_period, segment_period, " +
+      "period_status, media, vistos, assessments_json, source_updated_at " +
+      "FROM salta_period_closure_students WHERE closure_id = ? " +
+      "ORDER BY turma, student_name"
+    ).bind(id).all();
+    return json({
+      fechamento: closure,
+      alunos: (result.results || []).map(row => ({
+        ...row,
+        avaliacoes: parseArray(row.assessments_json)
+      }))
+    }, request);
+  }
+
+  const calendarPeriod = Number(url.searchParams.get("bimestre"));
+  if (request.method === "GET" && path === "/admin/fechamento-bimestre") {
+    const year = Number(url.searchParams.get("ano"));
+    if (!Number.isInteger(year) || year < 2000 || year > 2100 ||
+        !Number.isInteger(calendarPeriod) || calendarPeriod < 1 || calendarPeriod > 4) {
+      return json({ error: "Informe um ano letivo e um bimestre entre 1 e 4." }, request, 400);
+    }
+    const source = await periodClosureSource(env, calendarPeriod);
+    const existing = await env.DB.prepare(
+      "SELECT COUNT(*) AS total FROM salta_period_closures " +
+      "WHERE academic_year = ? AND calendar_period = ? AND status = 'complete'"
+    ).bind(year, calendarPeriod).first();
+    return json({
+      anoLetivo: year,
+      bimestre: calendarPeriod,
+      bimestreEja: source.ejaPeriod,
+      quantidadeAlunos: source.rows.length,
+      quantidadeAtividades: source.activityCount,
+      alunosComMedia: source.studentsWithGrade,
+      fechamentosAnteriores: Number(existing?.total || 0),
+      turmas: source.classes
+    }, request);
+  }
+
+  if (request.method === "POST" && path === "/admin/fechamento-bimestre") {
+    const contentType = (request.headers.get("Content-Type") || "").split(";")[0].trim().toLowerCase();
+    if (contentType !== "application/json") return json({ error: "Formato de confirmação inválido." }, request, 415);
+    const payload = await request.json().catch(() => null);
+    const year = Number(payload?.anoLetivo);
+    const period = Number(payload?.bimestre);
+    if (!payload || payload.confirm !== "fechar-bimestre" || !Number.isInteger(year) || year < 2000 || year > 2100 ||
+        !Number.isInteger(period) || period < 1 || period > 4) {
+      return json({ error: "Confirme o fechamento e informe o ano letivo e o bimestre." }, request, 400);
+    }
+    const source = await periodClosureSource(env, period);
+    if (!source.rows.length) return json({ error: "Não há alunos com turma para arquivar." }, request, 409);
+
+    const created = await env.DB.prepare(
+      "INSERT INTO salta_period_closures " +
+      "(academic_year, calendar_period, student_count, activity_count, students_with_grade, status) " +
+      "VALUES (?, ?, ?, ?, ?, 'processing')"
+    ).bind(year, period, source.rows.length, source.activityCount, source.studentsWithGrade).run();
+    const id = Number(created.meta?.last_row_id || 0);
+    if (!id) return json({ error: "Não foi possível iniciar o fechamento." }, request, 500);
+
+    const { ejaPeriod } = source;
+    const { field } = closurePeriodFields(period);
+    const statement = env.DB.prepare(
+      "INSERT INTO salta_period_closure_students " +
+      "(closure_id, student_code, student_name, turma, segment, calendar_period, segment_period, " +
+      "period_status, media, vistos, assessments_json, source_updated_at) " +
+      "SELECT ?, codigo, nome, TRIM(turma), " +
+      "CASE WHEN UPPER(COALESCE(turma, '')) LIKE '%EJA%' THEN 'EJA' ELSE 'REGULAR' END, ?, " +
+      "CASE WHEN UPPER(COALESCE(turma, '')) LIKE '%EJA%' THEN ? ELSE ? END, " +
+      field("status") + ", " + field("media") + ", " + field("vistos") + ", " +
+      "COALESCE(" + field("avaliacoes") + ", '[]'), ultima_atualizacao " +
+      "FROM alunos WHERE turma IS NOT NULL AND TRIM(turma) <> ''"
+    ).bind(id, period, ejaPeriod, period);
+    try {
+      await env.DB.batch([
+        statement,
+        env.DB.prepare("UPDATE salta_period_closures SET status = 'complete' WHERE id = ?").bind(id)
+      ]);
+    } catch (error) {
+      await env.DB.batch([
+        env.DB.prepare("DELETE FROM salta_period_closure_students WHERE closure_id = ?").bind(id),
+        env.DB.prepare("DELETE FROM salta_period_closures WHERE id = ?").bind(id)
+      ]).catch(() => {});
+      throw error;
+    }
+    return json({
+      ok: true,
+      fechamento: {
+        id, anoLetivo: year, bimestre: period, bimestreEja: ejaPeriod,
+        alunos: source.rows.length, atividades: source.activityCount,
+        turmas: source.classes.length
+      }
+    }, request, 201);
+  }
+  return json({ error: "Rota de fechamento de bimestre não encontrada." }, request, 404);
+}
+
 async function findCommsStudent(env, code) {
   if (!validStudentCode(code)) return null;
   return env.DB.prepare(
@@ -972,7 +1170,9 @@ export default {
     }
 
     const clearingAccessHistory = url.pathname === "/admin/acessos-alunos/limpar" && request.method === "POST";
-    if (request.method !== "GET" && !clearingAccessHistory) {
+    const periodClosureRoute = url.pathname.startsWith("/admin/fechamento-bimestre") ||
+      url.pathname.startsWith("/admin/fechamentos-bimestre");
+    if (request.method !== "GET" && !clearingAccessHistory && !(periodClosureRoute && request.method === "POST")) {
       return json({ error: "Método não permitido." }, request, 405);
     }
     if (!(await authenticated(request, env))) {
@@ -980,6 +1180,7 @@ export default {
     }
 
     try {
+      if (periodClosureRoute) return await handlePeriodClosure(request, env, url);
       if (clearingAccessHistory) {
         const contentType = (request.headers.get("Content-Type") || "").split(";")[0].trim().toLowerCase();
         if (contentType !== "application/json") {
