@@ -71,13 +71,12 @@ main{padding:55px 0 80px}.hero{text-align:center;margin-bottom:35px}.eyebrow{fon
 <section class="hero">
 <div class="eyebrow">RESULTADOS ELEITORAIS</div>
 <h1>Eleições 2026</h1>
-<p>Apuração oficial do segundo turno para Presidente da República e para governador nas unidades da Federação com votação neste turno.</p>
+<p>Resultados oficiais da eleição presidencial e avanço da apuração por região.</p>
 <div class="status"><i class="dot"></i><span id="updated">Pronto para consultar os dados oficiais</span></div><button class="reload-btn" id="reloadBtn" type="button">↻ Recarregar resultados</button>
 </section>
 
 <div class="switch">
 <button class="tab active" data-target="brasil">🇧🇷 Presidência</button>
-<button class="tab" data-target="estado">🇧🇷 Estados</button>
 <button class="tab" data-target="mapa">🗺️ Mapa da apuração</button>
 </div>
 
@@ -89,13 +88,7 @@ main{padding:55px 0 80px}.hero{text-align:center;margin-bottom:35px}.eyebrow{fon
 <div class="metric"><span class="label">Atualização</span><strong id="brDate">—</strong><small>fonte oficial</small></div>
 </div></div>
 <div class="card"><div class="result-head"><h3>Classificação nacional</h3><span>votos • percentual</span></div><div class="rows" id="brRows"><div class="loading">Carregando resultado…</div></div></div>
-<div class="section-title"><h2>Votação no exterior</h2><span>Presidente • localidades fora do Brasil</span></div>
-<div class="card"><div class="summary">
-<div class="metric"><span class="label">Seções totalizadas no exterior</span><strong id="exPst">—</strong><small id="exPct">Aguardando dados oficiais</small></div>
-<div class="metric"><span class="label">Votos válidos no exterior</span><strong id="exValidos">—</strong><small>somente exterior (ZZ)</small></div>
-<div class="metric"><span class="label">Última atualização do arquivo</span><strong id="exDate">—</strong><small id="exHora">Fonte oficial do TSE</small></div>
-</div></div>
-<div class="card"><div class="result-head"><h3>Resultado no exterior por candidato</h3><span>não somado novamente ao Brasil</span></div><div class="rows" id="exRows"><div class="loading">Consultando arquivo oficial do exterior…</div></div></div>
+
 </section>
 
 <section class="panel" id="mapa">
@@ -108,16 +101,6 @@ main{padding:55px 0 80px}.hero{text-align:center;margin-bottom:35px}.eyebrow{fon
 <div class="region-tabs" id="regionTabs"></div>
 </div>
 <div class="source">O percentual regional é calculado pela soma das seções totalizadas e do total de seções dos estados que compõem cada região.</div>
-</section>
-<section class="panel" id="estado">
-<div class="section-title"><h2 id="stateTitle">Goiás</h2><span id="stateSubtitle">Eleição estadual</span></div>
-<div class="state-picker-wrap active" id="statePickerWrap"><div class="state-picker" id="statePicker"></div></div>
-<div class="card"><div class="summary">
-<div class="metric ring-metric"><div class="ring" id="goRing"><span class="ring-value" id="goPct">—</span></div><div class="ring-copy"><span class="label">Urnas apuradas</span><strong id="goPst">—</strong><small id="goHora">—</small></div></div>
-<div class="metric"><span class="label">Abrangência</span><strong id="stateUF">GO</strong><small id="stateName">Estado de Goiás</small></div>
-<div class="metric"><span class="label">Atualização</span><strong id="goDate">—</strong><small>fonte oficial</small></div>
-</div></div>
-<div id="goCards"><div class="loading">Carregando resultados…</div></div>
 </section>
 
 <div class="source">Dados oficiais da Justiça Eleitoral. Sem atualização automática: clique em “Recarregar resultados” ou atualize a página no navegador.<br><a href="https://www.tse.jus.br/eleicoes/informacoes-tecnicas-sobre-a-divulgacao-de-resultados" target="_blank" rel="noopener">Documentação oficial de divulgação de resultados do TSE</a></div>
@@ -239,23 +222,6 @@ async function loadPresident(){
   renderRows(document.getElementById("brRows"),list,{runoff:true});
  }catch(e){document.getElementById("brRows").innerHTML='<div class="error">Não foi possível carregar a apuração presidencial neste momento. Confira sua conexão e clique em “Recarregar resultados” ou atualize a página.</div>'}
 }
-async function loadExterior(){
- const rowsEl=document.getElementById("exRows");
- try{
-  // O TSE identifica a abrangência do exterior pela sigla ZZ.
-  const d=await getJson(BASE+"/"+FED+"/dados/zz/zz-c0001-e006258-u.json");
-  const m=meta(d), list=candidateRows(d);
-  document.getElementById("exPst").textContent=sectionsLabel(m);
-  document.getElementById("exPct").textContent=sectionsDetail(m);
-  document.getElementById("exValidos").textContent=fmt(m.valid);
-  document.getElementById("exDate").textContent=m.dt||d.dg||"—";
-  document.getElementById("exHora").textContent=m.ht&&m.ht!=="0"?"Horário do arquivo: "+m.ht:"Dados divulgados pelo TSE";
-  renderRows(rowsEl,list);
- }catch(e){
-  rowsEl.innerHTML='<div class="error">O arquivo consolidado do exterior ainda não está disponível ou o TSE não respondeu. Clique em “Recarregar resultados” para consultar novamente. Os votos do exterior não serão estimados.</div>';
-  document.getElementById("exPct").textContent="Arquivo oficial indisponível";
- }
-}
 const states=[
  ["AC","Acre","Acre"],["AL","Alagoas","Alagoas"],["AP","Amapá","Amapa"],["AM","Amazonas","Amazonas"],
  ["BA","Bahia","Bahia"],["CE","Ceará","Ceara"],["DF","Distrito Federal","Distrito_Federal"],["ES","Espírito Santo","Espirito_Santo"],
@@ -265,10 +231,6 @@ const states=[
  ["RS","Rio Grande do Sul","Rio_Grande_do_Sul"],["RO","Rondônia","Rondonia"],["RR","Roraima","Roraima"],["SC","Santa Catarina","Santa_Catarina"],
  ["SP","São Paulo","Sao_Paulo"],["SE","Sergipe","Sergipe"],["TO","Tocantins","Tocantins"]
 ].map(([uf,name,flag])=>({uf,name,flag}));
-const cargos=[
- {id:"gov",code:"0003",title:"Governador"}
-];
-let selectedState="AC";
 const regions={
  "Norte":["AC","AP","AM","PA","RO","RR","TO"],
  "Nordeste":["AL","BA","CE","MA","PB","PE","PI","RN","SE"],
@@ -277,133 +239,29 @@ const regions={
  "Sul":["PR","RS","SC"]
 };
 let mapTotals={};
-let mapGeoLoaded=false;
-function regionForUF(uf){for(const r of Object.keys(regions))if(regions[r].includes(uf))return r;return null}
+function regionForUF(uf){for(const r of Object.keys(REGION_STATES))if(REGION_STATES[r].includes(uf))return r;return null}
 function regionPct(r){const m=mapTotals[r]||{st:0,ts:0};return m.ts?m.st/m.ts*100:0}
-async function drawRealMap(){
- if(mapGeoLoaded)return;
- const svg=d3.select("#brazilMap");
- const urls=[
-  "https://cdn.jsdelivr.net/gh/henriquemalvar/br-geojson@main/dist/estados.geojson",
-  "https://raw.githubusercontent.com/henriquemalvar/br-geojson/main/dist/estados.geojson"
- ];
- let geo=null;
- for(const url of urls){
-  try{const rr=await fetch(url,{cache:"no-store"});if(rr.ok){geo=await rr.json();break;}}catch(e){}
- }
- if(!geo)throw new Error("Mapa geográfico indisponível");
- const projection=d3.geoMercator().fitExtent([[25,25],[875,875]],geo);
- const path=d3.geoPath(projection);
- svg.selectAll("path").data(geo.features).join("path")
-  .attr("class","state-shape")
-  .attr("d",path)
-  .attr("data-uf",d=>d.properties.sigla||d.properties["hc-key"]?.replace("br-","").toUpperCase())
-  .on("mousemove",(event,d)=>{
-    const uf=d.properties.sigla||d.properties["hc-key"]?.replace("br-","").toUpperCase();
-    const name=d.properties.nome||uf, r=regionForUF(uf), p=regionPct(r);
-    const tip=document.getElementById("mapTooltip");
-    tip.textContent=name+" • "+(mapTotals[r]?.ts?pct(p):"—");
-    tip.style.display="block";
-    tip.style.left=(event.offsetX+14)+"px";tip.style.top=(event.offsetY+14)+"px";
-  })
-  .on("mouseleave",()=>document.getElementById("mapTooltip").style.display="none");
- const centers={
-  "Norte":[370,190],"Nordeste":[665,270],"Centro-Oeste":[465,430],
-  "Sudeste":[610,565],"Sul":[480,710]
- };
- const labels=svg.append("g").attr("class","region-labels");
- Object.entries(centers).forEach(([name,[x,y]])=>{
-  const g=labels.append("text").attr("class","region-label").attr("x",x).attr("y",y);
-  g.append("tspan").text(name).attr("x",x).attr("dy",0).attr("class","region-name");
-  g.append("tspan").text("—").attr("x",x).attr("dy",20).attr("class","region-value").attr("data-region",name);
- });
- mapGeoLoaded=true;
-}
-function paintRegionLabels(){
- document.querySelectorAll(".region-value").forEach(el=>{
-  const name=el.dataset.region;
-  const total=mapTotals[name];
-  el.textContent=total&&total.ts?pct(regionPct(name)):"—";
- });
-}
-function paintRealMap(){
- document.querySelectorAll(".state-shape").forEach(el=>{
-  const r=regionForUF(el.dataset.uf), p=regionPct(r);
-  const a=.08+Math.min(p,100)/100*.42;
-  el.style.fill="rgba(0,113,227,"+a+")";
- });
-}
-function renderRegionTabs(){
- const el=document.getElementById("regionTabs");
- el.innerHTML=Object.keys(regions).map(r=>'<button class="region-tab" type="button" data-region="'+r+'"><strong>'+r+'</strong><span>'+pct(regionPct(r))+'</span></button>').join("");
- el.querySelectorAll(".region-tab").forEach(b=>b.addEventListener("click",()=>{
-   el.querySelectorAll(".region-tab").forEach(x=>x.classList.remove("active"));b.classList.add("active");
-   const r=b.dataset.region;
-   document.querySelectorAll(".state-shape").forEach(s=>s.style.opacity=regionForUF(s.dataset.uf)===r?"1":".22");
- }));
-}
 async function loadMap(){
- const totals={};Object.keys(regions).forEach(r=>totals[r]={st:0,ts:0});
+ const totals={};Object.keys(REGION_STATES).forEach(r=>totals[r]={st:0,ts:0});
  await Promise.allSettled(states.map(async s=>{
   try{
-   const d=await getJson(BASE+"/6258/dados/"+s.uf.toLowerCase()+"/"+s.uf.toLowerCase()+"-c0001-e006258-u.json"),m=meta(d);
-   const r=regionForUF(s.uf);if(r){totals[r].st+=m.st;totals[r].ts+=m.ts;}
+   // Os arquivos presidenciais por UF alimentam o mapa; a classificação nacional é lida do agregado "br".
+   const d=await getJson(BASE+"/6258/dados/"+s.uf.toLowerCase()+"/"+s.uf.toLowerCase()+"-c0001-e006258-u.json");
+   const m=meta(d),r=regionForUF(s.uf);
+   if(r){totals[r].st+=m.st;totals[r].ts+=m.ts;}
   }catch(e){}
  }));
  mapTotals=totals;
- await drawRealMap();
- paintRealMap();
- paintRegionLabels();
- renderRegionTabs();
-}
-const runoffUFs=["AC","AM","DF","ES","RN","TO"];
-function buildStatePicker(){
- const picker=document.getElementById("statePicker");
- picker.innerHTML="";
- states.filter(s=>runoffUFs.includes(s.uf)).forEach(s=>{
-  const b=document.createElement("button"); b.className="state-btn"+(s.uf===selectedState?" active":""); b.type="button";
-  b.innerHTML='<img class="state-flag" alt="" src="https://commons.wikimedia.org/wiki/Special:FilePath/Flag_of_'+s.flag+'.svg"><span>'+s.uf+'</span>';
-  b.title=s.name;
-  b.addEventListener("click",()=>selectState(s.uf));
-  picker.appendChild(b);
+ Object.entries(REGION_IDS).forEach(([region,id])=>{
+  const el=document.getElementById(id),m=totals[region];
+  if(el)el.textContent=m.ts?pct(m.st/m.ts*100):"—";
  });
-}
-function selectState(uf){
- selectedState=uf;
- document.querySelectorAll(".state-btn").forEach(b=>b.classList.toggle("active",b.querySelector("span")?.textContent===uf));
- loadState(uf);
-}
-async function loadState(uf){
- const s=states.find(x=>x.uf===uf)||states.find(x=>x.uf==="GO");
- const out=document.getElementById("goCards"); out.innerHTML='<div class="loading">Carregando resultados de '+s.name+'…</div>';
- document.getElementById("stateTitle").textContent=s.name;
- document.getElementById("stateUF").textContent=s.uf;
- document.getElementById("stateName").textContent=s.name;
- document.getElementById("stateSubtitle").textContent="Segundo turno para governador";
- document.getElementById("goPst").textContent="—"; document.getElementById("goPct").textContent="—";
- document.getElementById("goHora").textContent="—"; document.getElementById("goDate").textContent="—";
- document.getElementById("goRing").style.setProperty("--progress","0%");
- let ok=0;
- for(const c of cargos){
-  try{
-   const d=await getJson(BASE+"/"+EST+"/dados/"+s.uf.toLowerCase()+"/"+s.uf.toLowerCase()+"-c"+c.code+"-e006260-u.json");
-   const m=meta(d), list=candidateRows(d); ok++;
-   if(ok===1){
-    document.getElementById("goPst").textContent=sectionsLabel(m);
-    updateRing("goRing","goPct",m);
-    document.getElementById("goHora").textContent=sectionsDetail(m)+(m.ht&&m.ht!=="0"?" • "+m.ht:"");
-    document.getElementById("goDate").textContent=m.dt||"agora";
-   }
-   const title=s.uf==="DF"&&c.id==="est"?"Deputado Distrital":c.title;
-   const card=document.createElement("div"); card.className="card";
-   card.innerHTML='<div class="result-head"><h3>'+title+'</h3><span>'+list.length+' candidatos</span></div><div class="rows"></div>';
-   out.appendChild(card); renderRows(card.querySelector(".rows"),list,{runoff:c.code==="0003"});
-  }catch(e){}
- }
- if(!ok)out.innerHTML='<div class="error">Não foi possível carregar os resultados de '+s.name+' neste momento. Confira sua conexão e clique em “Recarregar resultados” ou atualize a página.</div>';
+ document.getElementById("regionTabs").innerHTML=Object.entries(totals).map(([r,m])=>
+  '<div class="region-tab"><strong>'+r+'</strong><span>'+(m.ts?pct(m.st/m.ts*100):"—")+'</span><small>'+fmt(m.st)+' / '+fmt(m.ts)+' seções</small></div>'
+ ).join("");
 }
 async function loadAll(){
- await Promise.allSettled([loadPresident(),loadExterior(),loadState(selectedState),loadMap()]);
+ await Promise.allSettled([loadPresident(),loadMap()]);
  document.getElementById("updated").textContent="Consulta concluída • "+new Date().toLocaleTimeString("pt-BR");
 }
 document.querySelectorAll(".tab").forEach(b=>b.addEventListener("click",()=>{
@@ -411,7 +269,6 @@ document.querySelectorAll(".tab").forEach(b=>b.addEventListener("click",()=>{
  document.querySelectorAll(".panel").forEach(x=>x.classList.remove("active"));
  b.classList.add("active");document.getElementById(b.dataset.target).classList.add("active");
 }));
-buildStatePicker();
 document.getElementById("reloadBtn").addEventListener("click",async()=>{
  const btn=document.getElementById("reloadBtn");
  btn.disabled=true;btn.textContent="Consultando dados oficiais…";
