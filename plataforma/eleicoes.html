@@ -88,7 +88,14 @@ main{padding:55px 0 80px}.hero{text-align:center;margin-bottom:35px}.eyebrow{fon
 <div class="metric"><span class="label">Votos válidos</span><strong id="brValidos">—</strong><small>total contabilizado</small></div>
 <div class="metric"><span class="label">Atualização</span><strong id="brDate">—</strong><small>fonte oficial</small></div>
 </div></div>
-<div class="card"><div class="result-head"><h3>Classificação</h3><span>votos • percentual</span></div><div class="rows" id="brRows"><div class="loading">Carregando resultado…</div></div></div>
+<div class="card"><div class="result-head"><h3>Classificação nacional</h3><span>votos • percentual</span></div><div class="rows" id="brRows"><div class="loading">Carregando resultado…</div></div></div>
+<div class="section-title"><h2>Votação no exterior</h2><span>Presidente • localidades fora do Brasil</span></div>
+<div class="card"><div class="summary">
+<div class="metric"><span class="label">Seções totalizadas no exterior</span><strong id="exPst">—</strong><small id="exPct">Aguardando dados oficiais</small></div>
+<div class="metric"><span class="label">Votos válidos no exterior</span><strong id="exValidos">—</strong><small>somente exterior (ZZ)</small></div>
+<div class="metric"><span class="label">Última atualização do arquivo</span><strong id="exDate">—</strong><small id="exHora">Fonte oficial do TSE</small></div>
+</div></div>
+<div class="card"><div class="result-head"><h3>Resultado no exterior por candidato</h3><span>não somado novamente ao Brasil</span></div><div class="rows" id="exRows"><div class="loading">Consultando arquivo oficial do exterior…</div></div></div>
 </section>
 
 <section class="panel" id="mapa">
@@ -231,6 +238,23 @@ async function loadPresident(){
   document.getElementById("brDate").textContent=m.dt||"agora";
   renderRows(document.getElementById("brRows"),list,{runoff:true});
  }catch(e){document.getElementById("brRows").innerHTML='<div class="error">Não foi possível carregar a apuração presidencial neste momento. Confira sua conexão e clique em “Recarregar resultados” ou atualize a página.</div>'}
+}
+async function loadExterior(){
+ const rowsEl=document.getElementById("exRows");
+ try{
+  // O TSE identifica a abrangência do exterior pela sigla ZZ.
+  const d=await getJson(BASE+"/"+FED+"/dados/zz/zz-c0001-e006258-u.json");
+  const m=meta(d), list=candidateRows(d);
+  document.getElementById("exPst").textContent=sectionsLabel(m);
+  document.getElementById("exPct").textContent=sectionsDetail(m);
+  document.getElementById("exValidos").textContent=fmt(m.valid);
+  document.getElementById("exDate").textContent=m.dt||d.dg||"—";
+  document.getElementById("exHora").textContent=m.ht&&m.ht!=="0"?"Horário do arquivo: "+m.ht:"Dados divulgados pelo TSE";
+  renderRows(rowsEl,list);
+ }catch(e){
+  rowsEl.innerHTML='<div class="error">O arquivo consolidado do exterior ainda não está disponível ou o TSE não respondeu. Clique em “Recarregar resultados” para consultar novamente. Os votos do exterior não serão estimados.</div>';
+  document.getElementById("exPct").textContent="Arquivo oficial indisponível";
+ }
 }
 const states=[
  ["AC","Acre","Acre"],["AL","Alagoas","Alagoas"],["AP","Amapá","Amapa"],["AM","Amazonas","Amazonas"],
@@ -379,7 +403,7 @@ async function loadState(uf){
  if(!ok)out.innerHTML='<div class="error">Não foi possível carregar os resultados de '+s.name+' neste momento. Confira sua conexão e clique em “Recarregar resultados” ou atualize a página.</div>';
 }
 async function loadAll(){
- await Promise.allSettled([loadPresident(),loadState(selectedState),loadMap()]);
+ await Promise.allSettled([loadPresident(),loadExterior(),loadState(selectedState),loadMap()]);
  document.getElementById("updated").textContent="Consulta concluída • "+new Date().toLocaleTimeString("pt-BR");
 }
 document.querySelectorAll(".tab").forEach(b=>b.addEventListener("click",()=>{
