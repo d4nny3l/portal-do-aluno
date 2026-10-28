@@ -72,6 +72,195 @@ async function authenticated(request, env) {
   const data = await response.json().catch(() => ({}));
   return data.authenticated === true;
 }
+
+const FESTIVAL_EVENT_ID = "festival-consciencia-negra";
+
+async function sha256Hex(value) {
+  const digest = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(String(value)));
+  return [...new Uint8Array(digest)].map(byte => byte.toString(16).padStart(2, "0")).join("");
+}
+
+function randomFestivalCode() {
+  const bytes = crypto.getRandomValues(new Uint8Array(24));
+  return "SALTA-" + [...bytes].map(byte => byte.toString(16).padStart(2, "0")).join("").toUpperCase();
+}
+
+function festivalJsonBody(request) {
+  const contentType = (request.headers.get("Content-Type") || "").split(";")[0].trim().toLowerCase();
+  if (contentType !== "application/json") return Promise.resolve({ error: "Envie os dados em JSON." });
+  return request.json().catch(() => null);
+}
+
+async function ensureFestivalSchema(env) {
+  await env.DB.prepare("CREATE TABLE IF NOT EXISTS salta_festival_config (event_id TEXT PRIMARY KEY, config_json TEXT NOT NULL, updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP)").run();
+  await env.DB.prepare("CREATE TABLE IF NOT EXISTS salta_festival_evaluators (id INTEGER PRIMARY KEY AUTOINCREMENT, event_id TEXT NOT NULL, code_hash TEXT NOT NULL UNIQUE, display_name TEXT NOT NULL, active INTEGER NOT NULL DEFAULT 1, created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP, revoked_at TEXT)").run();
+  await env.DB.prepare("CREATE TABLE IF NOT EXISTS salta_festival_submissions (id INTEGER PRIMARY KEY AUTOINCREMENT, event_id TEXT NOT NULL, evaluator_id INTEGER NOT NULL, entry_key TEXT NOT NULL, entry_name TEXT NOT NULL, answers_json TEXT NOT NULL, score REAL NOT NULL, notes TEXT NOT NULL DEFAULT '', created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP, removed_at TEXT, removal_reason TEXT, UNIQUE(event_id, evaluator_id, entry_key))").run();
+  await env.DB.prepare("CREATE TABLE IF NOT EXISTS salta_festival_attempts (ip_hash TEXT PRIMARY KEY, window_start INTEGER NOT NULL, attempts INTEGER NOT NULL DEFAULT 0)").run();
+  await env.DB.prepare("CREATE INDEX IF NOT EXISTS idx_salta_festival_submissions_event ON salta_festival_submissions(event_id, created_at DESC)").run();
+}
+
+async function festivalRateLimit(request, env) {
+  const ip = request.headers.get("CF-Connecting-IP") || "unknown";
+  const key = await sha256Hex("salta-festival:" + ip);
+  const now = Math.floor(Date.now() / 1000);
+  const window = Math.floor(now / 600) * 600;
+  await env.DB.prepare(
+    "INSERT INTO salta_festival_attempts (ip_hash, window_start, attempts) VALUES (?, ?, 1) " +
+    "ON CONFLICT(ip_hash) DO UPDATE SET " +
+    "attempts = CASE WHEN window_start = excluded.window_start THEN attempts + 1 ELSE 1 END, " +
+    "window_start = excluded.window_start"
+  ).bind(key, window).run();
+  const row = await env.DB.prepare("SELECT attempts FROM salta_festival_attempts WHERE ip_hash = ?").bind(key).first();
+  return Number(row?.attempts || 0) > 12;
+}
+
+function validateFestivalConfig(value) {
+  const title = trimLimited(value?.title, 120);
+  const description = trimLimited(value?.description, 1200);
+  const entries = Array.isArray(value?.entries) ? value.entries.map(item => trimLimited(item, 140)).filter(Boolean) : [];
+  const criteria = Array.isArray(value?.criteria) ? value.criteria.slice(0, 20).map((item, index) => {
+    const id = trimLimited(item?.id, 40) || "criterio-" + (index + 1);
+    const name = trimLimited(item?.name, 100);
+    const detail = trimLimited(item?.description, 500);
+    const levels = Array.isArray(item?.levels) ? item.levels.slice(0, 10).map(level => ({
+      label: trimLimited(level?.label, 60),
+      value: Number(level?.value)
+    })).filter(level => level.label && Number.isFinite(level.value) && level.value >= 0) : [];
+    return { id, name, description: detail, levels };
+  }) : [];
+  if (!title || !entries.length || !criteria.length || criteria.some(item => !item.name || !item.levels.length)) {
+    return { error: "Informe título, ao menos um trabalho/turma e critérios com níveis de nota." };
+  }
+  const ids = new Set();
+  for (const criterion of criteria) {
+    if (ids.has(criterion.id)) return { error: "Cada critério precisa de um identificador próprio." };
+    ids.add(criterion.id);
+    const values = new Set();
+    for (const level of criterion.levels) {
+      if (values.has(level.value)) return { error: "Os níveis de cada critério devem ter notas diferentes." };
+      values.add(level.value);
+    }
+  }
+  if (new Set(entries.map(item => item.toLocaleLowerCase("pt-BR"))).size !== entries.length) {
+    return { error: "Os trabalhos/turmas da lista não podem se repetir." };
+  }
+  return { value: { title, description, entries, criteria, active: value?.active !== false } };
+}
+
+async function getFestivalConfig(env) {
+  const row = await env.DB.prepare("SELECT config_json, updated_at FROM salta_festival_config WHERE event_id = ? LIMIT 1").bind(FESTIVAL_EVENT_ID).first();
+  let config = null;
+  try { config = row ? JSON.parse(row.config_json) : null; } catch { config = null; }
+  return { config, updatedAt: row?.updated_at || null };
+}
+
+async function findFestivalEvaluator(env, code) {
+  const clean = String(code || "").trim().toUpperCase();
+  if (!/^SALTA-[A-F0-9]{48}$/.test(clean)) return null;
+  return env.DB.prepare("SELECT id, display_name FROM salta_festival_evaluators WHERE event_id = ? AND code_hash = ? AND active = 1 LIMIT 1")
+    .bind(FESTIVAL_EVENT_ID, await sha256Hex(clean)).first();
+}
+
+async function handleFestivalRoute(request, env, url) {
+  await ensureFestivalSchema(env);
+  const path = url.pathname;
+  if (path === "/festival/public/config" && request.method === "GET") {
+    const { config, updatedAt } = await getFestivalConfig(env);
+    return json({ configured: !!config, config: config ? { ...config, criteria: config.criteria, entries: config.entries } : null, updatedAt }, request);
+  }
+  if ((path === "/festival/public/verify-code" || path === "/festival/public/submissions") && request.method === "POST") {
+    const payload = await festivalJsonBody(request);
+    if (!payload || payload.error) return json({ error: payload?.error || "Requisição inválida." }, request, payload?.error ? 415 : 400);
+    if (await festivalRateLimit(request, env)) {
+      const response = json({ error: "Muitas tentativas. Aguarde alguns minutos e tente novamente." }, request, 429);
+      response.headers.set("Retry-After", "600");
+      return response;
+    }
+    const evaluator = await findFestivalEvaluator(env, payload.code);
+    if (!evaluator) return json({ error: "Código inválido ou revogado." }, request, 401);
+    if (path.endsWith("verify-code")) return json({ ok: true, avaliador: evaluator.display_name }, request);
+
+    const { config } = await getFestivalConfig(env);
+    if (!config?.active) return json({ error: "As avaliações ainda não estão abertas." }, request, 409);
+    const entry = config.entries.find(item => item === payload.entry);
+    if (!entry) return json({ error: "Selecione um trabalho ou turma válido." }, request, 400);
+    const answers = payload.answers && typeof payload.answers === "object" ? payload.answers : {};
+    const expected = config.criteria.map(criterion => criterion.id);
+    if (Object.keys(answers).length !== expected.length || expected.some(id => !Object.prototype.hasOwnProperty.call(answers, id))) {
+      return json({ error: "Responda a todos os critérios antes de enviar." }, request, 400);
+    }
+    let score = 0;
+    const normalized = {};
+    for (const criterion of config.criteria) {
+      const value = Number(answers[criterion.id]);
+      if (!criterion.levels.some(level => level.value === value)) return json({ error: "Uma das notas não corresponde aos níveis permitidos." }, request, 400);
+      normalized[criterion.id] = value;
+      score += value;
+    }
+    const notes = trimLimited(payload.notes, 2000);
+    try {
+      const result = await env.DB.prepare(
+        "INSERT INTO salta_festival_submissions (event_id, evaluator_id, entry_key, entry_name, answers_json, score, notes) VALUES (?, ?, ?, ?, ?, ?, ?)"
+      ).bind(FESTIVAL_EVENT_ID, evaluator.id, entry.toLocaleLowerCase("pt-BR"), entry, JSON.stringify(normalized), Math.round(score * 100) / 100, notes).run();
+      return json({ ok: true, id: result.meta?.last_row_id || null, score: Math.round(score * 100) / 100 }, request, 201);
+    } catch (error) {
+      if (/unique|constraint/i.test(String(error?.message || error))) return json({ error: "Este código já enviou uma avaliação para esse trabalho ou turma." }, request, 409);
+      throw error;
+    }
+  }
+
+  if (!path.startsWith("/festival/admin/")) return json({ error: "Rota não encontrada." }, request, 404);
+  const origin = request.headers.get("Origin") || "";
+  if (request.method !== "GET" && !ALLOWED_ORIGINS.has(origin)) return json({ error: "Origem não autorizada." }, request, 403);
+  if (!(await authenticated(request, env))) return json({ error: "Acesso restrito. Entre na Área do Professor." }, request, 401);
+  if (path === "/festival/admin/data" && request.method === "GET") {
+    const [{ config, updatedAt }, evaluators, submissions, removed] = await Promise.all([
+      getFestivalConfig(env),
+      env.DB.prepare("SELECT id, display_name, active, created_at, revoked_at FROM salta_festival_evaluators WHERE event_id = ? ORDER BY id DESC").bind(FESTIVAL_EVENT_ID).all(),
+      env.DB.prepare("SELECT s.id, s.entry_name, s.answers_json, s.score, s.notes, s.created_at, e.display_name AS evaluator FROM salta_festival_submissions s JOIN salta_festival_evaluators e ON e.id = s.evaluator_id WHERE s.event_id = ? AND s.removed_at IS NULL ORDER BY s.created_at DESC").bind(FESTIVAL_EVENT_ID).all(),
+      env.DB.prepare("SELECT s.id, s.entry_name, s.score, s.notes, s.created_at, s.removed_at, s.removal_reason, e.display_name AS evaluator FROM salta_festival_submissions s JOIN salta_festival_evaluators e ON e.id = s.evaluator_id WHERE s.event_id = ? AND s.removed_at IS NOT NULL ORDER BY s.removed_at DESC").bind(FESTIVAL_EVENT_ID).all()
+    ]);
+    return json({ config, updatedAt, avaliadores: evaluators.results || [], avaliacoes: (submissions.results || []).map(row => {
+      let respostas = {};
+      try { respostas = JSON.parse(row.answers_json) || {}; } catch { respostas = {}; }
+      return { ...row, respostas };
+    }), removidas: removed.results || [] }, request);
+  }
+  if (path === "/festival/admin/config" && request.method === "POST") {
+    const payload = await festivalJsonBody(request);
+    if (!payload || payload.error) return json({ error: payload?.error || "Requisição inválida." }, request, payload?.error ? 415 : 400);
+    const validated = validateFestivalConfig(payload);
+    if (validated.error) return json({ error: validated.error }, request, 400);
+    await env.DB.prepare("INSERT INTO salta_festival_config (event_id, config_json, updated_at) VALUES (?, ?, CURRENT_TIMESTAMP) ON CONFLICT(event_id) DO UPDATE SET config_json = excluded.config_json, updated_at = CURRENT_TIMESTAMP")
+      .bind(FESTIVAL_EVENT_ID, JSON.stringify(validated.value)).run();
+    return json({ ok: true }, request);
+  }
+  if (path === "/festival/admin/codes" && request.method === "POST") {
+    const payload = await festivalJsonBody(request);
+    const displayName = trimLimited(payload?.display_name, 100);
+    if (!displayName) return json({ error: "Informe o nome do avaliador." }, request, 400);
+    const code = randomFestivalCode();
+    const result = await env.DB.prepare("INSERT INTO salta_festival_evaluators (event_id, code_hash, display_name) VALUES (?, ?, ?)")
+      .bind(FESTIVAL_EVENT_ID, await sha256Hex(code), displayName).run();
+    return json({ ok: true, id: result.meta?.last_row_id || null, display_name: displayName, code }, request, 201);
+  }
+  const revokeMatch = path.match(/^\/festival\/admin\/codes\/(\d+)\/revoke$/);
+  if (revokeMatch && request.method === "POST") {
+    const result = await env.DB.prepare("UPDATE salta_festival_evaluators SET active = 0, revoked_at = CURRENT_TIMESTAMP WHERE event_id = ? AND id = ? AND active = 1")
+      .bind(FESTIVAL_EVENT_ID, Number(revokeMatch[1])).run();
+    return json({ ok: true, revoked: Number(result.meta?.changes || 0) > 0 }, request);
+  }
+  const removeMatch = path.match(/^\/festival\/admin\/submissions\/(\d+)\/remove$/);
+  if (removeMatch && request.method === "POST") {
+    const payload = await festivalJsonBody(request);
+    const reason = trimLimited(payload?.reason, 500);
+    if (!reason) return json({ error: "Informe o motivo da remoção." }, request, 400);
+    const result = await env.DB.prepare("UPDATE salta_festival_submissions SET removed_at = CURRENT_TIMESTAMP, removal_reason = ? WHERE event_id = ? AND id = ? AND removed_at IS NULL")
+      .bind(reason, FESTIVAL_EVENT_ID, Number(removeMatch[1])).run();
+    return json({ ok: true, removed: Number(result.meta?.changes || 0) > 0 }, request);
+  }
+  return json({ error: "Método ou rota de administração não permitidos." }, request, 405);
+}
 function parseArray(value) {
   if (Array.isArray(value)) return value;
   if (typeof value !== "string" || !value.trim()) return [];
@@ -1142,6 +1331,10 @@ export default {
     }
 
     const url = new URL(request.url);
+    if (url.pathname.startsWith("/festival/")) {
+      try { return await handleFestivalRoute(request, env, url); }
+      catch { return json({ error: "Não foi possível processar a avaliação do festival." }, request, 500); }
+    }
     if (url.pathname.startsWith("/auth/")) {
       return proxyAuth(request, env, url);
     }
