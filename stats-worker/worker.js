@@ -164,7 +164,7 @@ async function ensureFestivalSchema(env) {
   await env.DB.prepare("CREATE TABLE IF NOT EXISTS salta_festival_evaluators (id INTEGER PRIMARY KEY AUTOINCREMENT, event_id TEXT NOT NULL, code_hash TEXT NOT NULL UNIQUE, pin_salt TEXT, pin_hash TEXT, display_name TEXT NOT NULL, active INTEGER NOT NULL DEFAULT 1, created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP, revoked_at TEXT)").run();
   const evaluatorColumns = await env.DB.prepare("PRAGMA table_info(salta_festival_evaluators)").all();
   const columnNames = new Set((evaluatorColumns.results || []).map(column => column.name));
-  for (const column of ["pin_salt", "pin_hash", "code_value"]) {
+  for (const column of ["pin_salt", "pin_hash", "code_value", "pin_value"]) {
     if (columnNames.has(column)) continue;
     await env.DB.prepare("ALTER TABLE salta_festival_evaluators ADD COLUMN " + column + " TEXT").run().catch(error => {
       if (!/duplicate column/i.test(String(error?.message || error))) throw error;
@@ -366,7 +366,7 @@ async function handleFestivalRoute(request, env, url) {
   if (path === "/festival/admin/data" && request.method === "GET") {
     const [{ config, updatedAt }, evaluators, submissions, removed, accessLogs] = await Promise.all([
       getFestivalConfig(env),
-      env.DB.prepare("SELECT id, display_name, code_value, active, created_at, revoked_at FROM salta_festival_evaluators WHERE event_id = ? ORDER BY id DESC").bind(FESTIVAL_EVENT_ID).all(),
+      env.DB.prepare("SELECT id, display_name, code_value, pin_value, active, created_at, revoked_at FROM salta_festival_evaluators WHERE event_id = ? ORDER BY id DESC").bind(FESTIVAL_EVENT_ID).all(),
       env.DB.prepare("SELECT s.id, s.entry_name, s.answers_json, s.score, s.notes, s.created_at, s.updated_at, e.display_name AS evaluator FROM salta_festival_submissions s JOIN salta_festival_evaluators e ON e.id = s.evaluator_id WHERE s.event_id = ? AND s.removed_at IS NULL ORDER BY s.created_at DESC").bind(FESTIVAL_EVENT_ID).all(),
       env.DB.prepare("SELECT s.id, s.entry_name, s.score, s.notes, s.created_at, s.removed_at, s.removal_reason, e.display_name AS evaluator FROM salta_festival_submissions s JOIN salta_festival_evaluators e ON e.id = s.evaluator_id WHERE s.event_id = ? AND s.removed_at IS NOT NULL ORDER BY s.removed_at DESC").bind(FESTIVAL_EVENT_ID).all(),
       env.DB.prepare("SELECT l.id, l.accessed_at, e.display_name AS evaluator FROM salta_festival_access_logs l JOIN salta_festival_evaluators e ON e.id = l.evaluator_id WHERE l.event_id = ? ORDER BY l.accessed_at DESC LIMIT 500").bind(FESTIVAL_EVENT_ID).all()
@@ -403,8 +403,8 @@ async function handleFestivalRoute(request, env, url) {
     const pin = randomFestivalPin();
     const salt = randomSaltHex();
     try {
-      const result = await env.DB.prepare("INSERT INTO salta_festival_evaluators (event_id, code_hash, pin_salt, pin_hash, code_value, display_name) VALUES (?, ?, ?, ?, ?, ?)")
-        .bind(FESTIVAL_EVENT_ID, await sha256Hex(code), salt, await festivalPinHash(pin, salt), code, displayName).run();
+      const result = await env.DB.prepare("INSERT INTO salta_festival_evaluators (event_id, code_hash, pin_salt, pin_hash, code_value, pin_value, display_name) VALUES (?, ?, ?, ?, ?, ?, ?)")
+        .bind(FESTIVAL_EVENT_ID, await sha256Hex(code), salt, await festivalPinHash(pin, salt), code, pin, displayName).run();
       return json({ ok: true, id: result.meta?.last_row_id || null, display_name: displayName, code, pin }, request, 201);
     } catch (error) {
       if (/unique|constraint/i.test(String(error?.message || error))) return json({ error: "Esse código já está em uso. Escolha outro." }, request, 409);
@@ -427,8 +427,8 @@ async function handleFestivalRoute(request, env, url) {
     if (!code) return json({ error: "Não foi possível gerar um novo código exclusivo. Tente novamente." }, request, 503);
     const pin = randomFestivalPin();
     const salt = randomSaltHex();
-    await env.DB.prepare("UPDATE salta_festival_evaluators SET code_hash = ?, code_value = ?, pin_salt = ?, pin_hash = ?, active = 1, revoked_at = NULL WHERE event_id = ? AND id = ?")
-      .bind(await sha256Hex(code), code, salt, await festivalPinHash(pin, salt), FESTIVAL_EVENT_ID, evaluatorId).run();
+    await env.DB.prepare("UPDATE salta_festival_evaluators SET code_hash = ?, code_value = ?, pin_salt = ?, pin_hash = ?, pin_value = ?, active = 1, revoked_at = NULL WHERE event_id = ? AND id = ?")
+      .bind(await sha256Hex(code), code, salt, await festivalPinHash(pin, salt), pin, FESTIVAL_EVENT_ID, evaluatorId).run();
     return json({ ok: true, id: evaluatorId, code, pin }, request);
   }
   const revokeMatch = path.match(/^\/festival\/admin\/codes\/(\d+)\/revoke$/);
