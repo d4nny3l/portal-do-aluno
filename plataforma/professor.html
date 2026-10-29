@@ -66,6 +66,7 @@ body::before{
 }
 </style>
 <link rel="stylesheet" href="../salta-theme.css?v=b2cb545">
+<script src="https://challenges.cloudflare.com/turnstile/v0/api.js?render=explicit" async defer></script>
 </head>
 <body>
 <a class="salta-platform-button" href="./" aria-label="Ir para a Plataforma SALTA" title="Plataforma SALTA">S</a>
@@ -77,6 +78,7 @@ body::before{
 <form id="loginForm" autocomplete="off">
 <div class="field"><label for="usuario">Usuário</label><input id="usuario" type="text" autocomplete="username" autocapitalize="none" spellcheck="false" placeholder="Digite seu usuário" required></div>
 <div class="field"><label for="senha">Senha</label><input id="senha" type="password" autocomplete="current-password" placeholder="Digite sua senha" required></div>
+<div id="turnstileWidget" aria-hidden="true"></div>
 <button type="submit">Entrar</button><div class="error" id="erro">Usuário ou senha incorretos.</div>
 </form><div class="hint">Ambiente administrativo da Plataforma Educacional</div>
 </section>
@@ -94,6 +96,15 @@ body::before{
 <script>
 const AUTH_API_URL = "https://salta-stats.dannyel-moises.workers.dev/auth";
 const SESSION_KEY = "saltaProfessorSession";
+
+let turnstileWidgetId=null,turnstilePending=null;
+async function obterTokenTurnstile(){
+    for(let i=0;i<40&&!window.turnstile;i++) await new Promise(resolve=>setTimeout(resolve,250));
+    if(!window.turnstile) throw new Error("A verificação de segurança não carregou. Atualize a página e tente novamente.");
+    if(turnstilePending) throw new Error("A verificação anterior ainda está em andamento.");
+    if(turnstileWidgetId===null) turnstileWidgetId=window.turnstile.render("#turnstileWidget",{sitekey:"0x4AAAAAAFrCkP264Os1Y_O1",action:"professor_login",execution:"execute",appearance:"interaction-only",callback:token=>{const pending=turnstilePending;turnstilePending=null;if(pending)pending.resolve(token)},"error-callback":()=>{const pending=turnstilePending;turnstilePending=null;if(pending)pending.reject(new Error("A verificação de segurança falhou. Tente novamente."))},"expired-callback":()=>{const pending=turnstilePending;turnstilePending=null;if(pending)pending.reject(new Error("A verificação expirou. Tente novamente."))}});
+    return new Promise((resolve,reject)=>{turnstilePending={resolve,reject};window.turnstile.execute(turnstileWidgetId);setTimeout(()=>{if(turnstilePending?.reject===reject){turnstilePending=null;reject(new Error("A verificação demorou demais. Tente novamente."))}},30000)});
+}
 
 function mostrarPainel(){
     document.getElementById("loginBox").style.display="none";
@@ -144,7 +155,7 @@ document.getElementById("loginForm").addEventListener("submit",async event=>{
             method:"POST",
             headers:{"Content-Type":"application/json"},
             credentials:"include",
-            body:JSON.stringify({username:usuario,password:senha})
+            body:JSON.stringify({username:usuario,password:senha,turnstileToken:await obterTokenTurnstile()})
         });
 
         const dados=await resposta.json().catch(()=>({}));
@@ -157,10 +168,11 @@ document.getElementById("loginForm").addEventListener("submit",async event=>{
         limparTokensLegados();
         mostrarPainel();
     }catch(e){
-        mostrarLogin("Não foi possível conectar ao servidor de autenticação.");
+        mostrarLogin(e?.message || "Não foi possível conectar ao servidor de autenticação.");
     }finally{
         botao.disabled=false;
         botao.textContent="Entrar";
+        if(window.turnstile&&turnstileWidgetId!==null){window.turnstile.reset(turnstileWidgetId);turnstilePending=null}
     }
 });
 
