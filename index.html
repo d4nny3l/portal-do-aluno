@@ -186,6 +186,7 @@ td:last-child,th:last-child{text-align:right}
 @media(max-width:560px){.comms-heading{align-items:flex-start;flex-direction:column}.comms-heading h2{font-size:22px}.comms-panel{padding:17px}.bell-button{width:100%;justify-content:center}.notice-bottom{align-items:flex-start;flex-direction:column}}
 </style>
 <link rel="stylesheet" href="./salta-theme.css">
+<script src="https://challenges.cloudflare.com/turnstile/v0/api.js?render=explicit" async defer></script>
 </head>
 <body>
 <header class="topbar"><div class="shell top-inner">
@@ -206,7 +207,8 @@ td:last-child,th:last-child{text-align:right}
   <div class="lookup-head"><div class="lookup-icon" aria-hidden="true">⌕</div><div><h2 id="lookupTitle">Acesse sua Área do Aluno</h2><p>Digite seu código individual para consultar suas notas de Matemática.</p></div></div>
   <form id="lookupForm" novalidate>
    <label for="studentCode">Código do aluno</label>
-   <div class="lookup-row"><input id="studentCode" name="codigo" type="text" maxlength="8" autocomplete="off" autocapitalize="characters" spellcheck="false" placeholder="Digite seu código" required>
+   <div class="lookup-row"><input id="studentCode"
+    <div id="studentTurnstileWidget"></div> name="codigo" type="text" maxlength="8" autocomplete="off" autocapitalize="characters" spellcheck="false" placeholder="Digite seu código" required>
     <button id="lookupButton" type="submit"><span id="lookupButtonText">Consultar minhas notas</span><span id="lookupSpinner" class="spinner" hidden aria-hidden="true"></span></button>
    </div>
    <div id="lookupStatus" class="lookup-status" role="status" aria-live="polite">Seu código individual identifica a ficha de Matemática consultada.</div>
@@ -272,8 +274,17 @@ td:last-child,th:last-child{text-align:right}
 <footer class="footer"><div class="shell"><span><strong>SALTA</strong> · Matemática com Professor Dannyel</span><span id="footerNote">Notas, avaliações e avisos das aulas de Matemática.</span></div></footer>
 
 <script>
-const STUDENT_API_URL='https://portal-aluno-api.dannyel-moises.workers.dev';
+
 const STATS_API_URL='https://salta-stats.dannyel-moises.workers.dev';
+let studentTurnstileWidgetId=null,studentTurnstilePending=null;
+async function obterTokenConsultaAluno(){
+ for(let i=0;i<40&&!window.turnstile;i++)await new Promise(resolve=>setTimeout(resolve,250));
+ if(!window.turnstile)throw new TypeError('A verificação de segurança não carregou. Atualize a página e tente novamente.');
+ if(studentTurnstilePending)throw new Error('A verificação anterior ainda está em andamento.');
+ if(studentTurnstileWidgetId===null)studentTurnstileWidgetId=window.turnstile.render('#studentTurnstileWidget',{sitekey:'0x4AAAAAAFrCkP264Os1Y_O1',action:'student_lookup',execution:'execute',appearance:'interaction-only',callback:token=>{const pending=studentTurnstilePending;studentTurnstilePending=null;if(pending){clearTimeout(pending.timer);pending.resolve(token)}},'error-callback':()=>{const pending=studentTurnstilePending;studentTurnstilePending=null;if(pending){clearTimeout(pending.timer);pending.reject(new TypeError('A verificação de segurança falhou. Tente novamente.'))}},'expired-callback':()=>{const pending=studentTurnstilePending;studentTurnstilePending=null;if(pending){clearTimeout(pending.timer);pending.reject(new Error('A verificação expirou. Tente novamente.'))}}});
+ return new Promise((resolve,reject)=>{const pending={resolve,reject,timer:0};studentTurnstilePending=pending;pending.timer=setTimeout(()=>{if(studentTurnstilePending===pending){studentTurnstilePending=null;reject(new Error('A verificação demorou demais. Tente novamente.'))}},30000);try{window.turnstile.execute(studentTurnstileWidgetId)}catch(error){clearTimeout(pending.timer);studentTurnstilePending=null;reject(error)}});
+}
+
 let activeRule=null;
 
 function numberValue(value){
@@ -451,7 +462,8 @@ async function lookupStudent(event){
  document.getElementById('noticeUnreadCount').textContent='0';document.getElementById('noticeUnreadCount').classList.add('zero');
  document.getElementById('noticeUnreadCountTop').textContent='0';document.getElementById('noticeUnreadCountTop').classList.add('zero');
  try{
-  const response=await fetch(STUDENT_API_URL+'?codigo='+encodeURIComponent(code),{method:'GET',cache:'no-store'});
+  const turnstileToken=await obterTokenConsultaAluno();
+  const response=await fetch(STATS_API_URL+'/public/student-lookup',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({codigo:code,turnstileToken}),cache:'no-store'});
   let data={};try{data=await response.json();}catch(_){}
   if(!response.ok){
    if(response.status===404)throw new Error('Código não encontrado. Confira os caracteres e tente novamente.');
@@ -470,7 +482,7 @@ async function lookupStudent(event){
  }catch(error){
   status.textContent=error instanceof TypeError?'Não foi possível conectar ao serviço. Verifique sua conexão e tente novamente.':(error.message||'Não foi possível consultar essa ficha.');
   status.className='lookup-status error';
- }finally{button.disabled=false;buttonText.textContent='Consultar minhas notas';spinner.hidden=true;}
+ }finally{if(window.turnstile&&studentTurnstileWidgetId!==null){window.turnstile.reset(studentTurnstileWidgetId);studentTurnstilePending=null;}button.disabled=false;buttonText.textContent='Consultar minhas notas';spinner.hidden=true;}
 }
 function clearStudent(){
  document.getElementById('studentDashboard').hidden=true;document.getElementById('studentNav').hidden=true;document.getElementById('noticeBellTop').hidden=true;
