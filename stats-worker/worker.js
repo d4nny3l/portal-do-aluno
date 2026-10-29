@@ -1599,6 +1599,36 @@ export default {
       return handleCommsRequest(request, env, url);
     }
 
+    if (request.method === "POST" && url.pathname === "/public/student-lookup") {
+      let payload;
+      try { payload = await request.json(); }
+      catch { return json({ error: "Requisição inválida." }, request, 400); }
+      const codigo = String(payload?.codigo || "").trim().toUpperCase();
+      if (!/^2026[A-Z]{1,4}$/.test(codigo)) {
+        return json({ error: "Código inválido." }, request, 400);
+      }
+      if (!env.TURNSTILE_SECRET_KEY) {
+        return json({ error: "A consulta está temporariamente indisponível." }, request, 503);
+      }
+      if (!(await verifyTurnstileToken(env.TURNSTILE_SECRET_KEY, payload?.turnstileToken, request, "student_lookup"))) {
+        return json({ error: "A verificação de segurança não foi concluída. Tente novamente." }, request, 403);
+      }
+      try {
+        const upstream = await fetch("https://portal-aluno-api.dannyel-moises.workers.dev/?codigo=" + encodeURIComponent(codigo), {
+          method: "GET",
+          headers: { "Accept": "application/json", "Origin": "https://d4nny3l.github.io" },
+          cache: "no-store"
+        });
+        const data = await upstream.json().catch(() => null);
+        if (!data || typeof data !== "object") {
+          return json({ error: "O serviço de consulta retornou uma resposta inválida." }, request, 502);
+        }
+        return json(data, request, upstream.status);
+      } catch {
+        return json({ error: "Não foi possível consultar a ficha agora." }, request, 502);
+      }
+    }
+
     if (request.method === "GET" && url.pathname === "/public/grade-rule") {
       const codigo = (url.searchParams.get("codigo") || "").trim().toUpperCase();
       if (!/^2026[A-Z]{1,4}$/.test(codigo)) {
