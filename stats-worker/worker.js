@@ -468,6 +468,45 @@ async function handleFestivalRoute(request, env, url) {
     const result = await env.DB.prepare("DELETE FROM salta_festival_access_logs WHERE event_id = ?").bind(FESTIVAL_EVENT_ID).run();
     return json({ ok: true, apagados: Number(result.meta?.changes || 0) }, request);
   }
+  if (path === "/festival/admin/submissions/remove-batch" && request.method === "POST") {
+    const payload = await festivalJsonBody(request);
+    const reason = trimLimited(payload?.reason, 500);
+    const rawIds = Array.isArray(payload?.ids) ? payload.ids : [];
+    const ids = [...new Set(rawIds.map(value => Number(value)))];
+    if (!reason) return json({ error: "Informe o motivo comum para a remoção." }, request, 400);
+    if (!ids.length || ids.length > 500 || ids.some(id => !Number.isSafeInteger(id) || id <= 0)) {
+      return json({ error: "Selecione entre 1 e 500 avaliações válidas." }, request, 400);
+    }
+    const placeholders = ids.map(() => "?").join(",");
+    const result = await env.DB.prepare(
+      "UPDATE salta_festival_submissions SET removed_at = CURRENT_TIMESTAMP, removal_reason = ? " +
+      "WHERE event_id = ? AND removed_at IS NULL AND id IN (" + placeholders + ")"
+    ).bind(reason, FESTIVAL_EVENT_ID, ...ids).run();
+    return json({ ok: true, removed: Number(result.meta?.changes || 0) }, request);
+  }
+  if (path === "/festival/admin/submissions/removed/delete" && request.method === "POST") {
+    const payload = await festivalJsonBody(request);
+    if (payload?.confirm !== "excluir-historico") {
+      return json({ error: "Confirme a exclusão do histórico de avaliações removidas." }, request, 400);
+    }
+    let result;
+    if (payload.all === true) {
+      result = await env.DB.prepare(
+        "DELETE FROM salta_festival_submissions WHERE event_id = ? AND removed_at IS NOT NULL"
+      ).bind(FESTIVAL_EVENT_ID).run();
+    } else {
+      const rawIds = Array.isArray(payload.ids) ? payload.ids : [];
+      const ids = [...new Set(rawIds.map(value => Number(value)))];
+      if (!ids.length || ids.length > 500 || ids.some(id => !Number.isSafeInteger(id) || id <= 0)) {
+        return json({ error: "Selecione entre 1 e 500 avaliações removidas válidas." }, request, 400);
+      }
+      const placeholders = ids.map(() => "?").join(",");
+      result = await env.DB.prepare(
+        "DELETE FROM salta_festival_submissions WHERE event_id = ? AND removed_at IS NOT NULL AND id IN (" + placeholders + ")"
+      ).bind(FESTIVAL_EVENT_ID, ...ids).run();
+    }
+    return json({ ok: true, deleted: Number(result.meta?.changes || 0) }, request);
+  }
   const removeMatch = path.match(/^\/festival\/admin\/submissions\/(\d+)\/remove$/);
   if (removeMatch && request.method === "POST") {
     const payload = await festivalJsonBody(request);
