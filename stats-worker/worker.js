@@ -219,6 +219,28 @@ async function festivalCodeIsBlocked(env, codeHash) {
   return Number(row?.window_start) === window && Number(row?.attempts || 0) > 5;
 }
 
+async function verifyTurnstileToken(secret, token, request, expectedAction) {
+  if (!secret || typeof token !== "string" || !token || token.length > 2048) return false;
+  try {
+    const response = await fetch("https://challenges.cloudflare.com/turnstile/v0/siteverify", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        secret,
+        response: token,
+        remoteip: request.headers.get("CF-Connecting-IP") || undefined
+      })
+    });
+    const result = await response.json().catch(() => null);
+    return response.ok &&
+      result?.success === true &&
+      result.hostname === "d4nny3l.github.io" &&
+      result.action === expectedAction;
+  } catch {
+    return false;
+  }
+}
+
 function validateFestivalConfig(value) {
   const title = trimLimited(value?.title, 120);
   const description = trimLimited(value?.description, 1200);
@@ -267,6 +289,9 @@ async function findFestivalEvaluator(env, code) {
 }
 
 async function verifyFestivalCredentials(request, env, payload) {
+  if (!env.TURNSTILE_SECRET_KEY || !(await verifyTurnstileToken(env.TURNSTILE_SECRET_KEY, payload?.turnstileToken, request, "evaluator_access"))) {
+    return { error: "A verificação de segurança não foi concluída. Atualize a página e tente novamente.", status: 403 };
+  }
   const code = String(payload?.code || "").trim().toUpperCase();
   const evaluator = await findFestivalEvaluator(env, code);
   let valid = !!evaluator;
