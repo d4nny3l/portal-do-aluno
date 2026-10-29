@@ -37,6 +37,12 @@ async function login(request, env) {
     return json({ ok: false, error: "Requisição inválida." }, 400, request);
   }
 
+  const turnstileToken = String(body?.turnstileToken ?? "").trim();
+  if (!env.TURNSTILE_SECRET_KEY) return json({ ok: false, error: "Autenticação temporariamente indisponível." }, 503, request);
+  if (!(await verifyTurnstileToken(env.TURNSTILE_SECRET_KEY, turnstileToken, request, "professor_login"))) {
+    return json({ ok: false, error: "A verificação de segurança não foi concluída. Atualize a página e tente novamente." }, 403, request);
+  }
+
   const username = String(body?.username ?? "").trim().toLowerCase();
   const password = String(body?.password ?? "");
   if (!username || !password || username.length > 120 || password.length > 512) {
@@ -72,6 +78,28 @@ async function login(request, env) {
   headers.set("Cache-Control", "no-store");
   headers.set("Content-Type", "application/json; charset=utf-8");
   return new Response(JSON.stringify({ ok: true, user: username }), { status: 200, headers });
+}
+
+async function verifyTurnstileToken(secret, token, request, expectedAction) {
+  if (!secret || !token || token.length > 2048) return false;
+  try {
+    const response = await fetch("https://challenges.cloudflare.com/turnstile/v0/siteverify", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        secret,
+        response: token,
+        remoteip: request.headers.get("CF-Connecting-IP") || undefined
+      })
+    });
+    const result = await response.json().catch(() => null);
+    return response.ok &&
+      result?.success === true &&
+      result.hostname === "d4nny3l.github.io" &&
+      result.action === expectedAction;
+  } catch {
+    return false;
+  }
 }
 
 async function session(request, env) {
