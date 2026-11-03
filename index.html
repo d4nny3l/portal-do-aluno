@@ -207,10 +207,10 @@ td:last-child,th:last-child{text-align:right}
   <div class="lookup-head"><div class="lookup-icon" aria-hidden="true">⌕</div><div><h2 id="lookupTitle">Acesse sua Área do Aluno</h2><p>Digite seu código individual para consultar suas notas de Matemática.</p></div></div>
   <form id="lookupForm" novalidate>
    <label for="studentCode">Código do aluno</label>
-   <div class="lookup-row"><input id="studentCode"
-    <div id="studentTurnstileWidget"></div> name="codigo" type="text" maxlength="8" autocomplete="off" autocapitalize="characters" spellcheck="false" placeholder="Digite seu código" required>
+   <div class="lookup-row"><input id="studentCode" name="codigo" type="text" maxlength="8" autocomplete="off" autocapitalize="characters" spellcheck="false" placeholder="Digite seu código" required>
     <button id="lookupButton" type="submit"><span id="lookupButtonText">Consultar minhas notas</span><span id="lookupSpinner" class="spinner" hidden aria-hidden="true"></span></button>
    </div>
+   <div id="studentTurnstileWidget"></div>
    <div id="lookupStatus" class="lookup-status" role="status" aria-live="polite">Seu código individual identifica a ficha de Matemática consultada.</div>
    <button id="clearStudentButton" class="clear-student" type="button" hidden>Limpar ficha e consultar outro aluno</button>
   </form>
