@@ -81,6 +81,11 @@ h1{font-size:clamp(30px,5vw,44px);line-height:1.06;letter-spacing:-1.5px;margin:
 .results-head{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:15px}
 .results-head h2{margin:0}
 .result-list{display:flex;flex-direction:column;gap:10px}
+.result-group{border:1px solid var(--mc-line);border-radius:17px;padding:13px;background:#ffffffa8;margin-bottom:12px}
+.result-group-head{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:3px 3px 12px}
+.result-group-head h3{font-size:14px;font-weight:900;letter-spacing:-.25px;margin:0;color:var(--mc-ink)}
+.result-group-head span{font-size:10px;font-weight:850;color:var(--mc-accent);background:var(--mc-soft);padding:6px 9px;border-radius:999px}
+
 .result-card{border:1px solid var(--mc-line);border-radius:15px;background:#fff;overflow:hidden}
 .result-card summary{list-style:none;cursor:pointer;padding:15px;display:flex;align-items:center;justify-content:space-between;gap:12px}
 .result-card summary::-webkit-details-marker{display:none}
@@ -584,70 +589,72 @@ function renderAdminResults() {
  const list=document.getElementById("resultList");list.innerHTML="";
  const rows=filteredAssessments();
  document.getElementById("resultsCount").textContent=rows.length+" avaliação(ões) na seleção atual · "+allAssessments.length+" no total";
+ document.getElementById("callOrderNote").textContent="Ordem exibida: "+callOrderSource+". Estudantes sem correspondência no cadastro oficial aparecem ao final da turma.";
  if(!rows.length){list.innerHTML='<div class="empty">Nenhuma avaliação encontrada para os filtros selecionados.</div>';return;}
+
+ const groups=new Map();
  rows.forEach(row=>{
-  const details=document.createElement("details");details.className="result-card";
-  const summary=document.createElement("summary");
-  const left=document.createElement("div");const name=document.createElement("div");name.className="result-name";name.textContent=row.student_name;
-  const meta=document.createElement("div");meta.className="result-meta";meta.textContent=row.class_label+" · "+row.shift+" · Oferta "+row.offer+" · "+(row.submitted_at||"Data não informada");
-  left.append(name,meta);
-  const right=document.createElement("div");right.className="result-score";right.textContent="Objetiva "+fmt(row.objective_score)+"/8 · Final "+fmt(row.final_score)+"/10";
-  summary.append(left,right);
-  const detail=document.createElement("div");detail.className="result-detail";
-  const objectiveTitle=document.createElement("h3");objectiveTitle.textContent="Respostas objetivas · "+row.correct_count+"/10 acertos";detail.appendChild(objectiveTitle);
-  const review=document.createElement("div");review.className="answer-review";
-  (row.questions||[]).forEach((question,index)=>{
-   const userAnswer=row.answers?.[question.id]||"—";const isCorrect=userAnswer===question.answer;
-   const item=document.createElement("div");item.className="review-item "+(isCorrect?"correct":"wrong");
-   item.textContent=(index+1)+". "+userAnswer+" · Gabarito "+question.answer+" · "+(isCorrect?"Correta":"Incorreta");
-   review.appendChild(item);
+  if(!groups.has(row.class_id))groups.set(row.class_id,[]);
+  groups.get(row.class_id).push(row);
+ });
+ const orderedClasses=(allClasses||[]).filter(item=>groups.has(item.id));
+ groups.forEach((items,id)=>{
+  if(!orderedClasses.some(item=>item.id===id))orderedClasses.push({id,label:items[0]?.class_label||id});
+ });
+
+ orderedClasses.forEach(classInfo=>{
+  const classRows=groups.get(classInfo.id)||[];
+  classRows.sort((a,b)=>{
+   const aa=a.call_order===null||a.call_order===undefined?Number.MAX_SAFE_INTEGER:Number(a.call_order);
+   const bb=b.call_order===null||b.call_order===undefined?Number.MAX_SAFE_INTEGER:Number(b.call_order);
+   return aa-bb||String(a.student_name||"").localeCompare(String(b.student_name||""),"pt-BR");
   });
-  detail.appendChild(review);
-  const essayTitle=document.createElement("h3");essayTitle.textContent="Reflexão do estudante";detail.appendChild(essayTitle);
-  const essay=document.createElement("div");essay.className="essay-response";essay.textContent=row.discursive_answer||"Sem resposta";detail.appendChild(essay);
-  const gradeRow=document.createElement("div");gradeRow.className="grade-row";
-  const gradeWrap=document.createElement("div");const label=document.createElement("label");label.textContent="Nota discursiva (0 a 2)";
-  const input=document.createElement("input");input.className="grade-input";input.type="number";input.min="0";input.max="2";input.step="0.1";input.value=row.discursive_score===null||row.discursive_score===undefined?"":String(row.discursive_score);input.placeholder="Pendente";
-  gradeWrap.append(label,input);
-  const save=document.createElement("button");save.type="button";save.className="btn primary save-grade";save.textContent="Salvar correção";
-  const gradeStatus=document.createElement("span");gradeStatus.className="sub";gradeStatus.textContent=row.discursive_score===null||row.discursive_score===undefined?"Correção pendente":"Nota final: "+fmt(row.final_score)+"/10";
-  save.addEventListener("click",async()=>{
-   const value=Number(input.value);
-   if(input.value.trim()===""||!Number.isFinite(value)||value<0||value>2){gradeStatus.textContent="Digite uma nota entre 0 e 2.";return;}
-   save.disabled=true;save.textContent="Salvando...";
-   try {
-    const result=await api("/admin/grade",{id:row.id,discursive_score:value});
-    row.discursive_score=result.discursive_score;row.final_score=result.final_score;
-    gradeStatus.textContent="Nota final: "+fmt(result.final_score)+"/10 · Histórico atualizado";
-    right.textContent="Objetiva "+fmt(row.objective_score)+"/8 · Final "+fmt(row.final_score)+"/10";
-   } catch(error){gradeStatus.textContent=error.message;}
-   finally{save.disabled=false;save.textContent="Salvar correção";renderAdminSummaryFromRows();}
+  const group=document.createElement("section");group.className="result-group";
+  const groupHead=document.createElement("div");groupHead.className="result-group-head";
+  const groupTitle=document.createElement("h3");groupTitle.textContent=classInfo.label||classRows[0]?.class_label||classInfo.id;
+  const groupCount=document.createElement("span");groupCount.textContent=classRows.length+" aluno(s)";
+  groupHead.append(groupTitle,groupCount);group.appendChild(groupHead);
+
+  classRows.forEach(row=>{
+   const details=document.createElement("details");details.className="result-card";
+   const summary=document.createElement("summary");
+   const left=document.createElement("div");
+   const name=document.createElement("div");name.className="result-name";
+   const callNumber=row.call_order===null||row.call_order===undefined?"—":String(row.call_order).padStart(2,"0");
+   name.textContent=callNumber+" · "+row.student_name;
+   const meta=document.createElement("div");meta.className="result-meta";meta.textContent=row.submitted_at||"Data não informada";
+   left.append(name,meta);
+   const right=document.createElement("div");right.className="result-score";right.textContent="Nota "+fmt(row.objective_score)+"/2";
+   summary.append(left,right);
+
+   const detail=document.createElement("div");detail.className="result-detail";
+   const objectiveTitle=document.createElement("h3");objectiveTitle.textContent="Respostas objetivas · "+row.correct_count+"/10 acertos · "+fmt(row.objective_score)+"/2 pontos";detail.appendChild(objectiveTitle);
+   const review=document.createElement("div");review.className="answer-review";
+   (row.questions||[]).forEach((question,index)=>{
+    const userAnswer=row.answers?.[question.id]||"—";const isCorrect=userAnswer===question.answer;
+    const item=document.createElement("div");item.className="review-item "+(isCorrect?"correct":"wrong");
+    item.textContent=(index+1)+". "+userAnswer+" · Gabarito "+question.answer+" · "+(isCorrect?"Correta":"Incorreta");
+    review.appendChild(item);
+   });
+   detail.appendChild(review);
+   const essayTitle=document.createElement("h3");essayTitle.textContent="Reflexão opcional · não vale nota";detail.appendChild(essayTitle);
+   const essay=document.createElement("div");essay.className="essay-response";essay.textContent=row.discursive_answer||"O estudante optou por não registrar uma reflexão.";detail.appendChild(essay);
+   details.append(summary,detail);group.appendChild(details);
   });
-  gradeRow.append(gradeWrap,save,gradeStatus);detail.appendChild(gradeRow);
-  const historyButton=document.createElement("button");historyButton.type="button";historyButton.className="btn secondary";historyButton.style.marginTop="12px";historyButton.textContent="Ver histórico de correções";
-  const history=document.createElement("div");history.className="history-box";
-  historyButton.addEventListener("click",async()=>{
-   history.textContent="Carregando histórico...";
-   try {
-    const data=await api("/admin/history?id="+encodeURIComponent(row.id),null,"GET");
-    history.textContent=(data.history||[]).length?data.history.map(h=>(h.previous_score===null?"Pendente":fmt(h.previous_score))+" → "+fmt(h.new_score)+" · "+h.changed_by+" · "+h.changed_at).join(" | "):"Nenhuma alteração registrada.";
-   } catch(error){history.textContent=error.message;}
-  });
-  detail.append(historyButton,history);
-  details.append(summary,detail);list.appendChild(details);
+  list.appendChild(group);
  });
 }
 function renderAdminSummaryFromRows() {
  const count=allAssessments.length;
- const pending=allAssessments.filter(row=>row.discursive_score===null||row.discursive_score===undefined);
- const graded=allAssessments.filter(row=>row.discursive_score!==null&&row.discursive_score!==undefined);
  const objective=count?allAssessments.reduce((sum,row)=>sum+Number(row.objective_score||0),0)/count:null;
- const final=graded.length?graded.reduce((sum,row)=>sum+Number(row.final_score||0),0)/graded.length:null;
+ const highest=count?Math.max(...allAssessments.map(row=>Number(row.objective_score||0))):null;
+ const classes=new Set(allAssessments.map(row=>row.class_id)).size;
  document.getElementById("metricTotal").textContent=String(count);
- document.getElementById("metricPending").textContent=String(pending.length);
+ document.getElementById("metricPending").textContent=String(classes);
  document.getElementById("metricObjective").textContent=fmt(objective);
- document.getElementById("metricFinal").textContent=fmt(final);
+ document.getElementById("metricFinal").textContent=fmt(highest);
 }
+
 function csvCell(value) {
  let text=String(value===null||value===undefined?"":value);
  if (/^[=+\-@]/.test(text)) text="'"+text;
