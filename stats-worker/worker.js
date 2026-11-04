@@ -602,6 +602,12 @@ function mostraCleanName(value) {
 function mostraNameKey(value) {
   return String(value || "").normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLocaleLowerCase("pt-BR").replace(/\s+/g, " ").trim();
 }
+function mostraClassKey(value) {
+  const normalized = String(value || "").normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLocaleUpperCase("pt-BR");
+  const match = normalized.match(/([1-3])\s*(?:º|O)?\s*(?:ANO\s*)?([A-N])/);
+  return match ? match[1] + match[2] : normalized.replace(/[^A-Z0-9]/g, "");
+}
+
 async function ensureMostraSchema(env) {
   await env.DB.prepare(
     "CREATE TABLE IF NOT EXISTS salta_mostra_assessment_config (" +
@@ -650,6 +656,13 @@ async function ensureMostraSchema(env) {
     "id INTEGER PRIMARY KEY AUTOINCREMENT, attempt_id INTEGER NOT NULL, previous_score REAL, new_score REAL NOT NULL, " +
     "changed_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP, changed_by TEXT NOT NULL)"
   ).run();
+  await env.DB.prepare(
+    "UPDATE salta_mostra_assessment_attempts SET objective_score = ROUND(correct_count * 0.2, 2), " +
+    "discursive_score = NULL, final_score = ROUND(correct_count * 0.2, 2), updated_at = CURRENT_TIMESTAMP " +
+    "WHERE event_id = ? AND status = 'submitted' AND correct_count IS NOT NULL AND (" +
+    "objective_score IS NULL OR ABS(objective_score - correct_count * 0.2) > 0.001 OR " +
+    "discursive_score IS NOT NULL OR final_score IS NULL OR ABS(final_score - correct_count * 0.2) > 0.001)"
+  ).bind(MOSTRA_EVENT_ID).run();
 }
 async function getMostraConfig(env) {
   const row = await env.DB.prepare("SELECT config_json, updated_at FROM salta_mostra_assessment_config WHERE event_id = ? LIMIT 1")
@@ -863,7 +876,7 @@ async function handleMostraCulturalRoute(request, env, url) {
     }
     const callOrderMap = new Map();
     for (const student of rosterRows) {
-      const key = mostraNameKey(student.turma) + "|" + mostraNameKey(student.nome);
+      const key = mostraClassKey(student.turma) + "|" + mostraNameKey(student.nome);
       if (!callOrderMap.has(key)) callOrderMap.set(key, Number(student.call_order) || null);
     }
     const assessments = (result.results || []).map(row => {
@@ -871,7 +884,7 @@ async function handleMostraCulturalRoute(request, env, url) {
       let answers = {};
       try { questions = JSON.parse(row.question_snapshot_json) || []; } catch { questions = []; }
       try { answers = JSON.parse(row.answers_json) || {}; } catch { answers = {}; }
-      const key = mostraNameKey(row.class_label) + "|" + mostraNameKey(row.student_name);
+      const key = mostraClassKey(row.class_label) + "|" + mostraNameKey(row.student_name);
       return { ...row, questions, answers, call_order: callOrderMap.get(key) || null };
     });
     const objectiveAverage = assessments.length
