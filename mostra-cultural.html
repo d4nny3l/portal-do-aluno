@@ -192,7 +192,7 @@ h1{font-size:clamp(30px,5vw,44px);line-height:1.06;letter-spacing:-1.5px;margin:
 
  <section id="adminPane" hidden>
   <div class="panel auth-box" id="adminAuthBox">
-   <div class="panel-head"><div><h2>Área restrita ao professor</h2><p class="sub">Entre na Área do Professor do SALTA e depois retorne a esta página para abrir o painel administrativo.</p></div></div>
+   <div class="panel-head"><div><h2>Área restrita ao professor</h2><p class="sub">Acesse o SALTA com seu login de professor. Depois, abra novamente este módulo pelo cartão disponível na Área do Professor.</p></div></div>
    <a class="btn primary" href="./plataforma/professor.html">Entrar na Área do Professor ↗</a>
    <div class="status info show" style="margin-top:15px">O painel e os resultados são protegidos no servidor pela sessão administrativa do SALTA.</div>
   </div>
@@ -304,10 +304,6 @@ function setMode(mode) {
  const student = mode === "student";
  document.getElementById("studentPane").hidden = !student;
  document.getElementById("adminPane").hidden = student;
- document.getElementById("studentTab").classList.toggle("active",student);
- document.getElementById("studentTab").setAttribute("aria-selected",String(student));
- document.getElementById("adminTab").classList.toggle("active",!student);
- document.getElementById("adminTab").setAttribute("aria-selected",String(!student));
  if (!student) loadAdminData();
 }
 function populateClassSelects(classes) {
@@ -661,14 +657,18 @@ function csvCell(value) {
  return '"'+text.replace(/"/g,'""')+'"';
 }
 function exportCsv() {
- const rows=filteredAssessments();
- const columns=["Nome","Turma","Turno","Oferta","Série","Acertos","Nota objetiva","Resposta discursiva","Nota discursiva","Nota final","Situação","Enviado em"];
+ const rows=filteredAssessments().sort((a,b)=>{
+  const classA=allClasses.findIndex(item=>item.id===a.class_id);
+  const classB=allClasses.findIndex(item=>item.id===b.class_id);
+  const callA=a.call_order===null||a.call_order===undefined?Number.MAX_SAFE_INTEGER:Number(a.call_order);
+  const callB=b.call_order===null||b.call_order===undefined?Number.MAX_SAFE_INTEGER:Number(b.call_order);
+  return classA-classB||callA-callB||String(a.student_name||"").localeCompare(String(b.student_name||""),"pt-BR");
+ });
+ const columns=["Nº chamada","Nome","Turma","Turno","Oferta","Série","Acertos","Nota objetiva / 2","Reflexão opcional","Enviado em"];
  const lines=[columns.map(csvCell).join(";")];
  rows.forEach(row=>lines.push([
-  row.student_name,row.class_label,row.shift,row.offer,row.grade,row.correct_count,row.objective_score,
-  row.discursive_answer,row.discursive_score,row.final_score,
-  row.discursive_score===null||row.discursive_score===undefined?"Pendente":"Corrigida",
-  row.submitted_at
+  row.call_order??"",row.student_name,row.class_label,row.shift,row.offer,row.grade,row.correct_count,row.objective_score,
+  row.discursive_answer,row.submitted_at
  ].map(csvCell).join(";")));
  const blob=new Blob(["\uFEFF"+lines.join("\r\n")],{type:"text/csv;charset=utf-8"});
  const url=URL.createObjectURL(blob);const link=document.createElement("a");
@@ -683,7 +683,7 @@ document.getElementById("saveQuestionsButton").addEventListener("click",saveQues
 document.getElementById("exportButton").addEventListener("click",exportCsv);
 ["filterShift","filterOffer","filterGrade","filterClass"].forEach(id=>document.getElementById(id).addEventListener("change",renderAdminResults));
 loadConfig();
-if (new URLSearchParams(location.search).get("admin")==="1") setMode("admin");
+if (new URLSearchParams(location.search).get("admin")==="1") { document.body.classList.add("admin-mode"); setMode("admin"); }
 </script>
 </body>
 </html>
