@@ -1,0 +1,695 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#f4f5fb">
+<link rel="icon" type="image/svg+xml" href="./favicon.svg">
+<link rel="stylesheet" href="./salta-theme.css?v=mostra-2026">
+<title>Mostra Cultural — Consciência Negra | SALTA</title>
+<style>
+:root{--mc-bg:#f4f5fb;--mc-ink:#252744;--mc-muted:#747995;--mc-line:#e9eafa;--mc-accent:#5b5bd6;--mc-soft:#efefff;--mc-good:#18865e;--mc-good-soft:#e5f8ed;--mc-warn:#9b6b13;--mc-warn-soft:#fff4d7;--mc-shadow:0 14px 36px rgba(72,75,145,.09)}
+*{box-sizing:border-box}html{background:var(--mc-bg)}body{margin:0;color:var(--mc-ink);font-family:Inter,-apple-system,BlinkMacSystemFont,"Segoe UI",Arial,sans-serif;-webkit-font-smoothing:antialiased;background:radial-gradient(circle at 50% -8%,#fff 0,var(--mc-bg) 57%,#eeeffb 100%);min-height:100vh}
+body::before{content:"";position:fixed;inset:0;pointer-events:none;z-index:-1;background-image:linear-gradient(rgba(91,91,214,.045) 1px,transparent 1px),linear-gradient(90deg,rgba(91,91,214,.045) 1px,transparent 1px);background-size:32px 32px}
+a{color:inherit}.shell{width:min(1050px,calc(100% - 36px));margin:0 auto}
+.topbar{height:70px;position:sticky;top:0;z-index:50;background:rgba(255,255,255,.84);backdrop-filter:blur(20px);border-bottom:1px solid var(--mc-line)}
+.top-inner{height:100%;display:flex;align-items:center;justify-content:space-between;gap:14px}
+.brand{display:flex;align-items:center;gap:10px;text-decoration:none;font-weight:850;letter-spacing:-.3px}
+.brand-mark{width:36px;height:36px;border-radius:12px;background:linear-gradient(135deg,#7775ed,#5b5bd6);color:#fff;display:grid;place-items:center;font-size:17px;box-shadow:0 7px 16px rgba(91,91,214,.2)}
+.brand-sub{display:block;font-size:10px;color:var(--mc-muted);font-weight:650;letter-spacing:0;margin-top:3px}
+.top-link{font-size:12px;font-weight:800;text-decoration:none;color:var(--mc-muted);padding:9px 12px;border:1px solid var(--mc-line);background:#fff;border-radius:999px}
+main{padding:38px 0 65px}
+.hero{display:grid;grid-template-columns:1fr auto;gap:24px;align-items:end;margin-bottom:25px}
+.eyebrow{font-size:10px;text-transform:uppercase;letter-spacing:.13em;color:var(--mc-accent);font-weight:900;margin-bottom:11px}
+h1{font-size:clamp(30px,5vw,44px);line-height:1.06;letter-spacing:-1.5px;margin:0 0 10px;font-weight:900}
+.hero p{font-size:13px;line-height:1.65;color:var(--mc-muted);margin:0;max-width:720px}
+.event-state{display:inline-flex;align-items:center;gap:7px;white-space:nowrap;font-size:10px;font-weight:850;border-radius:999px;padding:9px 12px;background:var(--mc-warn-soft);color:var(--mc-warn);margin-bottom:4px}
+.event-state::before{content:"";width:7px;height:7px;border-radius:50%;background:currentColor}
+.event-state.active{background:var(--mc-good-soft);color:var(--mc-good)}
+.mode-tabs{display:flex;gap:7px;padding:5px;border:1px solid var(--mc-line);background:#ffffffaa;border-radius:14px;width:max-content;margin:0 0 18px;box-shadow:0 5px 20px rgba(72,75,145,.04)}
+.mode-tabs button{border:0;border-radius:10px;padding:10px 14px;background:transparent;color:var(--mc-muted);font-size:11px;font-weight:850;cursor:pointer}
+.mode-tabs button.active{background:var(--mc-accent);color:#fff;box-shadow:0 5px 12px rgba(91,91,214,.2)}
+.panel{background:#fff;border:1px solid var(--mc-line);border-radius:22px;box-shadow:var(--mc-shadow);padding:24px;margin-bottom:16px;min-width:0}
+.panel-head{display:flex;justify-content:space-between;gap:12px;align-items:flex-start;margin-bottom:18px}
+.panel h2{font-size:18px;letter-spacing:-.5px;margin:0 0 6px}
+.panel h3{font-size:14px;margin:0 0 6px}
+.sub{font-size:11px;color:var(--mc-muted);line-height:1.55;margin:0}
+.form-grid{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+.field label{display:block;font-size:11px;font-weight:850;margin:0 0 7px}
+.field input,.field select,.field textarea,.grade-input{width:100%;border:1px solid var(--mc-line);background:#fafaff;color:var(--mc-ink);border-radius:12px;padding:12px 13px;font:inherit;font-size:13px;outline:none;min-width:0}
+.field input:focus,.field select:focus,.field textarea:focus,.grade-input:focus{border-color:var(--mc-accent);box-shadow:0 0 0 3px rgba(91,91,214,.12)}
+.field textarea{resize:vertical;min-height:130px;line-height:1.6}
+.btn{border:0;border-radius:12px;padding:12px 16px;font-size:11px;font-weight:900;cursor:pointer;display:inline-flex;align-items:center;justify-content:center;gap:8px;text-decoration:none;transition:transform .18s,filter .18s;min-height:42px}
+.btn:hover{transform:translateY(-1px);filter:brightness(1.03)}
+.btn:disabled{opacity:.55;cursor:wait;transform:none}
+.btn.primary{background:var(--mc-accent);color:#fff}
+.btn.secondary{background:#fff;border:1px solid var(--mc-line);color:var(--mc-ink)}
+.btn.danger{background:#fff0f1;color:#b42335;border:1px solid #ffdade}
+.form-actions{display:flex;justify-content:flex-end;gap:10px;margin-top:18px}
+.status{font-size:11px;line-height:1.55;margin-top:13px;padding:10px 12px;border-radius:11px;display:none}
+.status.show{display:block}.status.info{display:block;background:var(--mc-soft);color:#4b4bb7}.status.error{display:block;background:#fff0f1;color:#b42335}.status.success{display:block;background:var(--mc-good-soft);color:var(--mc-good)}
+.notice{display:flex;gap:12px;align-items:flex-start;border:1px solid #e5e4ff;background:#f7f7ff;border-radius:14px;padding:14px;margin-top:16px}
+.notice-icon{width:31px;height:31px;flex:0 0 auto;border-radius:10px;background:var(--mc-soft);display:grid;place-items:center;color:var(--mc-accent)}
+.notice strong{font-size:11px;display:block;margin-bottom:4px}.notice p{font-size:10px;line-height:1.55;color:var(--mc-muted);margin:0}
+.quiz-progress{margin:0 0 18px;padding:16px;border-radius:15px;background:#f8f8ff;border:1px solid var(--mc-line)}
+.progress-top{display:flex;justify-content:space-between;gap:10px;font-size:10px;font-weight:850;margin-bottom:9px}
+.progress-top span:last-child{color:var(--mc-accent)}
+.progress-track{height:7px;border-radius:99px;background:#e9eafa;overflow:hidden}
+.progress-fill{height:100%;width:0;background:linear-gradient(90deg,#9998ff,#5b5bd6);border-radius:99px;transition:width .2s}
+.question-card{border:1px solid var(--mc-line);border-radius:16px;padding:18px;margin-bottom:12px;background:#fff}
+.question-meta{font-size:9px;font-weight:900;letter-spacing:.08em;text-transform:uppercase;color:var(--mc-accent);margin-bottom:9px}
+.question-text{font-size:13px;line-height:1.65;margin:0;color:var(--mc-ink);font-weight:650}
+.answers{display:flex;gap:9px;margin-top:15px}
+.answer-option{display:flex;align-items:center;gap:8px;border:1px solid var(--mc-line);border-radius:11px;padding:10px 14px;min-width:100px;font-size:11px;font-weight:850;cursor:pointer;background:#fafaff}
+.answer-option:has(input:checked){border-color:var(--mc-accent);background:var(--mc-soft);color:#4b4bb7}
+.answer-option input{accent-color:var(--mc-accent);margin:0}
+.essay-card{border:1px solid #dcdcff;background:linear-gradient(130deg,#fbfbff,#f4f3ff);border-radius:17px;padding:19px;margin-top:20px}
+.essay-card .question-meta{color:#7556bf}
+.essay-card .field{margin-top:14px}
+.essay-card .field textarea{background:#fff}
+.quiz-bottom{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-top:18px}
+.quiz-bottom .sub{max-width:500px}
+.success-panel{text-align:center;padding:34px 20px}
+.success-mark{width:58px;height:58px;margin:0 auto 15px;border-radius:20px;background:var(--mc-good-soft);color:var(--mc-good);display:grid;place-items:center;font-size:26px;font-weight:900}
+.success-panel h2{font-size:23px;margin:0 0 9px}.success-panel p{font-size:12px;line-height:1.65;color:var(--mc-muted);max-width:520px;margin:0 auto}
+.admin-tools{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:11px;margin-bottom:16px}
+.metric{padding:16px;border:1px solid var(--mc-line);border-radius:15px;background:#fff;box-shadow:0 7px 20px rgba(72,75,145,.045);min-width:0}
+.metric-label{font-size:9px;color:var(--mc-muted);font-weight:850;text-transform:uppercase;letter-spacing:.06em}
+.metric-value{font-size:24px;letter-spacing:-.8px;font-weight:900;margin-top:9px;font-variant-numeric:tabular-nums}
+.metric-sub{font-size:9px;color:var(--mc-muted);margin-top:4px}
+.config-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px;align-items:end}
+.switch-line{display:flex;align-items:center;gap:10px;padding:12px;border:1px solid var(--mc-line);background:#fafaff;border-radius:12px;font-size:11px;font-weight:850}
+.switch-line input{accent-color:var(--mc-accent);width:17px;height:17px}
+.filter-grid{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:9px}
+.filter-grid .field label{font-size:9px}
+.results-head{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:15px}
+.results-head h2{margin:0}
+.result-list{display:flex;flex-direction:column;gap:10px}
+.result-card{border:1px solid var(--mc-line);border-radius:15px;background:#fff;overflow:hidden}
+.result-card summary{list-style:none;cursor:pointer;padding:15px;display:flex;align-items:center;justify-content:space-between;gap:12px}
+.result-card summary::-webkit-details-marker{display:none}
+.result-name{font-size:12px;font-weight:900}.result-meta{font-size:10px;color:var(--mc-muted);margin-top:5px}
+.result-score{font-size:12px;font-weight:900;white-space:nowrap;color:var(--mc-accent);text-align:right}
+.result-detail{border-top:1px solid var(--mc-line);padding:15px}
+.answer-review{display:grid;grid-template-columns:1fr 1fr;gap:7px;margin:12px 0}
+.review-item{font-size:10px;padding:8px 9px;border-radius:9px;background:#fafaff;border:1px solid var(--mc-line);line-height:1.45}
+.review-item.correct{background:var(--mc-good-soft);border-color:#d4f0e0;color:#14724e}
+.review-item.wrong{background:#fff2f2;border-color:#ffdfe2;color:#a72839}
+.essay-response{white-space:pre-wrap;overflow-wrap:anywhere;background:#fafaff;border:1px solid var(--mc-line);border-radius:12px;padding:13px;font-size:11px;line-height:1.7;margin:8px 0 14px}
+.grade-row{display:grid;grid-template-columns:minmax(130px,180px) auto 1fr;gap:10px;align-items:end}
+.grade-row label{font-size:10px;font-weight:850;display:block;margin-bottom:6px}
+.grade-input{padding:10px 11px}
+.history-box{font-size:10px;color:var(--mc-muted);line-height:1.6;margin-top:10px}
+.empty{padding:26px;text-align:center;color:var(--mc-muted);background:#fafaff;border:1px dashed #d7d9eb;border-radius:13px;font-size:11px;line-height:1.6}
+.auth-box{display:none}
+.auth-box.show{display:block}
+.footer{padding:22px 0 35px;border-top:1px solid var(--mc-line);background:#ffffff70;color:var(--mc-muted);font-size:10px;text-align:center}
+[hidden]{display:none!important}
+@media(max-width:850px){.admin-tools{grid-template-columns:repeat(2,minmax(0,1fr))}.filter-grid{grid-template-columns:repeat(3,minmax(0,1fr))}}
+@media(max-width:600px){
+ .shell{width:calc(100% - 26px)}.topbar{height:62px}.brand-sub{font-size:9px}.top-link{font-size:10px;padding:8px 10px}
+ main{padding:25px 0 45px}.hero{grid-template-columns:1fr;gap:10px}.hero h1{font-size:31px;letter-spacing:-1px}.event-state{justify-self:start;margin:0}
+ .mode-tabs{width:100%}.mode-tabs button{flex:1;padding:10px 8px;font-size:10px}
+ .panel{padding:17px;border-radius:17px}.form-grid,.config-grid{grid-template-columns:1fr}.form-actions{flex-direction:column}.form-actions .btn{width:100%}
+ .question-card{padding:15px}.answers{gap:7px}.answer-option{flex:1;min-width:0;justify-content:center;padding:11px 8px}
+ .quiz-bottom{align-items:stretch;flex-direction:column}.quiz-bottom .btn{width:100%}
+ .filter-grid{grid-template-columns:1fr 1fr}.filter-grid .field:last-child{grid-column:1/-1}
+ .results-head{align-items:flex-start;flex-direction:column}.results-head .btn{width:100%}
+ .result-card summary{align-items:flex-start}.result-score{font-size:11px}
+ .answer-review{grid-template-columns:1fr}.grade-row{grid-template-columns:1fr 1fr}.grade-row .save-grade{grid-column:1/-1;width:100%}
+ .admin-tools{gap:8px}.metric{padding:13px}.metric-value{font-size:22px}
+}
+@media(prefers-reduced-motion:reduce){html{scroll-behavior:auto}.btn,.progress-fill{transition:none}}
+</style>
+</head>
+<body>
+<header class="topbar">
+ <div class="shell top-inner">
+  <a class="brand" href="./plataforma/">
+   <span class="brand-mark">S</span>
+   <span>SALTA<span class="brand-sub">Mostra Cultural · Consciência Negra</span></span>
+  </a>
+  <a class="top-link" href="./plataforma/">← Plataforma principal</a>
+ </div>
+</header>
+
+<main class="shell">
+ <section class="hero">
+  <div>
+   <div class="eyebrow">CENTRO DE ENSINO MÉDIO 02 DE BRAZLÂNDIA</div>
+   <h1 id="pageTitle">Mostra Cultural — Consciência Negra</h1>
+   <p id="pageDescription">Avaliação escolar sobre a Mostra Cultural, com questões sorteadas, reflexão final e acompanhamento pelo professor.</p>
+  </div>
+  <div class="event-state" id="eventState">Avaliação ainda não liberada</div>
+ </section>
+
+ <div class="mode-tabs" role="tablist" aria-label="Ambientes da avaliação">
+  <button id="studentTab" class="active" type="button" role="tab" aria-selected="true">Área do estudante</button>
+  <button id="adminTab" type="button" role="tab" aria-selected="false">Área do professor</button>
+ </div>
+
+ <section id="studentPane">
+  <div class="panel" id="identityPanel">
+   <div class="panel-head">
+    <div><h2>Identificação do estudante</h2><p class="sub">Preencha seus dados para iniciar. Todos os estudantes utilizam este mesmo endereço.</p></div>
+   </div>
+   <form id="identityForm">
+    <div class="form-grid">
+     <div class="field"><label for="studentName">Nome completo</label><input id="studentName" name="student_name" type="text" maxlength="100" autocomplete="name" placeholder="Digite seu nome completo" required></div>
+     <div class="field"><label for="studentClass">Turma</label><select id="studentClass" name="class_id" required><option value="">Carregando turmas...</option></select></div>
+    </div>
+    <div class="form-actions"><button class="btn primary" id="startButton" type="submit" disabled>Iniciar avaliação <span aria-hidden="true">→</span></button></div>
+    <div class="status" id="identityStatus" role="status" aria-live="polite"></div>
+   </form>
+   <div class="notice"><div class="notice-icon">ⓘ</div><div><strong>Uma resposta por aparelho</strong><p>O SALTA registra um identificador aleatório deste navegador. Depois do envio, uma nova resposta não será aceita pelo mesmo identificador. Não use aba anônima nem limpe os dados do navegador durante a avaliação.</p></div></div>
+  </div>
+
+  <div class="panel" id="quizPanel" hidden>
+   <div class="panel-head">
+    <div><h2 id="quizHeading">Sua avaliação</h2><p class="sub" id="quizStudent"></p></div>
+    <span class="event-state active" style="margin:0">Em andamento</span>
+   </div>
+   <div class="quiz-progress">
+    <div class="progress-top"><span>Progresso da avaliação</span><span id="progressLabel">0 de 11 respondidas</span></div>
+    <div class="progress-track"><div class="progress-fill" id="progressFill"></div></div>
+   </div>
+   <form id="quizForm">
+    <div id="objectiveQuestions"></div>
+    <section class="essay-card">
+     <div class="question-meta">PARTE 2 · REFLEXÃO PARA O MURAL · QUESTÃO 11</div>
+     <p class="question-text" id="essayQuestion">Qual ideia, história ou apresentação da mostra mais chamou sua atenção? O que ela fez você pensar sobre respeito, representatividade ou combate ao racismo?</p>
+     <div class="field"><label for="discursiveAnswer">Sua reflexão (obrigatória)</label><textarea id="discursiveAnswer" maxlength="4000" rows="6" placeholder="Escreva sua resposta com suas próprias palavras..." required></textarea></div>
+     <p class="sub" style="margin-top:7px;text-align:right"><span id="essayCount">0</span>/4000 caracteres</p>
+    </section>
+    <div class="quiz-bottom">
+     <p class="sub">Confira as 10 respostas e a reflexão antes de enviar. A avaliação não poderá ser enviada novamente neste aparelho.</p>
+     <button class="btn primary" id="submitButton" type="submit">Enviar avaliação</button>
+    </div>
+    <div class="status" id="quizStatus" role="status" aria-live="polite"></div>
+   </form>
+  </div>
+
+  <div class="panel success-panel" id="successPanel" hidden>
+   <div class="success-mark">✓</div>
+   <h2>Avaliação enviada!</h2>
+   <p>Suas respostas foram registradas com sucesso. A nota objetiva será calculada pelo sistema e a reflexão final será corrigida pelo professor. Este aparelho não poderá enviar uma segunda avaliação.</p>
+  </div>
+ </section>
+
+ <section id="adminPane" hidden>
+  <div class="panel auth-box" id="adminAuthBox">
+   <div class="panel-head"><div><h2>Área restrita ao professor</h2><p class="sub">Entre na Área do Professor do SALTA e depois retorne a esta página para abrir o painel administrativo.</p></div></div>
+   <a class="btn primary" href="./plataforma/professor.html">Entrar na Área do Professor ↗</a>
+   <div class="status info show" style="margin-top:15px">O painel e os resultados são protegidos no servidor pela sessão administrativa do SALTA.</div>
+  </div>
+
+  <div id="adminContent" hidden>
+   <div class="admin-tools">
+    <div class="metric"><div class="metric-label">Avaliações recebidas</div><div class="metric-value" id="metricTotal">0</div><div class="metric-sub">Envios confirmados</div></div>
+    <div class="metric"><div class="metric-label">Discursivas pendentes</div><div class="metric-value" id="metricPending">0</div><div class="metric-sub">Aguardando correção</div></div>
+    <div class="metric"><div class="metric-label">Média objetiva</div><div class="metric-value" id="metricObjective">—</div><div class="metric-sub">De 8 pontos possíveis</div></div>
+    <div class="metric"><div class="metric-label">Média final</div><div class="metric-value" id="metricFinal">—</div><div class="metric-sub">Somente discursivas corrigidas</div></div>
+   </div>
+
+   <div class="panel">
+    <div class="panel-head"><div><h2>Configurações da avaliação</h2><p class="sub">A avaliação começa fechada e só recebe novas tentativas quando for liberada aqui.</p></div><span class="event-state" id="adminEventState">Fechada</span></div>
+    <div class="config-grid">
+     <div class="field"><label for="configTitle">Nome da avaliação</label><input id="configTitle" maxlength="120"></div>
+     <div class="field"><label for="configDescription">Descrição</label><input id="configDescription" maxlength="500"></div>
+     <label class="switch-line"><input id="configActive" type="checkbox"> Liberar avaliação para os estudantes</label>
+     <button class="btn primary" id="saveConfigButton" type="button">Salvar configurações</button>
+    </div>
+    <div class="status" id="configStatus" role="status" aria-live="polite"></div>
+   </div>
+
+   <div class="panel">
+    <div class="panel-head"><div><h2>Banco de questões e gabarito</h2><p class="sub">Edite os 20 enunciados e o gabarito para futuras tentativas. Se o gabarito ainda não tiver sido configurado no servidor, selecione C/E nas 20 questões antes de liberar a avaliação. Tentativas já iniciadas mantêm sua própria versão.</p></div></div>
+    <div id="questionEditor"></div>
+    <div class="form-actions"><button class="btn primary" id="saveQuestionsButton" type="button">Salvar banco de questões</button></div>
+    <div class="status" id="questionsStatus" role="status" aria-live="polite"></div>
+   </div>
+
+   <div class="panel">
+    <div class="panel-head"><div><h2>Filtrar resultados</h2><p class="sub">Os filtros podem ser combinados para consultar turno, oferta, série e turma.</p></div></div>
+    <div class="filter-grid">
+     <div class="field"><label for="filterShift">Turno</label><select id="filterShift"><option value="">Todos</option><option>Matutino</option><option>Vespertino</option></select></div>
+     <div class="field"><label for="filterOffer">Oferta</label><select id="filterOffer"><option value="">Todas</option><option value="A">Oferta A</option><option value="B">Oferta B</option></select></div>
+     <div class="field"><label for="filterGrade">Série</label><select id="filterGrade"><option value="">Todas</option><option>1º ano</option><option>2º ano</option><option>3º ano</option></select></div>
+     <div class="field"><label for="filterClass">Turma</label><select id="filterClass"><option value="">Todas</option></select></div>
+     <div class="field"><label for="filterStatus">Correção</label><select id="filterStatus"><option value="">Todas</option><option value="pending">Pendente</option><option value="graded">Corrigida</option></select></div>
+    </div>
+   </div>
+
+   <div class="panel">
+    <div class="results-head"><div><h2>Respostas recebidas</h2><p class="sub" id="resultsCount">Carregando resultados...</p></div><button class="btn secondary" id="exportButton" type="button">Exportar CSV ↓</button></div>
+    <div class="result-list" id="resultList"><div class="empty">Carregando avaliações...</div></div>
+   </div>
+  </div>
+ </section>
+</main>
+
+<footer class="footer"><div class="shell">SALTA · Centro de Ensino Médio 02 de Brazlândia · Mostra Cultural — Consciência Negra</div></footer>
+
+<script>
+"use strict";
+const API_URL = "https://salta-stats.dannyel-moises.workers.dev/mostra-cultural";
+const DEVICE_KEY = "saltaMostraDeviceId";
+const STUDENT_KEY = "saltaMostraStudent";
+const SUBMITTED_KEY = "saltaMostraSubmitted";
+const COOKIE_DEVICE = "salta_mostra_device";
+const ESSAY_TEXT = "Qual ideia, história ou apresentação da mostra mais chamou sua atenção? O que ela fez você pensar sobre respeito, representatividade ou combate ao racismo?";
+let appConfig = null;
+let currentAttempt = null;
+let currentDeviceId = null;
+let currentAnswers = {};
+let progressTimer = null;
+let allAssessments = [];
+let allClasses = [];
+let currentAdminConfig = null;
+let adminQuestionBank = [];
+
+function showStatus(target, message, type) {
+ const node = document.getElementById(target);
+ node.textContent = message || "";
+ node.className = "status" + (message ? " show " + (type || "info") : "");
+}
+function safeStorageGet(key) { try { return localStorage.getItem(key); } catch { return null; } }
+function safeStorageSet(key,value) { try { localStorage.setItem(key,value); return true; } catch { return false; } }
+function safeStorageRemove(key) { try { localStorage.removeItem(key); } catch {} }
+function getCookie(name) {
+ const prefix = name + "=";
+ return document.cookie.split(";").map(item => item.trim()).find(item => item.startsWith(prefix))?.slice(prefix.length) || "";
+}
+function createDeviceId() {
+ if (crypto && typeof crypto.randomUUID === "function") return crypto.randomUUID();
+ const bytes = crypto.getRandomValues(new Uint8Array(24));
+ return [...bytes].map(value => value.toString(16).padStart(2,"0")).join("");
+}
+function getDeviceId() {
+ let id = "";
+ id = safeStorageGet(DEVICE_KEY) || "";
+ if (!id) id = getCookie(COOKIE_DEVICE);
+ if (!/^[A-Za-z0-9-]{32,100}$/.test(id)) id = createDeviceId();
+ safeStorageSet(DEVICE_KEY,id);
+ document.cookie = COOKIE_DEVICE + "=" + id + "; Max-Age=31536000; Path=/; SameSite=Lax; Secure";
+ return id;
+}
+async function api(path, body, method) {
+ const options = { method:method || (body ? "POST" : "GET"), cache:"no-store", credentials:"include", headers:{} };
+ if (body) { options.headers["Content-Type"]="application/json"; options.body=JSON.stringify(body); }
+ const response = await fetch(API_URL + path, options);
+ const data = await response.json().catch(() => ({}));
+ if (!response.ok) {
+  const error = new Error(data.error || "Não foi possível concluir a solicitação.");
+  error.status = response.status;
+  throw error;
+ }
+ return data;
+}
+function setMode(mode) {
+ const student = mode === "student";
+ document.getElementById("studentPane").hidden = !student;
+ document.getElementById("adminPane").hidden = student;
+ document.getElementById("studentTab").classList.toggle("active",student);
+ document.getElementById("studentTab").setAttribute("aria-selected",String(student));
+ document.getElementById("adminTab").classList.toggle("active",!student);
+ document.getElementById("adminTab").setAttribute("aria-selected",String(!student));
+ if (!student) loadAdminData();
+}
+function populateClassSelects(classes) {
+ const select = document.getElementById("studentClass");
+ select.innerHTML = '<option value="">Selecione sua turma</option>';
+ const groups = new Map();
+ classes.forEach(item => {
+  const key = item.turno + " · OFERTA " + item.oferta;
+  if (!groups.has(key)) groups.set(key,[]);
+  groups.get(key).push(item);
+ });
+ groups.forEach((items,label) => {
+  const group = document.createElement("optgroup"); group.label = label;
+  items.forEach(item => { const option=document.createElement("option"); option.value=item.id; option.textContent=item.label; group.appendChild(option); });
+  select.appendChild(group);
+ });
+ const filter = document.getElementById("filterClass");
+ filter.innerHTML = '<option value="">Todas</option>';
+ classes.forEach(item => { const option=document.createElement("option"); option.value=item.id; option.textContent=item.label; filter.appendChild(option); });
+}
+function updateEventState(active) {
+ const badge = document.getElementById("eventState");
+ badge.textContent = active ? "Avaliação liberada" : "Avaliação ainda não liberada";
+ badge.classList.toggle("active",!!active);
+ document.getElementById("startButton").disabled = !active;
+ if (!active) showStatus("identityStatus","A avaliação está fechada no momento. O professor ainda precisa liberá-la.", "info");
+ else if (!currentAttempt) showStatus("identityStatus","Avaliação liberada. Informe seu nome completo e turma para começar.", "success");
+}
+async function loadConfig() {
+ try {
+  appConfig = await api("/public/config",null,"GET");
+  document.getElementById("pageTitle").textContent = appConfig.title;
+  document.getElementById("pageDescription").textContent = appConfig.description;
+  document.getElementById("essayQuestion").textContent = appConfig.essayQuestion || ESSAY_TEXT;
+  populateClassSelects(appConfig.classes || []);
+  allClasses = appConfig.classes || [];
+  updateEventState(appConfig.active);
+  if (safeStorageGet(SUBMITTED_KEY) === "1") {
+   document.getElementById("identityPanel").hidden = true;
+   document.getElementById("successPanel").hidden = false;
+   return;
+  }
+  let saved = null;
+  try { saved = JSON.parse(safeStorageGet(STUDENT_KEY) || "null"); } catch {}
+  if (saved && saved.name && saved.classId) {
+   document.getElementById("studentName").value = saved.name;
+   document.getElementById("studentClass").value = saved.classId;
+   currentDeviceId = getDeviceId();
+   try {
+    const resumed = await api("/public/start",{student_name:saved.name,class_id:saved.classId,device_id:currentDeviceId});
+    loadAttempt(resumed.attempt);
+   } catch (error) {
+    if (error.status === 409) {
+     document.getElementById("identityPanel").hidden = true;
+     showAlreadySubmitted(error.message);
+    } else {
+     showStatus("identityStatus",error.message,"error");
+    }
+   }
+  }
+ } catch (error) {
+  showStatus("identityStatus","Não foi possível carregar a avaliação. Atualize a página ou procure o professor.","error");
+ }
+}
+function showAlreadySubmitted(message) {
+ document.getElementById("identityPanel").hidden = true;
+ document.getElementById("quizPanel").hidden = true;
+ document.getElementById("successPanel").hidden = false;
+ const paragraph = document.querySelector("#successPanel p");
+ paragraph.textContent = message || "Este aparelho já enviou uma avaliação. O sistema aceita somente uma resposta por aparelho.";
+}
+function renderQuestions(questions) {
+ const container = document.getElementById("objectiveQuestions");
+ container.innerHTML = "";
+ questions.forEach((question,index) => {
+  const article = document.createElement("article"); article.className = "question-card";
+  const meta = document.createElement("div"); meta.className = "question-meta"; meta.textContent = "PARTE 1 · CERTO OU ERRADO · QUESTÃO " + (index+1) + " DE 10";
+  const text = document.createElement("p"); text.className = "question-text"; text.textContent = question.text;
+  const answers = document.createElement("div"); answers.className = "answers";
+  [["C","Certo"],["E","Errado"]].forEach(([value,label]) => {
+   const option = document.createElement("label"); option.className = "answer-option";
+   const input = document.createElement("input"); input.type = "radio"; input.name = question.id; input.value = value; input.checked = currentAnswers[question.id] === value;
+   input.addEventListener("change",() => { currentAnswers[question.id]=value; updateProgress(); queueProgressSave(); });
+   const span = document.createElement("span"); span.textContent = value + " · " + label;
+   option.append(input,span); answers.appendChild(option);
+  });
+  article.append(meta,text,answers); container.appendChild(article);
+ });
+ updateProgress();
+}
+function loadAttempt(attempt) {
+ currentAttempt = attempt;
+ currentAnswers = attempt.answers && typeof attempt.answers === "object" ? {...attempt.answers} : {};
+ document.getElementById("identityPanel").hidden = true;
+ document.getElementById("successPanel").hidden = true;
+ document.getElementById("quizPanel").hidden = false;
+ document.getElementById("quizHeading").textContent = appConfig?.title || "Sua avaliação";
+ document.getElementById("quizStudent").textContent = attempt.studentName + " · " + (allClasses.find(item=>item.id===attempt.classId)?.label || attempt.classId);
+ document.getElementById("discursiveAnswer").value = attempt.discursiveAnswer || "";
+ document.getElementById("essayCount").textContent = String((attempt.discursiveAnswer || "").length);
+ renderQuestions(attempt.questions || []);
+ document.getElementById("discursiveAnswer").addEventListener("input",() => { document.getElementById("essayCount").textContent = String(document.getElementById("discursiveAnswer").value.length); queueProgressSave(); },{once:false});
+ showStatus("quizStatus",attempt.status === "started" ? "Sua tentativa foi vinculada a este aparelho. Você pode continuar de onde parou." : "Avaliação carregada.","info");
+}
+async function startAssessment(event) {
+ event.preventDefault();
+ const name = document.getElementById("studentName").value.trim().replace(/\s+/g," ");
+ const classId = document.getElementById("studentClass").value;
+ if (name.length < 5 || !classId) { showStatus("identityStatus","Informe seu nome completo e selecione sua turma.","error"); return; }
+ const button = document.getElementById("startButton");
+ button.disabled = true; button.textContent = "Preparando avaliação...";
+ currentDeviceId = getDeviceId();
+ try {
+  const result = await api("/public/start",{student_name:name,class_id:classId,device_id:currentDeviceId});
+  safeStorageSet(STUDENT_KEY,JSON.stringify({name,classId}));
+  loadAttempt(result.attempt);
+ } catch (error) {
+  if (error.status === 409) showAlreadySubmitted(error.message);
+  else showStatus("identityStatus",error.message,"error");
+ } finally {
+  button.textContent = "Iniciar avaliação →";
+  button.disabled = !(appConfig && appConfig.active);
+ }
+}
+function updateProgress() {
+ const objectiveCount = currentAttempt?.questions?.length || 10;
+ const count = Object.keys(currentAnswers).filter(id=>["C","E"].includes(currentAnswers[id])).length;
+ const essayFilled = document.getElementById("discursiveAnswer").value.trim().length > 0;
+ const total = count + (essayFilled ? 1 : 0);
+ document.getElementById("progressLabel").textContent = total + " de " + (objectiveCount+1) + " respondidas";
+ document.getElementById("progressFill").style.width = (total/(objectiveCount+1)*100) + "%";
+}
+function queueProgressSave() {
+ if (!currentAttempt || !currentDeviceId) return;
+ if (progressTimer) clearTimeout(progressTimer);
+ progressTimer = setTimeout(saveProgress,450);
+}
+async function saveProgress() {
+ if (!currentAttempt || !currentDeviceId) return;
+ const answers = {...currentAnswers};
+ const discursive_answer = document.getElementById("discursiveAnswer").value;
+ try {
+  await api("/public/progress",{attempt_token:currentAttempt.attemptToken,device_id:currentDeviceId,answers,discursive_answer});
+ } catch (error) {
+  if (error.status === 409) showStatus("quizStatus","Esta avaliação já foi finalizada. Não é possível alterá-la.","error");
+ }
+}
+async function submitAssessment(event) {
+ event.preventDefault();
+ const questions = currentAttempt?.questions || [];
+ const missing = questions.filter(question=>!["C","E"].includes(currentAnswers[question.id]));
+ if (missing.length) { showStatus("quizStatus","Ainda faltam "+missing.length+" questão(ões) objetiva(s). Responda a todas antes de enviar.","error"); missing[0] && document.querySelector('input[name="'+missing[0].id+'"]')?.focus(); return; }
+ const essay = document.getElementById("discursiveAnswer").value.trim();
+ if (!essay) { showStatus("quizStatus","A reflexão final é obrigatória.","error"); document.getElementById("discursiveAnswer").focus(); return; }
+ if (!window.confirm("Confirma o envio definitivo da avaliação? Depois do envio, este aparelho não poderá responder novamente.")) return;
+ const button = document.getElementById("submitButton");
+ button.disabled = true; button.textContent = "Enviando...";
+ if (progressTimer) clearTimeout(progressTimer);
+ try {
+  await api("/public/submit",{attempt_token:currentAttempt.attemptToken,device_id:currentDeviceId,answers:currentAnswers,discursive_answer:essay});
+  safeStorageSet(SUBMITTED_KEY,"1");
+  safeStorageRemove(STUDENT_KEY);
+  document.getElementById("quizPanel").hidden = true;
+  document.getElementById("successPanel").hidden = false;
+ } catch (error) {
+  showStatus("quizStatus",error.message,"error");
+ } finally {
+  button.disabled = false; button.textContent = "Enviar avaliação";
+ }
+}
+function fmt(value) {
+ return value === null || value === undefined || value === "" || !Number.isFinite(Number(value)) ? "—" : Number(value).toLocaleString("pt-BR",{minimumFractionDigits:1,maximumFractionDigits:2});
+}
+async function loadAdminData() {
+ document.getElementById("adminAuthBox").classList.remove("show");
+ document.getElementById("adminContent").hidden = false;
+ document.getElementById("resultList").innerHTML = '<div class="empty">Verificando acesso e carregando os resultados...</div>';
+ try {
+  const data = await api("/admin/data",null,"GET");
+  allAssessments = data.assessments || [];
+  allClasses = data.classes || allClasses;
+  currentAdminConfig = data.config || {};
+  adminQuestionBank = Array.isArray(data.questions) ? data.questions : [];
+  renderQuestionEditor();
+  document.getElementById("configTitle").value = currentAdminConfig.title || "";
+  document.getElementById("configDescription").value = currentAdminConfig.description || "";
+  document.getElementById("configActive").checked = currentAdminConfig.active === true;
+  const active = currentAdminConfig.active === true;
+  const status = document.getElementById("adminEventState");
+  status.textContent = active ? "Liberada" : "Fechada";
+  status.classList.toggle("active",active);
+  document.getElementById("metricTotal").textContent = String(data.summary?.total || 0);
+  document.getElementById("metricPending").textContent = String(data.summary?.pending || 0);
+  document.getElementById("metricObjective").textContent = fmt(data.summary?.objectiveAverage);
+  document.getElementById("metricFinal").textContent = fmt(data.summary?.finalAverage);
+  populateClassSelects(data.classes || []);
+  renderAdminResults();
+ } catch (error) {
+  document.getElementById("adminContent").hidden = true;
+  document.getElementById("adminAuthBox").classList.add("show");
+  if (error.status !== 401 && error.status !== 403) {
+   document.querySelector("#adminAuthBox .sub").textContent = error.message;
+  }
+ }
+}
+function renderQuestionEditor() {
+ const container=document.getElementById("questionEditor");
+ container.innerHTML="";
+ if(!adminQuestionBank.length){container.innerHTML='<div class="empty">O banco de questões não foi carregado.</div>';return;}
+ adminQuestionBank.forEach((question,index)=>{
+  const card=document.createElement("article");card.className="question-card";card.dataset.questionId=question.id;
+  const meta=document.createElement("div");meta.className="question-meta";meta.textContent="QUESTÃO "+(index+1)+" · "+question.id.toUpperCase();
+  const field=document.createElement("div");field.className="field";
+  const label=document.createElement("label");label.textContent="Enunciado";
+  const textarea=document.createElement("textarea");textarea.rows=3;textarea.maxLength=1200;textarea.value=question.text||"";
+  const keyWrap=document.createElement("div");keyWrap.className="field";keyWrap.style.marginTop="10px";
+  const keyLabel=document.createElement("label");keyLabel.textContent="Gabarito oficial";
+  const select=document.createElement("select");select.className="question-answer";
+  [["","Selecione o gabarito"],["C","C — Certo"],["E","E — Errado"]].forEach(([value,labelText])=>{const option=document.createElement("option");option.value=value;option.textContent=labelText;select.appendChild(option);});
+  select.value=question.answer==="E"?"E":question.answer==="C"?"C":"";
+  field.append(label,textarea);keyWrap.append(keyLabel,select);card.append(meta,field,keyWrap);container.appendChild(card);
+ });
+}
+async function saveQuestionBank() {
+ const button=document.getElementById("saveQuestionsButton");
+ const questions=[...document.querySelectorAll("#questionEditor [data-question-id]")].map(card=>({
+  id:card.dataset.questionId,
+  text:card.querySelector("textarea")?.value||"",
+  answer:card.querySelector("select")?.value||""
+ }));
+ if(questions.length!==20||questions.some(question=>question.text.trim().length<10||!["C","E"].includes(question.answer))){
+  showStatus("questionsStatus","O banco precisa conter os 20 enunciados e o gabarito C/E definido em todas as questões.","error");return;
+ }
+ button.disabled=true;button.textContent="Salvando...";
+ try{
+  const result=await api("/admin/questions",{questions});
+  adminQuestionBank=questions;
+  showStatus("questionsStatus",result.updated+" questões atualizadas. A nova versão será usada nos próximos sorteios; tentativas já iniciadas não serão alteradas.","success");
+ }catch(error){showStatus("questionsStatus",error.message,"error");}
+ finally{button.disabled=false;button.textContent="Salvar banco de questões";}
+}
+
+async function saveAdminConfig() {
+ const button=document.getElementById("saveConfigButton");
+ button.disabled=true;button.textContent="Salvando...";
+ try {
+  const data=await api("/admin/config",{
+   title:document.getElementById("configTitle").value,
+   description:document.getElementById("configDescription").value,
+   active:document.getElementById("configActive").checked
+  });
+  currentAdminConfig=data.config;
+  appConfig=appConfig||{};
+  appConfig.active=data.config.active===true;
+  updateEventState(appConfig.active);
+  showStatus("configStatus","Configurações salvas. A página dos estudantes já poderá consultar o novo estado da avaliação.","success");
+  const status=document.getElementById("adminEventState");
+  status.textContent=data.config.active?"Liberada":"Fechada";status.classList.toggle("active",data.config.active);
+ } catch(error) { showStatus("configStatus",error.message,"error"); }
+ finally {button.disabled=false;button.textContent="Salvar configurações";}
+}
+function selectedFilters() {
+ return {
+  shift:document.getElementById("filterShift").value,
+  offer:document.getElementById("filterOffer").value,
+  grade:document.getElementById("filterGrade").value,
+  classId:document.getElementById("filterClass").value,
+  status:document.getElementById("filterStatus").value
+ };
+}
+function filteredAssessments() {
+ const f=selectedFilters();
+ return allAssessments.filter(row=>
+  (!f.shift||row.shift===f.shift)&&(!f.offer||row.offer===f.offer)&&(!f.grade||row.grade===f.grade)&&
+  (!f.classId||row.class_id===f.classId)&&(!f.status||(f.status==="pending"?row.discursive_score===null||row.discursive_score===undefined:row.discursive_score!==null&&row.discursive_score!==undefined))
+ );
+}
+function renderAdminResults() {
+ const list=document.getElementById("resultList");list.innerHTML="";
+ const rows=filteredAssessments();
+ document.getElementById("resultsCount").textContent=rows.length+" avaliação(ões) na seleção atual · "+allAssessments.length+" no total";
+ if(!rows.length){list.innerHTML='<div class="empty">Nenhuma avaliação encontrada para os filtros selecionados.</div>';return;}
+ rows.forEach(row=>{
+  const details=document.createElement("details");details.className="result-card";
+  const summary=document.createElement("summary");
+  const left=document.createElement("div");const name=document.createElement("div");name.className="result-name";name.textContent=row.student_name;
+  const meta=document.createElement("div");meta.className="result-meta";meta.textContent=row.class_label+" · "+row.shift+" · Oferta "+row.offer+" · "+(row.submitted_at||"Data não informada");
+  left.append(name,meta);
+  const right=document.createElement("div");right.className="result-score";right.textContent="Objetiva "+fmt(row.objective_score)+"/8 · Final "+fmt(row.final_score)+"/10";
+  summary.append(left,right);
+  const detail=document.createElement("div");detail.className="result-detail";
+  const objectiveTitle=document.createElement("h3");objectiveTitle.textContent="Respostas objetivas · "+row.correct_count+"/10 acertos";detail.appendChild(objectiveTitle);
+  const review=document.createElement("div");review.className="answer-review";
+  (row.questions||[]).forEach((question,index)=>{
+   const userAnswer=row.answers?.[question.id]||"—";const isCorrect=userAnswer===question.answer;
+   const item=document.createElement("div");item.className="review-item "+(isCorrect?"correct":"wrong");
+   item.textContent=(index+1)+". "+userAnswer+" · Gabarito "+question.answer+" · "+(isCorrect?"Correta":"Incorreta");
+   review.appendChild(item);
+  });
+  detail.appendChild(review);
+  const essayTitle=document.createElement("h3");essayTitle.textContent="Reflexão do estudante";detail.appendChild(essayTitle);
+  const essay=document.createElement("div");essay.className="essay-response";essay.textContent=row.discursive_answer||"Sem resposta";detail.appendChild(essay);
+  const gradeRow=document.createElement("div");gradeRow.className="grade-row";
+  const gradeWrap=document.createElement("div");const label=document.createElement("label");label.textContent="Nota discursiva (0 a 2)";
+  const input=document.createElement("input");input.className="grade-input";input.type="number";input.min="0";input.max="2";input.step="0.1";input.value=row.discursive_score===null||row.discursive_score===undefined?"":String(row.discursive_score);input.placeholder="Pendente";
+  gradeWrap.append(label,input);
+  const save=document.createElement("button");save.type="button";save.className="btn primary save-grade";save.textContent="Salvar correção";
+  const gradeStatus=document.createElement("span");gradeStatus.className="sub";gradeStatus.textContent=row.discursive_score===null||row.discursive_score===undefined?"Correção pendente":"Nota final: "+fmt(row.final_score)+"/10";
+  save.addEventListener("click",async()=>{
+   const value=Number(input.value);
+   if(input.value.trim()===""||!Number.isFinite(value)||value<0||value>2){gradeStatus.textContent="Digite uma nota entre 0 e 2.";return;}
+   save.disabled=true;save.textContent="Salvando...";
+   try {
+    const result=await api("/admin/grade",{id:row.id,discursive_score:value});
+    row.discursive_score=result.discursive_score;row.final_score=result.final_score;
+    gradeStatus.textContent="Nota final: "+fmt(result.final_score)+"/10 · Histórico atualizado";
+    right.textContent="Objetiva "+fmt(row.objective_score)+"/8 · Final "+fmt(row.final_score)+"/10";
+   } catch(error){gradeStatus.textContent=error.message;}
+   finally{save.disabled=false;save.textContent="Salvar correção";renderAdminSummaryFromRows();}
+  });
+  gradeRow.append(gradeWrap,save,gradeStatus);detail.appendChild(gradeRow);
+  const historyButton=document.createElement("button");historyButton.type="button";historyButton.className="btn secondary";historyButton.style.marginTop="12px";historyButton.textContent="Ver histórico de correções";
+  const history=document.createElement("div");history.className="history-box";
+  historyButton.addEventListener("click",async()=>{
+   history.textContent="Carregando histórico...";
+   try {
+    const data=await api("/admin/history?id="+encodeURIComponent(row.id),null,"GET");
+    history.textContent=(data.history||[]).length?data.history.map(h=>(h.previous_score===null?"Pendente":fmt(h.previous_score))+" → "+fmt(h.new_score)+" · "+h.changed_by+" · "+h.changed_at).join(" | "):"Nenhuma alteração registrada.";
+   } catch(error){history.textContent=error.message;}
+  });
+  detail.append(historyButton,history);
+  details.append(summary,detail);list.appendChild(details);
+ });
+}
+function renderAdminSummaryFromRows() {
+ const count=allAssessments.length;
+ const pending=allAssessments.filter(row=>row.discursive_score===null||row.discursive_score===undefined);
+ const graded=allAssessments.filter(row=>row.discursive_score!==null&&row.discursive_score!==undefined);
+ const objective=count?allAssessments.reduce((sum,row)=>sum+Number(row.objective_score||0),0)/count:null;
+ const final=graded.length?graded.reduce((sum,row)=>sum+Number(row.final_score||0),0)/graded.length:null;
+ document.getElementById("metricTotal").textContent=String(count);
+ document.getElementById("metricPending").textContent=String(pending.length);
+ document.getElementById("metricObjective").textContent=fmt(objective);
+ document.getElementById("metricFinal").textContent=fmt(final);
+}
+function csvCell(value) {
+ let text=String(value===null||value===undefined?"":value);
+ if (/^[=+\-@]/.test(text)) text="'"+text;
+ return '"'+text.replace(/"/g,'""')+'"';
+}
+function exportCsv() {
+ const rows=filteredAssessments();
+ const columns=["Nome","Turma","Turno","Oferta","Série","Acertos","Nota objetiva","Resposta discursiva","Nota discursiva","Nota final","Situação","Enviado em"];
+ const lines=[columns.map(csvCell).join(";")];
+ rows.forEach(row=>lines.push([
+  row.student_name,row.class_label,row.shift,row.offer,row.grade,row.correct_count,row.objective_score,
+  row.discursive_answer,row.discursive_score,row.final_score,
+  row.discursive_score===null||row.discursive_score===undefined?"Pendente":"Corrigida",
+  row.submitted_at
+ ].map(csvCell).join(";")));
+ const blob=new Blob(["\uFEFF"+lines.join("\r\n")],{type:"text/csv;charset=utf-8"});
+ const url=URL.createObjectURL(blob);const link=document.createElement("a");
+ link.href=url;link.download="mostra-cultural-consciencia-negra-resultados.csv";link.click();setTimeout(()=>URL.revokeObjectURL(url),1000);
+}
+
+document.getElementById("studentTab").addEventListener("click",()=>setMode("student"));
+document.getElementById("adminTab").addEventListener("click",()=>setMode("admin"));
+document.getElementById("identityForm").addEventListener("submit",startAssessment);
+document.getElementById("quizForm").addEventListener("submit",submitAssessment);
+document.getElementById("discursiveAnswer").addEventListener("input",updateProgress);
+document.getElementById("saveConfigButton").addEventListener("click",saveAdminConfig);
+document.getElementById("saveQuestionsButton").addEventListener("click",saveQuestionBank);
+document.getElementById("exportButton").addEventListener("click",exportCsv);
+["filterShift","filterOffer","filterGrade","filterClass","filterStatus"].forEach(id=>document.getElementById(id).addEventListener("change",renderAdminResults));
+loadConfig();
+if (new URLSearchParams(location.search).get("admin")==="1") setMode("admin");
+</script>
+</body>
+</html>

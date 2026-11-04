@@ -518,6 +518,432 @@ async function handleFestivalRoute(request, env, url) {
   }
   return json({ error: "Método ou rota de administração não permitidos." }, request, 405);
 }
+
+const MOSTRA_EVENT_ID = "mostra-cultural-consciencia-negra-2026";
+const MOSTRA_DEFAULT_CONFIG = {
+  title: "Mostra Cultural — Consciência Negra",
+  description: "Centro de Ensino Médio 02 de Brazlândia · Avaliação de participação e reflexão.",
+  active: false
+};
+const MOSTRA_CLASSES = [
+  { id:"MA-A-1A",label:"1º A / ALEMANHA",turno:"Matutino",oferta:"A",serie:"1º ano" },
+  { id:"MA-A-1B",label:"1º B / BRASIL",turno:"Matutino",oferta:"A",serie:"1º ano" },
+  { id:"MA-A-1C",label:"1º C / CROÁCIA",turno:"Matutino",oferta:"A",serie:"1º ano" },
+  { id:"MA-A-2A",label:"2º A / ARGENTINA",turno:"Matutino",oferta:"A",serie:"2º ano" },
+  { id:"MA-A-2B",label:"2º B / URUGUAI",turno:"Matutino",oferta:"A",serie:"2º ano" },
+  { id:"MA-A-2C",label:"2º C / COLÔMBIA",turno:"Matutino",oferta:"A",serie:"2º ano" },
+  { id:"MA-A-3A",label:"3º A / AUSTRÁLIA",turno:"Matutino",oferta:"A",serie:"3º ano" },
+  { id:"MA-A-3B",label:"3º B / BÉLGICA",turno:"Matutino",oferta:"A",serie:"3º ano" },
+  { id:"MA-B-1D",label:"1º D / ÁFRICA DO SUL",turno:"Matutino",oferta:"B",serie:"1º ano" },
+  { id:"MA-B-1E",label:"1º E / EGITO",turno:"Matutino",oferta:"B",serie:"1º ano" },
+  { id:"MA-B-1F",label:"1º F / FRANÇA",turno:"Matutino",oferta:"B",serie:"1º ano" },
+  { id:"MA-B-2D",label:"2º D / ARGÉLIA",turno:"Matutino",oferta:"B",serie:"2º ano" },
+  { id:"MA-B-2E",label:"2º E / EQUADOR",turno:"Matutino",oferta:"B",serie:"2º ano" },
+  { id:"MA-B-2F",label:"2º F / ESCÓCIA",turno:"Matutino",oferta:"B",serie:"2º ano" },
+  { id:"MA-B-3C",label:"3º C / CANADÁ",turno:"Matutino",oferta:"B",serie:"3º ano" },
+  { id:"MA-B-3D",label:"3º D / ARÁBIA SAUDITA",turno:"Matutino",oferta:"B",serie:"3º ano" },
+  { id:"VE-A-1G",label:"1º G / GANA",turno:"Vespertino",oferta:"A",serie:"1º ano" },
+  { id:"VE-A-1H",label:"1º H / HOLANDA",turno:"Vespertino",oferta:"A",serie:"1º ano" },
+  { id:"VE-A-1I",label:"1º I / INGLATERRA",turno:"Vespertino",oferta:"A",serie:"1º ano" },
+  { id:"VE-A-1J",label:"1º J / JAPÃO",turno:"Vespertino",oferta:"A",serie:"1º ano" },
+  { id:"VE-A-2G",label:"2º G / COSTA DO MARFIM",turno:"Vespertino",oferta:"A",serie:"2º ano" },
+  { id:"VE-A-2H",label:"2º H / HAITI",turno:"Vespertino",oferta:"A",serie:"2º ano" },
+  { id:"VE-A-3E",label:"3º E / ESPANHA",turno:"Vespertino",oferta:"A",serie:"3º ano" },
+  { id:"VE-A-3F",label:"3º F / ESTADOS UNIDOS",turno:"Vespertino",oferta:"A",serie:"3º ano" },
+  { id:"VE-B-1K",label:"1º K / MARROCOS",turno:"Vespertino",oferta:"B",serie:"1º ano" },
+  { id:"VE-B-1L",label:"1º L / PORTUGAL",turno:"Vespertino",oferta:"B",serie:"1º ano" },
+  { id:"VE-B-1M",label:"1º M / MÉXICO",turno:"Vespertino",oferta:"B",serie:"1º ano" },
+  { id:"VE-B-1N",label:"1º N / NORUEGA",turno:"Vespertino",oferta:"B",serie:"1º ano" },
+  { id:"VE-B-2I",label:"2º I / IRÃ",turno:"Vespertino",oferta:"B",serie:"2º ano" },
+  { id:"VE-B-2J",label:"2º J / JORDÂNIA",turno:"Vespertino",oferta:"B",serie:"2º ano" },
+  { id:"VE-B-3G",label:"3º G / CATAR",turno:"Vespertino",oferta:"B",serie:"3º ano" },
+  { id:"VE-B-3H",label:"3º H / TUNÍSIA",turno:"Vespertino",oferta:"B",serie:"3º ano" }
+];
+const MOSTRA_QUESTIONS = [
+  { id:"q01",text:"Antes da diáspora africana, existiam no continente africano diferentes sociedades, reinos, línguas, culturas e formas de organização." },
+  { id:"q02",text:"As contribuições africanas e afro-brasileiras para a formação do Brasil se limitam à história da escravidão." },
+  { id:"q03",text:"O racismo acontece somente quando uma pessoa ofende outra diretamente; por isso, instituições e desigualdades sociais não podem reproduzi-lo." },
+  { id:"q04",text:"A literatura negra brasileira pode abordar resistência, identidade, memória e ancestralidade, sem se limitar a histórias de sofrimento e violência." },
+  { id:"q05",text:"Para conhecer as religiões de matriz africana, os estudantes devem simular rituais ou expor suas próprias crenças religiosas." },
+  { id:"q06",text:"As desigualdades de saúde vividas pela população negra devem ser explicadas por uma suposta inferioridade biológica racial." },
+  { id:"q07",text:"Valorizar mulheres negras na ciência, na política, na cultura e na comunidade ajuda a ampliar a representatividade e a reconhecer suas contribuições." },
+  { id:"q08",text:"Fantasias caricatas e estereótipos são formas adequadas de representar manifestações culturais afro-brasileiras em uma mostra." },
+  { id:"q09",text:"Diante de uma situação de racismo, é importante acolher a pessoa atingida, preservar sua privacidade e procurar os responsáveis e canais institucionais adequados." },
+  { id:"q10",text:"O racismo ambiental pode ser observado quando determinados grupos enfrentam, de forma desigual, problemas como falta de saneamento, poluição e poucas áreas verdes." },
+  { id:"q11",text:"As culturas africanas e afro-brasileiras contribuíram para diferentes aspectos da vida no Brasil, como a música, a culinária, a língua e os conhecimentos tradicionais." },
+  { id:"q12",text:"Todas as pessoas negras têm as mesmas experiências, opiniões e tradições, sem diferenças entre elas." },
+  { id:"q13",text:"Preconceito é uma ideia ou julgamento prévio sobre alguém; discriminação ocorre quando esse julgamento se transforma em tratamento desigual." },
+  { id:"q14",text:"Rir de uma piada racista ou tratá-la como algo sem importância pode ajudar a normalizar o racismo." },
+  { id:"q15",text:"Apresentar manifestações culturais afro-brasileiras com respeito inclui contextualizá-las e evitar estereótipos ou caricaturas." },
+  { id:"q16",text:"A literatura de autoria negra deve falar apenas sobre escravidão e racismo, sem abordar outros temas." },
+  { id:"q17",text:"As desigualdades de saúde podem estar relacionadas a fatores sociais, como acesso a serviços, condições de moradia e discriminação." },
+  { id:"q18",text:"Políticas de ações afirmativas buscam enfrentar desigualdades históricas e ampliar oportunidades para grupos que foram discriminados." },
+  { id:"q19",text:"A história e as contribuições da população negra devem ser lembradas somente durante o mês de novembro." },
+  { id:"q20",text:"Ao presenciar uma situação de racismo na escola, é importante buscar ajuda de um adulto ou responsável, sem expor publicamente a pessoa atingida." }
+];
+const MOSTRA_ESSAY_QUESTION = "Qual ideia, história ou apresentação da mostra mais chamou sua atenção? O que ela fez você pensar sobre respeito, representatividade ou combate ao racismo?";
+
+function mostraRandomToken() {
+  const bytes = crypto.getRandomValues(new Uint8Array(32));
+  return [...bytes].map(byte => byte.toString(16).padStart(2, "0")).join("");
+}
+function mostraShuffle(items) {
+  const result = [...items];
+  for (let i = result.length - 1; i > 0; i--) {
+    const bytes = crypto.getRandomValues(new Uint32Array(1));
+    const j = bytes[0] % (i + 1);
+    [result[i], result[j]] = [result[j], result[i]];
+  }
+  return result;
+}
+function mostraCleanName(value) {
+  return String(value || "").normalize("NFC").replace(/\s+/g, " ").trim().slice(0, 100);
+}
+function mostraNameKey(value) {
+  return String(value || "").normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLocaleLowerCase("pt-BR").replace(/\s+/g, " ").trim();
+}
+async function ensureMostraSchema(env) {
+  await env.DB.prepare(
+    "CREATE TABLE IF NOT EXISTS salta_mostra_assessment_config (" +
+    "event_id TEXT PRIMARY KEY, config_json TEXT NOT NULL, updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP)"
+  ).run();
+  await env.DB.prepare(
+    "CREATE TABLE IF NOT EXISTS salta_mostra_assessment_attempts (" +
+    "id INTEGER PRIMARY KEY AUTOINCREMENT, event_id TEXT NOT NULL, device_hash TEXT NOT NULL, " +
+    "attempt_token TEXT NOT NULL UNIQUE, student_name TEXT NOT NULL, student_key TEXT NOT NULL, " +
+    "class_id TEXT NOT NULL, class_label TEXT NOT NULL, shift TEXT NOT NULL, offer TEXT NOT NULL, grade TEXT NOT NULL, " +
+    "question_snapshot_json TEXT NOT NULL, answers_json TEXT NOT NULL DEFAULT '{}', discursive_answer TEXT NOT NULL DEFAULT '', " +
+    "correct_count INTEGER, objective_score REAL, discursive_score REAL, final_score REAL, status TEXT NOT NULL DEFAULT 'started', " +
+    "created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP, submitted_at TEXT, updated_at TEXT)"
+  ).run();
+  await env.DB.prepare(
+    "CREATE UNIQUE INDEX IF NOT EXISTS idx_salta_mostra_one_device ON salta_mostra_assessment_attempts(event_id, device_hash)"
+  ).run();
+  await env.DB.prepare(
+    "CREATE INDEX IF NOT EXISTS idx_salta_mostra_class ON salta_mostra_assessment_attempts(event_id, shift, offer, grade, class_id)"
+  ).run();
+  await env.DB.prepare(
+    "CREATE TABLE IF NOT EXISTS salta_mostra_question_bank (" +
+    "event_id TEXT NOT NULL, question_id TEXT NOT NULL, question_text TEXT NOT NULL, answer_key TEXT NOT NULL, " +
+    "updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP, PRIMARY KEY(event_id, question_id))"
+  ).run();
+  const questionCount = await env.DB.prepare("SELECT COUNT(*) AS total FROM salta_mostra_question_bank WHERE event_id = ?")
+    .bind(MOSTRA_EVENT_ID).first();
+  if (Number(questionCount?.total || 0) === 0) {
+    let privateAnswerKey = null;
+    try { privateAnswerKey = JSON.parse(String(env.MOSTRA_ANSWER_KEY_JSON || "null")); } catch { privateAnswerKey = null; }
+    const validPrivateKey = privateAnswerKey && MOSTRA_QUESTIONS.every(question =>
+      ["C", "E"].includes(String(privateAnswerKey[question.id] || "").toUpperCase())
+    );
+    if (validPrivateKey) {
+      try {
+        await env.DB.batch(MOSTRA_QUESTIONS.map(question => env.DB.prepare(
+          "INSERT INTO salta_mostra_question_bank (event_id, question_id, question_text, answer_key) VALUES (?, ?, ?, ?)"
+        ).bind(MOSTRA_EVENT_ID, question.id, question.text, String(privateAnswerKey[question.id]).toUpperCase())));
+      } catch (error) {
+        if (!/unique|constraint/i.test(String(error?.message || error))) throw error;
+      }
+    }
+  }
+  await env.DB.prepare(
+    "CREATE TABLE IF NOT EXISTS salta_mostra_grade_history (" +
+    "id INTEGER PRIMARY KEY AUTOINCREMENT, attempt_id INTEGER NOT NULL, previous_score REAL, new_score REAL NOT NULL, " +
+    "changed_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP, changed_by TEXT NOT NULL)"
+  ).run();
+}
+async function getMostraConfig(env) {
+  const row = await env.DB.prepare("SELECT config_json, updated_at FROM salta_mostra_assessment_config WHERE event_id = ? LIMIT 1")
+    .bind(MOSTRA_EVENT_ID).first();
+  let config = null;
+  try { config = row ? JSON.parse(row.config_json) : null; } catch { config = null; }
+  return { config: config || MOSTRA_DEFAULT_CONFIG, updatedAt: row?.updated_at || null };
+}
+async function getMostraQuestionBank(env) {
+  const result = await env.DB.prepare(
+    "SELECT question_id AS id, question_text AS text, answer_key AS answer FROM salta_mostra_question_bank " +
+    "WHERE event_id = ? ORDER BY question_id"
+  ).bind(MOSTRA_EVENT_ID).all();
+  return result.results?.length
+    ? result.results
+    : MOSTRA_QUESTIONS.map(question => ({ ...question, answer: "" }));
+}
+function mostraPublicAttempt(row) {
+  let snapshot = [];
+  let answers = {};
+  try { snapshot = JSON.parse(row.question_snapshot_json) || []; } catch { snapshot = []; }
+  try { answers = JSON.parse(row.answers_json) || {}; } catch { answers = {}; }
+  return {
+    attemptToken: row.attempt_token,
+    status: row.status,
+    studentName: row.student_name,
+    classId: row.class_id,
+    questions: snapshot.map(question => ({ id: question.id, text: question.text })),
+    answers,
+    discursiveAnswer: row.discursive_answer || ""
+  };
+}
+async function mostraDeviceHash(deviceId) {
+  return sha256Hex("SALTA-MOSTRA-DEVICE-V1:" + deviceId);
+}
+async function handleMostraCulturalRoute(request, env, url) {
+  await ensureMostraSchema(env);
+  const path = url.pathname;
+
+  if (path === "/mostra-cultural/public/config" && request.method === "GET") {
+    const { config } = await getMostraConfig(env);
+    return json({
+      title: config.title || MOSTRA_DEFAULT_CONFIG.title,
+      description: config.description || MOSTRA_DEFAULT_CONFIG.description,
+      active: config.active === true,
+      classes: MOSTRA_CLASSES,
+      objectiveCount: 10,
+      objectivePoints: 8,
+      essayPoints: 2,
+      essayQuestion: MOSTRA_ESSAY_QUESTION
+    }, request);
+  }
+
+  if (path === "/mostra-cultural/public/start" && request.method === "POST") {
+    const payload = await festivalJsonBody(request);
+    if (!payload || payload.error) return json({ error: payload?.error || "Requisição inválida." }, request, payload?.error ? 415 : 400);
+    const studentName = mostraCleanName(payload.student_name);
+    const classId = String(payload.class_id || "").trim();
+    const deviceId = String(payload.device_id || "").trim();
+    if (studentName.length < 5) return json({ error: "Informe seu nome completo." }, request, 400);
+    if (!/^[A-Za-z0-9-]{32,100}$/.test(deviceId)) return json({ error: "Não foi possível identificar este navegador. Atualize a página e tente novamente." }, request, 400);
+    const selectedClass = MOSTRA_CLASSES.find(item => item.id === classId);
+    if (!selectedClass) return json({ error: "Selecione uma turma válida." }, request, 400);
+    const { config } = await getMostraConfig(env);
+    const deviceHash = await mostraDeviceHash(deviceId);
+    const existing = await env.DB.prepare(
+      "SELECT * FROM salta_mostra_assessment_attempts WHERE event_id = ? AND device_hash = ? LIMIT 1"
+    ).bind(MOSTRA_EVENT_ID, deviceHash).first();
+    if (existing) {
+      if (existing.status === "submitted") return json({ error: "Este aparelho já enviou uma avaliação. O sistema aceita somente uma resposta por aparelho." }, request, 409);
+      return json({ ok: true, resumed: true, attempt: mostraPublicAttempt(existing) }, request);
+    }
+    if (config.active !== true) return json({ error: "A avaliação ainda não foi liberada pelo professor." }, request, 403);
+    const questionBank = await getMostraQuestionBank(env);
+    if (questionBank.length !== 20 || questionBank.some(question => !["C", "E"].includes(String(question.answer || "").toUpperCase()))) {
+      return json({ error: "O professor ainda precisa configurar o gabarito das 20 questões antes de liberar a avaliação." }, request, 503);
+    }
+    const picked = mostraShuffle(questionBank).slice(0, 10);
+    const token = mostraRandomToken();
+    try {
+      await env.DB.prepare(
+        "INSERT INTO salta_mostra_assessment_attempts " +
+        "(event_id, device_hash, attempt_token, student_name, student_key, class_id, class_label, shift, offer, grade, question_snapshot_json) " +
+        "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)"
+      ).bind(
+        MOSTRA_EVENT_ID, deviceHash, token, studentName, mostraNameKey(studentName),
+        selectedClass.id, selectedClass.label, selectedClass.turno, selectedClass.oferta, selectedClass.serie,
+        JSON.stringify(picked)
+      ).run();
+      const created = await env.DB.prepare("SELECT * FROM salta_mostra_assessment_attempts WHERE attempt_token = ? LIMIT 1").bind(token).first();
+      return json({ ok: true, resumed: false, attempt: mostraPublicAttempt(created) }, request, 201);
+    } catch (error) {
+      if (/unique|constraint/i.test(String(error?.message || error))) {
+        const raced = await env.DB.prepare(
+          "SELECT * FROM salta_mostra_assessment_attempts WHERE event_id = ? AND device_hash = ? LIMIT 1"
+        ).bind(MOSTRA_EVENT_ID, deviceHash).first();
+        if (raced?.status === "started") return json({ ok: true, resumed: true, attempt: mostraPublicAttempt(raced) }, request);
+        return json({ error: "Este aparelho já possui uma avaliação registrada." }, request, 409);
+      }
+      throw error;
+    }
+  }
+
+  if (path === "/mostra-cultural/public/progress" && request.method === "POST") {
+    const payload = await festivalJsonBody(request);
+    if (!payload || payload.error) return json({ error: payload?.error || "Requisição inválida." }, request, payload?.error ? 415 : 400);
+    const token = String(payload.attempt_token || "").trim();
+    const deviceId = String(payload.device_id || "").trim();
+    if (!/^[a-f0-9]{64}$/i.test(token) || !/^[A-Za-z0-9-]{32,100}$/.test(deviceId)) return json({ error: "Tentativa inválida." }, request, 400);
+    const deviceHash = await mostraDeviceHash(deviceId);
+    const attempt = await env.DB.prepare(
+      "SELECT id, question_snapshot_json, status FROM salta_mostra_assessment_attempts WHERE event_id = ? AND attempt_token = ? AND device_hash = ? LIMIT 1"
+    ).bind(MOSTRA_EVENT_ID, token, deviceHash).first();
+    if (!attempt) return json({ error: "Esta avaliação não pertence a este navegador." }, request, 403);
+    if (attempt.status !== "started") return json({ error: "Esta avaliação já foi enviada." }, request, 409);
+    let snapshot = [];
+    try { snapshot = JSON.parse(attempt.question_snapshot_json) || []; } catch { snapshot = []; }
+    const allowed = new Set(snapshot.map(item => item.id));
+    const rawAnswers = payload.answers && typeof payload.answers === "object" && !Array.isArray(payload.answers) ? payload.answers : {};
+    const answers = {};
+    for (const [id, value] of Object.entries(rawAnswers)) {
+      if (!allowed.has(id) || !["C", "E"].includes(String(value))) return json({ error: "Uma resposta enviada é inválida." }, request, 400);
+      answers[id] = String(value);
+    }
+    const discursive = String(payload.discursive_answer || "").trim();
+    if (discursive.length > 4000) return json({ error: "A resposta discursiva aceita até 4.000 caracteres." }, request, 400);
+    await env.DB.prepare(
+      "UPDATE salta_mostra_assessment_attempts SET answers_json = ?, discursive_answer = ?, updated_at = CURRENT_TIMESTAMP " +
+      "WHERE id = ? AND status = 'started'"
+    ).bind(JSON.stringify(answers), discursive, attempt.id).run();
+    return json({ ok: true }, request);
+  }
+
+  if (path === "/mostra-cultural/public/submit" && request.method === "POST") {
+    const payload = await festivalJsonBody(request);
+    if (!payload || payload.error) return json({ error: payload?.error || "Requisição inválida." }, request, payload?.error ? 415 : 400);
+    const token = String(payload.attempt_token || "").trim();
+    const deviceId = String(payload.device_id || "").trim();
+    if (!/^[a-f0-9]{64}$/i.test(token) || !/^[A-Za-z0-9-]{32,100}$/.test(deviceId)) return json({ error: "Tentativa inválida." }, request, 400);
+    const deviceHash = await mostraDeviceHash(deviceId);
+    const attempt = await env.DB.prepare(
+      "SELECT * FROM salta_mostra_assessment_attempts WHERE event_id = ? AND attempt_token = ? AND device_hash = ? LIMIT 1"
+    ).bind(MOSTRA_EVENT_ID, token, deviceHash).first();
+    if (!attempt) return json({ error: "Esta avaliação não pertence a este navegador." }, request, 403);
+    if (attempt.status === "submitted") return json({ error: "Esta avaliação já foi enviada. Não é possível enviar outra resposta deste aparelho." }, request, 409);
+    let snapshot = [];
+    try { snapshot = JSON.parse(attempt.question_snapshot_json) || []; } catch { snapshot = []; }
+    let answersInput = payload.answers && typeof payload.answers === "object" && !Array.isArray(payload.answers) ? payload.answers : {};
+    const expectedIds = snapshot.map(item => item.id);
+    if (Object.keys(answersInput).length !== 10 || expectedIds.some(id => !Object.prototype.hasOwnProperty.call(answersInput, id))) {
+      return json({ error: "Responda às 10 afirmações antes de enviar." }, request, 400);
+    }
+    const normalized = {};
+    let correct = 0;
+    for (const question of snapshot) {
+      const value = String(answersInput[question.id] || "").toUpperCase();
+      if (!["C", "E"].includes(value)) return json({ error: "Marque C ou E em todas as afirmações." }, request, 400);
+      normalized[question.id] = value;
+      if (value === question.answer) correct++;
+    }
+    const discursive = String(payload.discursive_answer || "").trim();
+    if (!discursive) return json({ error: "A reflexão final é obrigatória." }, request, 400);
+    if (discursive.length > 4000) return json({ error: "A resposta discursiva aceita até 4.000 caracteres." }, request, 400);
+    const objectiveScore = Math.round(correct * 0.8 * 100) / 100;
+    const update = await env.DB.prepare(
+      "UPDATE salta_mostra_assessment_attempts SET answers_json = ?, discursive_answer = ?, correct_count = ?, " +
+      "objective_score = ?, status = 'submitted', submitted_at = CURRENT_TIMESTAMP, updated_at = CURRENT_TIMESTAMP " +
+      "WHERE id = ? AND status = 'started'"
+    ).bind(JSON.stringify(normalized), discursive, correct, objectiveScore, attempt.id).run();
+    if (Number(update.meta?.changes || 0) !== 1) return json({ error: "Esta avaliação já foi enviada ou está sendo finalizada." }, request, 409);
+    return json({ ok: true, message: "Avaliação enviada com sucesso. Obrigado pela participação!" }, request, 201);
+  }
+
+  if (!path.startsWith("/mostra-cultural/admin/")) return json({ error: "Rota não encontrada." }, request, 404);
+  const origin = request.headers.get("Origin") || "";
+  if (request.method !== "GET" && !ALLOWED_ORIGINS.has(origin)) return json({ error: "Origem não autorizada." }, request, 403);
+  if (!(await authenticated(request, env))) return json({ error: "Acesso restrito. Entre na Área do Professor." }, request, 401);
+
+  if (path === "/mostra-cultural/admin/data" && request.method === "GET") {
+    const [{ config, updatedAt }, questionBank, result] = await Promise.all([
+      getMostraConfig(env),
+      getMostraQuestionBank(env),
+      env.DB.prepare(
+        "SELECT id, student_name, class_id, class_label, shift, offer, grade, question_snapshot_json, answers_json, " +
+        "discursive_answer, correct_count, objective_score, discursive_score, final_score, status, created_at, submitted_at, updated_at " +
+        "FROM salta_mostra_assessment_attempts WHERE event_id = ? AND status = 'submitted' ORDER BY submitted_at DESC LIMIT 2000"
+      ).bind(MOSTRA_EVENT_ID).all()
+    ]);
+    const assessments = (result.results || []).map(row => {
+      let questions = [];
+      let answers = {};
+      try { questions = JSON.parse(row.question_snapshot_json) || []; } catch { questions = []; }
+      try { answers = JSON.parse(row.answers_json) || {}; } catch { answers = {}; }
+      return { ...row, questions, answers };
+    });
+    const objectiveAverage = assessments.length
+      ? assessments.reduce((sum, row) => sum + Number(row.objective_score || 0), 0) / assessments.length : null;
+    const graded = assessments.filter(row => row.discursive_score !== null && row.discursive_score !== undefined);
+    const finalAverage = graded.length
+      ? graded.reduce((sum, row) => sum + Number(row.final_score || 0), 0) / graded.length : null;
+    return json({
+      config, updatedAt,
+      summary: {
+        total: assessments.length,
+        pending: assessments.length - graded.length,
+        objectiveAverage: objectiveAverage === null ? null : Math.round(objectiveAverage * 100) / 100,
+        finalAverage: finalAverage === null ? null : Math.round(finalAverage * 100) / 100,
+        graded: graded.length
+      },
+      assessments,
+      classes: MOSTRA_CLASSES,
+      questions: questionBank
+    }, request);
+  }
+
+  if (path === "/mostra-cultural/admin/config" && request.method === "POST") {
+    const payload = await festivalJsonBody(request);
+    if (!payload || payload.error) return json({ error: payload?.error || "Requisição inválida." }, request, payload?.error ? 415 : 400);
+    const title = String(payload.title || "").trim().slice(0, 120) || MOSTRA_DEFAULT_CONFIG.title;
+    const description = String(payload.description || "").trim().slice(0, 500) || MOSTRA_DEFAULT_CONFIG.description;
+    const current = await getMostraConfig(env);
+    const config = { title, description, active: payload.active === true };
+    await env.DB.prepare(
+      "INSERT INTO salta_mostra_assessment_config (event_id, config_json, updated_at) VALUES (?, ?, CURRENT_TIMESTAMP) " +
+      "ON CONFLICT(event_id) DO UPDATE SET config_json = excluded.config_json, updated_at = CURRENT_TIMESTAMP"
+    ).bind(MOSTRA_EVENT_ID, JSON.stringify(config)).run();
+    return json({ ok: true, config, previousActive: current.config.active === true }, request);
+  }
+
+  if (path === "/mostra-cultural/admin/questions" && request.method === "POST") {
+    const payload = await festivalJsonBody(request);
+    if (!payload || payload.error) return json({ error: payload?.error || "Requisição inválida." }, request, payload?.error ? 415 : 400);
+    const questions = Array.isArray(payload.questions) ? payload.questions : [];
+    const expectedIds = MOSTRA_QUESTIONS.map(question => question.id).sort();
+    const suppliedIds = questions.map(question => String(question?.id || "").trim()).sort();
+    if (questions.length !== 20 || expectedIds.some((id, index) => id !== suppliedIds[index])) {
+      return json({ error: "O banco precisa conter exatamente as 20 questões originais, sem IDs repetidos ou ausentes." }, request, 400);
+    }
+    const normalized = questions.map(question => ({
+      id: String(question.id).trim(),
+      text: String(question.text || "").trim().slice(0, 1200),
+      answer: String(question.answer || "").trim().toUpperCase()
+    }));
+    if (normalized.some(question => question.text.length < 10 || !["C", "E"].includes(question.answer))) {
+      return json({ error: "Cada questão precisa ter enunciado e gabarito C ou E." }, request, 400);
+    }
+    await env.DB.batch(normalized.map(question => env.DB.prepare(
+      "INSERT INTO salta_mostra_question_bank (event_id, question_id, question_text, answer_key, updated_at) " +
+      "VALUES (?, ?, ?, ?, CURRENT_TIMESTAMP) ON CONFLICT(event_id, question_id) DO UPDATE SET " +
+      "question_text = excluded.question_text, answer_key = excluded.answer_key, updated_at = CURRENT_TIMESTAMP"
+    ).bind(MOSTRA_EVENT_ID, question.id, question.text, question.answer)));
+    return json({ ok: true, updated: normalized.length }, request);
+  }
+
+  if (path === "/mostra-cultural/admin/grade" && request.method === "POST") {
+    const payload = await festivalJsonBody(request);
+    const id = Number(payload?.id);
+    const score = Number(payload?.discursive_score);
+    if (!Number.isSafeInteger(id) || id <= 0 || !Number.isFinite(score) || score < 0 || score > 2) {
+      return json({ error: "Informe uma avaliação válida e uma nota discursiva entre 0 e 2." }, request, 400);
+    }
+    const row = await env.DB.prepare(
+      "SELECT id, objective_score, discursive_score FROM salta_mostra_assessment_attempts WHERE event_id = ? AND id = ? AND status = 'submitted' LIMIT 1"
+    ).bind(MOSTRA_EVENT_ID, id).first();
+    if (!row) return json({ error: "Avaliação não encontrada." }, request, 404);
+    const previous = row.discursive_score === null ? null : Number(row.discursive_score);
+    const rounded = Math.round(score * 100) / 100;
+    const finalScore = Math.round((Number(row.objective_score || 0) + rounded) * 100) / 100;
+    await env.DB.batch([
+      env.DB.prepare(
+        "INSERT INTO salta_mostra_grade_history (attempt_id, previous_score, new_score, changed_by) VALUES (?, ?, ?, ?)"
+      ).bind(id, previous, rounded, String(env.PROFESSOR_DISPLAY_NAME || "Professor SALTA").slice(0, 120)),
+      env.DB.prepare(
+        "UPDATE salta_mostra_assessment_attempts SET discursive_score = ?, final_score = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ? AND event_id = ?"
+      ).bind(rounded, finalScore, id, MOSTRA_EVENT_ID)
+    ]);
+    const history = await env.DB.prepare(
+      "SELECT previous_score, new_score, changed_at, changed_by FROM salta_mostra_grade_history WHERE attempt_id = ? ORDER BY id DESC LIMIT 20"
+    ).bind(id).all();
+    return json({ ok: true, discursive_score: rounded, final_score: finalScore, history: history.results || [] }, request);
+  }
+
+  if (path === "/mostra-cultural/admin/history" && request.method === "GET") {
+    const id = Number(url.searchParams.get("id"));
+    if (!Number.isSafeInteger(id) || id <= 0) return json({ error: "Avaliação inválida." }, request, 400);
+    const history = await env.DB.prepare(
+      "SELECT previous_score, new_score, changed_at, changed_by FROM salta_mostra_grade_history WHERE attempt_id = ? ORDER BY id DESC LIMIT 50"
+    ).bind(id).all();
+    return json({ history: history.results || [] }, request);
+  }
+  return json({ error: "Rota ou método administrativo não permitido." }, request, 405);
+}
+
+
 function parseArray(value) {
   if (Array.isArray(value)) return value;
   if (typeof value !== "string" || !value.trim()) return [];
@@ -1588,6 +2014,10 @@ export default {
     }
 
     const url = new URL(request.url);
+    if (url.pathname.startsWith("/mostra-cultural/")) {
+      try { return await handleMostraCulturalRoute(request, env, url); }
+      catch (error) { return json({ error: "Não foi possível processar a avaliação da Mostra Cultural." }, request, 500); }
+    }
     if (url.pathname.startsWith("/festival/")) {
       try { return await handleFestivalRoute(request, env, url); }
       catch { return json({ error: "Não foi possível processar a avaliação do festival." }, request, 500); }
