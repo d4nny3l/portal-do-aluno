@@ -851,41 +851,13 @@ async function handleMostraCulturalRoute(request, env, url) {
         "FROM salta_mostra_assessment_attempts WHERE event_id = ? AND status = 'submitted' ORDER BY submitted_at DESC LIMIT 2000"
       ).bind(MOSTRA_EVENT_ID).all()
     ]);
-    let rosterRows = [];
-    let callOrderSource = "ordem de cadastro dos estudantes no SALTA";
-    try {
-      const roster = await env.DB.prepare(
-        "SELECT nome, TRIM(turma) AS turma, " +
-        "ROW_NUMBER() OVER (PARTITION BY TRIM(turma) ORDER BY rowid) AS call_order " +
-        "FROM alunos WHERE turma IS NOT NULL AND TRIM(turma) <> '' ORDER BY TRIM(turma), rowid"
-      ).all();
-      rosterRows = roster.results || [];
-    } catch {
-      callOrderSource = "ordem alfabética provisória (lista de chamada não disponível no banco)";
-      try {
-        const roster = await env.DB.prepare(
-          "SELECT nome, TRIM(turma) AS turma, " +
-          "ROW_NUMBER() OVER (PARTITION BY TRIM(turma) ORDER BY nome COLLATE NOCASE) AS call_order " +
-          "FROM alunos WHERE turma IS NOT NULL AND TRIM(turma) <> '' ORDER BY TRIM(turma), nome COLLATE NOCASE"
-        ).all();
-        rosterRows = roster.results || [];
-      } catch {
-        rosterRows = [];
-        callOrderSource = "ordem alfabética provisória (não foi possível consultar a lista de estudantes)";
-      }
-    }
-    const callOrderMap = new Map();
-    for (const student of rosterRows) {
-      const key = mostraClassKey(student.turma) + "|" + mostraNameKey(student.nome);
-      if (!callOrderMap.has(key)) callOrderMap.set(key, Number(student.call_order) || null);
-    }
+    const callOrderSource = "ordem alfabética pelo nome do estudante";
     const assessments = (result.results || []).map(row => {
       let questions = [];
       let answers = {};
       try { questions = JSON.parse(row.question_snapshot_json) || []; } catch { questions = []; }
       try { answers = JSON.parse(row.answers_json) || {}; } catch { answers = {}; }
-      const key = mostraClassKey(row.class_label) + "|" + mostraNameKey(row.student_name);
-      return { ...row, questions, answers, call_order: callOrderMap.get(key) || null };
+      return { ...row, questions, answers };
     });
     const objectiveAverage = assessments.length
       ? assessments.reduce((sum, row) => sum + Number(row.objective_score || 0), 0) / assessments.length : null;
