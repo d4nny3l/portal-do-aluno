@@ -585,7 +585,7 @@ function renderAdminResults() {
  const list=document.getElementById("resultList");list.innerHTML="";
  const rows=filteredAssessments();
  document.getElementById("resultsCount").textContent=rows.length+" avaliação(ões) na seleção atual · "+allAssessments.length+" no total";
- document.getElementById("callOrderNote").textContent="Ordem exibida: "+callOrderSource+". Estudantes sem correspondência no cadastro oficial aparecem ao final da turma.";
+ document.getElementById("callOrderNote").textContent="Os estudantes são organizados em ordem alfabética pelo nome completo dentro de cada turma.";
  if(!rows.length){list.innerHTML='<div class="empty">Nenhuma avaliação encontrada para os filtros selecionados.</div>';return;}
 
  const groups=new Map();
@@ -600,11 +600,7 @@ function renderAdminResults() {
 
  orderedClasses.forEach(classInfo=>{
   const classRows=groups.get(classInfo.id)||[];
-  classRows.sort((a,b)=>{
-   const aa=a.call_order===null||a.call_order===undefined?Number.MAX_SAFE_INTEGER:Number(a.call_order);
-   const bb=b.call_order===null||b.call_order===undefined?Number.MAX_SAFE_INTEGER:Number(b.call_order);
-   return aa-bb||String(a.student_name||"").localeCompare(String(b.student_name||""),"pt-BR");
-  });
+  classRows.sort((a,b)=>String(a.student_name||"").localeCompare(String(b.student_name||""),"pt-BR",{sensitivity:"base"}));
   const group=document.createElement("section");group.className="result-group";
   const groupHead=document.createElement("div");groupHead.className="result-group-head";
   const groupTitle=document.createElement("h3");groupTitle.textContent=classInfo.label||classRows[0]?.class_label||classInfo.id;
@@ -616,8 +612,7 @@ function renderAdminResults() {
    const summary=document.createElement("summary");
    const left=document.createElement("div");
    const name=document.createElement("div");name.className="result-name";
-   const callNumber=row.call_order===null||row.call_order===undefined?"—":String(row.call_order).padStart(2,"0");
-   name.textContent=callNumber+" · "+row.student_name;
+   name.textContent=row.student_name;
    const meta=document.createElement("div");meta.className="result-meta";meta.textContent=row.submitted_at||"Data não informada";
    left.append(name,meta);
    const right=document.createElement("div");right.className="result-score";right.textContent="Nota "+fmt(row.objective_score)+"/2";
@@ -660,14 +655,12 @@ function exportCsv() {
  const rows=filteredAssessments().sort((a,b)=>{
   const classA=allClasses.findIndex(item=>item.id===a.class_id);
   const classB=allClasses.findIndex(item=>item.id===b.class_id);
-  const callA=a.call_order===null||a.call_order===undefined?Number.MAX_SAFE_INTEGER:Number(a.call_order);
-  const callB=b.call_order===null||b.call_order===undefined?Number.MAX_SAFE_INTEGER:Number(b.call_order);
-  return classA-classB||callA-callB||String(a.student_name||"").localeCompare(String(b.student_name||""),"pt-BR");
+  return classA-classB||String(a.student_name||"").localeCompare(String(b.student_name||""),"pt-BR",{sensitivity:"base"});
  });
- const columns=["Nº chamada","Nome","Turma","Turno","Oferta","Série","Acertos","Nota objetiva / 2","Reflexão opcional","Enviado em"];
+ const columns=["Nome","Turma","Turno","Oferta","Série","Acertos","Nota objetiva / 2","Reflexão opcional","Enviado em"];
  const lines=[columns.map(csvCell).join(";")];
  rows.forEach(row=>lines.push([
-  row.call_order??"",row.student_name,row.class_label,row.shift,row.offer,row.grade,row.correct_count,row.objective_score,
+  row.student_name,row.class_label,row.shift,row.offer,row.grade,row.correct_count,row.objective_score,
   row.discursive_answer,row.submitted_at
  ].map(csvCell).join(";")));
  const blob=new Blob(["\uFEFF"+lines.join("\r\n")],{type:"text/csv;charset=utf-8"});
