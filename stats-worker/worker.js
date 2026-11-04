@@ -710,8 +710,8 @@ async function handleMostraCulturalRoute(request, env, url) {
       active: config.active === true,
       classes: MOSTRA_CLASSES,
       objectiveCount: 10,
-      objectivePoints: 8,
-      essayPoints: 2,
+      objectivePoints: 2,
+      essayPoints: 0,
       essayQuestion: MOSTRA_ESSAY_QUESTION
     }, request);
   }
