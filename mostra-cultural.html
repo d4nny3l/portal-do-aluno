@@ -26,9 +26,6 @@ h1{font-size:clamp(30px,5vw,44px);line-height:1.06;letter-spacing:-1.5px;margin:
 .event-state{display:inline-flex;align-items:center;gap:7px;white-space:nowrap;font-size:10px;font-weight:850;border-radius:999px;padding:9px 12px;background:var(--mc-warn-soft);color:var(--mc-warn);margin-bottom:4px}
 .event-state::before{content:"";width:7px;height:7px;border-radius:50%;background:currentColor}
 .event-state.active{background:var(--mc-good-soft);color:var(--mc-good)}
-.mode-tabs{display:flex;gap:7px;padding:5px;border:1px solid var(--mc-line);background:#ffffffaa;border-radius:14px;width:max-content;margin:0 0 18px;box-shadow:0 5px 20px rgba(72,75,145,.04)}
-.mode-tabs button{border:0;border-radius:10px;padding:10px 14px;background:transparent;color:var(--mc-muted);font-size:11px;font-weight:850;cursor:pointer}
-.mode-tabs button.active{background:var(--mc-accent);color:#fff;box-shadow:0 5px 12px rgba(91,91,214,.2)}
 .panel{background:#fff;border:1px solid var(--mc-line);border-radius:22px;box-shadow:var(--mc-shadow);padding:24px;margin-bottom:16px;min-width:0}
 .panel-head{display:flex;justify-content:space-between;gap:12px;align-items:flex-start;margin-bottom:18px}
 .panel h2{font-size:18px;letter-spacing:-.5px;margin:0 0 6px}
@@ -48,10 +45,9 @@ h1{font-size:clamp(30px,5vw,44px);line-height:1.06;letter-spacing:-1.5px;margin:
 .form-actions{display:flex;justify-content:flex-end;gap:10px;margin-top:18px}
 .status{font-size:11px;line-height:1.55;margin-top:13px;padding:10px 12px;border-radius:11px;display:none}
 .status.show{display:block}.status.info{display:block;background:var(--mc-soft);color:#4b4bb7}.status.error{display:block;background:#fff0f1;color:#b42335}.status.success{display:block;background:var(--mc-good-soft);color:var(--mc-good)}
-.notice{display:flex;gap:12px;align-items:flex-start;border:1px solid #e5e4ff;background:#f7f7ff;border-radius:14px;padding:14px;margin-top:16px}
-.notice-icon{width:31px;height:31px;flex:0 0 auto;border-radius:10px;background:var(--mc-soft);display:grid;place-items:center;color:var(--mc-accent)}
-.notice strong{font-size:11px;display:block;margin-bottom:4px}.notice p{font-size:10px;line-height:1.55;color:var(--mc-muted);margin:0}
-.quiz-progress{margin:0 0 18px;padding:16px;border-radius:15px;background:#f8f8ff;border:1px solid var(--mc-line)}
+.quiz-progress{position:fixed;top:70px;left:50%;transform:translateX(-50%);width:min(1050px,calc(100% - 36px));z-index:45;margin:9px 0 0;padding:12px 16px;border-radius:15px;background:rgba(248,248,255,.97);border:1px solid var(--mc-line);box-shadow:0 10px 28px rgba(72,75,145,.13);backdrop-filter:blur(16px)}
+.quiz-active main{padding-top:116px}
+@media(max-width:600px){.quiz-progress{top:62px;width:calc(100% - 26px);padding:10px 12px}.quiz-active main{padding-top:112px}}
 .progress-top{display:flex;justify-content:space-between;gap:10px;font-size:10px;font-weight:850;margin-bottom:9px}
 .progress-top span:last-child{color:var(--mc-accent)}
 .progress-track{height:7px;border-radius:99px;background:#e9eafa;overflow:hidden}
@@ -80,7 +76,7 @@ h1{font-size:clamp(30px,5vw,44px);line-height:1.06;letter-spacing:-1.5px;margin:
 .config-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px;align-items:end}
 .switch-line{display:flex;align-items:center;gap:10px;padding:12px;border:1px solid var(--mc-line);background:#fafaff;border-radius:12px;font-size:11px;font-weight:850}
 .switch-line input{accent-color:var(--mc-accent);width:17px;height:17px}
-.filter-grid{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:9px}
+.filter-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:9px}
 .filter-grid .field label{font-size:9px}
 .results-head{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:15px}
 .results-head h2{margin:0}
@@ -109,7 +105,6 @@ h1{font-size:clamp(30px,5vw,44px);line-height:1.06;letter-spacing:-1.5px;margin:
 @media(max-width:600px){
  .shell{width:calc(100% - 26px)}.topbar{height:62px}.brand-sub{font-size:9px}.top-link{font-size:10px;padding:8px 10px}
  main{padding:25px 0 45px}.hero{grid-template-columns:1fr;gap:10px}.hero h1{font-size:31px;letter-spacing:-1px}.event-state{justify-self:start;margin:0}
- .mode-tabs{width:100%}.mode-tabs button{flex:1;padding:10px 8px;font-size:10px}
  .panel{padding:17px;border-radius:17px}.form-grid,.config-grid{grid-template-columns:1fr}.form-actions{flex-direction:column}.form-actions .btn{width:100%}
  .question-card{padding:15px}.answers{gap:7px}.answer-option{flex:1;min-width:0;justify-content:center;padding:11px 8px}
  .quiz-bottom{align-items:stretch;flex-direction:column}.quiz-bottom .btn{width:100%}
@@ -143,11 +138,6 @@ h1{font-size:clamp(30px,5vw,44px);line-height:1.06;letter-spacing:-1.5px;margin:
   <div class="event-state" id="eventState">Avaliação ainda não liberada</div>
  </section>
 
- <div class="mode-tabs" role="tablist" aria-label="Ambientes da avaliação">
-  <button id="studentTab" class="active" type="button" role="tab" aria-selected="true">Área do estudante</button>
-  <button id="adminTab" type="button" role="tab" aria-selected="false">Área do professor</button>
- </div>
-
  <section id="studentPane">
   <div class="panel" id="identityPanel">
    <div class="panel-head">
@@ -161,7 +151,6 @@ h1{font-size:clamp(30px,5vw,44px);line-height:1.06;letter-spacing:-1.5px;margin:
     <div class="form-actions"><button class="btn primary" id="startButton" type="submit" disabled>Iniciar avaliação <span aria-hidden="true">→</span></button></div>
     <div class="status" id="identityStatus" role="status" aria-live="polite"></div>
    </form>
-   <div class="notice"><div class="notice-icon">ⓘ</div><div><strong>Uma resposta por aparelho</strong><p>O SALTA registra um identificador aleatório deste navegador. Depois do envio, uma nova resposta não será aceita pelo mesmo identificador. Não use aba anônima nem limpe os dados do navegador durante a avaliação.</p></div></div>
   </div>
 
   <div class="panel" id="quizPanel" hidden>
@@ -176,9 +165,9 @@ h1{font-size:clamp(30px,5vw,44px);line-height:1.06;letter-spacing:-1.5px;margin:
    <form id="quizForm">
     <div id="objectiveQuestions"></div>
     <section class="essay-card">
-     <div class="question-meta">PARTE 2 · REFLEXÃO PARA O MURAL · QUESTÃO 11</div>
+     <div class="question-meta">REFLEXÃO PARA O MURAL · OPCIONAL</div>
      <p class="question-text" id="essayQuestion">Qual ideia, história ou apresentação da mostra mais chamou sua atenção? O que ela fez você pensar sobre respeito, representatividade ou combate ao racismo?</p>
-     <div class="field"><label for="discursiveAnswer">Sua reflexão (obrigatória)</label><textarea id="discursiveAnswer" maxlength="4000" rows="6" placeholder="Escreva sua resposta com suas próprias palavras..." required></textarea></div>
+     <div class="field"><label for="discursiveAnswer">Sua reflexão (opcional)</label><textarea id="discursiveAnswer" maxlength="4000" rows="6" placeholder="Escreva sua resposta com suas próprias palavras (opcional)..."></textarea></div>
      <p class="sub" style="margin-top:7px;text-align:right"><span id="essayCount">0</span>/4000 caracteres</p>
     </section>
     <div class="quiz-bottom">
@@ -192,7 +181,7 @@ h1{font-size:clamp(30px,5vw,44px);line-height:1.06;letter-spacing:-1.5px;margin:
   <div class="panel success-panel" id="successPanel" hidden>
    <div class="success-mark">✓</div>
    <h2>Avaliação enviada!</h2>
-   <p>Suas respostas foram registradas com sucesso. A nota objetiva será calculada pelo sistema e a reflexão final será corrigida pelo professor. Este aparelho não poderá enviar uma segunda avaliação.</p>
+   <p>Suas respostas foram registradas com sucesso. As 10 questões objetivas somam até 2 pontos. A reflexão é opcional e não vale nota. Este aparelho não poderá enviar uma segunda avaliação.</p>
   </div>
  </section>
 
@@ -206,9 +195,9 @@ h1{font-size:clamp(30px,5vw,44px);line-height:1.06;letter-spacing:-1.5px;margin:
   <div id="adminContent" hidden>
    <div class="admin-tools">
     <div class="metric"><div class="metric-label">Avaliações recebidas</div><div class="metric-value" id="metricTotal">0</div><div class="metric-sub">Envios confirmados</div></div>
-    <div class="metric"><div class="metric-label">Discursivas pendentes</div><div class="metric-value" id="metricPending">0</div><div class="metric-sub">Aguardando correção</div></div>
-    <div class="metric"><div class="metric-label">Média objetiva</div><div class="metric-value" id="metricObjective">—</div><div class="metric-sub">De 8 pontos possíveis</div></div>
-    <div class="metric"><div class="metric-label">Média final</div><div class="metric-value" id="metricFinal">—</div><div class="metric-sub">Somente discursivas corrigidas</div></div>
+    <div class="metric"><div class="metric-label">Turmas participantes</div><div class="metric-value" id="metricPending">0</div><div class="metric-sub">Com pelo menos um envio</div></div>
+    <div class="metric"><div class="metric-label">Média objetiva</div><div class="metric-value" id="metricObjective">—</div><div class="metric-sub">De 2 pontos possíveis</div></div>
+    <div class="metric"><div class="metric-label">Maior nota</div><div class="metric-value" id="metricFinal">—</div><div class="metric-sub">De 2 pontos possíveis</div></div>
    </div>
 
    <div class="panel">
@@ -236,12 +225,11 @@ h1{font-size:clamp(30px,5vw,44px);line-height:1.06;letter-spacing:-1.5px;margin:
      <div class="field"><label for="filterOffer">Oferta</label><select id="filterOffer"><option value="">Todas</option><option value="A">Oferta A</option><option value="B">Oferta B</option></select></div>
      <div class="field"><label for="filterGrade">Série</label><select id="filterGrade"><option value="">Todas</option><option>1º ano</option><option>2º ano</option><option>3º ano</option></select></div>
      <div class="field"><label for="filterClass">Turma</label><select id="filterClass"><option value="">Todas</option></select></div>
-     <div class="field"><label for="filterStatus">Correção</label><select id="filterStatus"><option value="">Todas</option><option value="pending">Pendente</option><option value="graded">Corrigida</option></select></div>
     </div>
    </div>
 
    <div class="panel">
-    <div class="results-head"><div><h2>Respostas recebidas</h2><p class="sub" id="resultsCount">Carregando resultados...</p></div><button class="btn secondary" id="exportButton" type="button">Exportar CSV ↓</button></div>
+    <div class="results-head"><div><h2>Respostas recebidas</h2><p class="sub" id="resultsCount">Carregando resultados...</p><p class="sub" id="callOrderNote" style="margin-top:5px"></p></div><button class="btn secondary" id="exportButton" type="button">Exportar CSV ↓</button></div>
     <div class="result-list" id="resultList"><div class="empty">Carregando avaliações...</div></div>
    </div>
   </div>
@@ -679,15 +667,13 @@ function exportCsv() {
  link.href=url;link.download="mostra-cultural-consciencia-negra-resultados.csv";link.click();setTimeout(()=>URL.revokeObjectURL(url),1000);
 }
 
-document.getElementById("studentTab").addEventListener("click",()=>setMode("student"));
-document.getElementById("adminTab").addEventListener("click",()=>setMode("admin"));
 document.getElementById("identityForm").addEventListener("submit",startAssessment);
 document.getElementById("quizForm").addEventListener("submit",submitAssessment);
 document.getElementById("discursiveAnswer").addEventListener("input",updateProgress);
 document.getElementById("saveConfigButton").addEventListener("click",saveAdminConfig);
 document.getElementById("saveQuestionsButton").addEventListener("click",saveQuestionBank);
 document.getElementById("exportButton").addEventListener("click",exportCsv);
-["filterShift","filterOffer","filterGrade","filterClass","filterStatus"].forEach(id=>document.getElementById(id).addEventListener("change",renderAdminResults));
+["filterShift","filterOffer","filterGrade","filterClass"].forEach(id=>document.getElementById(id).addEventListener("change",renderAdminResults));
 loadConfig();
 if (new URLSearchParams(location.search).get("admin")==="1") setMode("admin");
 </script>
