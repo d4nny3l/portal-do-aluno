@@ -811,14 +811,14 @@ async function handleMostraCulturalRoute(request, env, url) {
       if (value === question.answer) correct++;
     }
     const discursive = String(payload.discursive_answer || "").trim();
-    if (!discursive) return json({ error: "A reflexão final é obrigatória." }, request, 400);
-    if (discursive.length > 4000) return json({ error: "A resposta discursiva aceita até 4.000 caracteres." }, request, 400);
-    const objectiveScore = Math.round(correct * 0.8 * 100) / 100;
+    if (discursive.length > 4000) return json({ error: "A reflexão aceita até 4.000 caracteres." }, request, 400);
+    const objectiveScore = Math.round(correct * 0.2 * 100) / 100;
     const update = await env.DB.prepare(
       "UPDATE salta_mostra_assessment_attempts SET answers_json = ?, discursive_answer = ?, correct_count = ?, " +
-      "objective_score = ?, status = 'submitted', submitted_at = CURRENT_TIMESTAMP, updated_at = CURRENT_TIMESTAMP " +
+      "objective_score = ?, discursive_score = NULL, final_score = ?, status = 'submitted', " +
+      "submitted_at = CURRENT_TIMESTAMP, updated_at = CURRENT_TIMESTAMP " +
       "WHERE id = ? AND status = 'started'"
-    ).bind(JSON.stringify(normalized), discursive, correct, objectiveScore, attempt.id).run();
+    ).bind(JSON.stringify(normalized), discursive, correct, objectiveScore, objectiveScore, attempt.id).run();
     if (Number(update.meta?.changes || 0) !== 1) return json({ error: "Esta avaliação já foi enviada ou está sendo finalizada." }, request, 409);
     return json({ ok: true, message: "Avaliação enviada com sucesso. Obrigado pela participação!" }, request, 201);
   }
@@ -838,28 +838,60 @@ async function handleMostraCulturalRoute(request, env, url) {
         "FROM salta_mostra_assessment_attempts WHERE event_id = ? AND status = 'submitted' ORDER BY submitted_at DESC LIMIT 2000"
       ).bind(MOSTRA_EVENT_ID).all()
     ]);
+    let rosterRows = [];
+    let callOrderSource = "ordem de cadastro dos estudantes no SALTA";
+    try {
+      const roster = await env.DB.prepare(
+        "SELECT nome, TRIM(turma) AS turma, " +
+        "ROW_NUMBER() OVER (PARTITION BY TRIM(turma) ORDER BY rowid) AS call_order " +
+        "FROM alunos WHERE turma IS NOT NULL AND TRIM(turma) <> '' ORDER BY TRIM(turma), rowid"
+      ).all();
+      rosterRows = roster.results || [];
+    } catch {
+      callOrderSource = "ordem alfabética provisória (lista de chamada não disponível no banco)";
+      try {
+        const roster = await env.DB.prepare(
+          "SELECT nome, TRIM(turma) AS turma, " +
+          "ROW_NUMBER() OVER (PARTITION BY TRIM(turma) ORDER BY nome COLLATE NOCASE) AS call_order " +
+          "FROM alunos WHERE turma IS NOT NULL AND TRIM(turma) <> '' ORDER BY TRIM(turma), nome COLLATE NOCASE"
+        ).all();
+        rosterRows = roster.results || [];
+      } catch {
+        rosterRows = [];
+        callOrderSource = "ordem alfabética provisória (não foi possível consultar a lista de estudantes)";
+      }
+    }
+    const callOrderMap = new Map();
+    for (const student of rosterRows) {
+      const key = mostraNameKey(student.turma) + "|" + mostraNameKey(student.nome);
+      if (!callOrderMap.has(key)) callOrderMap.set(key, Number(student.call_order) || null);
+    }
     const assessments = (result.results || []).map(row => {
       let questions = [];
       let answers = {};
       try { questions = JSON.parse(row.question_snapshot_json) || []; } catch { questions = []; }
       try { answers = JSON.parse(row.answers_json) || {}; } catch { answers = {}; }
-      return { ...row, questions, answers };
+      const key = mostraNameKey(row.class_label) + "|" + mostraNameKey(row.student_name);
+      return { ...row, questions, answers, call_order: callOrderMap.get(key) || null };
     });
     const objectiveAverage = assessments.length
       ? assessments.reduce((sum, row) => sum + Number(row.objective_score || 0), 0) / assessments.length : null;
-    const graded = assessments.filter(row => row.discursive_score !== null && row.discursive_score !== undefined);
-    const finalAverage = graded.length
-      ? graded.reduce((sum, row) => sum + Number(row.final_score || 0), 0) / graded.length : null;
+    const correctAverage = assessments.length
+      ? assessments.reduce((sum, row) => sum + Number(row.correct_count || 0), 0) / assessments.length : null;
+    const highestScore = assessments.length
+      ? Math.max(...assessments.map(row => Number(row.objective_score || 0))) : null;
+    const classesWithResponses = new Set(assessments.map(row => row.class_id)).size;
     return json({
       config, updatedAt,
       summary: {
         total: assessments.length,
-        pending: assessments.length - graded.length,
+        classesWithResponses,
         objectiveAverage: objectiveAverage === null ? null : Math.round(objectiveAverage * 100) / 100,
-        finalAverage: finalAverage === null ? null : Math.round(finalAverage * 100) / 100,
-        graded: graded.length
+        correctAverage: correctAverage === null ? null : Math.round(correctAverage * 100) / 100,
+        highestScore: highestScore === null ? null : Math.round(highestScore * 100) / 100
       },
       assessments,
+      callOrderSource,
       classes: MOSTRA_CLASSES,
       questions: questionBank
     }, request);
@@ -904,42 +936,7 @@ async function handleMostraCulturalRoute(request, env, url) {
     return json({ ok: true, updated: normalized.length }, request);
   }
 
-  if (path === "/mostra-cultural/admin/grade" && request.method === "POST") {
-    const payload = await festivalJsonBody(request);
-    const id = Number(payload?.id);
-    const score = Number(payload?.discursive_score);
-    if (!Number.isSafeInteger(id) || id <= 0 || !Number.isFinite(score) || score < 0 || score > 2) {
-      return json({ error: "Informe uma avaliação válida e uma nota discursiva entre 0 e 2." }, request, 400);
-    }
-    const row = await env.DB.prepare(
-      "SELECT id, objective_score, discursive_score FROM salta_mostra_assessment_attempts WHERE event_id = ? AND id = ? AND status = 'submitted' LIMIT 1"
-    ).bind(MOSTRA_EVENT_ID, id).first();
-    if (!row) return json({ error: "Avaliação não encontrada." }, request, 404);
-    const previous = row.discursive_score === null ? null : Number(row.discursive_score);
-    const rounded = Math.round(score * 100) / 100;
-    const finalScore = Math.round((Number(row.objective_score || 0) + rounded) * 100) / 100;
-    await env.DB.batch([
-      env.DB.prepare(
-        "INSERT INTO salta_mostra_grade_history (attempt_id, previous_score, new_score, changed_by) VALUES (?, ?, ?, ?)"
-      ).bind(id, previous, rounded, String(env.PROFESSOR_DISPLAY_NAME || "Professor SALTA").slice(0, 120)),
-      env.DB.prepare(
-        "UPDATE salta_mostra_assessment_attempts SET discursive_score = ?, final_score = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ? AND event_id = ?"
-      ).bind(rounded, finalScore, id, MOSTRA_EVENT_ID)
-    ]);
-    const history = await env.DB.prepare(
-      "SELECT previous_score, new_score, changed_at, changed_by FROM salta_mostra_grade_history WHERE attempt_id = ? ORDER BY id DESC LIMIT 20"
-    ).bind(id).all();
-    return json({ ok: true, discursive_score: rounded, final_score: finalScore, history: history.results || [] }, request);
-  }
 
-  if (path === "/mostra-cultural/admin/history" && request.method === "GET") {
-    const id = Number(url.searchParams.get("id"));
-    if (!Number.isSafeInteger(id) || id <= 0) return json({ error: "Avaliação inválida." }, request, 400);
-    const history = await env.DB.prepare(
-      "SELECT previous_score, new_score, changed_at, changed_by FROM salta_mostra_grade_history WHERE attempt_id = ? ORDER BY id DESC LIMIT 50"
-    ).bind(id).all();
-    return json({ history: history.results || [] }, request);
-  }
   return json({ error: "Rota ou método administrativo não permitido." }, request, 405);
 }
 
