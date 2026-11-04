@@ -255,6 +255,7 @@ let allAssessments = [];
 let allClasses = [];
 let currentAdminConfig = null;
 let adminQuestionBank = [];
+let callOrderSource = "";
 
 function showStatus(target, message, type) {
  const node = document.getElementById(target);
@@ -394,6 +395,7 @@ function renderQuestions(questions) {
 }
 function loadAttempt(attempt) {
  currentAttempt = attempt;
+ document.body.classList.add("quiz-active");
  currentAnswers = attempt.answers && typeof attempt.answers === "object" ? {...attempt.answers} : {};
  document.getElementById("identityPanel").hidden = true;
  document.getElementById("successPanel").hidden = true;
@@ -429,10 +431,8 @@ async function startAssessment(event) {
 function updateProgress() {
  const objectiveCount = currentAttempt?.questions?.length || 10;
  const count = Object.keys(currentAnswers).filter(id=>["C","E"].includes(currentAnswers[id])).length;
- const essayFilled = document.getElementById("discursiveAnswer").value.trim().length > 0;
- const total = count + (essayFilled ? 1 : 0);
- document.getElementById("progressLabel").textContent = total + " de " + (objectiveCount+1) + " respondidas";
- document.getElementById("progressFill").style.width = (total/(objectiveCount+1)*100) + "%";
+ document.getElementById("progressLabel").textContent = count + " de " + objectiveCount + " questões objetivas respondidas";
+ document.getElementById("progressFill").style.width = (count/objectiveCount*100) + "%";
 }
 function queueProgressSave() {
  if (!currentAttempt || !currentDeviceId) return;
@@ -455,15 +455,16 @@ async function submitAssessment(event) {
  const missing = questions.filter(question=>!["C","E"].includes(currentAnswers[question.id]));
  if (missing.length) { showStatus("quizStatus","Ainda faltam "+missing.length+" questão(ões) objetiva(s). Responda a todas antes de enviar.","error"); missing[0] && document.querySelector('input[name="'+missing[0].id+'"]')?.focus(); return; }
  const essay = document.getElementById("discursiveAnswer").value.trim();
- if (!essay) { showStatus("quizStatus","A reflexão final é obrigatória.","error"); document.getElementById("discursiveAnswer").focus(); return; }
  if (!window.confirm("Confirma o envio definitivo da avaliação? Depois do envio, este aparelho não poderá responder novamente.")) return;
  const button = document.getElementById("submitButton");
  button.disabled = true; button.textContent = "Enviando...";
  if (progressTimer) clearTimeout(progressTimer);
  try {
   await api("/public/submit",{attempt_token:currentAttempt.attemptToken,device_id:currentDeviceId,answers:currentAnswers,discursive_answer:essay});
+  document.body.classList.remove("quiz-active");
   safeStorageSet(SUBMITTED_KEY,"1");
   safeStorageRemove(STUDENT_KEY);
+  document.body.classList.remove("quiz-active");
   document.getElementById("quizPanel").hidden = true;
   document.getElementById("successPanel").hidden = false;
  } catch (error) {
@@ -482,6 +483,7 @@ async function loadAdminData() {
  try {
   const data = await api("/admin/data",null,"GET");
   allAssessments = data.assessments || [];
+  callOrderSource = data.callOrderSource || "ordem alfabética";
   allClasses = data.classes || allClasses;
   currentAdminConfig = data.config || {};
   adminQuestionBank = Array.isArray(data.questions) ? data.questions : [];
@@ -494,9 +496,9 @@ async function loadAdminData() {
   status.textContent = active ? "Liberada" : "Fechada";
   status.classList.toggle("active",active);
   document.getElementById("metricTotal").textContent = String(data.summary?.total || 0);
-  document.getElementById("metricPending").textContent = String(data.summary?.pending || 0);
+  document.getElementById("metricPending").textContent = String(data.summary?.classesWithResponses || 0);
   document.getElementById("metricObjective").textContent = fmt(data.summary?.objectiveAverage);
-  document.getElementById("metricFinal").textContent = fmt(data.summary?.finalAverage);
+  document.getElementById("metricFinal").textContent = fmt(data.summary?.highestScore);
   populateClassSelects(data.classes || []);
   renderAdminResults();
  } catch (error) {
@@ -568,15 +570,14 @@ function selectedFilters() {
   shift:document.getElementById("filterShift").value,
   offer:document.getElementById("filterOffer").value,
   grade:document.getElementById("filterGrade").value,
-  classId:document.getElementById("filterClass").value,
-  status:document.getElementById("filterStatus").value
+  classId:document.getElementById("filterClass").value
  };
 }
 function filteredAssessments() {
  const f=selectedFilters();
  return allAssessments.filter(row=>
   (!f.shift||row.shift===f.shift)&&(!f.offer||row.offer===f.offer)&&(!f.grade||row.grade===f.grade)&&
-  (!f.classId||row.class_id===f.classId)&&(!f.status||(f.status==="pending"?row.discursive_score===null||row.discursive_score===undefined:row.discursive_score!==null&&row.discursive_score!==undefined))
+  (!f.classId||row.class_id===f.classId)
  );
 }
 function renderAdminResults() {
