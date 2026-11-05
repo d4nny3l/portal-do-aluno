@@ -297,3 +297,50 @@ body.admin-mode :is(table td,table th) { border-color: #ececf6; }
 @media (prefers-reduced-motion: reduce) {
   .teacher-shell-sidebar,.teacher-shell-link,.teacher-shell-home { transition: none !important; }
 }
+/* Títulos auxiliares para páginas que antes concentravam o nome do módulo no cabeçalho antigo. */
+.teacher-module-heading {
+  margin: 0 0 20px;
+  padding: 0 0 17px;
+  border-bottom: 1px solid var(--teacher-line);
+}
+.teacher-module-heading .teacher-module-kicker {
+  margin: 0 0 7px;
+  color: var(--teacher-primary);
+  font-size: 9px;
+  font-weight: 850;
+  letter-spacing: 1.15px;
+  text-transform: uppercase;
+}
+.teacher-module-heading h1 {
+  margin: 0 0 7px;
+  color: #303451;
+  font-size: clamp(25px,3vw,34px);
+  font-weight: 850;
+  letter-spacing: -.9px;
+}
+.teacher-module-heading p {
+  max-width: 760px;
+  margin: 0;
+  color: var(--teacher-muted);
+  font-size: 12px;
+  line-height: 1.55;
+}
+.teacher-event-mark {
+  display: inline-flex;
+  align-items: center;
+  gap: 9px;
+  margin: 0 0 12px;
+  padding: 7px 11px;
+  border: 1px solid var(--teacher-line);
+  border-radius: 12px;
+  background: rgba(255,255,255,.82);
+  color: #565b82;
+  font-size: 9px;
+  font-weight: 850;
+  letter-spacing: .65px;
+}
+.teacher-event-mark img {
+  width: 34px;
+  height: 34px;
+  object-fit: contain;
+}
