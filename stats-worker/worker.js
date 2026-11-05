@@ -4,7 +4,7 @@ const ALLOWED_ORIGINS = new Set(["https://d4nny3l.github.io", "http://localhost:
 function corsHeaders(request) {
   const origin = request.headers.get("Origin") || "";
   const headers = {
-    "Access-Control-Allow-Methods": "GET, POST, OPTIONS",
+    "Access-Control-Allow-Methods": "GET, POST, PUT, OPTIONS",
     "Access-Control-Allow-Headers": "Authorization, Content-Type",
     "Access-Control-Max-Age": "86400",
     "Vary": "Origin"
@@ -1989,6 +1989,237 @@ async function handleCommsRequest(request, env, url) {
 }
 
 
+const DIARIO_SCHEMA = [
+  "CREATE TABLE IF NOT EXISTS salta_diario_classes (id INTEGER PRIMARY KEY AUTOINCREMENT, name TEXT NOT NULL UNIQUE COLLATE NOCASE, segment TEXT NOT NULL CHECK(segment IN ('regular','eja')), period_count INTEGER NOT NULL CHECK(period_count IN (2,4)), minimum REAL NOT NULL DEFAULT 5 CHECK(minimum >= 0 AND minimum <= 10), created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP)",
+  "CREATE TABLE IF NOT EXISTS salta_diario_students (id INTEGER PRIMARY KEY AUTOINCREMENT, class_id INTEGER NOT NULL REFERENCES salta_diario_classes(id), name TEXT NOT NULL, active INTEGER NOT NULL DEFAULT 1, created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP, UNIQUE(class_id, name COLLATE NOCASE))",
+  "CREATE TABLE IF NOT EXISTS salta_diario_items (id INTEGER PRIMARY KEY AUTOINCREMENT, class_id INTEGER NOT NULL REFERENCES salta_diario_classes(id), period INTEGER NOT NULL CHECK(period BETWEEN 1 AND 4), title TEXT NOT NULL, kind TEXT NOT NULL CHECK(kind IN ('avaliacao','atividade','visto')), max_score REAL NOT NULL DEFAULT 0 CHECK(max_score >= 0 AND max_score <= 100), created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP)",
+  "CREATE TABLE IF NOT EXISTS salta_diario_records (student_id INTEGER NOT NULL REFERENCES salta_diario_students(id), item_id INTEGER NOT NULL REFERENCES salta_diario_items(id), score REAL, completed INTEGER NOT NULL DEFAULT 0 CHECK(completed IN (0,1)), updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP, PRIMARY KEY(student_id,item_id))",
+  "CREATE INDEX IF NOT EXISTS idx_salta_diario_students_class ON salta_diario_students(class_id,active,name)",
+  "CREATE INDEX IF NOT EXISTS idx_salta_diario_items_class_period ON salta_diario_items(class_id,period,id)",
+  "CREATE INDEX IF NOT EXISTS idx_salta_diario_records_item ON salta_diario_records(item_id,student_id)"
+];
+
+let diarioSchemaPromise;
+async function ensureDiarioSchema(env) {
+  if (!env.DIARIO_DB) throw new Error("Banco do Diário de Classe não configurado.");
+  if (!diarioSchemaPromise) {
+    diarioSchemaPromise = env.DIARIO_DB.batch(DIARIO_SCHEMA.map(sql => env.DIARIO_DB.prepare(sql))).catch(error => {
+      diarioSchemaPromise = undefined;
+      throw error;
+    });
+  }
+  await diarioSchemaPromise;
+}
+
+function diarioError(message, request, status = 400) {
+  return json({ error: message }, request, status);
+}
+
+async function diarioJson(request) {
+  const type = (request.headers.get("Content-Type") || "").split(";")[0].trim().toLowerCase();
+  if (type !== "application/json") return null;
+  const length = Number(request.headers.get("Content-Length") || 0);
+  if (length > 1000000) return null;
+  return request.json().catch(() => null);
+}
+
+async function handleDiarioRequest(request, env, url) {
+  if (!(await authenticated(request, env))) return diarioError("Acesso restrito. Entre novamente na Área Administrativa.", request, 401);
+  try { await ensureDiarioSchema(env); }
+  catch { return diarioError("A base online do Diário de Classe ainda não está disponível.", request, 503); }
+
+  const db = env.DIARIO_DB;
+  const method = request.method;
+  const path = url.pathname.replace(/\/+$/, "") || "/";
+
+  if (method === "GET" && path === "/diario/resumo") {
+    const [classes, students, items] = await Promise.all([
+      db.prepare("SELECT c.id,c.name,c.segment,c.period_count,c.minimum,COUNT(DISTINCT s.id) AS student_count,COUNT(DISTINCT i.id) AS item_count FROM salta_diario_classes c LEFT JOIN salta_diario_students s ON s.class_id=c.id AND s.active=1 LEFT JOIN salta_diario_items i ON i.class_id=c.id GROUP BY c.id ORDER BY c.name").all(),
+      db.prepare("SELECT COUNT(*) AS total FROM salta_diario_students WHERE active=1").first(),
+      db.prepare("SELECT COUNT(*) AS total FROM salta_diario_items").first()
+    ]);
+    return json({ turmas: classes.results || [], totalAlunos: Number(students?.total || 0), totalRegistros: Number(items?.total || 0) }, request);
+  }
+
+  if (method === "POST" && path === "/diario/turmas") {
+    const body = await diarioJson(request);
+    const name = String(body?.name || "").trim();
+    const segment = String(body?.segment || "").trim().toLowerCase();
+    const minimum = Number(body?.minimum);
+    if (!name || name.length > 100 || !["regular", "eja"].includes(segment) || !Number.isFinite(minimum) || minimum < 0 || minimum > 10) return diarioError("Informe turma, segmento e média mínima entre 0 e 10.", request);
+    const count = segment === "eja" ? 2 : 4;
+    try {
+      const result = await db.prepare("INSERT INTO salta_diario_classes (name,segment,period_count,minimum) VALUES (?,?,?,?)").bind(name, segment, count, Math.round(minimum * 100) / 100).run();
+      return json({ ok: true, id: result.meta?.last_row_id }, request, 201);
+    } catch (error) {
+      if (/unique/i.test(String(error?.message || error))) return diarioError("Já existe uma turma com esse nome.", request, 409);
+      throw error;
+    }
+  }
+
+  const classMatch = path.match(/^\/diario\/turmas\/(\d+)$/);
+  if (classMatch && method === "PUT") {
+    const body = await diarioJson(request);
+    const id = Number(classMatch[1]);
+    const name = String(body?.name || "").trim();
+    const segment = String(body?.segment || "").trim().toLowerCase();
+    const minimum = Number(body?.minimum);
+    if (!Number.isSafeInteger(id) || !name || name.length > 100 || !["regular", "eja"].includes(segment) || !Number.isFinite(minimum) || minimum < 0 || minimum > 10) return diarioError("Dados da turma inválidos.", request);
+    const nextPeriodCount = segment === "eja" ? 2 : 4;
+    const laterItems = await db.prepare("SELECT COUNT(*) AS total FROM salta_diario_items WHERE class_id=? AND period>?").bind(id, nextPeriodCount).first();
+    if (Number(laterItems?.total || 0) > 0) return diarioError("Não é possível reduzir os bimestres desta turma enquanto houver registros nos períodos posteriores.", request, 409);
+    try {
+      const result = await db.prepare("UPDATE salta_diario_classes SET name=?,segment=?,period_count=?,minimum=? WHERE id=?").bind(name, segment, nextPeriodCount, Math.round(minimum * 100) / 100, id).run();
+      if (!result.meta?.changes) return diarioError("Turma não encontrada.", request, 404);
+      return json({ ok: true }, request);
+    } catch (error) {
+      if (/unique/i.test(String(error?.message || error))) return diarioError("Já existe uma turma com esse nome.", request, 409);
+      throw error;
+    }
+  }
+
+  if (method === "GET" && path === "/diario/alunos") {
+    const classId = Number(url.searchParams.get("turma"));
+    if (!Number.isSafeInteger(classId) || classId < 1) return diarioError("Selecione uma turma.", request);
+    const result = await db.prepare("SELECT id,class_id,name FROM salta_diario_students WHERE class_id=? AND active=1 ORDER BY name COLLATE NOCASE").bind(classId).all();
+    return json({ alunos: result.results || [] }, request);
+  }
+
+  if (method === "POST" && path === "/diario/alunos") {
+    const body = await diarioJson(request);
+    const classId = Number(body?.class_id);
+    const name = String(body?.name || "").trim().replace(/\s+/g, " ");
+    if (!Number.isSafeInteger(classId) || classId < 1 || !name || name.length > 160) return diarioError("Informe o nome do aluno e uma turma válida.", request);
+    if (!(await db.prepare("SELECT id FROM salta_diario_classes WHERE id=?").bind(classId).first())) return diarioError("Turma não encontrada.", request, 404);
+    try {
+      const result = await db.prepare("INSERT INTO salta_diario_students (class_id,name) VALUES (?,?)").bind(classId, name).run();
+      return json({ ok: true, id: result.meta?.last_row_id }, request, 201);
+    } catch (error) {
+      if (/unique/i.test(String(error?.message || error))) return diarioError("Esse aluno já está cadastrado nesta turma.", request, 409);
+      throw error;
+    }
+  }
+
+  if (method === "GET" && path === "/diario/itens") {
+    const classId = Number(url.searchParams.get("turma"));
+    const period = Number(url.searchParams.get("bimestre"));
+    const turma = await db.prepare("SELECT period_count FROM salta_diario_classes WHERE id=?").bind(classId).first();
+    if (!turma) return diarioError("Turma não encontrada.", request, 404);
+    if (!Number.isInteger(period) || period < 1 || period > turma.period_count) return diarioError("Bimestre inválido para esta turma.", request);
+    const result = await db.prepare("SELECT id,class_id,period,title,kind,max_score FROM salta_diario_items WHERE class_id=? AND period=? ORDER BY id DESC").bind(classId, period).all();
+    return json({ itens: result.results || [] }, request);
+  }
+
+  if (method === "POST" && path === "/diario/itens") {
+    const body = await diarioJson(request);
+    const classId = Number(body?.class_id);
+    const period = Number(body?.period);
+    const title = String(body?.title || "").trim();
+    const kind = String(body?.kind || "").trim().toLowerCase();
+    const maxScore = kind === "visto" ? 0 : Number(body?.max_score);
+    const turma = await db.prepare("SELECT period_count FROM salta_diario_classes WHERE id=?").bind(classId).first();
+    if (!turma) return diarioError("Turma não encontrada.", request, 404);
+    if (!Number.isInteger(period) || period < 1 || period > turma.period_count || !title || title.length > 120 || !["avaliacao", "atividade", "visto"].includes(kind) || !Number.isFinite(maxScore) || maxScore < 0 || maxScore > 100 || (kind !== "visto" && maxScore <= 0)) return diarioError("Confira o bimestre, o nome e a pontuação máxima do registro.", request);
+    const result = await db.prepare("INSERT INTO salta_diario_items (class_id,period,title,kind,max_score) VALUES (?,?,?,?,?)").bind(classId, period, title, kind, maxScore).run();
+    return json({ ok: true, id: result.meta?.last_row_id }, request, 201);
+  }
+
+  if (method === "GET" && path === "/diario/notas") {
+    const classId = Number(url.searchParams.get("turma"));
+    const period = Number(url.searchParams.get("bimestre"));
+    const turma = await db.prepare("SELECT period_count FROM salta_diario_classes WHERE id=?").bind(classId).first();
+    if (!turma) return diarioError("Turma não encontrada.", request, 404);
+    if (!Number.isInteger(period) || period < 1 || period > turma.period_count) return diarioError("Bimestre inválido para esta turma.", request);
+    const [students, items, records] = await Promise.all([
+      db.prepare("SELECT id,name FROM salta_diario_students WHERE class_id=? AND active=1 ORDER BY name COLLATE NOCASE").bind(classId).all(),
+      db.prepare("SELECT id,title,kind,max_score FROM salta_diario_items WHERE class_id=? AND period=? ORDER BY id").bind(classId, period).all(),
+      db.prepare("SELECT r.student_id,r.item_id,r.score,r.completed FROM salta_diario_records r INNER JOIN salta_diario_students s ON s.id=r.student_id INNER JOIN salta_diario_items i ON i.id=r.item_id WHERE s.class_id=? AND i.period=?").bind(classId, period).all()
+    ]);
+    return json({ alunos: students.results || [], itens: items.results || [], registros: records.results || [] }, request);
+  }
+
+  if (method === "PUT" && path === "/diario/notas") {
+    const body = await diarioJson(request);
+    const itemId = Number(body?.item_id);
+    const rows = Array.isArray(body?.registros) ? body.registros : [];
+    if (!Number.isSafeInteger(itemId) || rows.length > 1000) return diarioError("Lote de notas inválido.", request);
+    const item = await db.prepare("SELECT id,class_id,kind,max_score FROM salta_diario_items WHERE id=?").bind(itemId).first();
+    if (!item) return diarioError("Avaliação ou atividade não encontrada.", request, 404);
+    const studentIds = [...new Set(rows.map(row => Number(row?.student_id)))];
+    if (studentIds.some(id => !Number.isSafeInteger(id) || id < 1)) return diarioError("Há um aluno inválido no lote.", request);
+    if (studentIds.length) {
+      const marks = studentIds.map(() => "?").join(",");
+      const found = await db.prepare("SELECT id FROM salta_diario_students WHERE class_id=? AND active=1 AND id IN (" + marks + ")").bind(item.class_id, ...studentIds).all();
+      if ((found.results || []).length !== studentIds.length) return diarioError("Uma ou mais pessoas não pertencem a esta turma.", request, 400);
+    }
+    if (item.kind !== "visto" && rows.some(row => {
+      const value = row.score === "" || row.score === null || row.score === undefined ? null : Number(row.score);
+      return value !== null && (!Number.isFinite(value) || value < 0 || value > Number(item.max_score));
+    })) return diarioError("Cada nota deve ficar entre zero e o valor máximo do item.", request);
+    const statements = rows.map(row => {
+      const studentId = Number(row.student_id);
+      if (item.kind === "visto") {
+        const completed = row.completed === true || row.completed === 1 ? 1 : 0;
+        return db.prepare("INSERT INTO salta_diario_records (student_id,item_id,score,completed,updated_at) VALUES (?,?,NULL,?,CURRENT_TIMESTAMP) ON CONFLICT(student_id,item_id) DO UPDATE SET completed=excluded.completed,updated_at=CURRENT_TIMESTAMP").bind(studentId, itemId, completed);
+      }
+      const raw = row.score === "" || row.score === null || row.score === undefined ? null : Number(row.score);
+      if (raw === null) return db.prepare("DELETE FROM salta_diario_records WHERE student_id=? AND item_id=?").bind(studentId, itemId);
+      return db.prepare("INSERT INTO salta_diario_records (student_id,item_id,score,completed,updated_at) VALUES (?,?,?,0,CURRENT_TIMESTAMP) ON CONFLICT(student_id,item_id) DO UPDATE SET score=excluded.score,updated_at=CURRENT_TIMESTAMP").bind(studentId, itemId, raw);
+    });
+    if (statements.length) await db.batch(statements);
+    return json({ ok: true, saved: statements.length }, request);
+  }
+
+  if (method === "GET" && path === "/diario/relatorios") {
+    const selectedClass = (url.searchParams.get("turma") || "todas").trim();
+    const period = (url.searchParams.get("bimestre") || "1").trim().toLowerCase();
+    const classesResult = await db.prepare("SELECT id,name,segment,period_count,minimum FROM salta_diario_classes ORDER BY name").all();
+    const classes = classesResult.results || [];
+    const chosen = selectedClass === "todas" ? classes : classes.filter(row => row.id === Number(selectedClass));
+    if (selectedClass !== "todas" && !chosen.length) return diarioError("Turma não encontrada.", request, 404);
+    if (!chosen.length) return json({ turmas: [], alunos: [], periodo: period }, request);
+    const ids = chosen.map(row => row.id);
+    const classMarks = ids.map(() => "?").join(",");
+    const [students, items, records] = await Promise.all([
+      db.prepare("SELECT s.id,s.class_id,s.name,c.name AS turma,c.segment,c.period_count,c.minimum FROM salta_diario_students s INNER JOIN salta_diario_classes c ON c.id=s.class_id WHERE s.active=1 AND s.class_id IN (" + classMarks + ") ORDER BY c.name,s.name COLLATE NOCASE").bind(...ids).all(),
+      db.prepare("SELECT id,class_id,period,title,kind,max_score FROM salta_diario_items WHERE class_id IN (" + classMarks + ") ORDER BY class_id,period,id").bind(...ids).all(),
+      db.prepare("SELECT r.student_id,r.item_id,r.score,r.completed FROM salta_diario_records r INNER JOIN salta_diario_students s ON s.id=r.student_id INNER JOIN salta_diario_items i ON i.id=r.item_id WHERE s.class_id IN (" + classMarks + ")").bind(...ids).all()
+    ]);
+    const itemRows = items.results || [];
+    const recordMap = new Map((records.results || []).map(row => [row.student_id + ":" + row.item_id, row]));
+    const studentsWithGrades = (students.results || []).map(student => {
+      const periodAverages = [];
+      let seenCount = 0;
+      const allItemRecords = [];
+      for (let p = 1; p <= student.period_count; p++) {
+        const periodItems = itemRows.filter(item => item.class_id === student.class_id && item.period === p && item.kind !== "visto");
+        let earned = 0, possible = 0;
+        for (const item of periodItems) {
+          possible += Number(item.max_score || 0);
+          const record = recordMap.get(student.id + ":" + item.id);
+          const score = record?.score === null || record?.score === undefined ? null : Number(record.score);
+          if (score !== null) earned += score;
+          if (record) allItemRecords.push({ id: item.id, periodo: p, titulo: item.title, tipo: item.kind, nota: score, maximo: Number(item.max_score) });
+        }
+        const avg = possible > 0 && periodItems.some(item => recordMap.has(student.id + ":" + item.id)) ? Math.round((earned / possible * 10) * 100) / 100 : null;
+        periodAverages.push(avg);
+        for (const item of itemRows.filter(item => item.class_id === student.class_id && item.period === p && item.kind === "visto")) {
+          const record = recordMap.get(student.id + ":" + item.id);
+          if (record?.completed) seenCount++;
+          if (record) allItemRecords.push({ id: item.id, periodo: p, titulo: item.title, tipo: item.kind, feito: Boolean(record.completed) });
+        }
+      }
+      const finalAverage = Math.round((periodAverages.reduce((sum, value) => sum + (value ?? 0), 0) / student.period_count) * 100) / 100;
+      const periodNumber = Number(period);
+      const average = period === "final" ? finalAverage : periodAverages[periodNumber - 1] ?? null;
+      return { id: student.id, nome: student.name, turma: student.turma, segmento: student.segment, quantidadeBimestres: student.period_count, mediaMinima: Number(student.minimum), media: average, mediaFinal: finalAverage, mediasBimestrais: periodAverages, vistos: seenCount, registros: allItemRecords };
+    });
+    return json({ turmas: chosen, alunos: studentsWithGrades, periodo: period, formula: "Média do bimestre normalizada para 0 a 10; média final parcial é a soma das médias bimestrais dividida pela quantidade de bimestres do segmento." }, request);
+  }
+
+  return diarioError("Rota do Diário de Classe não encontrada.", request, 404);
+}
+
 export default {
   async fetch(request, env) {
     if (request.method === "OPTIONS") {
@@ -2006,6 +2237,10 @@ export default {
     }
     if (url.pathname.startsWith("/auth/")) {
       return proxyAuth(request, env, url);
+    }
+    if (url.pathname.startsWith("/diario/")) {
+      try { return await handleDiarioRequest(request, env, url); }
+      catch { return json({ error: "Não foi possível processar o Diário de Classe." }, request, 500); }
     }
     if (url.pathname.startsWith("/comms/")) {
       return handleCommsRequest(request, env, url);
