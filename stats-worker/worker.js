@@ -2015,8 +2015,9 @@ export default {
       let payload;
       try { payload = await request.json(); }
       catch { return json({ error: "Requisição inválida." }, request, 400); }
+
       const codigo = String(payload?.codigo || "").trim().toUpperCase();
-      if (!/^2026[A-Z]{1,4}$/.test(codigo)) {
+      if (!validStudentCode(codigo)) {
         return json({ error: "Código inválido." }, request, 400);
       }
       if (!env.TURNSTILE_SECRET_KEY) {
@@ -2025,19 +2026,35 @@ export default {
       if (!(await verifyTurnstileToken(env.TURNSTILE_SECRET_KEY, payload?.turnstileToken, request, "student_lookup"))) {
         return json({ error: "A verificação de segurança não foi concluída. Tente novamente." }, request, 403);
       }
+
       try {
-        const upstream = await fetch("https://portal-aluno-api.dannyel-moises.workers.dev/?codigo=" + encodeURIComponent(codigo), {
-          method: "GET",
-          headers: { "Accept": "application/json", "Origin": "https://d4nny3l.github.io" },
-          cache: "no-store"
-        });
-        const data = await upstream.json().catch(() => null);
-        if (!data || typeof data !== "object") {
-          return json({ error: "O serviço de consulta retornou uma resposta inválida." }, request, 502);
+        // Consulta diretamente a base atual da SALTA. O endpoint legado
+        // portal-aluno-api não é mais necessário para localizar estudantes.
+        const student = await env.DB.prepare(
+          "SELECT codigo, nome, turma, ultima_atualizacao, " +
+          "bimestre1_status,bimestre1_media,bimestre1_vistos,bimestre1_avaliacoes," +
+          "bimestre2_status,bimestre2_media,bimestre2_vistos,bimestre2_avaliacoes," +
+          "bimestre3_status,bimestre3_media,bimestre3_vistos,bimestre3_avaliacoes," +
+          "bimestre4_status,bimestre4_media,bimestre4_vistos,bimestre4_avaliacoes " +
+          "FROM alunos WHERE codigo = ? LIMIT 1"
+        ).bind(codigo).first();
+
+        if (!student) {
+          return json({ error: "Código não encontrado. Confira os caracteres e tente novamente." }, request, 404);
         }
-        return json(data, request, upstream.status);
-      } catch {
-        return json({ error: "Não foi possível consultar a ficha agora." }, request, 502);
+        if (!String(student.nome || "").trim() || !String(student.turma || "").trim()) {
+          return json({ error: "A ficha deste aluno está incompleta. Procure o Professor Dannyel." }, request, 409);
+        }
+
+        const config = await turmaConfig(env, student.turma);
+        await ensureCommsSchema(env);
+        await env.DB.prepare(
+          "INSERT INTO salta_student_access_logs (student_code) VALUES (?)"
+        ).bind(student.codigo).run();
+
+        return json({ ...student, ...turmaRulePayload(student.turma, config) }, request);
+      } catch (error) {
+        return json({ error: "Não foi possível consultar a ficha agora. Tente novamente." }, request, 500);
       }
     }
 
