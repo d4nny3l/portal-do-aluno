@@ -1990,9 +1990,9 @@ async function handleCommsRequest(request, env, url) {
 
 
 const DIARIO_SCHEMA = [
-  "CREATE TABLE IF NOT EXISTS salta_diario_classes (id INTEGER PRIMARY KEY AUTOINCREMENT, name TEXT NOT NULL UNIQUE COLLATE NOCASE, segment TEXT NOT NULL CHECK(segment IN ('regular','eja')), period_count INTEGER NOT NULL CHECK(period_count IN (2,4)), minimum REAL NOT NULL DEFAULT 5 CHECK(minimum >= 0 AND minimum <= 10), created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP)",
+  "CREATE TABLE IF NOT EXISTS salta_diario_classes (id INTEGER PRIMARY KEY AUTOINCREMENT, name TEXT NOT NULL UNIQUE COLLATE NOCASE, segment TEXT NOT NULL CHECK(segment IN ('regular','eja')), period_count INTEGER NOT NULL CHECK(period_count IN (2,4)), minimum REAL NOT NULL DEFAULT 5 CHECK(minimum >= 0 AND minimum <= 10), evaluation_system TEXT NOT NULL DEFAULT 'df' CHECK(evaluation_system IN ('df','goias')), created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP)",
   "CREATE TABLE IF NOT EXISTS salta_diario_students (id INTEGER PRIMARY KEY AUTOINCREMENT, class_id INTEGER NOT NULL REFERENCES salta_diario_classes(id), name TEXT NOT NULL, sort_order INTEGER NOT NULL DEFAULT 0, active INTEGER NOT NULL DEFAULT 1, created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP, UNIQUE(class_id, name COLLATE NOCASE))",
-  "CREATE TABLE IF NOT EXISTS salta_diario_items (id INTEGER PRIMARY KEY AUTOINCREMENT, class_id INTEGER NOT NULL REFERENCES salta_diario_classes(id), period INTEGER NOT NULL CHECK(period BETWEEN 1 AND 4), title TEXT NOT NULL, kind TEXT NOT NULL CHECK(kind IN ('avaliacao','atividade','visto')), max_score REAL NOT NULL DEFAULT 0 CHECK(max_score >= 0 AND max_score <= 100), created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP)",
+  "CREATE TABLE IF NOT EXISTS salta_diario_items (id INTEGER PRIMARY KEY AUTOINCREMENT, class_id INTEGER NOT NULL REFERENCES salta_diario_classes(id), period INTEGER NOT NULL CHECK(period BETWEEN 1 AND 4), title TEXT NOT NULL, kind TEXT NOT NULL CHECK(kind IN ('avaliacao','atividade','visto')), max_score REAL NOT NULL DEFAULT 0 CHECK(max_score >= 0 AND max_score <= 100), component TEXT NOT NULL DEFAULT 'outro', created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP)",
   "CREATE TABLE IF NOT EXISTS salta_diario_records (student_id INTEGER NOT NULL REFERENCES salta_diario_students(id), item_id INTEGER NOT NULL REFERENCES salta_diario_items(id), score REAL, completed INTEGER NOT NULL DEFAULT 0 CHECK(completed IN (0,1)), updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP, PRIMARY KEY(student_id,item_id))",
   "CREATE INDEX IF NOT EXISTS idx_salta_diario_students_class ON salta_diario_students(class_id,active,name)",
   "CREATE INDEX IF NOT EXISTS idx_salta_diario_items_class_period ON salta_diario_items(class_id,period,id)",
@@ -2009,6 +2009,14 @@ async function ensureDiarioSchema(env) {
       if (!(columns.results || []).some(column => column.name === "sort_order")) {
         await env.DIARIO_DB.prepare("ALTER TABLE salta_diario_students ADD COLUMN sort_order INTEGER NOT NULL DEFAULT 0").run();
       }
+      const classColumns = await env.DIARIO_DB.prepare("PRAGMA table_info(salta_diario_classes)").all();
+      if (!(classColumns.results || []).some(column => column.name === "evaluation_system")) {
+        await env.DIARIO_DB.prepare("ALTER TABLE salta_diario_classes ADD COLUMN evaluation_system TEXT NOT NULL DEFAULT 'df'").run();
+      }
+      const itemColumns = await env.DIARIO_DB.prepare("PRAGMA table_info(salta_diario_items)").all();
+      if (!(itemColumns.results || []).some(column => column.name === "component")) {
+        await env.DIARIO_DB.prepare("ALTER TABLE salta_diario_items ADD COLUMN component TEXT NOT NULL DEFAULT 'outro'").run();
+      }
       await env.DIARIO_DB.prepare("CREATE INDEX IF NOT EXISTS idx_salta_diario_students_order ON salta_diario_students(class_id,active,sort_order,id)").run();
     })().catch(error => {
       diarioSchemaPromise = undefined;
@@ -2023,6 +2031,47 @@ function normalizeDiarioStudentName(value) {
   // Remove only a leading numeric identifier followed by a clear separator.
   name = name.replace(/^\s*#?\d{1,16}(?:\s*[-–—.)/|:]\s*|\s+)(?=\p{L})/u, "");
   return name.trim().replace(/\s+/g, " ");
+}
+
+function roundDiarioScore(value) {
+  return Math.round((Number(value) + Number.EPSILON) * 100) / 100;
+}
+
+function calculateDiarioPeriod(system, periodItems, recordMap, studentId) {
+  const hasEntries = periodItems.some(item => recordMap.has(studentId + ":" + item.id));
+  if (!hasEntries) return { media: null, componentes: null };
+  const scoreFor = item => {
+    const record = recordMap.get(studentId + ":" + item.id);
+    return record?.score === null || record?.score === undefined ? 0 : Number(record.score);
+  };
+  const sum = predicate => periodItems.filter(predicate).reduce((total, item) => total + scoreFor(item), 0);
+  const views = periodItems.filter(item => item.kind === "visto");
+  const completedViews = views.reduce((total, item) => total + (recordMap.get(studentId + ":" + item.id)?.completed ? 1 : 0), 0);
+  const notebook = views.length ? (completedViews / views.length) * (system === "goias" ? 10 : 2) : 0;
+
+  if (system === "goias") {
+    const study = sum(item => item.kind !== "visto" && ["estudo_dirigido", "outro"].includes(item.component));
+    const blockItems = periodItems.filter(item => item.kind !== "visto" && item.component === "prova_bloco");
+    const blockPossible = blockItems.reduce((total, item) => total + Number(item.max_score || 0), 0);
+    const blockEarned = blockItems.reduce((total, item) => total + scoreFor(item), 0);
+    const block = blockPossible ? (blockEarned / blockPossible) * 10 : 0;
+    const base = Math.min(10, notebook * 0.3 + study * 0.3 + block * 0.4);
+    const recoveryItems = periodItems.filter(item => item.kind !== "visto" && item.component === "recuperacao_final");
+    const recoveryPossible = recoveryItems.reduce((total, item) => total + Number(item.max_score || 0), 0);
+    const recoveryEarned = recoveryItems.reduce((total, item) => total + scoreFor(item), 0);
+    const recovery = recoveryPossible ? (recoveryEarned / recoveryPossible) * 10 : null;
+    const media = Math.min(10, roundDiarioScore(recovery !== null && recovery > base ? (base + recovery) / 2 : base));
+    return { media, componentes: { caderno: roundDiarioScore(notebook), estudoDirigido: roundDiarioScore(study), provaBloco: blockPossible ? roundDiarioScore(blockEarned) + "/" + roundDiarioScore(blockPossible) : "—", notaBase: roundDiarioScore(base), recuperacao: recovery === null ? null : roundDiarioScore(recovery), recuperacaoAplicada: recovery !== null && recovery > base, media } };
+  }
+
+  const study = sum(item => item.kind !== "visto" && item.component === "estudo_dirigido");
+  const studyRecovery = sum(item => item.kind !== "visto" && item.component === "recuperacao_estudo");
+  const studyAfterRecovery = Math.max(study, studyRecovery);
+  const proof = sum(item => item.kind !== "visto" && item.component === "prova");
+  const essay = sum(item => item.kind !== "visto" && item.component === "redacao");
+  const other = sum(item => item.kind !== "visto" && item.component === "outro");
+  const media = Math.min(10, roundDiarioScore(notebook + studyAfterRecovery + proof + essay + other));
+  return { media, componentes: { caderno: roundDiarioScore(notebook), estudoAntesRecuperacao: roundDiarioScore(study), estudoDirigido: roundDiarioScore(studyAfterRecovery), recuperacaoEstudo: studyRecovery ? roundDiarioScore(studyRecovery) : null, recuperacaoAplicada: studyRecovery > study, prova: roundDiarioScore(proof), redacao: roundDiarioScore(essay), outros: roundDiarioScore(other), media } };
 }
 
 function diarioError(message, request, status = 400) {
@@ -2048,7 +2097,7 @@ async function handleDiarioRequest(request, env, url) {
 
   if (method === "GET" && path === "/diario/resumo") {
     const [classes, students, items] = await Promise.all([
-      db.prepare("SELECT c.id,c.name,c.segment,c.period_count,c.minimum,COUNT(DISTINCT s.id) AS student_count,COUNT(DISTINCT i.id) AS item_count FROM salta_diario_classes c LEFT JOIN salta_diario_students s ON s.class_id=c.id AND s.active=1 LEFT JOIN salta_diario_items i ON i.class_id=c.id GROUP BY c.id ORDER BY c.name").all(),
+      db.prepare("SELECT c.id,c.name,c.segment,c.period_count,c.minimum,c.evaluation_system,COUNT(DISTINCT s.id) AS student_count,COUNT(DISTINCT i.id) AS item_count FROM salta_diario_classes c LEFT JOIN salta_diario_students s ON s.class_id=c.id AND s.active=1 LEFT JOIN salta_diario_items i ON i.class_id=c.id GROUP BY c.id ORDER BY c.name").all(),
       db.prepare("SELECT COUNT(*) AS total FROM salta_diario_students WHERE active=1").first(),
       db.prepare("SELECT COUNT(*) AS total FROM salta_diario_items").first()
     ]);
@@ -2060,10 +2109,11 @@ async function handleDiarioRequest(request, env, url) {
     const name = String(body?.name || "").trim();
     const segment = String(body?.segment || "").trim().toLowerCase();
     const minimum = Number(body?.minimum);
-    if (!name || name.length > 100 || !["regular", "eja"].includes(segment) || !Number.isFinite(minimum) || minimum < 0 || minimum > 10) return diarioError("Informe turma, segmento e média mínima entre 0 e 10.", request);
+    const evaluationSystem = String(body?.evaluation_system || "df").trim().toLowerCase();
+    if (!name || name.length > 100 || !["regular", "eja"].includes(segment) || !["df", "goias"].includes(evaluationSystem) || !Number.isFinite(minimum) || minimum < 0 || minimum > 10) return diarioError("Informe turma, segmento, modelo avaliativo e média mínima entre 0 e 10.", request);
     const count = segment === "eja" ? 2 : 4;
     try {
-      const result = await db.prepare("INSERT INTO salta_diario_classes (name,segment,period_count,minimum) VALUES (?,?,?,?)").bind(name, segment, count, Math.round(minimum * 100) / 100).run();
+      const result = await db.prepare("INSERT INTO salta_diario_classes (name,segment,period_count,minimum,evaluation_system) VALUES (?,?,?,?,?)").bind(name, segment, count, Math.round(minimum * 100) / 100, evaluationSystem).run();
       return json({ ok: true, id: result.meta?.last_row_id }, request, 201);
     } catch (error) {
       if (/unique/i.test(String(error?.message || error))) return diarioError("Já existe uma turma com esse nome.", request, 409);
@@ -2078,12 +2128,19 @@ async function handleDiarioRequest(request, env, url) {
     const name = String(body?.name || "").trim();
     const segment = String(body?.segment || "").trim().toLowerCase();
     const minimum = Number(body?.minimum);
-    if (!Number.isSafeInteger(id) || !name || name.length > 100 || !["regular", "eja"].includes(segment) || !Number.isFinite(minimum) || minimum < 0 || minimum > 10) return diarioError("Dados da turma inválidos.", request);
+    const evaluationSystem = String(body?.evaluation_system || "df").trim().toLowerCase();
+    if (!Number.isSafeInteger(id) || !name || name.length > 100 || !["regular", "eja"].includes(segment) || !["df", "goias"].includes(evaluationSystem) || !Number.isFinite(minimum) || minimum < 0 || minimum > 10) return diarioError("Dados da turma inválidos.", request);
+    const currentClass = await db.prepare("SELECT evaluation_system FROM salta_diario_classes WHERE id=?").bind(id).first();
+    if (!currentClass) return diarioError("Turma não encontrada.", request, 404);
+    if (currentClass.evaluation_system !== evaluationSystem) {
+      const existingItems = await db.prepare("SELECT COUNT(*) AS total FROM salta_diario_items WHERE class_id=?").bind(id).first();
+      if (Number(existingItems?.total || 0) > 0) return diarioError("O modelo avaliativo não pode ser trocado depois que a turma recebe avaliações. Isso poderia mudar o cálculo de notas já lançadas.", request, 409);
+    }
     const nextPeriodCount = segment === "eja" ? 2 : 4;
     const laterItems = await db.prepare("SELECT COUNT(*) AS total FROM salta_diario_items WHERE class_id=? AND period>?").bind(id, nextPeriodCount).first();
     if (Number(laterItems?.total || 0) > 0) return diarioError("Não é possível reduzir os bimestres desta turma enquanto houver registros nos períodos posteriores.", request, 409);
     try {
-      const result = await db.prepare("UPDATE salta_diario_classes SET name=?,segment=?,period_count=?,minimum=? WHERE id=?").bind(name, segment, nextPeriodCount, Math.round(minimum * 100) / 100, id).run();
+      const result = await db.prepare("UPDATE salta_diario_classes SET name=?,segment=?,period_count=?,minimum=?,evaluation_system=? WHERE id=?").bind(name, segment, nextPeriodCount, Math.round(minimum * 100) / 100, evaluationSystem, id).run();
       if (!result.meta?.changes) return diarioError("Turma não encontrada.", request, 404);
       return json({ ok: true }, request);
     } catch (error) {
@@ -2162,10 +2219,10 @@ async function handleDiarioRequest(request, env, url) {
   if (method === "GET" && path === "/diario/itens") {
     const classId = Number(url.searchParams.get("turma"));
     const period = Number(url.searchParams.get("bimestre"));
-    const turma = await db.prepare("SELECT period_count FROM salta_diario_classes WHERE id=?").bind(classId).first();
+    const turma = await db.prepare("SELECT period_count,evaluation_system FROM salta_diario_classes WHERE id=?").bind(classId).first();
     if (!turma) return diarioError("Turma não encontrada.", request, 404);
     if (!Number.isInteger(period) || period < 1 || period > turma.period_count) return diarioError("Bimestre inválido para esta turma.", request);
-    const result = await db.prepare("SELECT id,class_id,period,title,kind,max_score FROM salta_diario_items WHERE class_id=? AND period=? ORDER BY id DESC").bind(classId, period).all();
+    const result = await db.prepare("SELECT id,class_id,period,title,kind,max_score,component FROM salta_diario_items WHERE class_id=? AND period=? ORDER BY id DESC").bind(classId, period).all();
     return json({ itens: result.results || [] }, request);
   }
 
@@ -2175,11 +2232,13 @@ async function handleDiarioRequest(request, env, url) {
     const period = Number(body?.period);
     const title = String(body?.title || "").trim();
     const kind = String(body?.kind || "").trim().toLowerCase();
+    const component = kind === "visto" ? "caderno" : String(body?.component || "outro").trim().toLowerCase();
     const maxScore = kind === "visto" ? 0 : Number(body?.max_score);
-    const turma = await db.prepare("SELECT period_count FROM salta_diario_classes WHERE id=?").bind(classId).first();
+    const turma = await db.prepare("SELECT period_count,evaluation_system FROM salta_diario_classes WHERE id=?").bind(classId).first();
     if (!turma) return diarioError("Turma não encontrada.", request, 404);
-    if (!Number.isInteger(period) || period < 1 || period > turma.period_count || !title || title.length > 120 || !["avaliacao", "atividade", "visto"].includes(kind) || !Number.isFinite(maxScore) || maxScore < 0 || maxScore > 100 || (kind !== "visto" && maxScore <= 0)) return diarioError("Confira o bimestre, o nome e a pontuação máxima do registro.", request);
-    const result = await db.prepare("INSERT INTO salta_diario_items (class_id,period,title,kind,max_score) VALUES (?,?,?,?,?)").bind(classId, period, title, kind, maxScore).run();
+    const components = turma.evaluation_system === "goias" ? ["estudo_dirigido", "prova_bloco", "recuperacao_final", "outro"] : ["estudo_dirigido", "prova", "redacao", "recuperacao_estudo", "outro"];
+    if (!Number.isInteger(period) || period < 1 || period > turma.period_count || !title || title.length > 120 || !["avaliacao", "atividade", "visto"].includes(kind) || (kind !== "visto" && !components.includes(component)) || !Number.isFinite(maxScore) || maxScore < 0 || maxScore > 100 || (kind !== "visto" && maxScore <= 0)) return diarioError("Confira o bimestre, o nome, o componente e a pontuação máxima do registro.", request);
+    const result = await db.prepare("INSERT INTO salta_diario_items (class_id,period,title,kind,max_score,component) VALUES (?,?,?,?,?,?)").bind(classId, period, title, kind, maxScore, component).run();
     return json({ ok: true, id: result.meta?.last_row_id }, request, 201);
   }
 
@@ -2190,8 +2249,8 @@ async function handleDiarioRequest(request, env, url) {
     if (!turma) return diarioError("Turma não encontrada.", request, 404);
     if (!Number.isInteger(period) || period < 1 || period > turma.period_count) return diarioError("Bimestre inválido para esta turma.", request);
     const [students, items, records] = await Promise.all([
-      db.prepare("SELECT id,name FROM salta_diario_students WHERE class_id=? AND active=1 ORDER BY name COLLATE NOCASE").bind(classId).all(),
-      db.prepare("SELECT id,title,kind,max_score FROM salta_diario_items WHERE class_id=? AND period=? ORDER BY id").bind(classId, period).all(),
+      db.prepare("SELECT id,name FROM salta_diario_students WHERE class_id=? AND active=1 ORDER BY sort_order,id").bind(classId).all(),
+      db.prepare("SELECT id,title,kind,max_score,component FROM salta_diario_items WHERE class_id=? AND period=? ORDER BY id").bind(classId, period).all(),
       db.prepare("SELECT r.student_id,r.item_id,r.score,r.completed FROM salta_diario_records r INNER JOIN salta_diario_students s ON s.id=r.student_id INNER JOIN salta_diario_items i ON i.id=r.item_id WHERE s.class_id=? AND i.period=?").bind(classId, period).all()
     ]);
     return json({ alunos: students.results || [], itens: items.results || [], registros: records.results || [] }, request);
@@ -2232,7 +2291,7 @@ async function handleDiarioRequest(request, env, url) {
   if (method === "GET" && path === "/diario/relatorios") {
     const selectedClass = (url.searchParams.get("turma") || "todas").trim();
     const period = (url.searchParams.get("bimestre") || "1").trim().toLowerCase();
-    const classesResult = await db.prepare("SELECT id,name,segment,period_count,minimum FROM salta_diario_classes ORDER BY name").all();
+    const classesResult = await db.prepare("SELECT id,name,segment,period_count,minimum,evaluation_system FROM salta_diario_classes ORDER BY name").all();
     const classes = classesResult.results || [];
     const chosen = selectedClass === "todas" ? classes : classes.filter(row => row.id === Number(selectedClass));
     if (selectedClass !== "todas" && !chosen.length) return diarioError("Turma não encontrada.", request, 404);
@@ -2240,40 +2299,40 @@ async function handleDiarioRequest(request, env, url) {
     const ids = chosen.map(row => row.id);
     const classMarks = ids.map(() => "?").join(",");
     const [students, items, records] = await Promise.all([
-      db.prepare("SELECT s.id,s.class_id,s.name,c.name AS turma,c.segment,c.period_count,c.minimum FROM salta_diario_students s INNER JOIN salta_diario_classes c ON c.id=s.class_id WHERE s.active=1 AND s.class_id IN (" + classMarks + ") ORDER BY c.name,s.name COLLATE NOCASE").bind(...ids).all(),
-      db.prepare("SELECT id,class_id,period,title,kind,max_score FROM salta_diario_items WHERE class_id IN (" + classMarks + ") ORDER BY class_id,period,id").bind(...ids).all(),
+      db.prepare("SELECT s.id,s.class_id,s.name,s.sort_order,c.name AS turma,c.segment,c.period_count,c.minimum,c.evaluation_system FROM salta_diario_students s INNER JOIN salta_diario_classes c ON c.id=s.class_id WHERE s.active=1 AND s.class_id IN (" + classMarks + ") ORDER BY c.name,s.sort_order,s.id").bind(...ids).all(),
+      db.prepare("SELECT id,class_id,period,title,kind,max_score,component FROM salta_diario_items WHERE class_id IN (" + classMarks + ") ORDER BY class_id,period,id").bind(...ids).all(),
       db.prepare("SELECT r.student_id,r.item_id,r.score,r.completed FROM salta_diario_records r INNER JOIN salta_diario_students s ON s.id=r.student_id INNER JOIN salta_diario_items i ON i.id=r.item_id WHERE s.class_id IN (" + classMarks + ")").bind(...ids).all()
     ]);
     const itemRows = items.results || [];
     const recordMap = new Map((records.results || []).map(row => [row.student_id + ":" + row.item_id, row]));
     const studentsWithGrades = (students.results || []).map(student => {
       const periodAverages = [];
+      const periodComponents = [];
       let seenCount = 0;
       const allItemRecords = [];
       for (let p = 1; p <= student.period_count; p++) {
-        const periodItems = itemRows.filter(item => item.class_id === student.class_id && item.period === p && item.kind !== "visto");
-        let earned = 0, possible = 0;
+        const periodItems = itemRows.filter(item => item.class_id === student.class_id && item.period === p);
         for (const item of periodItems) {
-          possible += Number(item.max_score || 0);
           const record = recordMap.get(student.id + ":" + item.id);
           const score = record?.score === null || record?.score === undefined ? null : Number(record.score);
-          if (score !== null) earned += score;
-          if (record) allItemRecords.push({ id: item.id, periodo: p, titulo: item.title, tipo: item.kind, nota: score, maximo: Number(item.max_score) });
+          if (record) allItemRecords.push({ id: item.id, periodo: p, titulo: item.title, tipo: item.kind, componente: item.component, nota: score, maximo: Number(item.max_score), feito: item.kind === "visto" ? Boolean(record.completed) : undefined });
         }
-        const avg = possible > 0 && periodItems.some(item => recordMap.has(student.id + ":" + item.id)) ? Math.round((earned / possible * 10) * 100) / 100 : null;
-        periodAverages.push(avg);
-        for (const item of itemRows.filter(item => item.class_id === student.class_id && item.period === p && item.kind === "visto")) {
+        const calculation = calculateDiarioPeriod(student.evaluation_system, periodItems, recordMap, student.id);
+        periodAverages.push(calculation.media);
+        periodComponents.push(calculation.componentes);
+        for (const item of periodItems.filter(item => item.kind === "visto")) {
           const record = recordMap.get(student.id + ":" + item.id);
           if (record?.completed) seenCount++;
-          if (record) allItemRecords.push({ id: item.id, periodo: p, titulo: item.title, tipo: item.kind, feito: Boolean(record.completed) });
         }
       }
       const finalAverage = Math.round((periodAverages.reduce((sum, value) => sum + (value ?? 0), 0) / student.period_count) * 100) / 100;
       const periodNumber = Number(period);
       const average = period === "final" ? finalAverage : periodAverages[periodNumber - 1] ?? null;
-      return { id: student.id, nome: student.name, turma: student.turma, segmento: student.segment, quantidadeBimestres: student.period_count, mediaMinima: Number(student.minimum), media: average, mediaFinal: finalAverage, mediasBimestrais: periodAverages, vistos: seenCount, registros: allItemRecords };
+      return { id: student.id, nome: student.name, turma: student.turma, segmento: student.segment, modeloAvaliativo: student.evaluation_system, quantidadeBimestres: student.period_count, mediaMinima: Number(student.minimum), media: average, mediaFinal: finalAverage, mediasBimestrais: periodAverages, componentesBimestrais: periodComponents, vistos: seenCount, registros: allItemRecords };
     });
-    return json({ turmas: chosen, alunos: studentsWithGrades, periodo: period, formula: "Média do bimestre normalizada para 0 a 10; média final parcial é a soma das médias bimestrais dividida pela quantidade de bimestres do segmento." }, request);
+    const formulas = [...new Set(chosen.map(row => row.evaluation_system))].map(system => system === "goias" ? "Goiás: caderno 30% + estudo dirigido 30% + prova de bloco 40%; recuperação usa a média entre a nota base e a recuperação somente quando melhora o resultado." : "DF: caderno até 2 pontos + estudo dirigido + prova + redação; a recuperação substitui o estudo dirigido somente quando for maior. Componentes somados em escala de 10.");
+    formulas.push("Média final: média aritmética dos períodos do segmento (4 no regular ou 2 na EJA); períodos sem nota contam como zero.");
+    return json({ turmas: chosen, alunos: studentsWithGrades, periodo: period, formula: formulas.join(" ") }, request);
   }
 
   return diarioError("Rota do Diário de Classe não encontrada.", request, 404);
