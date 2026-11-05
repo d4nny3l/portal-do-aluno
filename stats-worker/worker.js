@@ -2163,13 +2163,28 @@ async function handleDiarioRequest(request, env, url) {
     if (!Number.isSafeInteger(classId) || classId < 1 || !name || name.length > 160) return diarioError("Informe o nome do aluno e uma turma válida.", request);
     if (!(await db.prepare("SELECT id FROM salta_diario_classes WHERE id=?").bind(classId).first())) return diarioError("Turma não encontrada.", request, 404);
     try {
-      const order = await db.prepare("SELECT COALESCE(MAX(sort_order),-1)+1 AS next_order FROM salta_diario_students WHERE class_id=?").bind(classId).first();
+      const existing = await db.prepare("SELECT id,active FROM salta_diario_students WHERE class_id=? AND name=? COLLATE NOCASE").bind(classId, name).first();
+      const order = await db.prepare("SELECT COALESCE(MAX(sort_order),-1)+1 AS next_order FROM salta_diario_students WHERE class_id=? AND active=1").bind(classId).first();
+      if (existing && Number(existing.active) === 1) return diarioError("Esse aluno já está cadastrado nesta turma.", request, 409);
+      if (existing) {
+        await db.prepare("UPDATE salta_diario_students SET active=1,sort_order=? WHERE id=?").bind(Number(order?.next_order || 0), existing.id).run();
+        return json({ ok: true, id: existing.id, reactivated: true }, request);
+      }
       const result = await db.prepare("INSERT INTO salta_diario_students (class_id,name,sort_order) VALUES (?,?,?)").bind(classId, name, Number(order?.next_order || 0)).run();
       return json({ ok: true, id: result.meta?.last_row_id }, request, 201);
     } catch (error) {
       if (/unique/i.test(String(error?.message || error))) return diarioError("Esse aluno já está cadastrado nesta turma.", request, 409);
       throw error;
     }
+  }
+
+  const studentMatch = path.match(/^\/diario\/alunos\/(\d+)$/);
+  if (method === "DELETE" && studentMatch) {
+    const studentId = Number(studentMatch[1]);
+    if (!Number.isSafeInteger(studentId) || studentId < 1) return diarioError("Aluno inválido.", request);
+    const result = await db.prepare("UPDATE salta_diario_students SET active=0 WHERE id=? AND active=1").bind(studentId).run();
+    if (!result.meta?.changes) return diarioError("Aluno não encontrado ou já removido da turma.", request, 404);
+    return json({ ok: true }, request);
   }
 
   if (method === "POST" && path === "/diario/alunos/lote") {
@@ -2192,12 +2207,19 @@ async function handleDiarioRequest(request, env, url) {
     }
     if (!cleaned.length) return diarioError("Não encontrei nomes válidos na lista. Confira a prévia e tente novamente.", request);
 
-    const existing = await db.prepare("SELECT COALESCE(MAX(sort_order),-1)+1 AS next_order FROM salta_diario_students WHERE class_id=?").bind(classId).first();
+    const existing = await db.prepare("SELECT COALESCE(MAX(sort_order),-1)+1 AS next_order FROM salta_diario_students WHERE class_id=? AND active=1").bind(classId).first();
     let nextOrder = Number(existing?.next_order || 0);
     let added = 0;
-    for (let offset = 0; offset < cleaned.length; offset += 100) {
-      const batchEntries = cleaned.slice(offset, offset + 100);
-      const results = await db.batch(batchEntries.map(name => db.prepare("INSERT OR IGNORE INTO salta_diario_students (class_id,name,sort_order) VALUES (?,?,?)").bind(classId, name, nextOrder++)));
+    for (let offset = 0; offset < cleaned.length; offset += 50) {
+      const batchEntries = cleaned.slice(offset, offset + 50);
+      const statements = batchEntries.flatMap(name => {
+        const sortOrder = nextOrder++;
+        return [
+          db.prepare("UPDATE salta_diario_students SET active=1,sort_order=? WHERE class_id=? AND name COLLATE NOCASE=? AND active=0").bind(sortOrder, classId, name),
+          db.prepare("INSERT OR IGNORE INTO salta_diario_students (class_id,name,sort_order) VALUES (?,?,?)").bind(classId, name, sortOrder)
+        ];
+      });
+      const results = await db.batch(statements);
       for (const result of results) added += Number(result.meta?.changes || 0);
     }
     return json({ ok: true, added, duplicates: cleaned.length - added, invalid }, request, 201);
@@ -2346,11 +2368,11 @@ async function handleDiarioRequest(request, env, url) {
       const finalAverage = Math.round((periodAverages.reduce((sum, value) => sum + (value ?? 0), 0) / student.period_count) * 100) / 100;
       const periodNumber = Number(period);
       const average = period === "final" ? finalAverage : periodAverages[periodNumber - 1] ?? null;
-      return { id: student.id, nome: student.name, turma: student.turma, segmento: student.segment, modeloAvaliativo: student.evaluation_system, quantidadeBimestres: student.period_count, mediaMinima: Number(student.minimum), media: average, mediaFinal: finalAverage, mediasBimestrais: periodAverages, componentesBimestrais: periodComponents, vistos: seenCount, registros: allItemRecords };
+      return { id: student.id, class_id: student.class_id, nome: student.name, turma: student.turma, segmento: student.segment, modeloAvaliativo: student.evaluation_system, quantidadeBimestres: student.period_count, mediaMinima: Number(student.minimum), media: average, mediaFinal: finalAverage, mediasBimestrais: periodAverages, componentesBimestrais: periodComponents, vistos: seenCount, registros: allItemRecords };
     });
     const formulas = [...new Set(chosen.map(row => row.evaluation_system))].map(system => system === "goias" ? "Goiás: caderno 30% + estudo dirigido 30% + prova de bloco 40%; recuperação usa a média entre a nota base e a recuperação somente quando melhora o resultado." : "DF: caderno até 2 pontos + estudo dirigido + prova + redação; a recuperação substitui o estudo dirigido somente quando for maior. Componentes somados em escala de 10.");
     formulas.push("Média final: média aritmética dos períodos do segmento (4 no regular ou 2 na EJA); períodos sem nota contam como zero.");
-    return json({ turmas: chosen, alunos: studentsWithGrades, periodo: period, formula: formulas.join(" ") }, request);
+    return json({ turmas: chosen, itens: itemRows, alunos: studentsWithGrades, periodo: period, formula: formulas.join(" ") }, request);
   }
 
   return diarioError("Rota do Diário de Classe não encontrada.", request, 404);
