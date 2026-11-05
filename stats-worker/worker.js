@@ -1991,7 +1991,7 @@ async function handleCommsRequest(request, env, url) {
 
 const DIARIO_SCHEMA = [
   "CREATE TABLE IF NOT EXISTS salta_diario_classes (id INTEGER PRIMARY KEY AUTOINCREMENT, name TEXT NOT NULL UNIQUE COLLATE NOCASE, segment TEXT NOT NULL CHECK(segment IN ('regular','eja')), period_count INTEGER NOT NULL CHECK(period_count IN (2,4)), minimum REAL NOT NULL DEFAULT 5 CHECK(minimum >= 0 AND minimum <= 10), created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP)",
-  "CREATE TABLE IF NOT EXISTS salta_diario_students (id INTEGER PRIMARY KEY AUTOINCREMENT, class_id INTEGER NOT NULL REFERENCES salta_diario_classes(id), name TEXT NOT NULL, active INTEGER NOT NULL DEFAULT 1, created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP, UNIQUE(class_id, name COLLATE NOCASE))",
+  "CREATE TABLE IF NOT EXISTS salta_diario_students (id INTEGER PRIMARY KEY AUTOINCREMENT, class_id INTEGER NOT NULL REFERENCES salta_diario_classes(id), name TEXT NOT NULL, sort_order INTEGER NOT NULL DEFAULT 0, active INTEGER NOT NULL DEFAULT 1, created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP, UNIQUE(class_id, name COLLATE NOCASE))",
   "CREATE TABLE IF NOT EXISTS salta_diario_items (id INTEGER PRIMARY KEY AUTOINCREMENT, class_id INTEGER NOT NULL REFERENCES salta_diario_classes(id), period INTEGER NOT NULL CHECK(period BETWEEN 1 AND 4), title TEXT NOT NULL, kind TEXT NOT NULL CHECK(kind IN ('avaliacao','atividade','visto')), max_score REAL NOT NULL DEFAULT 0 CHECK(max_score >= 0 AND max_score <= 100), created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP)",
   "CREATE TABLE IF NOT EXISTS salta_diario_records (student_id INTEGER NOT NULL REFERENCES salta_diario_students(id), item_id INTEGER NOT NULL REFERENCES salta_diario_items(id), score REAL, completed INTEGER NOT NULL DEFAULT 0 CHECK(completed IN (0,1)), updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP, PRIMARY KEY(student_id,item_id))",
   "CREATE INDEX IF NOT EXISTS idx_salta_diario_students_class ON salta_diario_students(class_id,active,name)",
@@ -2003,12 +2003,26 @@ let diarioSchemaPromise;
 async function ensureDiarioSchema(env) {
   if (!env.DIARIO_DB) throw new Error("Banco do Diário de Classe não configurado.");
   if (!diarioSchemaPromise) {
-    diarioSchemaPromise = env.DIARIO_DB.batch(DIARIO_SCHEMA.map(sql => env.DIARIO_DB.prepare(sql))).catch(error => {
+    diarioSchemaPromise = (async () => {
+      await env.DIARIO_DB.batch(DIARIO_SCHEMA.map(sql => env.DIARIO_DB.prepare(sql)));
+      const columns = await env.DIARIO_DB.prepare("PRAGMA table_info(salta_diario_students)").all();
+      if (!(columns.results || []).some(column => column.name === "sort_order")) {
+        await env.DIARIO_DB.prepare("ALTER TABLE salta_diario_students ADD COLUMN sort_order INTEGER NOT NULL DEFAULT 0").run();
+      }
+      await env.DIARIO_DB.prepare("CREATE INDEX IF NOT EXISTS idx_salta_diario_students_order ON salta_diario_students(class_id,active,sort_order,id)").run();
+    })().catch(error => {
       diarioSchemaPromise = undefined;
       throw error;
     });
   }
   await diarioSchemaPromise;
+}
+
+function normalizeDiarioStudentName(value) {
+  let name = String(value || "").normalize("NFC").trim().replace(/\s+/g, " ");
+  // Remove only a leading numeric identifier followed by a clear separator.
+  name = name.replace(/^\s*#?\d{1,16}(?:\s*[-–—.)/|:]\s*|\s+)(?=\p{L})/u, "");
+  return name.trim().replace(/\s+/g, " ");
 }
 
 function diarioError(message, request, status = 400) {
@@ -2081,23 +2095,68 @@ async function handleDiarioRequest(request, env, url) {
   if (method === "GET" && path === "/diario/alunos") {
     const classId = Number(url.searchParams.get("turma"));
     if (!Number.isSafeInteger(classId) || classId < 1) return diarioError("Selecione uma turma.", request);
-    const result = await db.prepare("SELECT id,class_id,name FROM salta_diario_students WHERE class_id=? AND active=1 ORDER BY name COLLATE NOCASE").bind(classId).all();
+    const result = await db.prepare("SELECT id,class_id,name,sort_order FROM salta_diario_students WHERE class_id=? AND active=1 ORDER BY sort_order,id").bind(classId).all();
     return json({ alunos: result.results || [] }, request);
   }
 
   if (method === "POST" && path === "/diario/alunos") {
     const body = await diarioJson(request);
     const classId = Number(body?.class_id);
-    const name = String(body?.name || "").trim().replace(/\s+/g, " ");
+    const name = normalizeDiarioStudentName(body?.name);
     if (!Number.isSafeInteger(classId) || classId < 1 || !name || name.length > 160) return diarioError("Informe o nome do aluno e uma turma válida.", request);
     if (!(await db.prepare("SELECT id FROM salta_diario_classes WHERE id=?").bind(classId).first())) return diarioError("Turma não encontrada.", request, 404);
     try {
-      const result = await db.prepare("INSERT INTO salta_diario_students (class_id,name) VALUES (?,?)").bind(classId, name).run();
+      const order = await db.prepare("SELECT COALESCE(MAX(sort_order),-1)+1 AS next_order FROM salta_diario_students WHERE class_id=?").bind(classId).first();
+      const result = await db.prepare("INSERT INTO salta_diario_students (class_id,name,sort_order) VALUES (?,?,?)").bind(classId, name, Number(order?.next_order || 0)).run();
       return json({ ok: true, id: result.meta?.last_row_id }, request, 201);
     } catch (error) {
       if (/unique/i.test(String(error?.message || error))) return diarioError("Esse aluno já está cadastrado nesta turma.", request, 409);
       throw error;
     }
+  }
+
+  if (method === "POST" && path === "/diario/alunos/lote") {
+    const body = await diarioJson(request);
+    const classId = Number(body?.class_id);
+    const entries = Array.isArray(body?.entries) ? body.entries : [];
+    if (!Number.isSafeInteger(classId) || classId < 1 || !entries.length || entries.length > 500) return diarioError("Selecione uma turma e envie uma lista de até 500 alunos.", request);
+    if (!(await db.prepare("SELECT id FROM salta_diario_classes WHERE id=?").bind(classId).first())) return diarioError("Turma não encontrada.", request, 404);
+
+    const cleaned = [];
+    const seen = new Set();
+    let invalid = 0;
+    for (const entry of entries) {
+      const name = normalizeDiarioStudentName(typeof entry === "string" ? entry : entry?.name);
+      if (!name || name.length > 160) { invalid++; continue; }
+      const key = name.toLocaleLowerCase("pt-BR");
+      if (seen.has(key)) continue;
+      seen.add(key);
+      cleaned.push(name);
+    }
+    if (!cleaned.length) return diarioError("Não encontrei nomes válidos na lista. Confira a prévia e tente novamente.", request);
+
+    const existing = await db.prepare("SELECT COALESCE(MAX(sort_order),-1)+1 AS next_order FROM salta_diario_students WHERE class_id=?").bind(classId).first();
+    let nextOrder = Number(existing?.next_order || 0);
+    let added = 0;
+    for (let offset = 0; offset < cleaned.length; offset += 100) {
+      const batchEntries = cleaned.slice(offset, offset + 100);
+      const results = await db.batch(batchEntries.map(name => db.prepare("INSERT OR IGNORE INTO salta_diario_students (class_id,name,sort_order) VALUES (?,?,?)").bind(classId, name, nextOrder++)));
+      for (const result of results) added += Number(result.meta?.changes || 0);
+    }
+    return json({ ok: true, added, duplicates: cleaned.length - added, invalid }, request, 201);
+  }
+
+  if (method === "PUT" && path === "/diario/alunos/ordem") {
+    const body = await diarioJson(request);
+    const classId = Number(body?.class_id);
+    const studentIds = Array.isArray(body?.student_ids) ? body.student_ids.map(Number) : [];
+    if (!Number.isSafeInteger(classId) || classId < 1 || !studentIds.length || studentIds.length > 500 || studentIds.some(id => !Number.isSafeInteger(id) || id < 1) || new Set(studentIds).size !== studentIds.length) return diarioError("A nova ordem dos alunos é inválida.", request);
+    const marks = studentIds.map(() => "?").join(",");
+    const found = await db.prepare("SELECT id FROM salta_diario_students WHERE class_id=? AND active=1 AND id IN (" + marks + ")").bind(classId, ...studentIds).all();
+    const total = await db.prepare("SELECT COUNT(*) AS total FROM salta_diario_students WHERE class_id=? AND active=1").bind(classId).first();
+    if ((found.results || []).length !== studentIds.length || Number(total?.total || 0) !== studentIds.length) return diarioError("A lista mudou enquanto era reordenada. Atualize a turma e tente novamente.", request, 409);
+    await db.batch(studentIds.map((id, index) => db.prepare("UPDATE salta_diario_students SET sort_order=? WHERE class_id=? AND id=? AND active=1").bind(index, classId, id)));
+    return json({ ok: true }, request);
   }
 
   if (method === "GET" && path === "/diario/itens") {
