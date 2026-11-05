@@ -4,7 +4,7 @@ const ALLOWED_ORIGINS = new Set(["https://d4nny3l.github.io", "http://localhost:
 function corsHeaders(request) {
   const origin = request.headers.get("Origin") || "";
   const headers = {
-    "Access-Control-Allow-Methods": "GET, POST, PUT, OPTIONS",
+    "Access-Control-Allow-Methods": "GET, POST, PUT, DELETE, OPTIONS",
     "Access-Control-Allow-Headers": "Authorization, Content-Type",
     "Access-Control-Max-Age": "86400",
     "Vary": "Origin"
