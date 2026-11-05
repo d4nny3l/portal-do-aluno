@@ -8,6 +8,11 @@ binding = "DB"
 database_name = "portal-aluno-2026"
 database_id = "e7538b0a-891e-408f-a668-75d60ca907e3"
 
+[[d1_databases]]
+binding = "DIARIO_DB"
+database_name = "salta-diario-teste"
+database_id = "44259972-59ed-4ef7-8db8-4fc442e1b90c"
+
 [[services]]
 binding = "AUTH"
 service = "salta-auth"
