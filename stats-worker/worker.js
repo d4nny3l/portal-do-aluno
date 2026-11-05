@@ -2242,6 +2242,24 @@ async function handleDiarioRequest(request, env, url) {
     return json({ ok: true, id: result.meta?.last_row_id }, request, 201);
   }
 
+  const itemMatch = path.match(/^\/diario\/itens\/(\d+)$/);
+  if (method === "PUT" && itemMatch) {
+    const body = await diarioJson(request);
+    const id = Number(itemMatch[1]);
+    const title = String(body?.title || "").trim();
+    const component = String(body?.component || "").trim().toLowerCase();
+    const item = await db.prepare("SELECT id,class_id,kind,max_score FROM salta_diario_items WHERE id=?").bind(id).first();
+    if (!item) return diarioError("Registro não encontrado.", request, 404);
+    const turma = await db.prepare("SELECT evaluation_system FROM salta_diario_classes WHERE id=?").bind(item.class_id).first();
+    const components = item.kind === "visto" ? ["caderno"] : turma?.evaluation_system === "goias" ? ["estudo_dirigido", "prova_bloco", "recuperacao_final", "outro"] : ["estudo_dirigido", "prova", "redacao", "recuperacao_estudo", "outro"];
+    const maxScore = item.kind === "visto" ? 0 : Number(body?.max_score);
+    if (!title || title.length > 120 || !components.includes(component) || !Number.isFinite(maxScore) || maxScore < 0 || maxScore > 100 || (item.kind !== "visto" && maxScore <= 0)) return diarioError("Confira o nome, o componente e o valor máximo do registro.", request);
+    const excessive = await db.prepare("SELECT COUNT(*) AS total FROM salta_diario_records WHERE item_id=? AND score>?").bind(id, maxScore).first();
+    if (Number(excessive?.total || 0) > 0) return diarioError("O novo valor máximo fica abaixo de notas já lançadas. Ajuste as notas antes de reduzir o máximo.", request, 409);
+    await db.prepare("UPDATE salta_diario_items SET title=?,component=?,max_score=? WHERE id=?").bind(title, component, maxScore, id).run();
+    return json({ ok: true }, request);
+  }
+
   if (method === "GET" && path === "/diario/notas") {
     const classId = Number(url.searchParams.get("turma"));
     const period = Number(url.searchParams.get("bimestre"));
