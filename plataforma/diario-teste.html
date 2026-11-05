@@ -1,0 +1,142 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#f4f5fb">
+<link rel="icon" type="image/svg+xml" href="../favicon.svg">
+<link rel="stylesheet" href="../salta-theme.css">
+<link rel="stylesheet" href="./professor-theme.css?v=20261105">
+<title>Diário de classe · Testes — SALTA</title>
+<style>
+:root{--test-ink:#252744;--test-muted:#747995;--test-line:#e9eafa;--test-primary:#5b5bd6;--test-soft:#efefff}
+*{box-sizing:border-box}
+body{margin:0;min-height:100vh;color:var(--test-ink);font-family:Inter,-apple-system,BlinkMacSystemFont,"Segoe UI",Arial,sans-serif;background:radial-gradient(circle at 50% -5%,#fff 0,#f4f5fb 58%,#eeeffb 100%)}
+body::before{content:"";position:fixed;inset:0;z-index:-1;pointer-events:none;background-image:linear-gradient(rgba(91,91,214,.045) 1px,transparent 1px),linear-gradient(90deg,rgba(91,91,214,.045) 1px,transparent 1px);background-size:32px 32px}
+a{color:inherit;text-decoration:none}
+main{width:min(1180px,calc(100% - 48px));margin:0 auto;padding:calc(var(--teacher-header-height) + 30px) 0 42px}
+.crumb{display:flex;align-items:center;gap:8px;margin-bottom:12px;color:#999db5;font-size:10px;font-weight:700}.crumb strong{color:#666b89}
+.heading{display:flex;align-items:flex-end;justify-content:space-between;gap:18px;margin-bottom:22px}
+.kicker{margin:0 0 7px;color:var(--test-primary);font-size:9px;font-weight:850;letter-spacing:1.2px;text-transform:uppercase}
+h1{margin:0;color:#303451;font-size:clamp(26px,3vw,34px);letter-spacing:-1px;font-weight:850}
+.subtitle{margin:7px 0 0;color:var(--test-muted);font-size:12px;line-height:1.6;max-width:760px}
+.test-badge{display:inline-flex;align-items:center;gap:7px;white-space:nowrap;padding:8px 11px;border:1px solid #eadbb8;border-radius:999px;background:#fff8e9;color:#95691b;font-size:9px;font-weight:850;letter-spacing:.55px}
+.test-badge i{width:7px;height:7px;border-radius:50%;background:#d99b2b;box-shadow:0 0 0 3px #d99b2b20}
+.panel{border:1px solid var(--test-line);border-radius:16px;background:rgba(255,255,255,.94);box-shadow:0 14px 36px rgba(72,75,145,.07)}
+.notice{display:flex;align-items:flex-start;gap:14px;padding:19px 20px;margin-bottom:17px;background:linear-gradient(110deg,#f3f2ff,#fbfaff)}
+.notice-icon{width:40px;height:40px;flex:0 0 40px;display:grid;place-items:center;border-radius:12px;background:#e7e6ff;color:#5959c8}
+.notice-icon svg{width:21px;height:21px;stroke:currentColor;fill:none;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
+.notice h2{margin:1px 0 6px;color:#393b69;font-size:14px;font-weight:850}
+.notice p{margin:0;color:#676b8d;font-size:11px;line-height:1.65}
+.notice strong{color:#44468a}
+.status-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:13px;margin-bottom:25px}
+.status-card{padding:15px 16px;display:flex;align-items:center;gap:12px}
+.status-icon{width:34px;height:34px;flex:0 0 34px;display:grid;place-items:center;border-radius:10px;background:#f0efff;color:#5b5bd6}
+.status-icon svg{width:17px;height:17px;stroke:currentColor;fill:none;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
+.status-copy span{display:block;color:var(--test-muted);font-size:9px;font-weight:700}
+.status-copy strong{display:block;margin-top:4px;color:#454967;font-size:11px;font-weight:850}
+.section-title{display:flex;align-items:flex-end;justify-content:space-between;gap:12px;margin:0 1px 13px}
+.section-title h2{margin:0;color:#343854;font-size:14px;font-weight:850}
+.section-title p{margin:4px 0 0;color:var(--test-muted);font-size:10px}
+.feature-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:13px}
+.feature{min-height:136px;padding:16px;display:flex;gap:12px;align-items:flex-start}
+.feature-icon{width:36px;height:36px;flex:0 0 36px;display:grid;place-items:center;border-radius:10px;background:#efefff;color:#5b5bd6}
+.feature-icon svg{width:18px;height:18px;stroke:currentColor;fill:none;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
+.feature h3{margin:1px 0 6px;color:#373a59;font-size:12px;font-weight:850}
+.feature p{margin:0;color:var(--test-muted);font-size:10px;line-height:1.6}
+.bottom-note{margin-top:17px;padding:15px 17px;display:flex;align-items:flex-start;gap:11px;background:#f8f8ff;border:1px solid #e7e7fb;border-radius:13px}
+.bottom-note svg{width:17px;height:17px;flex:0 0 17px;margin-top:1px;stroke:var(--test-primary)}
+.bottom-note strong{display:block;color:#5556a7;font-size:10px;font-weight:850}
+.bottom-note p{margin:4px 0 0;color:#8589a5;font-size:10px;line-height:1.55}
+.page-footer{display:flex;justify-content:space-between;gap:12px;padding:20px 2px 0;color:#a0a3b8;font-size:9px}
+.session-warning{display:none;margin:0 0 16px;padding:12px 14px;border:1px solid #f2d4d4;border-radius:10px;background:#fff4f4;color:#a23b47;font-size:11px;line-height:1.5}
+.session-warning.show{display:block}
+@media(max-width:900px){.feature-grid{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media(max-width:700px){main{width:calc(100% - 32px);padding-top:calc(var(--teacher-header-height) + 22px)}.heading{align-items:flex-start;flex-direction:column}.status-grid{grid-template-columns:1fr;gap:9px}.status-card{padding:12px 14px}.notice{padding:16px}.page-footer{flex-direction:column;gap:5px}}
+@media(max-width:520px){.feature-grid{grid-template-columns:1fr}.feature{min-height:0}.test-badge{align-self:flex-start}}
+</style>
+</head>
+<body class="professor-layout">
+<header class="teacher-shell-topbar">
+  <div class="teacher-shell-brandzone">
+    <button class="teacher-shell-toggle" id="teacherShellToggle" type="button" aria-label="Abrir menu" aria-expanded="false"><svg viewBox="0 0 24 24"><path d="M4 6h16M4 12h16M4 18h16"/></svg></button>
+    <a class="teacher-shell-brand" href="./professor.html" aria-label="SALTA — Área do Professor"><span class="teacher-shell-brand-mark">S</span><span class="teacher-shell-brand-copy"><strong>SALTA</strong><small>PORTAL EDUCACIONAL</small></span></a>
+  </div>
+  <div class="teacher-shell-actions"><span class="teacher-shell-context">AMBIENTE DO PROFESSOR</span><a class="teacher-shell-home" href="./"><svg viewBox="0 0 24 24"><path d="M3 10.5L12 3l9 7.5M5.5 9v11h13V9M9 20v-6h6v6"/></svg> Plataforma SALTA</a></div>
+</header>
+<aside class="teacher-shell-sidebar" aria-label="Navegação da Área do Professor">
+  <div class="teacher-shell-caption">Menu principal</div>
+  <a class="teacher-shell-link" href="./professor.html"><svg viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="3" width="7" height="7" rx="1.5"/><rect x="3" y="14" width="7" height="7" rx="1.5"/><rect x="14" y="14" width="7" height="7" rx="1.5"/></svg><span>Visão geral</span></a>
+  <div class="teacher-shell-divider"></div>
+  <div class="teacher-shell-caption">Ferramentas acadêmicas</div>
+  <a class="teacher-shell-link" href="./estatistica.html"><svg viewBox="0 0 24 24"><path d="M4 19V5M4 19h17"/><rect x="7" y="11" width="3" height="6" rx=".5"/><rect x="13" y="7" width="3" height="10" rx=".5"/><rect x="19" y="4" width="2" height="13" rx=".5"/></svg><span>Relatórios acadêmicos</span></a>
+  <a class="teacher-shell-link" href="./diario-teste.html" aria-current="page"><svg viewBox="0 0 24 24"><path d="M5 3h14v18H5z"/><path d="M8 7h8M8 11h8M8 15h5"/></svg><span>Diário de classe <small style="margin-left:5px;color:#9a791c;font-weight:850">TESTE</small></span></a>
+  <a class="teacher-shell-link" href="../corretor/"><svg viewBox="0 0 24 24"><path d="M7 3h8l4 4v14H7a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2Z"/><path d="M14 3v5h5M9 13h7M9 17h5"/></svg><span>Corretor de avaliações</span></a>
+  <a class="teacher-shell-link" href="./mensagens.html"><svg viewBox="0 0 24 24"><path d="M18 9a6 6 0 0 0-12 0c0 7-3 7-3 9h18c0-2-3-2-3-9ZM10 21h4"/></svg><span>Central de avisos</span></a>
+  <a class="teacher-shell-link" href="./fechamento-bimestre.html"><svg viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="17" rx="2"/><path d="M8 2v4M16 2v4M3 9h18M8 13h3M8 17h8"/></svg><span>Fechamento de bimestre</span></a>
+  <div class="teacher-shell-divider"></div>
+  <div class="teacher-shell-caption">Projetos e eventos</div>
+  <a class="teacher-shell-link" href="./festival-consciencia-negra-admin.html"><svg viewBox="0 0 24 24"><path d="M12 3v3M5.6 5.6l2.1 2.1M3 12h3M18 12h3M16.3 7.7l2.1-2.1M8 14.5a4 4 0 1 1 8 0c0 1.6-.8 2.4-1.7 3.3-.6.6-.8 1.1-.8 2.2h-3c0-1.1-.2-1.6-.8-2.2C8.8 16.9 8 16.1 8 14.5Z"/></svg><span>Festival da Consciência Negra</span></a>
+  <a class="teacher-shell-link" href="../mostra-cultural.html?admin=1"><svg viewBox="0 0 24 24"><path d="M4 19V5l8-3 8 3v14l-8 3-8-3Z"/><path d="m4 5 8 3 8-3M12 8v14"/></svg><span>Avaliação da Mostra Cultural</span></a>
+  <div class="teacher-shell-note"><strong>Sessão administrativa protegida</strong><p>Este é um espaço experimental. Os dados de produção não são conectados a este módulo nesta etapa.</p></div>
+</aside>
+<div class="teacher-shell-overlay" id="teacherShellOverlay"></div>
+<script>
+(() => {
+ const toggle=document.getElementById("teacherShellToggle");
+ const overlay=document.getElementById("teacherShellOverlay");
+ const close=()=>{document.body.classList.remove("teacher-nav-open");toggle?.setAttribute("aria-expanded","false");};
+ toggle?.addEventListener("click",()=>{const open=document.body.classList.toggle("teacher-nav-open");toggle.setAttribute("aria-expanded",String(open));});
+ overlay?.addEventListener("click",close);
+ document.querySelectorAll(".teacher-shell-sidebar a").forEach(link=>link.addEventListener("click",close));
+ document.addEventListener("keydown",event=>{if(event.key==="Escape")close();});
+})();
+</script>
+<main>
+  <div class="crumb"><span>SALTA</span><span>›</span><span>Área do Professor</span><span>›</span><strong>Diário de classe</strong></div>
+  <section class="heading">
+    <div><p class="kicker">NOVO MÓDULO · AMBIENTE EXPERIMENTAL</p><h1>Diário de classe</h1><p class="subtitle">Um novo espaço para organizar turmas, alunos, avaliações, atividades, vistos e resultados diretamente na SALTA.</p></div>
+    <span class="test-badge"><i></i> VERSÃO DE TESTE</span>
+  </section>
+  <div class="session-warning" id="sessionWarning" role="alert"></div>
+  <section class="panel notice" aria-label="Aviso do ambiente de testes">
+    <span class="notice-icon"><svg viewBox="0 0 24 24"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5z"/><path d="M8 7h8M8 11h8"/></svg></span>
+    <div><h2>Ambiente de testes isolado</h2><p>Esta aba já faz parte da SALTA, mas está sendo preparada por etapas. <strong>Nenhuma nota, cadastro ou informação da base atual será alterada por esta página.</strong> Primeiro vamos definir juntos o funcionamento; depois criaremos uma base de testes separada para validar tudo antes de qualquer migração.</p></div>
+  </section>
+  <section class="status-grid" aria-label="Situação do módulo">
+    <article class="panel status-card"><span class="status-icon"><svg viewBox="0 0 24 24"><path d="M4 5h16v14H4zM8 9h8M8 13h5"/></svg></span><div class="status-copy"><span>Dados de produção</span><strong>Não conectados</strong></div></article>
+    <article class="panel status-card"><span class="status-icon"><svg viewBox="0 0 24 24"><path d="M12 3v18M3 12h18"/><circle cx="12" cy="12" r="9"/></svg></span><div class="status-copy"><span>Banco experimental</span><strong>Será criado na próxima etapa</strong></div></article>
+    <article class="panel status-card"><span class="status-icon"><svg viewBox="0 0 24 24"><path d="M4 4h16v16H4zM8 8h8M8 12h8M8 16h4"/></svg></span><div class="status-copy"><span>Planilha atual</span><strong>Preservada, sem alterações</strong></div></article>
+  </section>
+  <section aria-labelledby="featuresTitle">
+    <div class="section-title"><div><h2 id="featuresTitle">O que vamos construir</h2><p>As etapas do diário online serão definidas e validadas com você.</p></div></div>
+    <div class="feature-grid">
+      <article class="panel feature"><span class="feature-icon"><svg viewBox="0 0 24 24"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2M9 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8ZM20 8v6M23 11h-6"/></svg></span><div><h3>Cadastro de alunos e turmas</h3><p>Organização dos estudantes, turmas e informações necessárias ao diário.</p></div></article>
+      <article class="panel feature"><span class="feature-icon"><svg viewBox="0 0 24 24"><path d="M8 3h8M9 3v4l-5 9a3 3 0 0 0 2.6 4.5h10.8A3 3 0 0 0 20 16l-5-9V3M8 14h8"/></svg></span><div><h3>Avaliações e atividades</h3><p>Cadastro de provas, trabalhos, exercícios, atividades e seus respectivos valores.</p></div></article>
+      <article class="panel feature"><span class="feature-icon"><svg viewBox="0 0 24 24"><path d="m5 12 4 4L19 6"/><path d="M4 3h16v18H4z"/></svg></span><div><h3>Vistos e acompanhamento</h3><p>Registro do acompanhamento cotidiano e dos vistos de cada estudante.</p></div></article>
+      <article class="panel feature"><span class="feature-icon"><svg viewBox="0 0 24 24"><path d="M4 19V5M4 19h17"/><path d="m7 14 4-4 3 2 6-7"/></svg></span><div><h3>Médias e aprovação</h3><p>Critérios configuráveis para médias necessárias e regras de aprovação.</p></div></article>
+      <article class="panel feature"><span class="feature-icon"><svg viewBox="0 0 24 24"><path d="M3 3h18v18H3zM8 8h8M8 12h8M8 16h4"/></svg></span><div><h3>Relatórios</h3><p>Consultas individuais e consolidadas por turma, período e avaliação.</p></div></article>
+      <article class="panel feature"><span class="feature-icon"><svg viewBox="0 0 24 24"><path d="M4 4h16v16H4zM8 8h8M8 12h8M8 16h5"/><path d="M14 16h5M16.5 13.5v5"/></svg></span><div><h3>Exportação para Excel</h3><p>Geração de arquivos .xlsx com as notas organizadas para conferência e uso.</p></div></article>
+    </div>
+  </section>
+  <section class="bottom-note"><svg viewBox="0 0 24 24" fill="none" stroke-width="1.8"><circle cx="12" cy="12" r="9"/><path d="M12 11v5M12 8h.01"/></svg><div><strong>Construção por etapas, com validação antes de avançar.</strong><p>Vamos definir cada parte a partir da sua rotina. Nenhum dado real será importado e nenhuma planilha será substituída até que o ambiente experimental esteja validado.</p></div></section>
+  <footer class="page-footer"><span>© 2026 SALTA — Portal Educacional</span><span>Diário de classe · Ambiente de testes</span></footer>
+</main>
+<script>
+(async()=>{
+ const warning=document.getElementById("sessionWarning");
+ try{
+  const response=await fetch("https://salta-stats.dannyel-moises.workers.dev/auth/session",{method:"GET",credentials:"include",cache:"no-store"});
+  const data=await response.json().catch(()=>({}));
+  if(!response.ok||!data.authenticated){
+   warning.textContent="Sua sessão da Área do Professor não foi confirmada. Entre novamente para acessar os módulos administrativos.";
+   warning.classList.add("show");
+  }
+ }catch(error){
+  warning.textContent="Não foi possível confirmar a sessão neste momento. Atualize a página ou entre novamente pela Área do Professor.";
+  warning.classList.add("show");
+ }
+})();
+</script>
+</body>
+</html>
