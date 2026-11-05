@@ -228,6 +228,17 @@ body:before,
     linear-gradient(90deg, var(--grid) 1px, transparent 1px);
 }
 
+body::before,
+body:before {
+  content: "";
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  pointer-events: none;
+  background-size: 32px 32px;
+  background-position: 0 0;
+}
+
 .card.dark .icon {
   background: linear-gradient(135deg, #7775ed, #5b5bd6);
 }
