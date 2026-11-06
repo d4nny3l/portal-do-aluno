@@ -1995,6 +1995,7 @@ const DIARIO_SCHEMA = [
   "CREATE TABLE IF NOT EXISTS salta_diario_items (id INTEGER PRIMARY KEY AUTOINCREMENT, class_id INTEGER NOT NULL REFERENCES salta_diario_classes(id), period INTEGER NOT NULL CHECK(period BETWEEN 1 AND 4), title TEXT NOT NULL, kind TEXT NOT NULL CHECK(kind IN ('avaliacao','atividade','visto')), max_score REAL NOT NULL DEFAULT 0 CHECK(max_score >= 0 AND max_score <= 100), component TEXT NOT NULL DEFAULT 'outro', activity_date TEXT, created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP)",
   "CREATE TABLE IF NOT EXISTS salta_diario_assessment_defaults (id INTEGER PRIMARY KEY AUTOINCREMENT, evaluation_system TEXT NOT NULL CHECK(evaluation_system IN ('df','goias')), title TEXT NOT NULL, kind TEXT NOT NULL CHECK(kind IN ('avaliacao','atividade')), max_score REAL NOT NULL CHECK(max_score > 0 AND max_score <= 100), component TEXT NOT NULL, sort_order INTEGER NOT NULL DEFAULT 0, created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP, UNIQUE(evaluation_system,title COLLATE NOCASE))",
   "CREATE TABLE IF NOT EXISTS salta_diario_records (student_id INTEGER NOT NULL REFERENCES salta_diario_students(id), item_id INTEGER NOT NULL REFERENCES salta_diario_items(id), score REAL, completed INTEGER NOT NULL DEFAULT 0 CHECK(completed IN (0,1)), updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP, PRIMARY KEY(student_id,item_id))",
+  "CREATE TABLE IF NOT EXISTS salta_diario_teacher_schedule (id INTEGER PRIMARY KEY AUTOINCREMENT, class_id INTEGER NOT NULL REFERENCES salta_diario_classes(id) ON DELETE CASCADE, weekday INTEGER NOT NULL CHECK(weekday BETWEEN 1 AND 7), start_time TEXT NOT NULL, end_time TEXT NOT NULL, created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP, UNIQUE(weekday,start_time))",
   "CREATE TABLE IF NOT EXISTS salta_diario_attendance_sessions (id INTEGER PRIMARY KEY AUTOINCREMENT, class_id INTEGER NOT NULL REFERENCES salta_diario_classes(id), period INTEGER NOT NULL CHECK(period BETWEEN 1 AND 4), attendance_date TEXT NOT NULL, created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP, UNIQUE(class_id,period,attendance_date))",
   "CREATE TABLE IF NOT EXISTS salta_diario_attendance_records (session_id INTEGER NOT NULL REFERENCES salta_diario_attendance_sessions(id) ON DELETE CASCADE, student_id INTEGER NOT NULL REFERENCES salta_diario_students(id), present INTEGER NOT NULL DEFAULT 1 CHECK(present IN (0,1)), updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP, PRIMARY KEY(session_id,student_id))",
   "CREATE INDEX IF NOT EXISTS idx_salta_diario_students_class ON salta_diario_students(class_id,active,name)",
@@ -2167,6 +2168,55 @@ async function handleDiarioRequest(request, env, url) {
     if (!["df", "goias"].includes(system)) return diarioError("Modelo de avaliação inválido.", request);
     const result = await db.prepare("SELECT id,evaluation_system,title,kind,max_score,component,sort_order FROM salta_diario_assessment_defaults WHERE evaluation_system=? ORDER BY sort_order,id").bind(system).all();
     return json({ modelo: system, avaliacoes: result.results || [] }, request);
+  }
+
+  if (method === "GET" && path === "/diario/horarios") {
+    const result = await db.prepare("SELECT s.id,s.class_id,c.name AS class_name,s.weekday,s.start_time,s.end_time FROM salta_diario_teacher_schedule s INNER JOIN salta_diario_classes c ON c.id=s.class_id ORDER BY s.weekday,s.start_time,c.name").all();
+    return json({ horarios: result.results || [] }, request);
+  }
+
+  if (method === "POST" && path === "/diario/horarios") {
+    const body = await diarioJson(request);
+    const classId = Number(body?.class_id);
+    const weekday = Number(body?.weekday);
+    const start = String(body?.start_time || "").trim();
+    const end = String(body?.end_time || "").trim();
+    const validTime = value => value.length === 5 && value[2] === ":" && [...value.slice(0,2),...value.slice(3)].every(char => char >= "0" && char <= "9") && Number(value.slice(0,2)) <= 23 && Number(value.slice(3)) <= 59;
+    if (!Number.isSafeInteger(classId) || classId < 1 || !Number.isInteger(weekday) || weekday < 1 || weekday > 7 || !validTime(start) || !validTime(end) || start >= end) return diarioError("Informe turma, dia e intervalo de horário válidos.", request);
+    const turma = await db.prepare("SELECT id FROM salta_diario_classes WHERE id=?").bind(classId).first();
+    if (!turma) return diarioError("Turma não encontrada.", request, 404);
+    const overlap = await db.prepare("SELECT id FROM salta_diario_teacher_schedule WHERE weekday=? AND start_time < ? AND end_time > ? LIMIT 1").bind(weekday,end,start).first();
+    if (overlap) return diarioError("Este horário se sobrepõe a outro horário já cadastrado nesse dia.", request, 409);
+    const result = await db.prepare("INSERT INTO salta_diario_teacher_schedule (class_id,weekday,start_time,end_time) VALUES (?,?,?,?)").bind(classId,weekday,start,end).run();
+    return json({ ok: true, id: result.meta?.last_row_id }, request, 201);
+  }
+
+  const schedulePrefix = "/diario/horarios/";
+  const scheduleId = path.startsWith(schedulePrefix) ? Number(path.slice(schedulePrefix.length)) : 0;
+  if (Number.isSafeInteger(scheduleId) && scheduleId > 0 && method === "PUT") {
+    const id = scheduleId;
+    const body = await diarioJson(request);
+    const classId = Number(body?.class_id);
+    const weekday = Number(body?.weekday);
+    const start = String(body?.start_time || "").trim();
+    const end = String(body?.end_time || "").trim();
+    const validTime = value => value.length === 5 && value[2] === ":" && [...value.slice(0,2),...value.slice(3)].every(char => char >= "0" && char <= "9") && Number(value.slice(0,2)) <= 23 && Number(value.slice(3)) <= 59;
+    if (!Number.isSafeInteger(classId) || classId < 1 || !Number.isInteger(weekday) || weekday < 1 || weekday > 7 || !validTime(start) || !validTime(end) || start >= end) return diarioError("Informe turma, dia e intervalo de horário válidos.", request);
+    const [current,turma] = await Promise.all([
+      db.prepare("SELECT id FROM salta_diario_teacher_schedule WHERE id=?").bind(id).first(),
+      db.prepare("SELECT id FROM salta_diario_classes WHERE id=?").bind(classId).first()
+    ]);
+    if (!current) return diarioError("Horário não encontrado.", request, 404);
+    if (!turma) return diarioError("Turma não encontrada.", request, 404);
+    const overlap = await db.prepare("SELECT id FROM salta_diario_teacher_schedule WHERE weekday=? AND start_time < ? AND end_time > ? AND id<>? LIMIT 1").bind(weekday,end,start,id).first();
+    if (overlap) return diarioError("Este horário se sobrepõe a outro horário já cadastrado nesse dia.", request, 409);
+    await db.prepare("UPDATE salta_diario_teacher_schedule SET class_id=?,weekday=?,start_time=?,end_time=? WHERE id=?").bind(classId,weekday,start,end,id).run();
+    return json({ ok: true }, request);
+  }
+  if (Number.isSafeInteger(scheduleId) && scheduleId > 0 && method === "DELETE") {
+    const result = await db.prepare("DELETE FROM salta_diario_teacher_schedule WHERE id=?").bind(scheduleId).run();
+    if (!result.meta?.changes) return diarioError("Horário não encontrado.", request, 404);
+    return json({ ok: true }, request);
   }
 
   if (method === "GET" && path === "/diario/frequencia") {
