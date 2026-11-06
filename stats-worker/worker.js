@@ -1995,6 +1995,7 @@ const DIARIO_SCHEMA = [
   "CREATE TABLE IF NOT EXISTS salta_diario_items (id INTEGER PRIMARY KEY AUTOINCREMENT, class_id INTEGER NOT NULL REFERENCES salta_diario_classes(id), period INTEGER NOT NULL CHECK(period BETWEEN 1 AND 4), title TEXT NOT NULL, kind TEXT NOT NULL CHECK(kind IN ('avaliacao','atividade','visto')), max_score REAL NOT NULL DEFAULT 0 CHECK(max_score >= 0 AND max_score <= 100), component TEXT NOT NULL DEFAULT 'outro', activity_date TEXT, created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP)",
   "CREATE TABLE IF NOT EXISTS salta_diario_assessment_defaults (id INTEGER PRIMARY KEY AUTOINCREMENT, evaluation_system TEXT NOT NULL CHECK(evaluation_system IN ('df','goias')), title TEXT NOT NULL, kind TEXT NOT NULL CHECK(kind IN ('avaliacao','atividade')), max_score REAL NOT NULL CHECK(max_score > 0 AND max_score <= 100), component TEXT NOT NULL, sort_order INTEGER NOT NULL DEFAULT 0, created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP, UNIQUE(evaluation_system,title COLLATE NOCASE))",
   "CREATE TABLE IF NOT EXISTS salta_diario_records (student_id INTEGER NOT NULL REFERENCES salta_diario_students(id), item_id INTEGER NOT NULL REFERENCES salta_diario_items(id), score REAL, completed INTEGER NOT NULL DEFAULT 0 CHECK(completed IN (0,1)), updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP, PRIMARY KEY(student_id,item_id))",
+  "CREATE TABLE IF NOT EXISTS salta_diario_periods (evaluation_system TEXT NOT NULL CHECK(evaluation_system IN ('df','goias')), segment TEXT NOT NULL CHECK(segment IN ('regular','eja')), period INTEGER NOT NULL CHECK(period BETWEEN 1 AND 4), start_date TEXT NOT NULL, end_date TEXT NOT NULL, updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP, PRIMARY KEY(evaluation_system,segment,period))",
   "CREATE TABLE IF NOT EXISTS salta_diario_teacher_schedule (id INTEGER PRIMARY KEY AUTOINCREMENT, class_id INTEGER NOT NULL REFERENCES salta_diario_classes(id) ON DELETE CASCADE, weekday INTEGER NOT NULL CHECK(weekday BETWEEN 1 AND 7), start_time TEXT NOT NULL, end_time TEXT NOT NULL, created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP, UNIQUE(weekday,start_time))",
   "CREATE TABLE IF NOT EXISTS salta_diario_teacher_shifts (id INTEGER PRIMARY KEY AUTOINCREMENT, name TEXT NOT NULL UNIQUE COLLATE NOCASE, start_time TEXT NOT NULL, lesson_minutes INTEGER NOT NULL CHECK(lesson_minutes BETWEEN 5 AND 180), lesson_count INTEGER NOT NULL CHECK(lesson_count BETWEEN 1 AND 16), created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP)",
   "CREATE TABLE IF NOT EXISTS salta_diario_teacher_shift_breaks (shift_id INTEGER NOT NULL REFERENCES salta_diario_teacher_shifts(id) ON DELETE CASCADE, after_lesson INTEGER NOT NULL CHECK(after_lesson BETWEEN 1 AND 15), duration_minutes INTEGER NOT NULL CHECK(duration_minutes BETWEEN 1 AND 180), PRIMARY KEY(shift_id,after_lesson))",
@@ -2175,6 +2176,35 @@ async function handleDiarioRequest(request, env, url) {
     return json({ modelo: system, avaliacoes: result.results || [] }, request);
   }
 
+  const isValidPeriodDate = value => {
+    if (typeof value !== "string" || value.length !== 10 || value[4] !== "-" || value[7] !== "-") return false;
+    const parsed = new Date(value + "T00:00:00Z");
+    return Number.isFinite(parsed.getTime()) && parsed.toISOString().slice(0,10) === value;
+  };
+  if (method === "GET" && path === "/diario/bimestres") {
+    const system = String(url.searchParams.get("modelo") || "").trim().toLowerCase();
+    const segment = String(url.searchParams.get("segmento") || "regular").trim().toLowerCase();
+    if (!["df","goias"].includes(system) || !["regular","eja"].includes(segment)) return diarioError("Informe rede e segmento válidos.",request);
+    const result = await db.prepare("SELECT period,start_date,end_date,updated_at FROM salta_diario_periods WHERE evaluation_system=? AND segment=? ORDER BY period").bind(system,segment).all();
+    return json({ modelo:system,segmento:segment,bimestres:result.results||[] },request);
+  }
+
+  if (method === "PUT" && path === "/diario/bimestres") {
+    const body = await diarioJson(request);
+    const system = String(body?.evaluation_system || "").trim().toLowerCase();
+    const segment = String(body?.segment || "regular").trim().toLowerCase();
+    const period = Number(body?.period);
+    const start = String(body?.start_date || "");
+    const end = String(body?.end_date || "");
+    const periodCount = segment === "eja" ? 2 : 4;
+    const validDate = isValidPeriodDate;
+    if (!["df","goias"].includes(system) || !["regular","eja"].includes(segment) || !Number.isInteger(period) || period<1 || period>periodCount || !validDate(start) || !validDate(end) || start>end) return diarioError("Informe rede, segmento, bimestre e intervalo de datas válidos.",request);
+    const overlap = await db.prepare("SELECT period FROM salta_diario_periods WHERE evaluation_system=? AND segment=? AND period<>? AND NOT(end_date<? OR start_date>?) LIMIT 1").bind(system,segment,period,start,end).first();
+    if (overlap) return diarioError("As datas deste bimestre se sobrepõem a outro período da mesma rede e segmento.",request,409);
+    await db.prepare("INSERT INTO salta_diario_periods (evaluation_system,segment,period,start_date,end_date,updated_at) VALUES (?,?,?,?,?,CURRENT_TIMESTAMP) ON CONFLICT(evaluation_system,segment,period) DO UPDATE SET start_date=excluded.start_date,end_date=excluded.end_date,updated_at=CURRENT_TIMESTAMP").bind(system,segment,period,start,end).run();
+    return json({ok:true},request);
+  }
+
   if (method === "GET" && path === "/diario/horarios") {
     const [turnosResult, breaksResult, slotsResult] = await Promise.all([
       db.prepare("SELECT id,name,start_time,lesson_minutes,lesson_count FROM salta_diario_teacher_shifts ORDER BY name").all(),
@@ -2202,7 +2232,7 @@ async function handleDiarioRequest(request, env, url) {
   const shiftId = path.startsWith(shiftPrefix) ? Number(path.slice(shiftPrefix.length)) : 0;
   const validTime = value => value.length === 5 && value[2] === ":" && [...value.slice(0,2),...value.slice(3)].every(char => char >= "0" && char <= "9") && Number(value.slice(0,2)) <= 23 && Number(value.slice(3)) <= 59;
   const validIsoDate = value => {
-    if (!/^\\d{4}-\\d{2}-\\d{2}$/.test(value)) return false;
+    if (typeof value !== "string" || value.length !== 10 || value[4] !== "-" || value[7] !== "-") return false;
     const parsed = new Date(value + "T00:00:00Z");
     return Number.isFinite(parsed.getTime()) && parsed.toISOString().slice(0,10) === value;
   };
@@ -2307,50 +2337,57 @@ async function handleDiarioRequest(request, env, url) {
 
   const rangeMatch = path === "/diario/frequencia/ocorrencias";
   if (method === "GET" && rangeMatch) {
-    const startDate = String(url.searchParams.get("inicio") || "");
-    const endDate = String(url.searchParams.get("fim") || "");
+    const classId = Number(url.searchParams.get("turma"));
     const period = Number(url.searchParams.get("bimestre"));
-    if (!/^\d{4}-\d{2}-\d{2}$/.test(startDate) || !/^\d{4}-\d{2}-\d{2}$/.test(endDate) || startDate > endDate || Date.parse(endDate+"T00:00:00Z") - Date.parse(startDate+"T00:00:00Z") > 42*86400000 || !Number.isInteger(period) || period < 1 || period > 4) return diarioError("Informe um intervalo de datas e bimestre válidos.", request);
-    const [slots, saved, students] = await Promise.all([
-      db.prepare("SELECT s.shift_id,s.weekday,s.lesson_number,s.class_id,c.name AS class_name,c.period_count,t.start_time,t.lesson_minutes,COALESCE((SELECT SUM(b.duration_minutes) FROM salta_diario_teacher_shift_breaks b WHERE b.shift_id=s.shift_id AND b.after_lesson<s.lesson_number),0) AS break_offset FROM salta_diario_teacher_schedule_slots s INNER JOIN salta_diario_teacher_shifts t ON t.id=s.shift_id INNER JOIN salta_diario_classes c ON c.id=s.class_id WHERE c.period_count>=? ORDER BY s.weekday,t.start_time,s.lesson_number").bind(period).all(),
-      db.prepare("SELECT s.id,s.shift_id,s.weekday,s.lesson_number,s.class_id,s.period,s.attendance_date,s.start_time,s.end_time,c.name AS class_name FROM salta_diario_lesson_sessions s INNER JOIN salta_diario_classes c ON c.id=s.class_id WHERE s.period=? AND s.attendance_date BETWEEN ? AND ?").bind(period,startDate,endDate).all(),
-      db.prepare("SELECT r.session_id,r.student_id,r.present FROM salta_diario_lesson_records r INNER JOIN salta_diario_lesson_sessions s ON s.id=r.session_id WHERE s.period=? AND s.attendance_date BETWEEN ? AND ?").bind(period,startDate,endDate).all()
+    const turma = await db.prepare("SELECT id,name,evaluation_system,segment,period_count FROM salta_diario_classes WHERE id=?").bind(classId).first();
+    if (!turma) return diarioError("Turma não encontrada.",request,404);
+    if (!Number.isInteger(period)||period<1||period>Number(turma.period_count)) return diarioError("Bimestre inválido para esta turma.",request);
+    const term = await db.prepare("SELECT start_date,end_date FROM salta_diario_periods WHERE evaluation_system=? AND segment=? AND period=?").bind(turma.evaluation_system,turma.segment,period).first();
+    const periodo = { bimestre:period,rede:turma.evaluation_system,segmento:turma.segment,inicio:term?.start_date||null,fim:term?.end_date||null };
+    if (!term) return json({ configurado:false,periodo,turma:{id:Number(turma.id),nome:turma.name},ocorrencias:[] },request);
+    const requestedStart=String(url.searchParams.get("inicio")||term.start_date),requestedEnd=String(url.searchParams.get("fim")||term.end_date);
+    const startDate=requestedStart<term.start_date?term.start_date:requestedStart,endDate=requestedEnd>term.end_date?term.end_date:requestedEnd;
+    if (!validIsoDate(startDate)||!validIsoDate(endDate)||startDate>endDate||Date.parse(endDate+"T00:00:00Z")-Date.parse(startDate+"T00:00:00Z")>240*86400000) return diarioError("Intervalo de datas do bimestre inválido.",request);
+    const [slots,saved,students] = await Promise.all([
+      db.prepare("SELECT s.shift_id,s.weekday,s.lesson_number,s.class_id,c.name AS class_name,t.start_time,t.lesson_minutes,COALESCE((SELECT SUM(b.duration_minutes) FROM salta_diario_teacher_shift_breaks b WHERE b.shift_id=s.shift_id AND b.after_lesson<s.lesson_number),0) AS break_offset FROM salta_diario_teacher_schedule_slots s INNER JOIN salta_diario_teacher_shifts t ON t.id=s.shift_id INNER JOIN salta_diario_classes c ON c.id=s.class_id WHERE s.class_id=? ORDER BY s.weekday,t.start_time,s.lesson_number").bind(classId).all(),
+      db.prepare("SELECT s.id,s.shift_id,s.weekday,s.lesson_number,s.class_id,s.period,s.attendance_date,s.start_time,s.end_time,c.name AS class_name FROM salta_diario_lesson_sessions s INNER JOIN salta_diario_classes c ON c.id=s.class_id WHERE s.class_id=? AND s.period=? AND s.attendance_date BETWEEN ? AND ?").bind(classId,period,startDate,endDate).all(),
+      db.prepare("SELECT r.session_id,r.student_id,r.present FROM salta_diario_lesson_records r INNER JOIN salta_diario_lesson_sessions s ON s.id=r.session_id WHERE s.class_id=? AND s.period=? AND s.attendance_date BETWEEN ? AND ?").bind(classId,period,startDate,endDate).all()
     ]);
-    const sessionByKey = new Map((saved.results||[]).map(row=>[row.shift_id+"|"+row.weekday+"|"+row.lesson_number+"|"+row.attendance_date,row]));
-    const recordsBySession = new Map();
+    const sessionByKey=new Map((saved.results||[]).map(row=>[row.shift_id+"|"+row.weekday+"|"+row.lesson_number+"|"+row.attendance_date,row]));
+    const recordsBySession=new Map();
     for(const row of students.results||[]){if(!recordsBySession.has(Number(row.session_id)))recordsBySession.set(Number(row.session_id),[]);recordsBySession.get(Number(row.session_id)).push({student_id:Number(row.student_id),present:Boolean(row.present)});}
-    const occurrences=[];
-    const seenKeys=new Set();
+    const occurrences=[],seenKeys=new Set();
     for(let time=Date.parse(startDate+"T00:00:00Z");time<=Date.parse(endDate+"T00:00:00Z");time+=86400000){
       const date=new Date(time).toISOString().slice(0,10),weekday=new Date(time).getUTCDay()||7;
       for(const slot of slots.results||[]){
         if(Number(slot.weekday)!==weekday)continue;
-        const key=slot.shift_id+"|"+slot.weekday+"|"+slot.lesson_number+"|"+date;
-        const session=sessionByKey.get(key);
+        const key=slot.shift_id+"|"+slot.weekday+"|"+slot.lesson_number+"|"+date,session=sessionByKey.get(key);
         seenKeys.add(key);
         const start=Number(slot.start_time.slice(0,2))*60+Number(slot.start_time.slice(3))+(Number(slot.lesson_number)-1)*Number(slot.lesson_minutes)+Number(slot.break_offset||0);
         const clock=minute=>String(Math.floor(minute/60)%24).padStart(2,"0")+":"+String(minute%60).padStart(2,"0");
-        const occurrence={date,weekday,shift_id:Number(slot.shift_id),lesson_number:Number(slot.lesson_number),class_id:Number(session?.class_id||slot.class_id),class_name:session?.class_name||slot.class_name,start_time:session?.start_time||clock(start),end_time:session?.end_time||clock(start+Number(slot.lesson_minutes)),session_id:session?Number(session.id):null,registros:session?(recordsBySession.get(Number(session.id))||[]):[]};
-        occurrence.total=occurrence.registros.length;
-        occurrence.presentes=occurrence.registros.filter(row=>row.present).length;
-        occurrence.future=date>brazilToday();
-        occurrences.push(occurrence);
+        const registros=session?(recordsBySession.get(Number(session.id))||[]):[];
+        occurrences.push({date,weekday,shift_id:Number(slot.shift_id),lesson_number:Number(slot.lesson_number),class_id:classId,class_name:session?.class_name||turma.name,start_time:session?.start_time||clock(start),end_time:session?.end_time||clock(start+Number(slot.lesson_minutes)),session_id:session?Number(session.id):null,registros,total:registros.length,presentes:registros.filter(row=>row.present).length,future:date>brazilToday()});
       }
     }
     for(const session of saved.results||[]){
       const key=session.shift_id+"|"+session.weekday+"|"+session.lesson_number+"|"+session.attendance_date;
       if(seenKeys.has(key))continue;
       const registros=recordsBySession.get(Number(session.id))||[];
-      occurrences.push({date:session.attendance_date,weekday:Number(session.weekday),shift_id:Number(session.shift_id),lesson_number:Number(session.lesson_number),class_id:Number(session.class_id),class_name:session.class_name,start_time:session.start_time,end_time:session.end_time,session_id:Number(session.id),registros,total:registros.length,presentes:registros.filter(row=>row.present).length,future:false});
+      occurrences.push({date:session.attendance_date,weekday:Number(session.weekday),shift_id:Number(session.shift_id),lesson_number:Number(session.lesson_number),class_id:classId,class_name:session.class_name,start_time:session.start_time,end_time:session.end_time,session_id:Number(session.id),registros,total:registros.length,presentes:registros.filter(row=>row.present).length,future:false});
     }
-    return json({ ocorrencias:occurrences },request);
+    occurrences.sort((a,b)=>a.date.localeCompare(b.date)||a.start_time.localeCompare(b.start_time)||a.lesson_number-b.lesson_number);
+    return json({configurado:true,periodo,turma:{id:Number(turma.id),nome:turma.name},ocorrencias},request);
   }
 
   if (method === "POST" && path === "/diario/frequencia/ocorrencias") {
     const body=await diarioJson(request);
     const shiftIdValue=Number(body?.shift_id),weekday=Number(body?.weekday),lessonNumber=Number(body?.lesson_number),classId=Number(body?.class_id),period=Number(body?.period),date=String(body?.attendance_date||"");
     const today=brazilToday();
-    if(!Number.isSafeInteger(shiftIdValue)||!Number.isInteger(weekday)||weekday<1||weekday>7||!Number.isInteger(lessonNumber)||lessonNumber<1||!Number.isSafeInteger(classId)||!Number.isInteger(period)||period<1||period>4||!/^\d{4}-\d{2}-\d{2}$/.test(date)||date>today)return diarioError("A frequência só pode ser lançada em uma data válida até hoje.",request);
+    const turma = await db.prepare("SELECT id,evaluation_system,segment,period_count FROM salta_diario_classes WHERE id=?").bind(classId).first();
+    if (!turma || period>Number(turma.period_count)) return diarioError("Turma ou bimestre inválido.",request,404);
+    const term = await db.prepare("SELECT start_date,end_date FROM salta_diario_periods WHERE evaluation_system=? AND segment=? AND period=?").bind(turma.evaluation_system,turma.segment,period).first();
+    if (!term) return diarioError("Configure as datas deste bimestre na Gestão acadêmica.",request,409);
+    if(!Number.isSafeInteger(shiftIdValue)||!Number.isInteger(weekday)||weekday<1||weekday>7||!Number.isInteger(lessonNumber)||lessonNumber<1||!Number.isSafeInteger(classId)||!Number.isInteger(period)||period<1||period>Number(turma.period_count)||!validIsoDate(date)||date<term.start_date||date>term.end_date||date>today)return diarioError("A frequência só pode ser lançada em uma data cadastrada do bimestre e até hoje.",request);
     const slot=await db.prepare("SELECT s.class_id,t.lesson_count,c.period_count,t.start_time,t.lesson_minutes,COALESCE((SELECT SUM(b.duration_minutes) FROM salta_diario_teacher_shift_breaks b WHERE b.shift_id=s.shift_id AND b.after_lesson<s.lesson_number),0) AS break_offset FROM salta_diario_teacher_schedule_slots s INNER JOIN salta_diario_teacher_shifts t ON t.id=s.shift_id INNER JOIN salta_diario_classes c ON c.id=s.class_id WHERE s.shift_id=? AND s.weekday=? AND s.lesson_number=?").bind(shiftIdValue,weekday,lessonNumber).first();
     if(!slot||Number(slot.class_id)!==classId||period>Number(slot.period_count)||lessonNumber>Number(slot.lesson_count))return diarioError("A aula não corresponde ao horário cadastrado para esta turma.",request,409);
     const jsWeekday=new Date(date+"T00:00:00Z").getUTCDay()||7;
@@ -2373,8 +2410,9 @@ async function handleDiarioRequest(request, env, url) {
   if(method==="PUT"&&path==="/diario/frequencia/ocorrencias"){
     const body=await diarioJson(request),sessionId=Number(body?.session_id),rows=Array.isArray(body?.registros)?body.registros:[];
     if(!Number.isSafeInteger(sessionId)||rows.length>1000)return diarioError("Lote de frequência inválido.",request);
-    const session=await db.prepare("SELECT id,class_id FROM salta_diario_lesson_sessions WHERE id=?").bind(sessionId).first();
+    const session=await db.prepare("SELECT id,class_id,attendance_date FROM salta_diario_lesson_sessions WHERE id=?").bind(sessionId).first();
     if(!session)return diarioError("Aula não encontrada.",request,404);
+    if(session.attendance_date>brazilToday())return diarioError("A frequência não pode ser lançada em datas futuras.",request,409);
     const ids=[...new Set(rows.map(row=>Number(row?.student_id)))];
     if(ids.some(id=>!Number.isSafeInteger(id)||id<1))return diarioError("Há um aluno inválido no lote.",request);
     if(ids.length){const marks=ids.map(()=>"?").join(",");const found=await db.prepare("SELECT id FROM salta_diario_students WHERE class_id=? AND active=1 AND id IN ("+marks+")").bind(session.class_id,...ids).all();if((found.results||[]).length!==ids.length)return diarioError("Uma ou mais pessoas não pertencem a esta turma.",request,400);}
