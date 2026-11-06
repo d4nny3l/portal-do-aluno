@@ -72,7 +72,7 @@ h1{margin:0;color:#303451;font-size:25px;letter-spacing:-.8px;font-weight:800}.p
 .login-brand{display:flex;align-items:center;gap:11px;margin-bottom:28px}.login-eyebrow{margin-bottom:8px;color:var(--salta-primary);font-size:9px;letter-spacing:1.2px;font-weight:850}.login-card h1{font-size:25px;letter-spacing:-.75px}.login-card>p{margin:8px 0 24px;color:var(--salta-muted);font-size:12px;line-height:1.55}
 .field{margin-bottom:15px}.field label{display:block;margin:0 0 7px;color:#555a78;font-size:10px;font-weight:800}.field input{width:100%;min-height:44px;padding:0 13px;border:1px solid #e2e3f1;border-radius:9px;background:#fcfcff;color:#303451;font-size:12px;outline:none;transition:border .16s,box-shadow .16s}.field input:focus{border-color:var(--salta-primary);box-shadow:0 0 0 3px rgba(91,91,214,.12)}.field input::placeholder{color:#aaadc0}
 .login-submit{width:100%;min-height:44px;margin-top:4px;border:1px solid var(--salta-primary);border-radius:9px;background:linear-gradient(135deg,#5b5bd6,#7775e7);color:#fff;font-size:11px;font-weight:850;box-shadow:0 6px 15px rgba(91,91,214,.18);transition:filter .16s,transform .16s}.login-submit:hover{filter:brightness(.97);transform:translateY(-1px)}
-.error{display:none;margin-top:13px;padding:10px 12px;border:1px solid #f7dada;border-radius:9px;background:#fff2f2;color:#b42335;font-size:10px;line-height:1.5}.login-hint{margin-top:19px;padding-top:15px;border-top:1px solid #f0f0f8;text-align:center;color:#989bb1;font-size:9px;line-height:1.5}.login-back{display:inline-flex;align-items:center;gap:7px;margin-top:15px;color:#737796;font-size:10px;font-weight:750}.login-back:hover{color:var(--salta-primary)}.login-back svg{width:14px;height:14px;stroke:currentColor}
+.error{display:none;margin-top:13px;padding:10px 12px;border:1px solid #f7dada;border-radius:9px;background:#fff2f2;color:#b42335;font-size:10px;line-height:1.5}.login-hint{margin-top:19px;padding-top:15px;border-top:1px solid #f0f0f8;text-align:center;color:#989bb1;font-size:9px;line-height:1.5}.session-loading{position:fixed;inset:0;z-index:1000;display:grid;place-content:center;justify-items:center;gap:12px;background:rgba(246,247,252,.94);color:#666b89;font-size:12px;font-weight:650}.session-loading[hidden]{display:none}.session-spinner{width:34px;height:34px;border:3px solid #dedff0;border-top-color:#6868cf;border-radius:50%;animation:session-spin .8s linear infinite}@keyframes session-spin{to{transform:rotate(360deg)}@media(prefers-reduced-motion:reduce){.session-spinner{animation-duration:2.5s}}.login-hint{margin-top:19px;padding-top:15px;border-top:1px solid #f0f0f8;text-align:center;color:#989bb1;font-size:9px;line-height:1.5}.login-back{display:inline-flex;align-items:center;gap:7px;margin-top:15px;color:#737796;font-size:10px;font-weight:750}.login-back:hover{color:var(--salta-primary)}.login-back svg{width:14px;height:14px;stroke:currentColor}
 @media(max-width:1080px){.modules-grid{grid-template-columns:repeat(2,minmax(0,1fr))}.main{padding-left:23px;padding-right:23px}}
 @media(max-width:760px){:root{--header-height:62px}.topbar-left{width:auto;flex:1;border:0;padding:0 15px}.topbar-right{padding:0 14px}.menu-toggle{display:grid}.top-context{display:none}.sidebar{top:var(--header-height);transform:translateX(-105%);box-shadow:12px 0 35px rgba(45,46,85,.08)}body.sidebar-open .sidebar{transform:translateX(0)}body.sidebar-open .mobile-overlay{display:block}.main{margin-left:0;max-width:100%;padding:calc(var(--header-height) + 22px) 18px 22px}.overview-grid{gap:9px}.overview-card{padding:12px 10px;gap:9px}.overview-icon{width:32px;height:32px;flex-basis:32px}.overview-info strong{font-size:12px}.bottom-note{align-items:flex-start;flex-direction:column}.bottom-note .platform-link{align-self:flex-start}.login-topbar{padding:0 18px}}
 @media(max-width:520px){.brand-sub{font-size:8px}.topbar-right{gap:5px}.platform-link{padding:8px 9px;font-size:9px}.platform-link svg{display:none}.page-heading{align-items:flex-start;flex-direction:column;gap:12px}.page-heading .logout{align-self:flex-start}.overview-grid{grid-template-columns:1fr}.overview-card{min-height:72px;padding:10px 13px}.modules-grid{grid-template-columns:1fr}.module-card{min-height:160px}.section-head{align-items:flex-start}.footer{flex-direction:column;gap:5px}.login-card{padding:28px 23px 23px;border-radius:15px}.login-screen{padding-left:14px;padding-right:14px}}
@@ -80,6 +80,7 @@ h1{margin:0;color:#303451;font-size:25px;letter-spacing:-.8px;font-weight:800}.p
 </style>
 </head>
 <body>
+<div class="session-loading" id="sessionLoading" role="status" aria-live="polite"><span class="session-spinner" aria-hidden="true"></span><span>Verificando acesso…</span></div>
 <section class="login-screen" id="loginScreen">
   <header class="login-topbar">
     <a class="brand" href="./" aria-label="SALTA — voltar à plataforma">
@@ -178,12 +179,14 @@ async function obterTokenTurnstile(){
 }
 
 function mostrarPainel(){
+    document.getElementById("sessionLoading").hidden=true;
     document.getElementById("loginScreen").hidden=true;
     document.getElementById("appShell").hidden=false;
     document.body.classList.add("is-authenticated");
 }
 
 function mostrarLogin(mensagem=""){
+    document.getElementById("sessionLoading").hidden=true;
     document.getElementById("loginScreen").hidden=false;
     document.getElementById("appShell").hidden=true;
     document.body.classList.remove("is-authenticated","sidebar-open");
