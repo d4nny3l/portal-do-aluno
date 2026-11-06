@@ -29,6 +29,7 @@ html {
 }
 
 body {
+  isolation: isolate; /* mantém a grade acima do fundo do body e atrás do conteúdo */
   color: #252744;
   font-family: Inter, -apple-system, BlinkMacSystemFont, "Segoe UI", Arial, sans-serif;
   -webkit-font-smoothing: antialiased;
