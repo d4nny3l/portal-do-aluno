@@ -1992,7 +1992,7 @@ async function handleCommsRequest(request, env, url) {
 const DIARIO_SCHEMA = [
   "CREATE TABLE IF NOT EXISTS salta_diario_classes (id INTEGER PRIMARY KEY AUTOINCREMENT, name TEXT NOT NULL UNIQUE COLLATE NOCASE, segment TEXT NOT NULL CHECK(segment IN ('regular','eja')), period_count INTEGER NOT NULL CHECK(period_count IN (2,4)), minimum REAL NOT NULL DEFAULT 5 CHECK(minimum >= 0 AND minimum <= 10), evaluation_system TEXT NOT NULL DEFAULT 'df' CHECK(evaluation_system IN ('df','goias')), created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP)",
   "CREATE TABLE IF NOT EXISTS salta_diario_students (id INTEGER PRIMARY KEY AUTOINCREMENT, class_id INTEGER NOT NULL REFERENCES salta_diario_classes(id), name TEXT NOT NULL, sort_order INTEGER NOT NULL DEFAULT 0, active INTEGER NOT NULL DEFAULT 1, created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP, UNIQUE(class_id, name COLLATE NOCASE))",
-  "CREATE TABLE IF NOT EXISTS salta_diario_items (id INTEGER PRIMARY KEY AUTOINCREMENT, class_id INTEGER NOT NULL REFERENCES salta_diario_classes(id), period INTEGER NOT NULL CHECK(period BETWEEN 1 AND 4), title TEXT NOT NULL, kind TEXT NOT NULL CHECK(kind IN ('avaliacao','atividade','visto')), max_score REAL NOT NULL DEFAULT 0 CHECK(max_score >= 0 AND max_score <= 100), component TEXT NOT NULL DEFAULT 'outro', created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP)",
+  "CREATE TABLE IF NOT EXISTS salta_diario_items (id INTEGER PRIMARY KEY AUTOINCREMENT, class_id INTEGER NOT NULL REFERENCES salta_diario_classes(id), period INTEGER NOT NULL CHECK(period BETWEEN 1 AND 4), title TEXT NOT NULL, kind TEXT NOT NULL CHECK(kind IN ('avaliacao','atividade','visto')), max_score REAL NOT NULL DEFAULT 0 CHECK(max_score >= 0 AND max_score <= 100), component TEXT NOT NULL DEFAULT 'outro', activity_date TEXT, created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP)",
   "CREATE TABLE IF NOT EXISTS salta_diario_records (student_id INTEGER NOT NULL REFERENCES salta_diario_students(id), item_id INTEGER NOT NULL REFERENCES salta_diario_items(id), score REAL, completed INTEGER NOT NULL DEFAULT 0 CHECK(completed IN (0,1)), updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP, PRIMARY KEY(student_id,item_id))",
   "CREATE INDEX IF NOT EXISTS idx_salta_diario_students_class ON salta_diario_students(class_id,active,name)",
   "CREATE INDEX IF NOT EXISTS idx_salta_diario_items_class_period ON salta_diario_items(class_id,period,id)",
@@ -2016,6 +2016,9 @@ async function ensureDiarioSchema(env) {
       const itemColumns = await env.DIARIO_DB.prepare("PRAGMA table_info(salta_diario_items)").all();
       if (!(itemColumns.results || []).some(column => column.name === "component")) {
         await env.DIARIO_DB.prepare("ALTER TABLE salta_diario_items ADD COLUMN component TEXT NOT NULL DEFAULT 'outro'").run();
+      }
+      if (!(itemColumns.results || []).some(column => column.name === "activity_date")) {
+        await env.DIARIO_DB.prepare("ALTER TABLE salta_diario_items ADD COLUMN activity_date TEXT").run();
       }
       await env.DIARIO_DB.prepare("CREATE INDEX IF NOT EXISTS idx_salta_diario_students_order ON salta_diario_students(class_id,active,sort_order,id)").run();
     })().catch(error => {
@@ -2244,7 +2247,7 @@ async function handleDiarioRequest(request, env, url) {
     const turma = await db.prepare("SELECT period_count,evaluation_system FROM salta_diario_classes WHERE id=?").bind(classId).first();
     if (!turma) return diarioError("Turma não encontrada.", request, 404);
     if (!Number.isInteger(period) || period < 1 || period > turma.period_count) return diarioError("Bimestre inválido para esta turma.", request);
-    const result = await db.prepare("SELECT id,class_id,period,title,kind,max_score,component FROM salta_diario_items WHERE class_id=? AND period=? ORDER BY id DESC").bind(classId, period).all();
+    const result = await db.prepare("SELECT id,class_id,period,title,kind,max_score,component,activity_date FROM salta_diario_items WHERE class_id=? AND period=? ORDER BY id DESC").bind(classId, period).all();
     return json({ itens: result.results || [] }, request);
   }
 
@@ -2254,13 +2257,14 @@ async function handleDiarioRequest(request, env, url) {
     const period = Number(body?.period);
     const title = String(body?.title || "").trim();
     const kind = String(body?.kind || "").trim().toLowerCase();
+    const activityDate = kind === "visto" ? String(body?.activity_date || "").trim() : null;
     const component = kind === "visto" ? "caderno" : String(body?.component || "outro").trim().toLowerCase();
     const maxScore = kind === "visto" ? 0 : Number(body?.max_score);
     const turma = await db.prepare("SELECT period_count,evaluation_system FROM salta_diario_classes WHERE id=?").bind(classId).first();
     if (!turma) return diarioError("Turma não encontrada.", request, 404);
     const components = turma.evaluation_system === "goias" ? ["estudo_dirigido", "prova_bloco", "recuperacao_final", "outro"] : ["estudo_dirigido", "prova", "redacao", "recuperacao_estudo", "outro"];
-    if (!Number.isInteger(period) || period < 1 || period > turma.period_count || !title || title.length > 120 || !["avaliacao", "atividade", "visto"].includes(kind) || (kind !== "visto" && !components.includes(component)) || !Number.isFinite(maxScore) || maxScore < 0 || maxScore > 100 || (kind !== "visto" && maxScore <= 0)) return diarioError("Confira o bimestre, o nome, o componente e a pontuação máxima do registro.", request);
-    const result = await db.prepare("INSERT INTO salta_diario_items (class_id,period,title,kind,max_score,component) VALUES (?,?,?,?,?,?)").bind(classId, period, title, kind, maxScore, component).run();
+    if (!Number.isInteger(period) || period < 1 || period > turma.period_count || !title || title.length > 120 || !["avaliacao", "atividade", "visto"].includes(kind) || (kind === "visto" && !/^\d{4}-\d{2}-\d{2}$/.test(activityDate)) || (kind !== "visto" && !components.includes(component)) || !Number.isFinite(maxScore) || maxScore < 0 || maxScore > 100 || (kind !== "visto" && maxScore <= 0)) return diarioError("Confira o bimestre, a data, o nome, o componente e a pontuação máxima do registro.", request);
+    const result = await db.prepare("INSERT INTO salta_diario_items (class_id,period,title,kind,max_score,component,activity_date) VALUES (?,?,?,?,?,?,?)").bind(classId, period, title, kind, maxScore, component, activityDate).run();
     return json({ ok: true, id: result.meta?.last_row_id }, request, 201);
   }
 
@@ -2270,15 +2274,16 @@ async function handleDiarioRequest(request, env, url) {
     const id = Number(itemMatch[1]);
     const title = String(body?.title || "").trim();
     const component = String(body?.component || "").trim().toLowerCase();
+    const activityDate = String(body?.activity_date || "").trim();
     const item = await db.prepare("SELECT id,class_id,kind,max_score FROM salta_diario_items WHERE id=?").bind(id).first();
     if (!item) return diarioError("Registro não encontrado.", request, 404);
     const turma = await db.prepare("SELECT evaluation_system FROM salta_diario_classes WHERE id=?").bind(item.class_id).first();
     const components = item.kind === "visto" ? ["caderno"] : turma?.evaluation_system === "goias" ? ["estudo_dirigido", "prova_bloco", "recuperacao_final", "outro"] : ["estudo_dirigido", "prova", "redacao", "recuperacao_estudo", "outro"];
     const maxScore = item.kind === "visto" ? 0 : Number(body?.max_score);
-    if (!title || title.length > 120 || !components.includes(component) || !Number.isFinite(maxScore) || maxScore < 0 || maxScore > 100 || (item.kind !== "visto" && maxScore <= 0)) return diarioError("Confira o nome, o componente e o valor máximo do registro.", request);
+    if (!title || title.length > 120 || !components.includes(component) || (item.kind === "visto" && !/^\d{4}-\d{2}-\d{2}$/.test(activityDate)) || !Number.isFinite(maxScore) || maxScore < 0 || maxScore > 100 || (item.kind !== "visto" && maxScore <= 0)) return diarioError("Confira o nome, a data, o componente e o valor máximo do registro.", request);
     const excessive = await db.prepare("SELECT COUNT(*) AS total FROM salta_diario_records WHERE item_id=? AND score>?").bind(id, maxScore).first();
     if (Number(excessive?.total || 0) > 0) return diarioError("O novo valor máximo fica abaixo de notas já lançadas. Ajuste as notas antes de reduzir o máximo.", request, 409);
-    await db.prepare("UPDATE salta_diario_items SET title=?,component=?,max_score=? WHERE id=?").bind(title, component, maxScore, id).run();
+    await db.prepare("UPDATE salta_diario_items SET title=?,component=?,max_score=?,activity_date=? WHERE id=?").bind(title, component, maxScore, item.kind === "visto" ? activityDate : null, id).run();
     return json({ ok: true }, request);
   }
 
@@ -2290,7 +2295,7 @@ async function handleDiarioRequest(request, env, url) {
     if (!Number.isInteger(period) || period < 1 || period > turma.period_count) return diarioError("Bimestre inválido para esta turma.", request);
     const [students, items, records] = await Promise.all([
       db.prepare("SELECT id,name FROM salta_diario_students WHERE class_id=? AND active=1 ORDER BY sort_order,id").bind(classId).all(),
-      db.prepare("SELECT id,title,kind,max_score,component FROM salta_diario_items WHERE class_id=? AND period=? ORDER BY id").bind(classId, period).all(),
+      db.prepare("SELECT id,title,kind,max_score,component,activity_date FROM salta_diario_items WHERE class_id=? AND period=? ORDER BY id").bind(classId, period).all(),
       db.prepare("SELECT r.student_id,r.item_id,r.score,r.completed FROM salta_diario_records r INNER JOIN salta_diario_students s ON s.id=r.student_id INNER JOIN salta_diario_items i ON i.id=r.item_id WHERE s.class_id=? AND i.period=?").bind(classId, period).all()
     ]);
     return json({ alunos: students.results || [], itens: items.results || [], registros: records.results || [] }, request);
