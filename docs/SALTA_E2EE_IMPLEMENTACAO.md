@@ -133,7 +133,9 @@ O demo empacota dependência fixa, porém ainda é JavaScript web servido pela m
 
 - Base: commit de auditoria `fbdddabbeb9cdd22edd2f153bb14938756421bd0`, da branch `codex/salta-e2ee-auditoria`, que deriva da main `f4dce82716faa06720068f3228a6f890fd0f928f` observada no início desta etapa.
 - Branch de implementação: `codex/salta-e2ee-implementacao`.
-- Commit e PR: serão completados após a revisão final e o CI local; sem merge.
+- Branch publicada: [`codex/salta-e2ee-implementacao`](https://github.com/d4nny3l/portal-do-aluno/tree/codex/salta-e2ee-implementacao).
+- Commit de implementação publicado: [`5929de8856d6bdf4d8f00971b4030451779f0fdd`](https://github.com/d4nny3l/portal-do-aluno/commit/5929de8856d6bdf4d8f00971b4030451779f0fdd).
+- PR aberto em modo draft para `main`, sem merge: [#4 — SALTA Crypto Core](https://github.com/d4nny3l/portal-do-aluno/pull/4). O commit de auditoria `fbdddabbeb9cdd22edd2f153bb14938756421bd0` está na ancestralidade desta branch.
 - A branch de auditoria e `main` não foram alteradas.
 
 ## P. Próximas etapas para módulos existentes
