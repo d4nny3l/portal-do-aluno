@@ -1,0 +1,12 @@
+{
+  "name": "salta-platform-workspaces",
+  "private": true,
+  "workspaces": [
+    "security/crypto",
+    "crypto-lab"
+  ],
+  "scripts": {
+    "test:e2ee": "npm --workspace crypto-lab run check",
+    "build:e2ee": "npm --workspace crypto-lab run build:browser"
+  }
+}

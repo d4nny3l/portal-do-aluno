@@ -1,0 +1,39 @@
+name: SALTA Crypto Core tests
+
+on:
+  pull_request:
+    paths:
+      - "security/**"
+      - "crypto-lab/**"
+      - "docs/SALTA_E2EE_IMPLEMENTACAO.md"
+      - "package.json"
+      - "package-lock.json"
+      - ".github/workflows/test-salta-e2ee.yml"
+  push:
+    branches:
+      - codex/salta-e2ee-implementacao
+    paths:
+      - "security/**"
+      - "crypto-lab/**"
+      - "docs/SALTA_E2EE_IMPLEMENTACAO.md"
+      - "package.json"
+      - "package-lock.json"
+      - ".github/workflows/test-salta-e2ee.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+      - run: npm ci
+      - run: npm --workspace crypto-lab run migrate:local
+      - run: npm run test:e2ee
+      - run: npm run build:e2ee
+      - run: git diff --check
