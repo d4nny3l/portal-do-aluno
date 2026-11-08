@@ -6,6 +6,7 @@ function corsHeaders(request) {
   const headers = {
     "Access-Control-Allow-Methods": "GET, POST, PUT, DELETE, OPTIONS",
     "Access-Control-Allow-Headers": "Authorization, Content-Type",
+    "Access-Control-Expose-Headers": "X-Request-ID",
     "Access-Control-Max-Age": "86400",
     "Vary": "Origin"
   };
@@ -22,6 +23,28 @@ function json(data, request, status = 200) {
       ...corsHeaders(request)
     }
   });
+}
+
+function diaryFailure(error, request, status = 500) {
+  const requestId = crypto.randomUUID();
+  const message = String(error?.message || "").toLowerCase();
+  const category = /d1_error|sqlite|no such table|no such column|database is locked/.test(message)
+    ? "database"
+    : "internal";
+  const allowedErrorTypes = new Set(["Error", "TypeError", "RangeError", "ReferenceError", "SyntaxError", "URIError"]);
+  const errorType = allowedErrorTypes.has(error?.name) ? error.name : "OtherError";
+
+  // Do not log request data, SQL text, cookies, credentials, or the raw exception message.
+  console.error(JSON.stringify({ event: "diario_request_failed", request_id: requestId, category, error_type: errorType }));
+  const response = json({
+    error: status === 503
+      ? "A base do Diário está temporariamente indisponível. Tente novamente."
+      : "Não foi possível processar o Diário. Tente novamente.",
+    category,
+    request_id: requestId
+  }, request, status);
+  response.headers.set("X-Request-ID", requestId);
+  return response;
 }
 
 async function proxyAuth(request, env, url) {
@@ -2154,7 +2177,7 @@ async function diarioJson(request) {
 async function handleDiarioRequest(request, env, url) {
   if (!(await authenticated(request, env))) return diarioError("Acesso restrito. Entre novamente na Área Administrativa.", request, 401);
   try { await ensureDiarioSchema(env); }
-  catch { return diarioError("A base online do Diário de Classe ainda não está disponível.", request, 503); }
+  catch (error) { return diaryFailure(error, request, 503); }
 
   const db = env.DIARIO_DB;
   const method = request.method;
@@ -2845,7 +2868,7 @@ export default {
     }
     if (url.pathname.startsWith("/diario/")) {
       try { return await handleDiarioRequest(request, env, url); }
-      catch { return json({ error: "Não foi possível processar o Diário de Classe." }, request, 500); }
+      catch (error) { return diaryFailure(error, request, 500); }
     }
     if (url.pathname.startsWith("/comms/")) {
       return handleCommsRequest(request, env, url);
