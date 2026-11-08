@@ -103,6 +103,7 @@ O bundle de recuperação experimental protege a chave privada com código aleat
 Comandos executados:
 
 - `npm run test:e2ee` — **12/12 testes passaram**. Incluem cifra, chave errada, ciphertext/AAD alterados, nonce/salt distintos, JSON inválido, endpoint inseguro, envelope HPKE, fingerprint incompatível, recovery, rotação, leitura em segundo professor, autorização/tenant e revogação/conflito de revisão.
+- [GitHub Actions — execução da PR #4](https://github.com/d4nny3l/portal-do-aluno/actions/runs/42526033676) — **success** para o head publicado `3538ae09`; workflow executou migração local, testes e build. O CI não faz deploy.
 - `npm run build:e2ee` — **passou**, bundle browser de 78,7 kB.
 - `npm --workspace crypto-lab exec -- wrangler --version` — Wrangler `4.158.0`.
 - `npm --workspace crypto-lab run migrate:local` — uma migração, 13 comandos, executada no D1 local Wrangler.
@@ -160,7 +161,7 @@ Autenticação e recuperação produtivas; binding/chaves verificadas; identidad
 | Diário E2EE sintético | Implementado e testado em Node e navegador local. |
 | Contratos para 18 módulos | Projetados/documentados; somente Diário tem fluxo implementado. |
 | D1 experimental | Migração aplicada localmente; reversão escrita, não executada. |
-| CI | Workflow preparado; execução hospedada aguarda branch/PR publicados. |
+| CI | Workflow executado no GitHub Actions; execução da PR #4 concluiu com sucesso, sem deploy. |
 | Navegadores | Navegador in-app validado; Firefox/Safari não testados. |
 | Homologação Cloudflare | Não publicada; requer novo Worker/D1 e autorização. |
 | Produção | Não publicada, não autorizada e inadequada. |
