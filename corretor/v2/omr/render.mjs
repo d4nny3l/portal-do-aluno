@@ -1,4 +1,4 @@
-import { layoutTemplate, PAGE_HEIGHT_MM, PAGE_WIDTH_MM } from "./template.mjs?v=20261109g";
+import { layoutTemplate, PAGE_HEIGHT_MM, PAGE_WIDTH_MM } from "./template.mjs?v=20261109h";
 
 const esc = value => String(value ?? "").replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&apos;" }[c]));
 const imageHref = value => /^data:image\/(?:png|jpeg|webp);base64,[A-Za-z0-9+/=]+$/i.test(value || "") ? value : "";

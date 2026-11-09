@@ -113,10 +113,11 @@ test("browser module imports pin cache versions for transitive OMR dependencies"
     readFile(new URL("../../../plataforma/corretor-v2.html", import.meta.url), "utf8"),
     readFile(new URL("../../../plataforma/professor.html", import.meta.url), "utf8"),
   ]);
-  assert.match(renderSource, /from ["']\.\/template\.mjs\?v=20261109g["']/);
-  assert.match(readerSource, /from ["']\.\/template\.mjs\?v=20261109g["']/);
-  assert.match(pageSource, /omr\/(?:template|render|reader)\.mjs\?v=20261109g/g);
-  assert.match(teacherSource, /corretor-v2\.html\?v=20261109g/g);
+  assert.match(renderSource, /from ["']\.\/template\.mjs\?v=20261109h["']/);
+  assert.match(readerSource, /from ["']\.\/template\.mjs\?v=20261109h["']/);
+  assert.match(pageSource, /omr\/(?:template|render|reader)\.mjs\?v=20261109h/g);
+  assert.match(teacherSource, /corretor-v2\.html\?v=20261109h/g);
   assert.match(pageSource, /<select id="type"><option>A-D<\/option><option>A-E<\/option><option>C-E<\/option><\/select>/);
   assert.match(pageSource, /let sections=\[\{type:'A-D',count:20,label:'Questões objetivas'\}\]/);
+  assert.match(pageSource, /createTemplate\(sections,\{templateId:'omr-a4'\}\)/);
 });
