@@ -1,5 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
+import { readFile } from "node:fs/promises";
 import { createTemplate, layoutTemplate, MAX_QUESTIONS_PER_PAGE, PAGE_HEIGHT_MM, PAGE_WIDTH_MM, TEMPLATE_VERSION } from "../omr/template.mjs";
 import { DEFAULT_CARD_HEADER, renderHeaderPreviewSvg, renderTemplateSvg } from "../omr/render.mjs";
 import { readRaster } from "../omr/reader.mjs";
@@ -91,4 +92,17 @@ test("reader uses matching v2 coordinates and supports page two", () => {
   const secondPage = readRaster(template, new Uint8Array(width * height).fill(255), width, height, { page: 2 });
   assert.equal(secondPage.observations[0].number, 51);
   assert.equal(secondPage.pageCount, 2);
+});
+
+test("browser module imports pin cache versions for transitive OMR dependencies", async () => {
+  const [renderSource, readerSource, pageSource, teacherSource] = await Promise.all([
+    readFile(new URL("../omr/render.mjs", import.meta.url), "utf8"),
+    readFile(new URL("../omr/reader.mjs", import.meta.url), "utf8"),
+    readFile(new URL("../../../plataforma/corretor-v2.html", import.meta.url), "utf8"),
+    readFile(new URL("../../../plataforma/professor.html", import.meta.url), "utf8"),
+  ]);
+  assert.match(renderSource, /from ["']\.\/template\.mjs\?v=20261109d["']/);
+  assert.match(readerSource, /from ["']\.\/template\.mjs\?v=20261109d["']/);
+  assert.match(pageSource, /omr\/(?:template|render|reader)\.mjs\?v=20261109d/g);
+  assert.match(teacherSource, /corretor-v2\.html\?v=20261109d/g);
 });
