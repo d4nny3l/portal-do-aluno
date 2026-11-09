@@ -1,4 +1,4 @@
-import { layoutTemplate, PAGE_HEIGHT_MM, PAGE_WIDTH_MM } from "./template.mjs?v=20261109e";
+import { layoutTemplate, PAGE_HEIGHT_MM, PAGE_WIDTH_MM } from "./template.mjs?v=20261109f";
 
 const esc = value => String(value ?? "").replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&apos;" }[c]));
 const imageHref = value => /^data:image\/(?:png|jpeg|webp);base64,[A-Za-z0-9+/=]+$/i.test(value || "") ? value : "";
@@ -111,14 +111,14 @@ export function renderTemplateSvg(template, { page = 1, header = DEFAULT_CARD_HE
       parts.push(`<circle class="omr-answer-bubble" data-question="${cell.number}" data-choice="${bubble.choice}" cx="${bubble.x}" cy="${bubble.y}" r="${cell.bubbleRadius}" fill="white" stroke="#151515" stroke-width="0.32"/>`);
     }
   }
-  parts.push(text(14 * scaleX, 287 * scaleY, `TEMPLATE OMR-A4-v2 · REV ${geometry.revision} · PÁGINA ${page}/${geometry.pageCount}`, { size: 2, color: "#626574" }));
+  parts.push(text(14 * scaleX, 287 * scaleY, `TEMPLATE OMR-A4-v3 · REV ${geometry.revision} · PÁGINA ${page}/${geometry.pageCount}`, { size: 2, color: "#626574" }));
   parts.push("</svg>");
   return parts.join("");
 }
 
 export function renderHeaderPreviewSvg(header = DEFAULT_CARD_HEADER) {
   const svg = renderTemplateSvg({
-    templateId: "omr-a4", revision: 2, version: "salta-omr-a4-v2", widthMm: 210, heightMm: 297,
+    templateId: "omr-a4", revision: 3, version: "salta-omr-a4-v3", widthMm: 210, heightMm: 297,
     questionCount: 1, pageCount: 1, questionsPerPage: 50,
     questions: Object.freeze([Object.freeze({ number: 1, type: "A-D", choices: Object.freeze(["A", "B", "C", "D"]), sectionIndex: 0, sectionLabel: "A-D" })]),
   }, { header });

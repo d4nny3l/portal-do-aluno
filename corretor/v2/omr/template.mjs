@@ -1,4 +1,4 @@
-export const TEMPLATE_VERSION = "salta-omr-a4-v2";
+export const TEMPLATE_VERSION = "salta-omr-a4-v3";
 export const PAGE_WIDTH_MM = 210;
 export const PAGE_HEIGHT_MM = 297;
 export const MAX_QUESTIONS_PER_PAGE = 50;
@@ -14,7 +14,7 @@ function assertType(type) {
   if (!Object.hasOwn(QUESTION_TYPES, type)) throw new TypeError(`Formato inválido: ${type}`);
 }
 
-export function createTemplate(sections, { templateId = "omr-a4", revision = 2 } = {}) {
+export function createTemplate(sections, { templateId = "omr-a4", revision = 3 } = {}) {
   if (!Array.isArray(sections) || sections.length === 0) throw new TypeError("Informe ao menos uma seção.");
   if (sections.length > 8) throw new RangeError("O cartão aceita até 8 seções para manter os rótulos legíveis.");
   const normalized = [];
@@ -48,15 +48,13 @@ export function createTemplate(sections, { templateId = "omr-a4", revision = 2 }
 }
 
 function columnsFor(count) {
-  if (count <= 10) return 1;
-  if (count <= 30) return 2;
-  return 3;
+  return Math.min(3, Math.ceil(count / 4));
 }
 
 /**
  * Coordinates are millimetres when width/height are 210×297, and scale to
- * the supplied raster dimensions when called by the OMR reader. v2 changes
- * the mark grid: choices now run horizontally inside each question row.
+ * the supplied raster dimensions when called by the OMR reader. v3 packs
+ * question rows into up to three columns with a compact, fixed vertical rhythm.
  */
 export function layoutTemplate(template, { width, height, page = 1, showCode = true } = {}) {
   if (!template || template.version !== TEMPLATE_VERSION || !Number.isFinite(width) || !Number.isFinite(height) || width <= 0 || height <= 0) {
@@ -81,7 +79,9 @@ export function layoutTemplate(template, { width, height, page = 1, showCode = t
   const groupCount = chunk => chunk.reduce((n, question, i) => n + (i === 0 || question.sectionIndex !== chunk[i - 1].sectionIndex ? 1 : 0), 0);
   const maxSlots = Math.max(1, ...chunks.map(chunk => chunk.length + groupCount(chunk)));
   const totalHeight = (endYmm - startYmm) * scaleY;
-  const rowPitch = totalHeight / maxSlots;
+  // Dense cards use the printable height; short cards keep compact rows and
+  // center their answer blocks instead of stretching the questions apart.
+  const rowPitch = Math.min(totalHeight / maxSlots, 10.5 * scaleY);
   if (radius < 2.2 * Math.min(scaleX, scaleY) || rowPitch / scaleY < 7.1) {
     throw new RangeError("A seção excede a área imprimível segura; reduza questões por seção ou divida a avaliação.");
   }
@@ -103,8 +103,7 @@ export function layoutTemplate(template, { width, height, page = 1, showCode = t
       slot++;
     }
     if (currentGroup) currentGroup.endSlot = slot;
-    const occupiedHeight = slot * rowPitch;
-    const topOffset = (totalHeight - occupiedHeight) / 2;
+    const topOffset = 0;
     const colGroups = groups.filter(group => chunk.some(q => q.sectionIndex === group.sectionIndex) && group._column === undefined);
     // Group positions are derived from each question's slot; avoid mutating template data.
     for (const group of groups) if (group._column === undefined && chunk.some(q => q.sectionIndex === group.sectionIndex)) group._column = col;
