@@ -1,0 +1,28 @@
+name: SALTA Corretor v2 OMR prototype
+on:
+  pull_request:
+    paths:
+      - "corretor/v2/omr/**"
+      - "corretor/v2/tests/omr*"
+      - ".github/workflows/test-salta-corretor-fase3.yml"
+  push:
+    branches: [codex/salta-corretor-v2-fase3]
+    paths:
+      - "corretor/v2/omr/**"
+      - "corretor/v2/tests/omr*"
+      - ".github/workflows/test-salta-corretor-fase3.yml"
+permissions:
+  contents: read
+jobs:
+  omr:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+      - run: node --test corretor/v2/tests/*.test.mjs
+      - run: for f in corretor/v2/omr/*.mjs corretor/v2/tests/omr*.mjs; do node --check "$f"; done
+      - run: git diff --check HEAD^ HEAD
