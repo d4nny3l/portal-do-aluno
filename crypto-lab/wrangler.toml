@@ -1,0 +1,17 @@
+name = "salta-e2ee-lab-local"
+main = "worker.js"
+compatibility_date = "2026-10-01"
+workers_dev = false
+
+[vars]
+SALTA_E2EE_LAB = "local-only"
+
+[[d1_databases]]
+binding = "E2EE_DB"
+database_name = "salta-e2ee-local-only"
+database_id = "00000000-0000-0000-0000-000000000001"
+migrations_dir = "migrations"
+
+[assets]
+directory = "./public"
+binding = "ASSETS"

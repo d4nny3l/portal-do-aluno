@@ -1,0 +1,11 @@
+DROP INDEX IF EXISTS idx_security_events_tenant;
+DROP INDEX IF EXISTS idx_scope_grants_principal;
+DROP INDEX IF EXISTS idx_encrypted_objects_scope;
+DROP TABLE IF EXISTS security_events;
+DROP TABLE IF EXISTS encrypted_objects;
+DROP TABLE IF EXISTS key_envelopes;
+DROP TABLE IF EXISTS scope_grants;
+DROP TABLE IF EXISTS cryptographic_scopes;
+DROP TABLE IF EXISTS memberships;
+DROP TABLE IF EXISTS principals;
+DROP TABLE IF EXISTS tenants;

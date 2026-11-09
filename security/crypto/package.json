@@ -1,0 +1,12 @@
+{
+  "name": "@salta/crypto-core",
+  "private": true,
+  "type": "module",
+  "version": "0.1.0",
+  "exports": {
+    ".": "./index.js"
+  },
+  "dependencies": {
+    "@hpke/core": "1.9.0"
+  }
+}
