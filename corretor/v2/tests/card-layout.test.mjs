@@ -120,16 +120,19 @@ test("reader uses matching v4 coordinates and supports page two", () => {
 });
 
 test("browser module imports pin cache versions for transitive OMR dependencies", async () => {
-  const [renderSource, readerSource, pageSource, teacherSource] = await Promise.all([
+  const [renderSource, readerSource, pageSource, teacherSource, themeSource] = await Promise.all([
     readFile(new URL("../omr/render.mjs", import.meta.url), "utf8"),
     readFile(new URL("../omr/reader.mjs", import.meta.url), "utf8"),
     readFile(new URL("../../../plataforma/corretor-v2.html", import.meta.url), "utf8"),
     readFile(new URL("../../../plataforma/professor.html", import.meta.url), "utf8"),
+    readFile(new URL("../../../plataforma/professor-theme.css", import.meta.url), "utf8"),
   ]);
   assert.match(renderSource, /from ["']\.\/template\.mjs\?v=20261109i["']/);
   assert.match(readerSource, /from ["']\.\/template\.mjs\?v=20261109i["']/);
   assert.match(pageSource, /omr\/(?:template|render|reader)\.mjs\?v=20261109k/g);
-  assert.match(teacherSource, /corretor-v2\.html\?v=20261109m/g);
+  assert.match(teacherSource, /corretor-v2\.html\?v=20261109n/g);
+  assert.match(teacherSource, /professor-theme\.css\?v=20261109n/);
+  assert.match(pageSource, /professor-theme\.css\?v=20261109n/);
   assert.match(pageSource, /<select id="type"><option>A-D<\/option><option>A-E<\/option><option>C-E<\/option><\/select>/);
   assert.match(pageSource, /let sections=\[\],template/);
   assert.match(pageSource, /id=\"dashboard\"/);
@@ -137,5 +140,11 @@ test("browser module imports pin cache versions for transitive OMR dependencies"
   assert.match(pageSource, /createTemplate\(sections,\{templateId:'omr-a4'\}\)/);
   assert.doesNotMatch(pageSource, /href="#(?:gabaritos|cartao|resultados)"/);
   assert.match(pageSource, /#corretorMain \.module-nav button\[aria-current=page\]/);
-  assert.match(pageSource, /#corretorMain button\.corretor-link small/);
+  assert.match(pageSource, /class="modules-grid"/);
+  assert.equal((pageSource.match(/class="module-card secondary" data-go=/g) || []).length, 7);
+  assert.doesNotMatch(pageSource, /corretor-grid|corretor-link/);
+  assert.ok(themeSource.includes(".modules-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:14px}"));
+  assert.ok(themeSource.includes("@media(max-width:1080px){.modules-grid{grid-template-columns:repeat(2,minmax(0,1fr))}}"));
+  assert.ok(themeSource.includes("@media(max-width:520px){.modules-grid{grid-template-columns:1fr}"));
+  assert.doesNotMatch(teacherSource, /\.module-card\{/);
 });
