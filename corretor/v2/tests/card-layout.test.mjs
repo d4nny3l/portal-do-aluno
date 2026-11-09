@@ -128,9 +128,11 @@ test("browser module imports pin cache versions for transitive OMR dependencies"
   ]);
   assert.match(renderSource, /from ["']\.\/template\.mjs\?v=20261109i["']/);
   assert.match(readerSource, /from ["']\.\/template\.mjs\?v=20261109i["']/);
-  assert.match(pageSource, /omr\/(?:template|render|reader)\.mjs\?v=20261109i/g);
-  assert.match(teacherSource, /corretor-v2\.html\?v=20261109i/g);
+  assert.match(pageSource, /omr\/(?:template|render|reader)\.mjs\?v=20261109j/g);
+  assert.match(teacherSource, /corretor-v2\.html\?v=20261109j/g);
   assert.match(pageSource, /<select id="type"><option>A-D<\/option><option>A-E<\/option><option>C-E<\/option><\/select>/);
-  assert.match(pageSource, /let sections=\[\{type:'A-D',count:20,label:'Questões objetivas'\}\]/);
+  assert.match(pageSource, /let sections=\[\],template/);
+  assert.match(pageSource, /id=\"dashboard\"/);
+  assert.match(pageSource, /data-view=\"criar\"/);
   assert.match(pageSource, /createTemplate\(sections,\{templateId:'omr-a4'\}\)/);
 });
