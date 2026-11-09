@@ -1,9 +1,9 @@
 # SALTA — Corretor OMR 2.0 — Fase 1: fundação e contratos
 
-**Estado:** PR draft aberto para revisão.
+**Estado:** PR aberto e pronto para revisão.
 **Base:** `main` após merge documental do PR #5 (`73a0f3201f5bdd8aa226226ebef9452aa688095d`).
 **Branch:** [`codex/salta-corretor-v2-fase1`](https://github.com/d4nny3l/portal-do-aluno/tree/codex/salta-corretor-v2-fase1).
-**PR draft:** [#6 — contratos de domínio e sincronização](https://github.com/d4nny3l/portal-do-aluno/pull/6).
+**PR:** [#6 — contratos de domínio e sincronização](https://github.com/d4nny3l/portal-do-aluno/pull/6).
 **Commit publicado:** `0e812119468a202f25db49947648682dd811289a`.
 **Data:** 9 de novembro de 2026.
 
