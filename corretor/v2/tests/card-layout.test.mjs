@@ -101,8 +101,8 @@ test("browser module imports pin cache versions for transitive OMR dependencies"
     readFile(new URL("../../../plataforma/corretor-v2.html", import.meta.url), "utf8"),
     readFile(new URL("../../../plataforma/professor.html", import.meta.url), "utf8"),
   ]);
-  assert.match(renderSource, /from ["']\.\/template\.mjs\?v=20261109d["']/);
-  assert.match(readerSource, /from ["']\.\/template\.mjs\?v=20261109d["']/);
-  assert.match(pageSource, /omr\/(?:template|render|reader)\.mjs\?v=20261109d/g);
-  assert.match(teacherSource, /corretor-v2\.html\?v=20261109d/g);
+  assert.match(renderSource, /from ["']\.\/template\.mjs\?v=20261109e["']/);
+  assert.match(readerSource, /from ["']\.\/template\.mjs\?v=20261109e["']/);
+  assert.match(pageSource, /omr\/(?:template|render|reader)\.mjs\?v=20261109e/g);
+  assert.match(teacherSource, /corretor-v2\.html\?v=20261109e/g);
 });
