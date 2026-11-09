@@ -1,0 +1,36 @@
+name: SALTA Corretor v2 persistence
+
+on:
+  pull_request:
+    paths:
+      - "corretor/v2/**"
+      - "docs/SALTA_CORRETOR_FASE2.md"
+      - ".github/workflows/test-salta-corretor-fase2.yml"
+  push:
+    branches:
+      - codex/salta-corretor-v2-fase2
+    paths:
+      - "corretor/v2/**"
+      - "docs/SALTA_CORRETOR_FASE2.md"
+      - ".github/workflows/test-salta-corretor-fase2.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  local-persistence:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+      - name: Check persistence module syntax
+        run: |
+          for file in corretor/v2/persistence/*.mjs corretor/v2/tests/*.mjs; do node --check "$file"; done
+      - name: Run domain and persistence tests
+        run: node --test corretor/v2/tests/*.test.mjs
+      - name: Verify the patch
+        run: git diff --check HEAD^ HEAD
