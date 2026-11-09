@@ -2,7 +2,7 @@ import { assertOpaqueId } from "../domain/identity.mjs";
 
 const OBJECT_TYPES = new Set([
   "salta.assessment.v1", "salta.assessment.participants.v1", "salta.assessment.key.v1",
-  "salta.assessment.capture.v1", "salta.assessment.observation.v1", "salta.assessment.result.v1",
+  "salta.assessment.capture.v1", "salta.assessment.observation.v1", "salta.assessment.result.v1", "salta.identity.code-claim.v1",
   "salta.diary.result.v1"
 ]);
 const ENVELOPE_KEYS = new Set(["tenant_id", "scope_id", "object_id", "object_type", "protocol_version", "key_version", "revision", "kdf", "aead", "salt", "nonce", "ciphertext"]);
