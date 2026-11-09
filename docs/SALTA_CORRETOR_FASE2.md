@@ -71,7 +71,7 @@ Além disso, `.github/workflows/test-corretor-security.yml` no worktree/PR #7 re
 
 ## Publicação, commits e limites
 
-- Fase 2: branch publicada e PR #8 aberto em draft; comparação com a base encadeada mostra **4 commits à frente, 0 atrás** no head atual.
+- Fase 2: branch publicada e PR #8 aberto em draft; a comparação confirma a base encadeada sem divergência para trás. O diff do PR contém somente a persistência v2, seu workflow, README/contrato e este relatório.
 - Commit local da implementação: `e49b5979c1e613aa87bbde055d1f79bbc7a7fb72` (`feat(corretor): add isolated local persistence`). O SHA remoto pode diferir por publicação via API do GitHub.
 - Commits locais desta entrega: `eb7566c219f2e4a4c66f9703ad70fa7a9f024cbe` (relatório e workflow) e `9016cfaeb81c5e3d9a98dc5c58be9eac139eb72a` (formatação do relatório). Os commits equivalentes publicados pelo conector têm SHAs próprios.
 - PR #7 permanece separado; o ajuste do workflow foi publicado na branch do PR e sua CI passou.
