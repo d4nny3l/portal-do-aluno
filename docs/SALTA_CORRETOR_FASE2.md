@@ -14,7 +14,7 @@ Nada nesta fase conecta o corretor legado, o Diário publicado, Workers, Cloudfl
 
 - **PR #4 — Crypto Core:** aberto, draft e não integrado. A implementação E2EE é experimental. A Fase 2 não importa nem comprova criptografia real do Core.
 - **PR #6 — contratos da Fase 1:** aberto, pronto para revisão, mergeável e não integrado. O PR #8 usa o head do PR #6 como base; não integre o PR #8 isoladamente em `main`.
-- **PR #7 — correção XSS do corretor legado:** aberto, draft e não integrado. A CI confirmou testes e sintaxe, mas seu primeiro check falhou no `git diff --check` por checkout raso (`HEAD^` indisponível). O workflow foi corrigido localmente para `fetch-depth: 0`; a nova execução ainda precisa confirmar o resultado. Integração recomendada: transplantar apenas validação do `localStorage` e renderização com `textContent` sobre a versão EJA local, preservando geometria, coordenadas e detector OMR.
+- **PR #7 — correção XSS do corretor legado:** aberto, draft e não integrado. Após corrigir o checkout raso (`fetch-depth: 0`), a CI remota passou no head `cafc3c2a6d0bb4ca07129795f68d8c44ba6b68fc`. Integração recomendada: transplantar apenas validação do `localStorage` e renderização com `textContent` sobre a versão EJA local, preservando geometria, coordenadas e detector OMR.
 - **Checkout compartilhado `repository/`:** branch `main`, 166 commits atrás de `origin/main`, com 24 itens modificados/não rastreados observados nesta execução, inclusive páginas SALTA, `stats-worker/worker.js`, `corretor/index.html`, folha de respostas, artefatos EJA e `.wrangler/`. Nenhum foi alterado, limpo ou removido por este trabalho.
 
 ## Modelo de dados e integridade
@@ -45,7 +45,7 @@ Testes locais no worktree da Fase 2, com SQLite em memória ou arquivos temporá
 - `node --test corretor/tests/stored-answer-rendering.test.mjs` — **3/3 passaram**.
 - `node --check` nos módulos JS do corretor legado e nos três scripts inline de `corretor/index.html` — passou.
 
-Os checks remotos iniciais do PR #8 confirmaram os 36 testes, mas o job terminou vermelho no passo de formatação porque o checkout shallow não contém `HEAD^`. O PR #7 teve a mesma causa; seus três testes e checagem de sintaxe passaram. Os workflows foram corrigidos com `fetch-depth: 0`. Os novos checks remotos após essa correção ainda estão pendentes, portanto não são contabilizados como aprovados.
+Os checks remotos iniciais do PR #8 confirmaram os 36 testes, mas o job terminou vermelho no passo de formatação porque o checkout shallow não contém `HEAD^`. O PR #7 teve a mesma causa; seus três testes e checagem de sintaxe passaram. Os workflows foram corrigidos com `fetch-depth: 0`; em seguida, o relatório acusou dois espaços finais, removidos antes do head final. No head `2a20748d134338b98a2344ff8cd766d029d0bc5f`, os checks remotos `contracts` e `local-persistence` passaram. A CI do PR #7 também passou depois da correção.
 
 ## Arquivos da Fase 2
 
@@ -71,10 +71,10 @@ Além disso, `.github/workflows/test-corretor-security.yml` no worktree/PR #7 re
 
 ## Publicação, commits e limites
 
-- Fase 2: branch publicada e PR #8 aberto em draft; comparação com a base encadeada mostra **1 commit à frente, 0 atrás**, antes deste relatório/workflow final ser enviado.
+- Fase 2: branch publicada e PR #8 aberto em draft; comparação com a base encadeada mostra **4 commits à frente, 0 atrás** no head atual.
 - Commit local da implementação: `e49b5979c1e613aa87bbde055d1f79bbc7a7fb72` (`feat(corretor): add isolated local persistence`). O SHA remoto pode diferir por publicação via API do GitHub.
-- O commit de relatório e correção de workflow será registrado nesta branch e publicado como atualização do PR draft.
-- PR #7 permanece separado; a correção do workflow será publicada em sua branch e aguardará CI.
+- Commits locais desta entrega: `eb7566c219f2e4a4c66f9703ad70fa7a9f024cbe` (relatório e workflow) e `9016cfaeb81c5e3d9a98dc5c58be9eac139eb72a` (formatação do relatório). Os commits equivalentes publicados pelo conector têm SHAs próprios.
+- PR #7 permanece separado; o ajuste do workflow foi publicado na branch do PR e sua CI passou.
 - Não houve merge, deploy, uso de secrets, migração remota, escrita no D1, nem conexão ao Cloudflare. Os testes locais não equivalem a homologação no Cloudflare.
 
 ## Pendências para Auth, Diário e produto
