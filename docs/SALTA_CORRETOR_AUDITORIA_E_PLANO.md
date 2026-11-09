@@ -16,6 +16,8 @@ O Diário já oferece cadastros, avaliações/itens, notas, vistos, frequência,
 
 O SALTA Crypto Core está em uma branch e PR experimentais. Tem criptografia de cliente, repositório e Worker local para envelopes/ciphertext, além de testes sintéticos; não está ligado ao `salta-auth`, ao `stats-worker`, ao Diário publicado, nem à Área do Aluno. Não é base aprovada para armazenar dados reais. Integração segura de notas depende da resolução da identidade/autorização de estudantes, autenticação de membros, contratos de chave e fluxo de recuperação/revogação.
 
+O texto e o estado visível do PR #4 descrevem 12 testes E2EE, migração D1 local, build do bundle e fluxo de navegador com fixture sintética, sem deploy. Isso é evidência registrada na PR/relatório E2EE; **não foi reexecutada nesta Fase 0** e não valida Cloudflare remoto ou segurança de produção.
+
 **Recomendação:** construir primeiro contratos e modelo de domínio com testes sintéticos, sem mudar o Diário. Fixar identidade de avaliação, participante, cartão e revisão; versionar template/gabarito; definir integração criptográfica como bloqueio arquitetural; depois validar o OMR em corpus rotulado antes de lançar nota. O plano abaixo organiza esse percurso em fases pequenas. Nenhuma funcionalidade foi implementada nesta entrega.
 
 ## 2. Escopo, proteção e estado do Git
@@ -342,6 +344,7 @@ Na worktree limpa, sem rede de Cloudflare/D1:
 | `node --test stats-worker/tests/diario-periods.test.mjs` | **11/11 passaram** (inclui subtestes). | SQLite em memória e Auth mock; cobre bimestres/autorização/erros/frontend. Não testa OMR, D1 remoto, conta Cloudflare nem dados reais. |
 | Inspeção do status/diff de `repository/` | Checkout principal segue sujo e foi preservado. | Não usei `git reset`, checkout destrutivo ou limpeza. Arquivos ignorados/temp não foram acessados. |
 | Verificação GitHub de `main`, branch E2EE e PR #4 | `main` `f4dce827…`; PR #4 observado draft/open/unmerged. | Estado é snapshot no momento desta auditoria e pode mudar após a entrega. |
+| Evidência E2EE anterior | PR #4 e seu relatório descrevem 12 testes, migração/build locais e fluxo sintético no navegador. | Registrado como evidência histórica da PR; não foi executado de novo nesta Fase 0 e não cobre serviço remoto ou produção. |
 
 Ainda não executados nesta auditoria: teste visual de navegador, corpus OMR, testes de imagem/PDF, suíte E2EE novamente, teste de Actions nesta branch, staging Cloudflare, migration/D1, produção, teste de carga e auditoria independente. O workflow E2EE só dispara para paths E2EE; mudança documental do Corretor não garante CI automático.
 
