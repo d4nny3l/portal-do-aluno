@@ -11,6 +11,24 @@
   --teacher-surface: rgba(255,255,255,.94);
   --teacher-shadow: 0 14px 36px rgba(72,75,145,.08);
 }
+
+/* Cards de módulo compartilhados entre a Visão Geral e as ferramentas SALTA. */
+.modules-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:14px}
+.module-card{position:relative;width:100%;min-width:0;min-height:177px;padding:16px 17px 14px;display:flex;flex-direction:column;border:1px solid var(--salta-line,var(--teacher-line,#e9eafa));border-radius:14px;background:rgba(255,255,255,.96);box-shadow:var(--salta-shadow,var(--teacher-shadow,0 14px 36px rgba(72,75,145,.08)));color:inherit;text-align:left;text-decoration:none;font:inherit;cursor:pointer;appearance:none;transition:transform .18s ease,box-shadow .18s ease,border-color .18s ease;overflow:hidden}
+.module-card:hover{transform:translateY(-3px);border-color:#d8d8f4;box-shadow:0 18px 36px rgba(72,75,145,.13)}
+.module-card:focus-visible{outline:3px solid rgba(91,91,214,.25);outline-offset:3px}
+.module-head{display:flex;align-items:center;justify-content:space-between;gap:8px}
+.module-icon{width:37px;height:37px;flex:0 0 37px;display:grid;place-items:center;border-radius:10px;background:#efefff;color:var(--salta-primary,var(--teacher-primary,#5b5bd6))}
+.module-icon.teal{background:#e8f7f7;color:#159da5}.module-icon.green{background:#eaf7f0;color:#16865d}.module-icon.orange{background:#fff5e8;color:#ca8a2b}.module-icon.purple{background:#f1edff;color:#7763d6}.module-icon.red{background:#fff0f1;color:#c95f70}
+.module-icon svg{width:18px;height:18px;stroke:currentColor;fill:none;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
+.module-tag{color:#969ab2;font-size:8px;font-weight:850;letter-spacing:.7px;text-transform:uppercase;text-align:right}
+.module-card h3{margin:12px 0 5px;color:#353956;font-size:13px;letter-spacing:-.15px;font-weight:850}
+.module-card p{margin:0 0 12px;color:var(--salta-muted,var(--teacher-muted,#747995));font-size:10px;line-height:1.55;flex:1}
+.module-action{display:flex;align-items:center;justify-content:space-between;padding-top:9px;border-top:1px solid #f0f0f8;color:var(--salta-primary,var(--teacher-primary,#5b5bd6));font-size:9px;font-weight:850}
+.module-action svg{width:14px;height:14px;stroke:currentColor;fill:none;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round;transition:transform .15s}
+.module-card:hover .module-action svg{transform:translateX(3px)}
+@media(max-width:1080px){.modules-grid{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media(max-width:520px){.modules-grid{grid-template-columns:1fr}.module-card{min-height:160px}}
 .teacher-shell-topbar,
 .teacher-shell-sidebar,
 .teacher-shell-overlay { display: none; }
