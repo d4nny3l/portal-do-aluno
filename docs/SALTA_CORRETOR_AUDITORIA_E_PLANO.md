@@ -351,7 +351,7 @@ Arquivos alterados nesta fase:
 
 - `docs/SALTA_CORRETOR_AUDITORIA_E_PLANO.md` — este relatório; nenhum arquivo funcional ou dado foi alterado.
 
-A publicação planejada é um commit na branch experimental `codex/salta-corretor-v2-planejamento` e um PR draft contra `main`. Ainda não é deploy nem merge. O link do commit/PR e o estado remoto serão preenchidos após a publicação real, não presumidos.
+Este relatório foi publicado na branch experimental `codex/salta-corretor-v2-planejamento` e no [PR #5 em modo draft](https://github.com/d4nny3l/portal-do-aluno/pull/5), contra `main`. O PR contém somente este Markdown. Está aberto e sem merge; não houve deploy.
 
 Rollback da documentação: fechar o draft PR e excluir a branch documental se não houver revisão útil; `main`, Cloudflare, D1 e frontend ficam inalterados. Não há migração ou rollback de dados nesta fase.
 
