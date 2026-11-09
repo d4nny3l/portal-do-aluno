@@ -9,7 +9,7 @@
 
 ## Escopo desta entrega
 
-A Fase 1 cria modelos de domínio puros, contratos de dados e testes sintéticos para estabelecer a base do Corretor. Não adiciona fluxo visual, OMR novo, persistência D1, rotas de Worker, autenticação multiusuário ou integração com o Diário publicado. Não acessa nem altera Cloudflare, secrets ou bancos remotos. O D1 usado pelos testes é SQLite `:memory:` com fixtures artificiais.
+A Fase 1 cria modelos de domínio puros, contratos de dados e testes sintéticos para estabelecer a base do Corretor. Não adiciona fluxo visual, OMR novo, persistência D1, rotas de Worker, autenticação multiusuário ou integração com o Diário publicado. Não acessa nem altera Cloudflare, secrets ou bancos remotos. Os testes usam SQLite `:memory:` com fixtures artificiais, não D1.
 
 O plano e a matriz dos 65 requisitos permanecem no relatório da Fase 0, [SALTA_CORRETOR_AUDITORIA_E_PLANO.md](SALTA_CORRETOR_AUDITORIA_E_PLANO.md). Esta implementação materializa apenas a fundação contratual atribuída à Fase 1; requisitos que dependem de UI, persistência, OMR, identidade/autorização de produção ou deploy continuam pendentes.
 
