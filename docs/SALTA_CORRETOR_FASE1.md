@@ -1,8 +1,10 @@
 # SALTA — Corretor OMR 2.0 — Fase 1: fundação e contratos
 
-**Estado:** implementação experimental local, aguardando revisão por PR draft.
+**Estado:** PR draft aberto para revisão.
 **Base:** `main` após merge documental do PR #5 (`73a0f3201f5bdd8aa226226ebef9452aa688095d`).
-**Branch prevista:** `codex/salta-corretor-v2-fase1`.
+**Branch:** [`codex/salta-corretor-v2-fase1`](https://github.com/d4nny3l/portal-do-aluno/tree/codex/salta-corretor-v2-fase1).
+**PR draft:** [#6 — contratos de domínio e sincronização](https://github.com/d4nny3l/portal-do-aluno/pull/6).
+**Commit publicado:** `0e812119468a202f25db49947648682dd811289a`.
 **Data:** 9 de novembro de 2026.
 
 ## Escopo desta entrega
@@ -43,8 +45,9 @@ Foi feita uma correção independente no Corretor atual para não interpretar `l
 - Crypto Core experimental: `npm run test:e2ee` — **12/12 passaram** na worktree da branch E2EE, somente com fixtures locais.
 - Correção XSS: `node --test corretor/tests/stored-answer-rendering.test.mjs` — **3/3 passaram**; `node --check` nos módulos tocados e nos três scripts inline do HTML — passou.
 - `node --check` nos módulos da Fase 1 e `git diff --check` — passou.
+- GitHub Actions no PR #6 — run #2 concluído com `success`.
 
-Esses testes não provam precisão do OMR, segurança de produção, isolamento real no Cloudflare, comportamento de rede ou implantação. O estado de CI do GitHub deve ser registrado após criação dos PRs; não foi inferido a partir dos testes locais.
+Esses testes não provam precisão do OMR, segurança de produção, isolamento real no Cloudflare, comportamento de rede ou implantação. O check de CI registrado é somente o workflow local desta branch; ele não executa Workers, D1, navegador real ou OMR com fotos.
 
 ## Próximas etapas e critérios de aceite
 
@@ -60,7 +63,7 @@ Esses testes não provam precisão do OMR, segurança de produção, isolamento 
 
 ## Publicação e ambiente
 
-A publicação solicitada nesta entrega deve ser somente a branch experimental e PR draft. O workflow de PR é a validação CI esperada. Não foi executada migração remota, deploy, merge em `main` de código, publicação em Pages nem alteração de Cloudflare/D1. O PR #4 de E2EE não foi mesclado. O PR #5 continha apenas documentação da auditoria Fase 0 e foi integrado em `main` antes desta branch.
+A branch experimental e o PR draft #6 estão publicados. A correção do armazenamento/renderização está isolada no [PR draft #7](https://github.com/d4nny3l/portal-do-aluno/pull/7), branch `codex/salta-corretor-seguranca-html`; nela os 3 testes locais passaram, mas não há workflow de CI configurado para esses caminhos. Não foi executada migração remota, deploy, merge em `main` de código, publicação em Pages nem alteração de Cloudflare/D1. O PR #4 de E2EE não foi mesclado. O PR #5 continha apenas documentação da auditoria Fase 0 e foi integrado em `main` antes desta branch.
 
 Para validar futuramente em Cloudflare, primeiro criar Worker de teste e D1 isolado com nomes claramente distintos, revisar os bindings no painel, aplicar apenas migrations reversíveis ao banco vazio, configurar credenciais de teste fora do chat e usar fixtures sintéticas. Nenhum desses passos foi realizado nesta fase.
 
