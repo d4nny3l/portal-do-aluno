@@ -1,4 +1,4 @@
-export const TEMPLATE_VERSION = "salta-omr-a4-v3";
+export const TEMPLATE_VERSION = "salta-omr-a4-v4";
 export const PAGE_WIDTH_MM = 210;
 export const PAGE_HEIGHT_MM = 297;
 export const MAX_QUESTIONS_PER_PAGE = 50;
@@ -14,7 +14,7 @@ function assertType(type) {
   if (!Object.hasOwn(QUESTION_TYPES, type)) throw new TypeError(`Formato inválido: ${type}`);
 }
 
-export function createTemplate(sections, { templateId = "omr-a4", revision = 3 } = {}) {
+export function createTemplate(sections, { templateId = "omr-a4", revision = 4 } = {}) {
   if (!Array.isArray(sections) || sections.length === 0) throw new TypeError("Informe ao menos uma seção.");
   if (sections.length > 8) throw new RangeError("O cartão aceita até 8 seções para manter os rótulos legíveis.");
   const normalized = [];
@@ -48,12 +48,13 @@ export function createTemplate(sections, { templateId = "omr-a4", revision = 3 }
 }
 
 function columnsFor(count) {
-  return Math.min(3, Math.ceil(count / 4));
+  if (count <= 10) return 2;
+  return Math.min(3, Math.ceil(count / 10));
 }
 
 /**
  * Coordinates are millimetres when width/height are 210×297, and scale to
- * the supplied raster dimensions when called by the OMR reader. v3 packs
+ * the supplied raster dimensions when called by the OMR reader. v4 adapts
  * question rows into up to three columns with a compact, fixed vertical rhythm.
  */
 export function layoutTemplate(template, { width, height, page = 1, showCode = true } = {}) {
@@ -79,9 +80,9 @@ export function layoutTemplate(template, { width, height, page = 1, showCode = t
   const groupCount = chunk => chunk.reduce((n, question, i) => n + (i === 0 || question.sectionIndex !== chunk[i - 1].sectionIndex ? 1 : 0), 0);
   const maxSlots = Math.max(1, ...chunks.map(chunk => chunk.length + groupCount(chunk)));
   const totalHeight = (endYmm - startYmm) * scaleY;
-  // Dense cards use the printable height; short cards keep compact rows and
-  // center their answer blocks instead of stretching the questions apart.
-  const rowPitch = Math.min(totalHeight / maxSlots, 10.5 * scaleY);
+  // Short cards use wider row spacing to reduce empty paper; dense cards
+  // shrink the spacing to fit the printable area safely.
+  const rowPitch = Math.min(totalHeight / maxSlots, 23 * scaleY);
   if (radius < 2.2 * Math.min(scaleX, scaleY) || rowPitch / scaleY < 7.1) {
     throw new RangeError("A seção excede a área imprimível segura; reduza questões por seção ou divida a avaliação.");
   }

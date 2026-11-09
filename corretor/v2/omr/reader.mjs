@@ -1,8 +1,8 @@
-import { layoutTemplate } from "./template.mjs?v=20261109h";
+import { layoutTemplate } from "./template.mjs?v=20261109i";
 
-export const READER_VERSION = "salta-omr-reader-v3";
+export const READER_VERSION = "salta-omr-reader-v4";
 
-// Reads a normalized, aligned grayscale raster (0=black, 255=white). The v3
+// Reads a normalized, aligned grayscale raster (0=black, 255=white). The v4
 // template changes the mark coordinates; uncertain marks are never final.
 export function readRaster(template, pixels, width, height, { darkThreshold = 100, ambiguityGap = 18, page = 1, showCode = true } = {}) {
   if (!Number.isInteger(width) || !Number.isInteger(height) || width < 1 || height < 1 || !pixels || pixels.length !== width * height) {
