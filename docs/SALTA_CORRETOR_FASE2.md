@@ -1,7 +1,7 @@
 # SALTA Corretor 2.0 — Fase 2
 
-**Estado:** experimental, publicado em PR draft encadeado; sem homologação remota e sem produção.  
-**Branch:** `codex/salta-corretor-v2-fase2`  
+**Estado:** experimental, publicado em PR draft encadeado; sem homologação remota e sem produção.
+**Branch:** `codex/salta-corretor-v2-fase2`
 **PR:** [#8 — Persistência experimental em SQLite local](https://github.com/d4nny3l/portal-do-aluno/pull/8)
 
 ## Resumo executivo
