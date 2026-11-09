@@ -136,6 +136,7 @@ body.auth-check{visibility:hidden}
   start();
 })();
 </script>
+<script src="./answer-key-storage.js"></script>
 <link rel="stylesheet" href="../salta-theme.css?v=20261106">
 <link rel="stylesheet" href="../plataforma/professor-theme.css?v=20261105">
 </head>
@@ -246,9 +247,9 @@ function renderKeyGrid(n){
  for(let i=1;i<=n;i++)g.innerHTML+=`<div class="q"><label>Questão ${i}</label><select id="q${i}"><option value="">—</option>${L.map(x=>"<option>"+x+"</option>").join("")}</select></div>`;
 }
 
-let key=JSON.parse(localStorage.getItem("saltaKey")||"null")||[];
-if(!Array.isArray(key)){questionCount=Number(key.count)||20;key=Array.isArray(key.answers)?key.answers:[];}
-questionCount=Math.min(50,Math.max(1,key.length||questionCount));
+const savedKey=window.SaltaAnswerKeyStorage.normalizeSavedAnswerKey(localStorage.getItem("saltaKey"));
+let key=savedKey?[...savedKey.answers]:[];
+questionCount=Math.min(50,Math.max(1,key.length||savedKey?.count||questionCount));
 key=key.slice(0,questionCount);
 document.getElementById("questionCount").value=questionCount;
 renderKeyGrid(questionCount);
@@ -718,19 +719,14 @@ async function scanStudent(){
    else{offset=(page-1)*20;if(offset>=key.length){msg("Essa página está fora da quantidade de questões do gabarito.");return}r=pageScores.map(x=>x.answer).slice(0,Math.min(20,key.length-offset));}
   }
   showDetected(r.length,"questões localizadas na folha");
-  showResult(r,offset);
+  await showResult(r,offset);
   msg(r.some(x=>x==="?")?"Folha lida. Confira as questões com Revisar.":"Folha lida com sucesso.");
  }catch(e){console.error(e);msg(e?.message||"Não consegui localizar a grade. Use a folha inteira, sem cortar a região das respostas, e tente com boa iluminação.")}
 }
 
-function showResult(r,offset=0){
- let hits=0;
- document.getElementById("body").innerHTML=r.map((x,i)=>{
-   const answerIndex=offset+i,cl=x==="?"?"warn":x===key[answerIndex]?"ok":"err";
-   if(x===key[answerIndex])hits++;
-   return `<tr><td>${answerIndex+1}</td><td>${x}</td><td>${key[answerIndex]}</td><td class="${cl}">${x==="?"?"⚠ Revisar":x===key[answerIndex]?"✓ Acerto":"✕ Erro"}</td></tr>`;
- }).join("");
- document.getElementById("score").innerHTML=hits+"/"+r.length+"<small>questões acertadas</small>";
+async function showResult(r,offset=0){
+ const {renderSafeResult}=await import("./result-renderer.mjs");
+ renderSafeResult(document,r,key,offset);
  document.getElementById("results").style.display="block";
  requestAnimationFrame(()=>document.getElementById("results").scrollIntoView({behavior:"smooth",block:"start"}));
 }

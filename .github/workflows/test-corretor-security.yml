@@ -1,0 +1,48 @@
+name: SALTA Corretor security regression
+
+on:
+  pull_request:
+    paths:
+      - "corretor/**"
+      - ".github/workflows/test-corretor-security.yml"
+  push:
+    branches:
+      - codex/salta-corretor-seguranca-html
+    paths:
+      - "corretor/**"
+      - ".github/workflows/test-corretor-security.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  stored-answer-security:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+      - name: Check changed modules and inline scripts
+        run: |
+          node --check corretor/answer-key-storage.js
+          node --check corretor/result-renderer.mjs
+          python3 - <<'PY'
+          import re
+          import subprocess
+          from pathlib import Path
+
+          html = Path("corretor/index.html").read_text(encoding="utf-8")
+          scripts = [script for script in re.findall(r"<script(?:\s[^>]*)?>([\s\S]*?)</script>", html, re.I) if script.strip()]
+          for index, script in enumerate(scripts, 1):
+              result = subprocess.run(["node", "--check", "-"], input=script, text=True, capture_output=True)
+              if result.returncode:
+                  raise SystemExit(f"Inline script {index}: {result.stderr}")
+          print(f"{len(scripts)} inline scripts: syntax OK")
+          PY
+      - name: Run stored answer security tests
+        run: node --test corretor/tests/stored-answer-rendering.test.mjs
+      - name: Check patch formatting
+        run: git diff --check HEAD^ HEAD
