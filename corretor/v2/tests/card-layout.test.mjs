@@ -129,13 +129,13 @@ test("browser module imports pin cache versions for transitive OMR dependencies"
   assert.match(renderSource, /from ["']\.\/template\.mjs\?v=20261109i["']/);
   assert.match(readerSource, /from ["']\.\/template\.mjs\?v=20261109i["']/);
   assert.match(pageSource, /omr\/(?:template|render|reader)\.mjs\?v=20261109k/g);
-  assert.match(teacherSource, /corretor-v2\.html\?v=20261109l/g);
+  assert.match(teacherSource, /corretor-v2\.html\?v=20261109m/g);
   assert.match(pageSource, /<select id="type"><option>A-D<\/option><option>A-E<\/option><option>C-E<\/option><\/select>/);
   assert.match(pageSource, /let sections=\[\],template/);
   assert.match(pageSource, /id=\"dashboard\"/);
   assert.match(pageSource, /data-view=\"criar\"/);
   assert.match(pageSource, /createTemplate\(sections,\{templateId:'omr-a4'\}\)/);
   assert.doesNotMatch(pageSource, /href="#(?:gabaritos|cartao|resultados)"/);
-  assert.match(pageSource, /\.corretor-content \.module-nav button\[aria-current=page\]/);
-  assert.match(pageSource, /\.corretor-content button\.corretor-link small/);
+  assert.match(pageSource, /#corretorMain \.module-nav button\[aria-current=page\]/);
+  assert.match(pageSource, /#corretorMain button\.corretor-link small/);
 });
