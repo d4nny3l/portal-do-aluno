@@ -7,11 +7,11 @@ import { readRaster, READER_VERSION } from "../omr/reader.mjs";
 
 const card = count => createTemplate([{ type: "A-E", count, label: "Questões" }]);
 
-test("template version v3 publishes a compact horizontal-choice A4 geometry", () => {
-  assert.equal(TEMPLATE_VERSION, "salta-omr-a4-v3");
+test("template version v4 fills A4 more evenly while preserving a compact horizontal-choice A4 geometry", () => {
+  assert.equal(TEMPLATE_VERSION, "salta-omr-a4-v4");
   for (const count of [10, 20, 30, 50, 100]) {
     const template = card(count);
-    assert.equal(template.revision, 3);
+    assert.equal(template.revision, 4);
     assert.equal(template.pageCount, Math.ceil(count / MAX_QUESTIONS_PER_PAGE));
     for (let page = 1; page <= template.pageCount; page++) {
       const geometry = layoutTemplate(template, { width: PAGE_WIDTH_MM, height: PAGE_HEIGHT_MM, page });
@@ -20,8 +20,8 @@ test("template version v3 publishes a compact horizontal-choice A4 geometry", ()
       assert.equal(geometry.fiducials.length, 4);
       assert.equal(geometry.codeGrid.length, 70);
       assert.ok(geometry.rowPitch >= 7.1, `${count} questões, página ${page}: pitch ${geometry.rowPitch}`);
-      assert.ok(geometry.rowPitch <= 10.5 + 1e-8);
-      assert.equal(geometry.columns, Math.min(3, Math.ceil(pageCount / 4)));
+      assert.ok(geometry.rowPitch <= 23 + 1e-8);
+      assert.equal(geometry.columns, pageCount <= 10 ? 2 : Math.min(3, Math.ceil(pageCount / 10)));
       for (const cell of geometry.cells) {
         assert.ok(cell.bubbleRadius * 2 >= 4.8, "bolhas têm diâmetro físico mínimo de 4,8 mm");
         assert.ok(cell.y >= 90 && cell.y <= 281);
@@ -47,6 +47,18 @@ test("template version v3 publishes a compact horizontal-choice A4 geometry", ()
   }
 });
 
+test("short cards use taller answer rows and 10–30 questions use the A4 width", () => {
+  const ten = layoutTemplate(card(10), { width: PAGE_WIDTH_MM, height: PAGE_HEIGHT_MM });
+  const twenty = layoutTemplate(card(20), { width: PAGE_WIDTH_MM, height: PAGE_HEIGHT_MM });
+  const thirty = layoutTemplate(card(30), { width: PAGE_WIDTH_MM, height: PAGE_HEIGHT_MM });
+  assert.equal(ten.columns, 2);
+  assert.equal(twenty.columns, 2);
+  assert.equal(thirty.columns, 3);
+  assert.equal(ten.rowPitch, 23);
+  assert.ok(Math.max(...ten.groups.map(group => group.y + group.height)) >= 230);
+  assert.ok(Math.max(...twenty.groups.map(group => group.y + group.height)) >= 270);
+});
+
 test("mixed answer formats are grouped and never overlap section labels", () => {
   const template = createTemplate([
     { type: "A-D", count: 10, label: "Múltipla escolha" },
@@ -69,10 +81,11 @@ test("SVG pages print at A4, retain markers and omit SALTA branding from visible
   const svg = renderTemplateSvg(template, { page: 2, header: DEFAULT_CARD_HEADER });
   assert.match(svg, /width="210mm" height="297mm" viewBox="0 0 210 297"/);
   assert.match(svg, /data-page="2\/2"/);
-  assert.match(svg, /data-template-version="salta-omr-a4-v3"/);
-  assert.match(svg, /TEMPLATE OMR-A4-v3/);
+  assert.match(svg, /data-template-version="salta-omr-a4-v4"/);
+  assert.match(svg, /TEMPLATE OMR-A4-v4/);
   assert.equal((svg.match(/class="omr-fiducial"/g) || []).length, 4);
   assert.equal((svg.match(/class="omr-answer-bubble"/g) || []).length, 250);
+  assert.match(svg, /REV 4/);
   const visibleCopy = [...svg.matchAll(/<text[^>]*>([\s\S]*?)<\/text>/g)].map(match => match[1]).join(" ");
   assert.doesNotMatch(visibleCopy, /salta/i);
   assert.match(svg, /Código do aluno/);
@@ -86,8 +99,8 @@ test("optional headers escape text and reject external image URLs", () => {
   assert.doesNotMatch(svg, /<image href="https?:/);
 });
 
-test("reader uses matching v3 coordinates and supports page two", () => {
-  assert.equal(READER_VERSION, "salta-omr-reader-v3");
+test("reader uses matching v4 coordinates and supports page two", () => {
+  assert.equal(READER_VERSION, "salta-omr-reader-v4");
   const template = card(100);
   const width = 420;
   const height = 594;
@@ -113,10 +126,10 @@ test("browser module imports pin cache versions for transitive OMR dependencies"
     readFile(new URL("../../../plataforma/corretor-v2.html", import.meta.url), "utf8"),
     readFile(new URL("../../../plataforma/professor.html", import.meta.url), "utf8"),
   ]);
-  assert.match(renderSource, /from ["']\.\/template\.mjs\?v=20261109h["']/);
-  assert.match(readerSource, /from ["']\.\/template\.mjs\?v=20261109h["']/);
-  assert.match(pageSource, /omr\/(?:template|render|reader)\.mjs\?v=20261109h/g);
-  assert.match(teacherSource, /corretor-v2\.html\?v=20261109h/g);
+  assert.match(renderSource, /from ["']\.\/template\.mjs\?v=20261109i["']/);
+  assert.match(readerSource, /from ["']\.\/template\.mjs\?v=20261109i["']/);
+  assert.match(pageSource, /omr\/(?:template|render|reader)\.mjs\?v=20261109i/g);
+  assert.match(teacherSource, /corretor-v2\.html\?v=20261109i/g);
   assert.match(pageSource, /<select id="type"><option>A-D<\/option><option>A-E<\/option><option>C-E<\/option><\/select>/);
   assert.match(pageSource, /let sections=\[\{type:'A-D',count:20,label:'Questões objetivas'\}\]/);
   assert.match(pageSource, /createTemplate\(sections,\{templateId:'omr-a4'\}\)/);
