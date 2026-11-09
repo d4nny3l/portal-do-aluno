@@ -1,0 +1,35 @@
+name: SALTA teacher OMR integration
+on:
+  pull_request:
+    paths:
+      - "plataforma/corretor-v2.html"
+      - "plataforma/professor.html"
+      - "corretor/v2/omr/**"
+      - ".github/workflows/test-corretor-integrated.yml"
+permissions:
+  contents: read
+jobs:
+  static-integration:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+      - run: node --test corretor/v2/tests/*.test.mjs
+      - name: Check OMR modules and inline scripts
+        run: |
+          for file in corretor/v2/omr/*.mjs; do node --check "$file"; done
+          python3 - <<'PY'
+          import re, subprocess
+          from pathlib import Path
+          html = Path("plataforma/corretor-v2.html").read_text(encoding="utf-8")
+          scripts = [s for s in re.findall(r"<script(?:\\s[^>]*)?>([\\s\\S]*?)</script>", html, re.I) if s.strip()]
+          for i, script in enumerate(scripts, 1):
+              result = subprocess.run(["node", "--check", "-"], input=script, text=True, capture_output=True)
+              if result.returncode: raise SystemExit(f"Script inline {i}: {result.stderr}")
+          print(f"{len(scripts)} scripts inline: sintaxe OK")
+          PY
+      - run: git diff --check HEAD^ HEAD
