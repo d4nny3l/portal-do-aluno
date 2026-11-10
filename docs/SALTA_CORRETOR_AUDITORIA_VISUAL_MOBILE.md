@@ -34,15 +34,15 @@
 
 Os testes da etapa foram executados localmente com dados sintéticos. A suíte cobre dimensões A4, templates mistos e multipágina, bolhas em branco/duplas/ambíguas, detecção de marcadores, perspectiva sintética, orientação via grade de código, rejeição de orientação não confirmada e ajuste manual.
 
-### Matriz visual a preencher após validação publicada
+### Matriz de validação visual
 
 | Largura | Professor e Corretor comparados | Navegação e telas internas | Captura |
 | ---: | --- | --- | --- |
-| 1440 px | pendente | pendente | pendente |
-| 1024 px | pendente | pendente | pendente |
-| 768 px | pendente | pendente | pendente |
-| 390 px | pendente | pendente | pendente |
-| 375 px | pendente | pendente | pendente |
+| 1440 px | não concluído: sessão exigida | não concluído | não testada |
+| 1024 px | não concluído: sessão exigida | não concluído | não testada |
+| 768 px | emulação não executada | não concluído | não testada |
+| 390 px | emulação não executada | não concluído | não testada |
+| 375 px | emulação não executada | não concluído | não testada |
 
 ### Limites de homologação
 
@@ -60,10 +60,18 @@ Os testes da etapa foram executados localmente com dados sintéticos. A suíte c
 5. **Composição:** cards, painéis, formulários, modais e resultados alinhados em um sistema consistente.
 6. **Rótulos de desenvolvimento:** ausentes na interface comum; estado real de sessão e armazenamento continua explícito.
 7. **Todas as telas:** dashboard, avaliação, lista, correção, revisão, modelos, cabeçalho, análise e impressão cobertos pela revisão.
-8. **Renderização real:** pendente da revisão publicada em desktop e emulação mobile nas larguras da matriz.
-9. **Regressão OMR e rotas:** testes sintéticos automatizados executados; câmera física e iPhone permanecem pendentes.
-10. **Publicação:** pendente de PR, CI, merge e confirmação do GitHub Pages.
+8. **Renderização real:** parcialmente verificada. O GitHub Pages carregou o endereço do Corretor, mas a sessão redirecionou para o acesso restrito; não foi possível ver as telas internas nem fazer comparação fiel com a Visão Geral.
+9. **Regressão OMR e rotas:** 19 testes sintéticos passaram; módulos OMR tiveram checagem de sintaxe. A conferência de câmera física e iPhone permanece pendente.
+10. **Publicação:** commit e PR #27 publicados na branch experimental; CI passou no commit `4941c46c3dbfb78d7fb459d0f52fda97f5e0480b`. PR não mesclado e GitHub Pages de produção não atualizado, aguardando validação visual autenticada.
 
 ## Publicação
 
-Atualizar este bloco com commit, PR, CI e URL confirmada depois da publicação. Nenhum deploy de Worker, migração ou gravação remota faz parte desta revisão.
+Branch experimental: `codex/corretor-visual-audit`. Commit mais recente: `4941c46c3dbfb78d7fb459d0f52fda97f5e0480b`. PR #27: https://github.com/d4nny3l/portal-do-aluno/pull/27. CI: workflow `SALTA teacher OMR integration`, execução 42734398754, concluída com sucesso. A URL pública consultada foi https://d4nny3l.github.io/portal-do-aluno/plataforma/corretor-v2.html?v=20261109q; o acesso restrito impediu validar as telas do módulo. Não houve merge ou deploy para Pages, nem deploy de Worker, migração ou gravação remota.
+
+
+## Retomada em 10/11/2026
+
+- `git status` local: limpo; os dois commits locais registrados são a auditoria e a limpeza de whitespace. A branch remota do PR foi atualizada pelo conector GitHub e está no commit `4941c46c3dbfb78d7fb459d0f52fda97f5e0480b`.
+- Testes locais repetidos: 19 aprovados, 0 falhas; `git diff --check` limpo. A execução CI do mesmo commit concluiu com sucesso.
+- Navegador real: a URL canônica abriu, mas redirecionou ao acesso restrito da Área do Professor; não foi contornado o login nem solicitada permissão de câmera. A validação visual autenticada e as larguras responsivas seguem pendentes.
+- O PR permanece aberto e sem merge para respeitar a exigência de não publicar uma revisão cuja inspeção visual interna ainda não foi concluída.
