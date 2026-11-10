@@ -119,18 +119,46 @@ test("reader uses matching v4 coordinates and supports page two", () => {
   assert.equal(secondPage.pageCount, 2);
 });
 
+test("reader keeps blank, double and ambiguous marks out of automatic answers", () => {
+  const template = card(10), width = 420, height = 594;
+  const geometry = layoutTemplate(template, { width, height, page: 1 });
+  const blank = readRaster(template, new Uint8Array(width * height).fill(255), width, height);
+  assert.equal(blank.observations[0].state, "blank");
+  assert.equal(blank.observations[0].answer, null);
+  assert.equal(blank.needsReview, true);
+
+  const doublePixels = new Uint8Array(width * height).fill(255);
+  for (const bubble of geometry.cells[0].bubbles.slice(0, 2)) {
+    for (let y = -2; y <= 2; y++) for (let x = -2; x <= 2; x++) doublePixels[(Math.round(bubble.y) + y) * width + Math.round(bubble.x) + x] = 0;
+  }
+  const double = readRaster(template, doublePixels, width, height);
+  assert.equal(double.observations[0].state, "double");
+  assert.equal(double.observations[0].answer, null);
+  assert.equal(double.observations[0].marks.length, 2);
+
+  const ambiguousPixels = new Uint8Array(width * height).fill(255);
+  for (const [bubble, gray] of [[geometry.cells[0].bubbles[0], 95], [geometry.cells[0].bubbles[1], 110]]) {
+    for (let y = -2; y <= 2; y++) for (let x = -2; x <= 2; x++) ambiguousPixels[(Math.round(bubble.y) + y) * width + Math.round(bubble.x) + x] = gray;
+  }
+  const ambiguous = readRaster(template, ambiguousPixels, width, height);
+  assert.equal(ambiguous.observations[0].state, "review");
+  assert.equal(ambiguous.observations[0].answer, null);
+});
+
 test("browser module imports pin cache versions for transitive OMR dependencies", async () => {
-  const [renderSource, readerSource, pageSource, teacherSource, themeSource] = await Promise.all([
+  const [renderSource, readerSource, pageSource, teacherSource, themeSource, corretorCss, legacyRoute] = await Promise.all([
     readFile(new URL("../omr/render.mjs", import.meta.url), "utf8"),
     readFile(new URL("../omr/reader.mjs", import.meta.url), "utf8"),
     readFile(new URL("../../../plataforma/corretor-v2.html", import.meta.url), "utf8"),
     readFile(new URL("../../../plataforma/professor.html", import.meta.url), "utf8"),
     readFile(new URL("../../../plataforma/professor-theme.css", import.meta.url), "utf8"),
+    readFile(new URL("../../../plataforma/corretor-v2.css", import.meta.url), "utf8"),
+    readFile(new URL("../../../corretor/index.html", import.meta.url), "utf8"),
   ]);
   assert.match(renderSource, /from ["']\.\/template\.mjs\?v=20261109i["']/);
   assert.match(readerSource, /from ["']\.\/template\.mjs\?v=20261109i["']/);
-  assert.match(pageSource, /omr\/(?:template|render|reader)\.mjs\?v=20261109k/g);
-  assert.match(teacherSource, /corretor-v2\.html\?v=20261109n/g);
+  assert.match(pageSource, /omr\/(?:template|render|reader|normalize)\.mjs\?v=20261109o/g);
+  assert.match(teacherSource, /corretor-v2\.html\?v=20261109o/g);
   assert.match(teacherSource, /professor-theme\.css\?v=20261109n/);
   assert.match(pageSource, /professor-theme\.css\?v=20261109n/);
   assert.match(pageSource, /<select id="type"><option>A-D<\/option><option>A-E<\/option><option>C-E<\/option><\/select>/);
@@ -139,7 +167,15 @@ test("browser module imports pin cache versions for transitive OMR dependencies"
   assert.match(pageSource, /data-view=\"criar\"/);
   assert.match(pageSource, /createTemplate\(sections,\{templateId:'omr-a4'\}\)/);
   assert.doesNotMatch(pageSource, /href="#(?:gabaritos|cartao|resultados)"/);
-  assert.match(pageSource, /#corretorMain \.module-nav button\[aria-current=page\]/);
+  assert.match(pageSource, /<link rel="stylesheet" href="\.\/corretor-v2\.css\?v=20261109o">/);
+  assert.match(corretorCss, /\.module-nav button\[aria-current=page\]/);
+  assert.match(corretorCss, /\.camera-guides i\[data-found="true"\]/);
+  assert.match(corretorCss, /@media\(max-width:760px\)/);
+  assert.match(pageSource, /id="manualAlign"/);
+  assert.match(pageSource, /id="captureHistory"/);
+  assert.match(pageSource, /ideal:'environment'/);
+  assert.doesNotMatch(pageSource, /Experimental|experimental|Abrir versão anterior/);
+  assert.match(legacyRoute, /location\.replace\('\.\.\/plataforma\/corretor-v2\.html/);
   assert.match(pageSource, /class="modules-grid"/);
   assert.equal((pageSource.match(/class="module-card secondary" data-go=/g) || []).length, 7);
   assert.doesNotMatch(pageSource, /corretor-grid|corretor-link/);
