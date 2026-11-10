@@ -26,9 +26,9 @@ jobs:
           import re, subprocess
           from pathlib import Path
           html = Path("plataforma/corretor-v2.html").read_text(encoding="utf-8")
-          scripts = [s for s in re.findall(r"<script(?:\\s[^>]*)?>([\\s\\S]*?)</script>", html, re.I) if s.strip()]
+          scripts = [s for s in re.findall(r"<script(?:\s[^>]*)?>([\s\S]*?)</script>", html, re.I) if s.strip()]
           for i, script in enumerate(scripts, 1):
-              result = subprocess.run(["node", "--check", "-"], input=script, text=True, capture_output=True)
+              result = subprocess.run(["node", "--input-type=module", "--check", "-"], input=script, text=True, capture_output=True)
               if result.returncode: raise SystemExit(f"Script inline {i}: {result.stderr}")
           print(f"{len(scripts)} scripts inline: sintaxe OK")
           PY

@@ -1,6 +1,6 @@
 import { PAGE_HEIGHT_MM, PAGE_WIDTH_MM } from "./template.mjs?v=20261109p";
 
-export const NORMALIZER_VERSION = "salta-omr-normalizer-v1";
+export const NORMALIZER_VERSION = "salta-omr-normalizer-v2";
 
 function otsuThreshold(histogram, total) {
   let sum = 0;
@@ -125,7 +125,7 @@ function orderedQuad(points) {
     }
   }
   variants.sort((a, b) => a.ratioError + a.oppositeError * 0.35 - (b.ratioError + b.oppositeError * 0.35));
-  return variants[0];
+  return variants;
 }
 
 function quadArea(points) {
@@ -141,19 +141,63 @@ function chooseQuad(candidates, width, height) {
   for (let a = 0; a < n - 3; a++) for (let b = a + 1; b < n - 2; b++) {
     for (let c = b + 1; c < n - 1; c++) for (let d = c + 1; d < n; d++) {
       const points = [candidates[a], candidates[b], candidates[c], candidates[d]];
-      const order = orderedQuad(points);
-      const areaRatio = quadArea(order.ordered) / (width * height);
-      if (areaRatio < 0.08 || areaRatio > 0.99) continue;
-      if (order.ratioError > 0.85 || order.oppositeError > 1.15) continue;
-      const markerQuality = points.reduce((sum, point) => sum + point.quality, 0) / 4;
-      const score = markerQuality - order.ratioError * 0.28 - order.oppositeError * 0.12 + Math.min(areaRatio, 0.72) * 0.08;
-      if (!best || score > best.score) best = { corners: order.ordered, score, confidence: Math.max(0, Math.min(1, score)), areaRatio };
+      const orders = orderedQuad(points);
+      for (const order of orders) {
+        const areaRatio = quadArea(order.ordered) / (width * height);
+        if (areaRatio < 0.08 || areaRatio > 0.99) continue;
+        if (order.ratioError > 0.85 || order.oppositeError > 1.15) continue;
+        const markerQuality = points.reduce((sum, point) => sum + point.quality, 0) / 4;
+        const score = markerQuality - order.ratioError * 0.28 - order.oppositeError * 0.12 + Math.min(areaRatio, 0.72) * 0.08;
+        if (!best || score > best.score) best = {
+          corners: order.ordered,
+          orientationCandidates: orders.filter(candidate => candidate.ratioError <= 0.85 && candidate.oppositeError <= 1.15).map(candidate => candidate.ordered),
+          score,
+          confidence: Math.max(0, Math.min(1, score)),
+          areaRatio,
+        };
+      }
     }
   }
   return best;
 }
 
-export function detectFiducials(gray, width, height) {
+function projectPoint(project, point) {
+  const denominator = project[6] * point.x + project[7] * point.y + 1;
+  if (Math.abs(denominator) < 1e-8) return null;
+  return {
+    x: (project[0] * point.x + project[1] * point.y + project[2]) / denominator,
+    y: (project[3] * point.x + project[4] * point.y + project[5]) / denominator,
+  };
+}
+
+function scoreCodeGrid(gray, width, height, corners) {
+  const pageFiducials = [
+    { x: 8, y: 8 }, { x: PAGE_WIDTH_MM - 8, y: 8 },
+    { x: PAGE_WIDTH_MM - 8, y: PAGE_HEIGHT_MM - 8 }, { x: 8, y: PAGE_HEIGHT_MM - 8 },
+  ];
+  let transform;
+  try { transform = homography(pageFiducials, corners); } catch { return 0; }
+  const scale = ((distance(corners[0], corners[1]) + distance(corners[3], corners[2])) / 2) / (PAGE_WIDTH_MM - 16);
+  const radius = 1.55 * scale;
+  if (!Number.isFinite(radius) || radius < 1.5) return 0;
+  let dark = 0;
+  let samples = 0;
+  for (let column = 0; column < 7; column++) for (let digit = 0; digit < 10; digit++) {
+    const center = projectPoint(transform, { x: 153 + column * 6.1, y: 51 + digit * 4 });
+    if (!center) continue;
+    for (let i = 0; i < 16; i++) {
+      const angle = 2 * Math.PI * (i + .5) / 16;
+      const x = Math.round(center.x + Math.cos(angle) * radius);
+      const y = Math.round(center.y + Math.sin(angle) * radius);
+      if (x < 0 || y < 0 || x >= width || y >= height) continue;
+      if (gray[y * width + x] < 205) dark++;
+      samples++;
+    }
+  }
+  return samples ? dark / samples : 0;
+}
+
+export function detectFiducials(gray, width, height, { orientationMode = "auto" } = {}) {
   if (!Number.isInteger(width) || !Number.isInteger(height) || width < 32 || height < 32 || !gray || gray.length !== width * height) {
     throw new TypeError("Imagem inválida para localizar os marcadores.");
   }
@@ -161,11 +205,23 @@ export function detectFiducials(gray, width, height) {
   const found = components(sample);
   const quad = chooseQuad(found, width, height);
   if (!quad || quad.confidence < 0.62) return Object.freeze({ found: false, confidence: quad?.confidence || 0, corners: [], candidateCount: found.length });
+  let corners = quad.corners;
+  let orientationConfidence = null;
+  let orientationKnown = orientationMode === "auto";
+  if (orientationMode === "code-grid") {
+    const scored = quad.orientationCandidates.map(candidate => ({ corners: candidate, score: scoreCodeGrid(gray, width, height, candidate) })).sort((a, b) => b.score - a.score);
+    const best = scored[0], next = scored[1];
+    orientationConfidence = best?.score || 0;
+    orientationKnown = Boolean(best && best.score >= .16 && best.score - (next?.score || 0) >= .09);
+    if (orientationKnown) corners = best.corners;
+  }
   return Object.freeze({
     found: true,
     confidence: quad.confidence,
     areaRatio: quad.areaRatio,
-    corners: Object.freeze(quad.corners.map(point => Object.freeze({ x: point.x, y: point.y }))),
+    orientationKnown,
+    orientationConfidence,
+    corners: Object.freeze(corners.map(point => Object.freeze({ x: point.x, y: point.y }))),
     candidateCount: found.length,
   });
 }
@@ -240,9 +296,12 @@ export function warpFromFiducials(gray, width, height, corners, { outputWidth = 
 }
 
 export function normalizeCard(gray, width, height, options = {}) {
-  const detection = detectFiducials(gray, width, height);
+  const detection = detectFiducials(gray, width, height, { ...options, orientationMode: options.orientationMode || "code-grid" });
   if (!detection.found || detection.confidence < (options.minConfidence ?? 0.62)) {
     throw new Error("Não foi possível ler o cartão. Enquadre a folha inteira, melhore a iluminação e tente novamente; se necessário, ajuste os quatro marcadores manualmente.");
+  }
+  if (!detection.orientationKnown) {
+    throw new Error("Não foi possível confirmar a orientação do cartão. Ajuste os quatro marcadores manualmente e tente novamente.");
   }
   const normalized = warpFromFiducials(gray, width, height, detection.corners, options);
   return Object.freeze({ ...normalized, confidence: detection.confidence, corners: detection.corners });
