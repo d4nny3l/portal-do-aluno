@@ -79,4 +79,4 @@ Branch experimental: `codex/corretor-visual-audit`. Commit de correção do work
 
 - Renderização local no Chrome após liberar somente a cópia descartável do gate de sessão: menu, shell SALTA e dashboard conferidos lado a lado com a Área do Professor; criação de avaliação e prévia de cartão A4 sintético funcionaram. O gate original e todos os arquivos de produção permaneceram intactos.
 - A renderização revelou o cascade do tema global sobre a navegação; o estado foi corrigido com `tab` e exclusão de `[data-view]` dos estilos genéricos. O teste verifica a exceção.
-- A renderização também mostrou cards altos e vazios porque faltavam etiqueta e descrição. Os sete cards foram recompostos agora com os cinco elementos da referência; falta recarregar e revisar essa última edição no Chrome.
+- A renderização também mostrou cards altos e vazios porque faltavam etiqueta e descrição. Os sete cards foram recompostos com os cinco elementos da referência; a cópia local foi recarregada e conferida visualmente, com textos e alinhamento visíveis.
