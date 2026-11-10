@@ -66,12 +66,12 @@ Os testes da etapa foram executados localmente com dados sintéticos. A suíte c
 
 ## Publicação
 
-Branch experimental: `codex/corretor-visual-audit`. Commit mais recente: `4941c46c3dbfb78d7fb459d0f52fda97f5e0480b`. PR #27: https://github.com/d4nny3l/portal-do-aluno/pull/27. CI: workflow `SALTA teacher OMR integration`, execução 42734398754, concluída com sucesso. A URL pública consultada foi https://d4nny3l.github.io/portal-do-aluno/plataforma/corretor-v2.html?v=20261109q; o acesso restrito impediu validar as telas do módulo. Não houve merge ou deploy para Pages, nem deploy de Worker, migração ou gravação remota.
+Branch experimental: `codex/corretor-visual-audit`. Commit do relatório anterior: `4941c46c3dbfb78d7fb459d0f52fda97f5e0480b`; uma correção de workflow está no próximo commit da branch. PR #27: https://github.com/d4nny3l/portal-do-aluno/pull/27. CI anterior: workflow `SALTA teacher OMR integration`, execução 42734398754, concluída com sucesso; foi encontrado e corrigido um falso positivo na etapa de sintaxe (0 scripts detectados). A execução após corrigir o workflow ainda está pendente. A URL pública consultada foi https://d4nny3l.github.io/portal-do-aluno/plataforma/corretor-v2.html?v=20261109q; o acesso restrito impediu validar as telas do módulo. Não houve merge ou deploy para Pages, nem deploy de Worker, migração ou gravação remota.
 
 
 ## Retomada em 10/11/2026
 
-- `git status` local: limpo; os dois commits locais registrados são a auditoria e a limpeza de whitespace. A branch remota do PR foi atualizada pelo conector GitHub e está no commit `4941c46c3dbfb78d7fb459d0f52fda97f5e0480b`.
-- Testes locais repetidos: 19 aprovados, 0 falhas; `git diff --check` limpo. A execução CI do mesmo commit concluiu com sucesso.
+- Na primeira conferência da retomada, `git status` estava limpo e HEAD era `0164bfc`; os commits locais anteriores eram a auditoria e a limpeza de whitespace. O PR remoto recebeu atualizações de documentação e está sendo atualizado com o conserto demonstrado no workflow.
+- Testes locais repetidos: 19 aprovados, 0 falhas; `git diff --check` limpo. A execução CI do commit `4941c46c3dbfb78d7fb459d0f52fda97f5e0480b` concluiu com sucesso, mas a revisão revelou que o passo de sintaxe do workflow extraía zero scripts por uma expressão regular excessivamente escapada. O workflow foi corrigido para detectar e validar os dois módulos inline como ES modules; os dois passaram na validação local. O novo check remoto está pendente.
 - Navegador real: a URL canônica abriu, mas redirecionou ao acesso restrito da Área do Professor; não foi contornado o login nem solicitada permissão de câmera. A validação visual autenticada e as larguras responsivas seguem pendentes.
 - O PR permanece aberto e sem merge para respeitar a exigência de não publicar uma revisão cuja inspeção visual interna ainda não foi concluída.
