@@ -145,7 +145,7 @@
   font-size: 9px;
 }
 
-.corretor-content button:not(.module-card),
+.corretor-content button:not(.module-card):not([data-view]),
 .omr-toolbar button {
   min-height: 40px;
   padding: 9px 13px;
@@ -160,15 +160,15 @@
   cursor: pointer;
   transition: border-color .16s ease, color .16s ease, background .16s ease, box-shadow .16s ease;
 }
-.corretor-content button:not(.module-card):hover,
+.corretor-content button:not(.module-card):not([data-view]):hover,
 .omr-toolbar button:hover { border-color: #cecef3; color: var(--teacher-primary, #5b5bd6); background: #fafaff; }
-.corretor-content button.button-primary:not(.module-card) {
+.corretor-content button.button-primary:not(.module-card):not([data-view]) {
   border-color: var(--teacher-primary, #5b5bd6);
   color: #fff;
   background: var(--teacher-primary, #5b5bd6);
 }
-.corretor-content button.button-primary:not(.module-card):hover { border-color: var(--teacher-primary-dark, #4d4dc2); background: var(--teacher-primary-dark, #4d4dc2); }
-.corretor-content button.button-quiet:not(.module-card) { border-color: transparent; background: transparent; }
+.corretor-content button.button-primary:not(.module-card):not([data-view]):hover { border-color: var(--teacher-primary-dark, #4d4dc2); background: var(--teacher-primary-dark, #4d4dc2); }
+.corretor-content button.button-quiet:not(.module-card):not([data-view]) { border-color: transparent; background: transparent; }
 
 .omr-row,
 .omr-toolbar {
