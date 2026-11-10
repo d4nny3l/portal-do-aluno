@@ -1,0 +1,739 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<link rel="icon" type="image/svg+xml" href="../favicon.svg">
+<title>SALTA — Corretor de Avaliações</title>
+<style>
+*{box-sizing:border-box}html{scroll-behavior:smooth}body{margin:0;background:#f5f5f7;color:#171717;font-family:-apple-system,BlinkMacSystemFont,"SF Pro Display","SF Pro Text",Arial,sans-serif}
+header{background:#111;color:#fff;padding:42px 20px 52px}.wrap{max-width:940px;margin:auto}.brand{font-size:48px;font-weight:700;letter-spacing:-2px}.sub{color:#aaa;margin-top:6px;font-size:16px}
+main{max-width:940px;margin:-24px auto 55px;padding:0 15px}.teacher-back{display:inline-flex;align-items:center;gap:7px;margin:0 0 16px;padding:10px 13px;border:1px solid #e5e5e5;border-radius:12px;background:#fff;color:#222;text-decoration:none;font-size:14px;font-weight:650}.teacher-back:hover{background:#f7f7f9}.card{background:#fff;border:1px solid #e5e5e5;border-radius:24px;padding:25px;margin-bottom:16px;box-shadow:0 8px 30px #0000000b}
+h2{margin:0 0 7px;font-size:22px;letter-spacing:-.5px}.help{color:#707070;line-height:1.5;margin:0 0 20px}
+.grid{display:grid;grid-template-columns:repeat(5,1fr);gap:9px}.q{background:#fafafa;border:1px solid #e7e7e7;border-radius:13px;padding:9px}.q label{display:block;font-size:12px;color:#777;margin-bottom:6px}
+select{width:100%;border:0;background:#fff;border-radius:8px;padding:9px;font-size:16px}button,.file{display:inline-block;border:0;border-radius:13px;padding:13px 17px;font-weight:600;font-size:15px;cursor:pointer;background:#111;color:#fff}.secondary{background:#eee;color:#111}.actions{display:flex;gap:9px;flex-wrap:wrap;margin-top:16px}.file input{display:none}
+.preview{display:none;margin-top:18px;text-align:center}.preview img,.preview canvas{max-width:100%;max-height:600px;border-radius:15px;border:1px solid #ddd}
+.status{display:none;margin-top:15px;padding:13px 15px;background:#f1f1f1;border-radius:13px;color:#333}.show{display:block}
+.results{display:none}.top{display:flex;justify-content:space-between;align-items:end;gap:15px;flex-wrap:wrap}.score{font-size:42px;font-weight:700;letter-spacing:-1.5px}.score small{display:block;font-size:14px;letter-spacing:0;color:#777;font-weight:500;margin-top:2px}
+table{width:100%;border-collapse:collapse;margin-top:18px}th,td{text-align:left;padding:11px 7px;border-bottom:1px solid #eee}th{font-size:11px;color:#777}.ok{font-weight:700}.err{font-weight:700}.warn{font-weight:700;color:#a66a00}
+.badge{display:inline-block;padding:5px 9px;border-radius:999px;background:#eee;font-size:12px;color:#555;margin-bottom:12px}
+footer{text-align:center;color:#777;font-size:13px;padding:10px 10px 45px}@media(max-width:650px){.grid{grid-template-columns:repeat(2,1fr)}.card{padding:20px}.brand{font-size:42px}}
+
+.camera-box{display:none;margin-top:18px;position:relative;border-radius:20px;overflow:hidden;background:#111;border:1px solid #ddd}.camera-box video{display:block;width:100%;max-height:560px;object-fit:cover}.camera-guide{position:absolute;inset:12% 10%;border:2px solid rgba(255,255,255,.8);border-radius:18px;box-shadow:0 0 0 999px rgba(0,0,0,.22);pointer-events:none}.camera-actions{position:absolute;left:0;right:0;bottom:0;padding:14px;display:flex;justify-content:center;gap:8px;background:linear-gradient(transparent,rgba(0,0,0,.8))}.camera-actions button{margin:0}.detected{display:none;margin-top:15px;padding:15px 17px;border-radius:16px;background:#f4f4f6;border:1px solid #e4e4e7}.detected strong{font-size:22px;letter-spacing:-.5px}.detected small{display:block;color:#707070;margin-top:4px}.
+.setup-row{display:flex;align-items:end;gap:12px;flex-wrap:wrap;margin:16px 0}.setup-row label{display:grid;gap:6px;color:#555;font-size:13px;font-weight:600}.setup-row input{width:140px;border:1px solid #ddd;border-radius:11px;padding:12px;font:inherit}.note{font-size:13px;color:#666;line-height:1.5;margin:12px 0 0}.field{width:210px;border:1px solid #ddd;border-radius:11px;padding:10px;font:inherit}.page-input{width:90px}
+.answer-template-preview{margin:16px 0;padding:18px;border:1px solid #e8e8ed;border-radius:18px;background:#f7f7f9;text-align:center}.answer-template-preview canvas{display:block;width:min(100%,360px);height:auto;margin:auto;border:1px solid #ddd;box-shadow:0 8px 26px #00000012;background:#fff}
+
+/* SALTA — acesso rápido à plataforma */
+.salta-platform-button{
+ position:fixed;
+ top:18px;
+ right:18px;
+ z-index:1000;
+ width:42px;height:42px;
+ border-radius:13px;
+ display:grid;
+ place-items:center;
+ background:rgba(255,255,255,.82);
+ color:#1d1d1f;
+ border:1px solid rgba(0,0,0,.08);
+ box-shadow:0 8px 24px rgba(0,0,0,.08);
+ text-decoration:none;
+ font-size:17px;
+ font-weight:800;
+ line-height:1;
+ backdrop-filter:blur(16px) saturate(150%);
+ -webkit-backdrop-filter:blur(16px) saturate(150%);
+ transition:transform .25s ease,box-shadow .25s ease,background .25s ease;
+}
+.salta-platform-button:hover{transform:translateY(-2px);box-shadow:0 12px 30px rgba(0,0,0,.12);background:#fff}
+.salta-platform-button:active{transform:translateY(0) scale(.97)}
+.salta-platform-button:focus-visible{outline:3px solid rgba(0,113,227,.25);outline-offset:3px}
+@media(max-width:600px){.salta-platform-button{width:38px;height:38px;top:14px;right:14px;border-radius:12px}}
+
+</style>
+<style id="salta-grid-global">
+/* SALTA — identidade visual global */
+html{background:#f5f5f7}
+body{position:relative;isolation:isolate}
+body::before{
+  content:"";
+  position:fixed;
+  inset:0;
+  pointer-events:none;
+  z-index:-1;
+  background-image:
+    linear-gradient(rgba(90,90,100,.055) 1px,transparent 1px),
+    linear-gradient(90deg,rgba(90,90,100,.055) 1px,transparent 1px);
+  background-size:32px 32px;
+  background-position:0 0;
+}
+</style>
+<style id="salta-auth-guard">
+body{visibility:hidden}
+body.auth-ready{visibility:visible}
+body.auth-check{visibility:hidden}
+.auth-screen{min-height:100vh;display:grid;place-items:center;padding:30px;background:rgba(245,245,247,.92);font-family:-apple-system,BlinkMacSystemFont,"SF Pro Display","SF Pro Text",Arial,sans-serif}
+.auth-box{width:min(430px,100%);padding:30px;border-radius:26px;background:#fff;border:1px solid #e6e6e6;box-shadow:0 18px 55px rgba(0,0,0,.08);text-align:center}
+.auth-icon{width:54px;height:54px;border-radius:17px;background:#111;color:#fff;display:grid;place-items:center;margin:0 auto 18px;font-size:22px}
+.auth-box h1{font-size:25px;letter-spacing:-.7px;margin:0 0 8px}
+.auth-box p{font-size:14px;line-height:1.5;color:#707070;margin:0}
+</style>
+<script id="salta-auth-guard-script">
+(() => {
+  // A Área do Professor autentica pelo proxy do salta-stats, que também
+  // mantém o cookie da sessão usado pelo corretor.
+  const AUTH_API_URL = "https://salta-stats.dannyel-moises.workers.dev/auth";
+
+  function showDenied() {
+    document.documentElement.style.background = "#f5f5f7";
+    document.body.className = "auth-ready";
+    document.body.innerHTML = `
+      <div class="auth-screen">
+        <div class="auth-box">
+          <div class="auth-icon">🔒</div>
+          <h1>Acesso restrito</h1>
+          <p>Faça login na Área do Professor para acessar o Corretor de Avaliações.</p>
+          <a href="../plataforma/professor.html" style="display:inline-block;margin-top:18px;padding:11px 15px;border-radius:12px;background:#111;color:#fff;text-decoration:none;font-weight:600">Ir para o login</a>
+        </div>
+      </div>`;
+  }
+
+  async function check() {
+    try {
+      const response = await fetch(AUTH_API_URL + "/session", {
+        method: "GET",
+        credentials: "include",
+        cache: "no-store"
+      });
+
+      if (!response.ok) {
+        window.location.replace("../plataforma/professor.html");
+        return;
+      }
+
+      const data = await response.json();
+
+      if (!data.authenticated) {
+        window.location.replace("../plataforma/professor.html");
+        return;
+      }
+
+      // Sessão válida por cookie ou por Bearer token.
+      // Libera o corretor somente depois da confirmação no servidor.
+      document.body.classList.add("auth-ready");
+    } catch (error) {
+      showDenied();
+    }
+  }
+
+  function start() {
+    if (document.readyState === "loading") {
+      window.addEventListener("DOMContentLoaded", check, { once: true });
+    } else {
+      check();
+    }
+  }
+
+  start();
+})();
+</script>
+<link rel="stylesheet" href="../salta-theme.css?v=20261106">
+<link rel="stylesheet" href="../plataforma/professor-theme.css?v=20261105">
+</head>
+<body class="professor-layout">
+<header class="teacher-shell-topbar">
+  <div class="teacher-shell-brandzone">
+    <button class="teacher-shell-toggle" id="teacherShellToggle" type="button" aria-label="Abrir menu" aria-expanded="false"><svg viewBox="0 0 24 24"><path d="M4 6h16M4 12h16M4 18h16"/></svg></button>
+    <a class="teacher-shell-brand" href="../plataforma/professor.html" aria-label="SALTA — Área do Professor"><span class="teacher-shell-brand-mark">S</span><span class="teacher-shell-brand-copy"><strong>SALTA</strong><small>PORTAL EDUCACIONAL</small></span></a>
+  </div>
+  <div class="teacher-shell-actions"><span class="teacher-shell-context">AMBIENTE DO PROFESSOR</span><a class="teacher-shell-home" href="../plataforma/"><svg viewBox="0 0 24 24"><path d="M3 10.5L12 3l9 7.5M5.5 9v11h13V9M9 20v-6h6v6"/></svg> Plataforma SALTA</a></div>
+</header>
+<aside class="teacher-shell-sidebar" aria-label="Navegação da Área Administrativa">
+  <div class="teacher-shell-caption">Menu principal</div>
+  <a class="teacher-shell-link" href="../plataforma/professor.html"><svg viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="3" width="7" height="7" rx="1.5"/><rect x="3" y="14" width="7" height="7" rx="1.5"/><rect x="14" y="14" width="7" height="7" rx="1.5"/></svg><span>Visão geral</span></a>
+  <div class="teacher-shell-divider"></div>
+  <div class="teacher-shell-caption">Ferramentas acadêmicas</div>
+  <a class="teacher-shell-link" href="../plataforma/estatistica.html"><svg viewBox="0 0 24 24"><path d="M4 19V5M4 19h17"/><rect x="7" y="11" width="3" height="6" rx=".5"/><rect x="13" y="7" width="3" height="10" rx=".5"/><rect x="19" y="4" width="2" height="13" rx=".5"/></svg><span>Relatórios acadêmicos</span></a>
+  <a class="teacher-shell-link" href="../plataforma/diario-teste.html"><svg viewBox="0 0 24 24"><path d="M7 3h11a2 2 0 0 1 2 2v16H7a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2Z"/><path d="M8 3v18M12 8h5M12 12h5M12 16h5"/></svg><span>Diário de classe</span></a>
+  <a class="teacher-shell-link active" aria-current="page" href="./"><svg viewBox="0 0 24 24"><path d="M7 3h8l4 4v14H7a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2Z"/><path d="M14 3v5h5M9 13h7M9 17h5"/></svg><span>Corretor de avaliações</span></a>
+  <a class="teacher-shell-link" href="../plataforma/mensagens.html"><svg viewBox="0 0 24 24"><path d="M18 9a6 6 0 0 0-12 0c0 7-3 7-3 9h18c0-2-3-2-3-9ZM10 21h4"/></svg><span>Central de avisos</span></a>
+  <a class="teacher-shell-link" href="../plataforma/fechamento-bimestre.html"><svg viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="17" rx="2"/><path d="M8 2v4M16 2v4M3 9h18M8 13h3M8 17h8"/></svg><span>Fechamento de bimestre</span></a>
+  <div class="teacher-shell-divider"></div>
+  <div class="teacher-shell-caption">Projetos e eventos</div>
+  <a class="teacher-shell-link" href="../plataforma/festival-consciencia-negra-admin.html"><svg viewBox="0 0 24 24"><path d="M12 3v3M5.6 5.6l2.1 2.1M3 12h3M18 12h3M16.3 7.7l2.1-2.1M8 14.5a4 4 0 1 1 8 0c0 1.6-.8 2.4-1.7 3.3-.6.6-.8 1.1-.8 2.2h-3c0-1.1-.2-1.6-.8-2.2C8.8 16.9 8 16.1 8 14.5Z"/></svg><span>Festival da Consciência Negra</span></a>
+  <a class="teacher-shell-link" href="../mostra-cultural.html?admin=1"><svg viewBox="0 0 24 24"><path d="M4 19V5l8-3 8 3v14l-8 3-8-3Z"/><path d="m4 5 8 3 8-3M12 8v14"/></svg><span>Avaliação da Mostra Cultural</span></a>
+  <div class="teacher-shell-note"><strong>Sessão administrativa protegida</strong><p>Você está em uma ferramenta restrita da SALTA. A navegação mantém os módulos e suas permissões originais.</p></div>
+</aside>
+<div class="teacher-shell-overlay" id="teacherShellOverlay"></div>
+<script>
+(() => {
+ const toggle=document.getElementById("teacherShellToggle");
+ const overlay=document.getElementById("teacherShellOverlay");
+ const close=()=>{document.body.classList.remove("teacher-nav-open");toggle?.setAttribute("aria-expanded","false");};
+ toggle?.addEventListener("click",()=>{const open=document.body.classList.toggle("teacher-nav-open");toggle.setAttribute("aria-expanded",String(open));});
+ overlay?.addEventListener("click",close);
+ document.querySelectorAll(".teacher-shell-sidebar a").forEach(link=>link.addEventListener("click",close));
+ document.addEventListener("keydown",event=>{if(event.key==="Escape")close();});
+})();
+</script>
+<a class="salta-platform-button" href="../plataforma/" aria-label="Ir para a Plataforma SALTA" title="Plataforma SALTA">S</a>
+
+<header><div class="wrap"><div class="brand">SALTA</div><div class="sub">Corretor de Avaliações</div></div></header>
+<main>
+<section class="teacher-module-heading" aria-labelledby="corretorPageTitle">
+  <div class="teacher-module-kicker">Avaliações · Ambiente do professor</div>
+  <h1 id="corretorPageTitle">Corretor de avaliações</h1>
+  <p>Monte gabaritos, leia cartões de respostas e confira as correções em um só ambiente.</p>
+</section>
+<a class="teacher-back" href="../plataforma/professor.html">← Voltar para a Área do Professor</a>
+
+<section class="card">
+<span class="badge">GRADE DE RESPOSTAS</span>
+<h2>Monte a grade da prova</h2>
+<p class="help">Escolha de 1 a 50 questões. As marcações ficam próximas da grade, com bolhas maiores para preencher e facilitar a leitura no PDF ou na foto.</p>
+<div class="setup-row"><label>Quantidade de questões<input id="questionCount" type="number" min="1" max="50" value="20"></label><button onclick="updateQuestionCount()">Aplicar quantidade</button></div>
+<div class="answer-template-preview"><canvas id="answerTemplateCanvas" aria-label="Prévia da folha de respostas A4"></canvas></div>
+<div class="actions"><button class="secondary" onclick="downloadAnswerSheet()">Baixar grade de respostas (.jpg)</button></div>
+<p class="note">A imagem traz somente as respostas e quatro marcas próximas à grade para leitura automática. Ao inserir na prova, mantenha a imagem inteira e não remova as marcas. Use a mesma quantidade de questões no gabarito.</p>
+</section>
+
+<section class="card">
+<span class="badge">GABARITO</span>
+<h2>1. Informe as respostas corretas</h2>
+<p class="help">Defina o gabarito manualmente ou envie uma foto/PDF do cartão preenchido. A leitura automática usa o modelo de cartão disponível nesta página; em outras folhas, confira e ajuste as respostas manualmente.</p>
+<div id="grid" class="grid"></div>
+<div class="actions">
+<button onclick="saveKey()">Salvar gabarito</button>
+<button class="secondary" onclick="clearKey()">Limpar</button>
+<label class="file secondary">Ler gabarito por foto/PDF<input id="keyPhoto" type="file" accept="image/*,application/pdf" capture="environment"></label>
+<button class="secondary" onclick="readKeyPhoto()">Tentar leitura novamente</button>
+</div>
+<div id="keyStatus" class="status"></div>
+</section>
+
+<section class="card">
+<span class="badge">CORREÇÃO AUTOMÁTICA</span>
+<h2>2. Leia o cartão do aluno</h2>
+<p class="help">Envie uma foto ou PDF da folha que contém a grade de respostas SALTA. Se o PDF tiver várias páginas, o corretor procura a grade marcada automaticamente; use a mesma quantidade de questões do gabarito.</p>
+<div class="actions">
+<label class="file">Escolher cartão<input id="photo" type="file" accept="image/*,application/pdf" capture="environment"></label>
+<label class="setup-row" style="margin:0;align-items:center">Página da foto <input class="field page-input" id="photoPage" type="number" min="1" value="1"></label>
+<button class="secondary" id="cameraBtn" onclick="toggleCamera()">Abrir câmera</button>
+<button class="secondary" onclick="scanStudent()">Corrigir cartão</button>
+</div>
+<div id="cameraBox" class="camera-box">
+  <video id="video" playsinline autoplay muted></video>
+  <div class="camera-guide"><span></span></div>
+  <div class="camera-actions"><button onclick="captureFrame()">Ler cartão agora</button><button class="secondary" onclick="toggleCamera(false)">Fechar</button></div>
+</div>
+<div id="preview" class="preview"><canvas id="canvas"></canvas></div>
+<div id="detected" class="detected"></div>
+<div id="status" class="status"></div>
+</section>
+
+<section id="results" class="card results">
+<div class="top"><div><h2>Resultado</h2><p class="help">Confira as leituras antes de registrar a nota.</p></div><div id="score" class="score">—<small>acertos</small></div></div>
+<table><thead><tr><th>Questão</th><th>Leitura</th><th>Gabarito</th><th>Situação</th></tr></thead><tbody id="body"></tbody></table>
+</section>
+</main>
+<footer>SALTA — Ferramenta Educacional<br>Desenvolvido por Prof. Dannyel Moisés</footer>
+
+<script>
+const L=["A","B","C","D","E"],g=document.getElementById("grid");
+let questionCount=20;
+function renderKeyGrid(n){
+ questionCount=n;
+ g.innerHTML="";
+ for(let i=1;i<=n;i++)g.innerHTML+=`<div class="q"><label>Questão ${i}</label><select id="q${i}"><option value="">—</option>${L.map(x=>"<option>"+x+"</option>").join("")}</select></div>`;
+}
+
+let key=JSON.parse(localStorage.getItem("saltaKey")||"null")||[];
+if(!Array.isArray(key)){questionCount=Number(key.count)||20;key=Array.isArray(key.answers)?key.answers:[];}
+questionCount=Math.min(50,Math.max(1,key.length||questionCount));
+key=key.slice(0,questionCount);
+document.getElementById("questionCount").value=questionCount;
+renderKeyGrid(questionCount);
+key.forEach((x,i)=>{if(x&&document.getElementById("q"+(i+1)))document.getElementById("q"+(i+1)).value=x;});
+const answerTemplateCanvas=document.getElementById("answerTemplateCanvas");
+
+function answerTemplateLayout(count,width,height){
+ const pxPerMm=width/210,marginY=15*pxPerMm,pitch=Math.min(10*pxPerMm,(height-2*marginY)/count);
+ const startY=(height-(count-1)*pitch)/2;
+ const markerTop=Math.max(7*pxPerMm,startY-12*pxPerMm);
+ const markerBottom=Math.min(height-7*pxPerMm,startY+(count-1)*pitch+12*pxPerMm);
+ return {pxPerMm,pitch,startY,questionX:width*.32,bubbleXs:[.395,.4475,.5,.5525,.605].map(x=>x*width),
+   bubbleRadius:Math.min(2.7*pxPerMm,pitch/2-.35*pxPerMm),
+   markerCenters:[[30,markerTop/pxPerMm],[180,markerTop/pxPerMm],[180,markerBottom/pxPerMm],[30,markerBottom/pxPerMm]].map(([x,y])=>({x:x*pxPerMm,y:y*pxPerMm}))};
+}
+
+function drawAnswerTemplate(count){
+ const width=2480,height=3508,scale=width/210,layout=answerTemplateLayout(count,width,height),ctx=answerTemplateCanvas.getContext("2d");
+ answerTemplateCanvas.width=width;answerTemplateCanvas.height=height;
+ ctx.fillStyle="#fff";ctx.fillRect(0,0,width,height);ctx.fillStyle="#111";
+ const marker=4.8*scale;
+ layout.markerCenters.forEach(point=>ctx.fillRect(point.x-marker/2,point.y-marker/2,marker,marker));
+ const questionFont=`600 ${Math.max(28,Math.min(40,layout.pitch*.52))}px Arial,sans-serif`;
+ ctx.textBaseline="middle";ctx.textAlign="right";ctx.font=questionFont;
+ const radius=layout.bubbleRadius;
+ const labelY=Math.max(10*scale,layout.startY-layout.pitch*.62);
+ ctx.textAlign="center";ctx.font=`600 ${Math.max(22,Math.min(30,layout.pitch*.38))}px Arial,sans-serif`;
+ layout.bubbleXs.forEach((x,index)=>ctx.fillText(L[index],x,labelY));
+ for(let q=1;q<=count;q++){
+   const y=layout.startY+(q-1)*layout.pitch;
+   ctx.fillStyle="#111";ctx.textAlign="right";ctx.font=questionFont;ctx.fillText(String(q).padStart(2,"0"),layout.questionX,y);
+   layout.bubbleXs.forEach((x,index)=>{
+     ctx.beginPath();ctx.arc(x,y,radius,0,Math.PI*2);ctx.fillStyle="#fff";ctx.fill();ctx.lineWidth=Math.max(2,scale*.16);ctx.strokeStyle="#222";ctx.stroke();
+   });
+ }
+}
+drawAnswerTemplate(questionCount);
+
+function msg(t,id="status"){const s=document.getElementById(id);s.textContent=t;s.classList.add("show");}
+function updateQuestionCount(){
+ const n=Number(document.getElementById("questionCount").value);
+ if(!Number.isInteger(n)||n<1||n>50){msg("Escolha uma quantidade entre 1 e 50.","keyStatus");return}
+ const previous=Array.from({length:questionCount},(_,i)=>document.getElementById("q"+(i+1))?.value||"");
+ renderKeyGrid(n);previous.slice(0,n).forEach((x,i)=>{document.getElementById("q"+(i+1)).value=x;});
+ key=Array.from({length:n},(_,i)=>previous[i]||"");drawAnswerTemplate(n);msg(`Gabarito preparado para ${n} questões.`,"keyStatus");
+}
+function openAnswerSheet(){const n=Number(document.getElementById("questionCount").value);if(!Number.isInteger(n)||n<1||n>50){msg("Escolha uma quantidade entre 1 e 50.","keyStatus");return null}if(n!==questionCount)drawAnswerTemplate(n);return n;}
+function downloadAnswerSheet(){const n=openAnswerSheet();if(!n)return;answerTemplateCanvas.toBlob(blob=>{if(!blob){msg("Não consegui gerar a imagem JPG.","keyStatus");return}const url=URL.createObjectURL(blob),a=document.createElement("a");a.href=url;a.download=`cartao-resposta-${n}-questoes.jpg`;a.click();setTimeout(()=>URL.revokeObjectURL(url),1500);msg(`Imagem JPG A4 gerada para ${n} questões.`,"keyStatus");},"image/jpeg",.98);}
+function saveKey(){
+ key=Array.from({length:questionCount},(_,i)=>document.getElementById("q"+(i+1)).value);
+ if(key.some(x=>!x)){msg("Preencha todas as respostas antes de salvar.","keyStatus");return}
+ localStorage.setItem("saltaKey",JSON.stringify({count:questionCount,answers:key}));msg(`Gabarito de ${questionCount} questões salvo neste navegador.`,"keyStatus");
+}
+function clearKey(){
+ key=[];localStorage.removeItem("saltaKey");renderKeyGrid(questionCount);
+ msg("Gabarito limpo.","keyStatus");
+}
+
+let studentImage=null,keyImage=null;
+let studentPages=[],keyPages=[],pdfJsPromise=null,openCvReadyPromise=null,openCvScriptPromise=null;
+async function loadPdfJs(){
+ if(!pdfJsPromise)pdfJsPromise=(async()=>{
+  const cdns=["https://cdn.jsdelivr.net/npm/pdfjs-dist@4.10.38/build/","https://unpkg.com/pdfjs-dist@4.10.38/build/"];
+  let lastError;
+  for(const base of cdns){try{const lib=await import(base+"pdf.min.mjs");lib.GlobalWorkerOptions.workerSrc=base+"pdf.worker.min.mjs";return lib;}catch(error){lastError=error;}}
+  throw new Error("Não foi possível carregar o leitor de PDF. Confira sua conexão e tente novamente.",{cause:lastError});
+ })();
+ return pdfJsPromise;
+}
+function ensureOpenCvReady(timeoutMs=30000){
+ if(window.cv?.Mat)return Promise.resolve(window.cv);
+ if(!openCvReadyPromise)openCvReadyPromise=(async()=>{
+  if(!openCvScriptPromise){
+   openCvScriptPromise=new Promise((resolve,reject)=>{
+    const existing=document.querySelector('script[data-salta-opencv]');
+    if(existing){existing.addEventListener("load",resolve,{once:true});existing.addEventListener("error",()=>reject(new Error("Não foi possível carregar o leitor óptico.")),{once:true});return}
+    const script=document.createElement("script");script.src="https://docs.opencv.org/4.x/opencv.js";script.async=true;script.dataset.saltaOpencv="true";
+    script.onload=resolve;script.onerror=()=>reject(new Error("Não foi possível carregar o leitor óptico. Confira sua conexão e tente novamente."));document.head.appendChild(script);
+   }).catch(error=>{openCvScriptPromise=null;throw error;});
+  }
+  await openCvScriptPromise;
+  return await new Promise((resolve,reject)=>{
+   const deadline=Date.now()+timeoutMs;
+   const check=()=>{
+    const api=window.cv;
+    if(api?.Mat){resolve(api);return}
+    if(api&&typeof api.then==="function")api.then(value=>{window.cv=value;if(value?.Mat)resolve(value);}).catch(()=>{});
+    if(Date.now()>=deadline){openCvReadyPromise=null;reject(new Error("O leitor óptico não terminou de carregar. Atualize a página e tente novamente."));return}
+    setTimeout(check,150);
+   };
+   check();
+  });
+ })().catch(error=>{openCvReadyPromise=null;throw error;});
+ return openCvReadyPromise;
+}
+async function openPdfDocument(lib,data){
+ try{return await lib.getDocument({data}).promise;}
+ catch(workerError){
+  console.warn("Falha no leitor PDF com worker; tentando sem worker.",workerError);
+  return await lib.getDocument({data,disableWorker:true}).promise;
+ }
+}
+function inferPdfQuestionCount(items,pageCount){
+ const numbers=[],numericLabels=[];
+ for(const item of items){
+  const text=(item.str||"").trim();
+  let match=text.match(/quest(?:ões|oes|ão|ao)?\s*(\d{1,3})\s*(?:a|até|-)\s*(\d{1,3})/i);
+  if(match){numbers.push(Number(match[2]));continue}
+  match=text.match(/^(\d{1,3})\s*[.)]$/);
+  if(!match)match=text.match(/(?:quest[aã]o|quest\.?|n[ºo.]?)\s*(\d{1,3})/i);
+  if(match){const n=Number(match[1]);if(n>=1&&n<=50)numbers.push(n);continue}
+  if(/^\d{1,2}$/.test(text)){const n=Number(text),x=item.transform?.[4],y=item.transform?.[5];if(n>=1&&n<=50&&Number.isFinite(x)&&Number.isFinite(y))numericLabels.push({n,x,y,width:item.width||0});}
+ }
+ if(numbers.length)return Math.min(50,Math.max(...numbers));
+ const columns=[];
+ numericLabels.sort((a,b)=>a.x-b.x);
+ for(const item of numericLabels){
+  let column=columns.find(candidate=>Math.abs(candidate.x-item.x)<=Math.max(3,item.width*.4));
+  if(!column){column={x:item.x,items:[]};columns.push(column)}
+  column.items.push(item);column.x=column.items.reduce((sum,value)=>sum+value.x,0)/column.items.length;
+ }
+ const vertical=columns.filter(column=>new Set(column.items.map(item=>item.y.toFixed(1))).size>=3);
+ return vertical.length?Math.min(50,Math.max(...vertical.flatMap(column=>column.items.map(item=>item.n)))):null;
+}
+
+async function renderPdf(file){
+ const lib=await loadPdfJs(),data=new Uint8Array(await file.arrayBuffer()),pdf=await openPdfDocument(lib,data),textItems=[];
+ if(pdf.numPages>8)throw new Error("PDF excede o limite de 8 páginas.");
+ for(let n=1;n<=pdf.numPages;n++){try{const page=await pdf.getPage(n),text=await page.getTextContent();textItems.push(...text.items);}catch(error){console.warn("Não foi possível extrair texto da página",n,error);}}
+ const count=inferPdfQuestionCount(textItems,pdf.numPages),pages=[];
+ for(let n=1;n<=pdf.numPages;n++){const page=await pdf.getPage(n),base=page.getViewport({scale:1}),viewport=page.getViewport({scale:Math.min(2,1800/base.width)}),canvas=document.createElement("canvas");canvas.width=Math.floor(viewport.width);canvas.height=Math.floor(viewport.height);await page.render({canvasContext:canvas.getContext("2d"),viewport}).promise;pages.push(canvas);}
+ return {pages,count};
+}
+async function loadFile(input,kind){
+ const f=input.files[0];if(!f)return;
+ if(f.size>25*1024*1024){msg("O arquivo precisa ter até 25 MB.",kind==="student"?"status":"keyStatus");input.value="";return}
+ const isPdf=f.type==="application/pdf"||f.name.toLowerCase().endsWith(".pdf");
+ try{
+  let pages,count=questionCount;
+  const nameCount=f.name.match(/cart[aã]o[-_ ]resposta[-_ ](\d{1,2})[-_ ]quest(?:o|ã)es/i);
+  if(nameCount){const n=Number(nameCount[1]);if(n>=1&&n<=50){count=n;if(kind==="key"){document.getElementById("questionCount").value=n;if(n!==questionCount)updateQuestionCount();}}}
+  if(isPdf){msg("Lendo o PDF...",kind==="student"?"status":"keyStatus");const parsed=await renderPdf(f);pages=parsed.pages;count=parsed.count||count;}
+  else{const im=new Image(),url=URL.createObjectURL(f);im.src=url;await im.decode();URL.revokeObjectURL(url);pages=[im];}
+  if(kind==="student"){studentPages=pages;studentImage=pages[0];drawPreview(pages[0]);msg(isPdf?`PDF carregado com ${pages.length} páginas. O corretor localizará a grade SALTA.`:"Foto carregada. O corretor localizará a grade SALTA.");}
+  else{keyPages=pages;keyImage=pages[0];if(isPdf&&count&&count!==questionCount){document.getElementById("questionCount").value=count;updateQuestionCount();}readKeyPhoto();}
+ }catch(error){console.error(error);const detail=error?.message?` ${error.message}`:" Confira se o arquivo não está protegido ou corrompido.";msg(`Não consegui abrir ${isPdf?"o PDF":"a imagem"}.${detail}`,kind==="student"?"status":"keyStatus");}
+}
+document.getElementById("photo").onchange=e=>loadFile(e.target,"student");
+document.getElementById("keyPhoto").onchange=e=>loadFile(e.target,"key");
+
+function drawPreview(im){
+ const c=document.getElementById("canvas"),sc=Math.min(1,900/im.width);
+ c.width=Math.round(im.width*sc);c.height=Math.round(im.height*sc);
+ c.getContext("2d").drawImage(im,0,0,c.width,c.height);
+ document.getElementById("preview").style.display="block";
+}
+
+function matFromImage(im){
+ const c=document.createElement("canvas"),sc=Math.min(1,1800/im.width);
+ c.width=Math.round(im.width*sc);c.height=Math.round(im.height*sc);
+ c.getContext("2d").drawImage(im,0,0,c.width,c.height);
+ return cv.imread(c);
+}
+
+function locateAnswerTemplate(src,count=questionCount){
+ const gray=new cv.Mat(),binary=new cv.Mat(),contours=new cv.MatVector(),hierarchy=new cv.Mat();
+ const candidates=[];
+ const expected=answerTemplateLayout(count,src.cols,src.rows).markerCenters;
+ const expectedWidth=expected[1].x-expected[0].x,expectedHeight=expected[3].y-expected[0].y,expectedAspect=expectedWidth/expectedHeight;
+ try{
+  cv.cvtColor(src,gray,cv.COLOR_RGBA2GRAY);
+  cv.threshold(gray,binary,0,255,cv.THRESH_BINARY_INV+cv.THRESH_OTSU);
+  cv.findContours(binary,contours,hierarchy,cv.RETR_LIST,cv.CHAIN_APPROX_SIMPLE);
+  const minSide=Math.max(6,src.cols*.004),maxSide=src.cols*.05;
+  for(let i=0;i<contours.size();i++){
+   const contour=contours.get(i),area=cv.contourArea(contour),perimeter=cv.arcLength(contour,true),rect=cv.boundingRect(contour);
+   if(rect.width<minSide||rect.height<minSide||rect.width>maxSide||rect.height>maxSide||Math.abs(rect.width-rect.height)>Math.max(3,rect.width*.2)||area<rect.width*rect.height*.66){contour.delete();continue}
+   const approx=new cv.Mat();cv.approxPolyDP(contour,approx,.035*perimeter,true);
+   const square=approx.rows===4&&cv.isContourConvex(approx);approx.delete();contour.delete();
+   if(!square)continue;
+   const point={x:rect.x+rect.width/2,y:rect.y+rect.height/2,size:(rect.width+rect.height)/2,area};
+   if(!candidates.some(other=>Math.hypot(point.x-other.x,point.y-other.y)<Math.min(point.size,other.size)*.45))candidates.push(point);
+  }
+  // A combinação de pares cresce ao quadrado; limitar os marcadores candidatos
+  // evita bloquear a página quando a prova tem muitos elementos quadrados.
+  candidates.sort((a,b)=>b.area-a.area);candidates.length=Math.min(candidates.length,24);
+  const pairs=[];
+  for(let i=0;i<candidates.length;i++)for(let j=i+1;j<candidates.length;j++){
+   const a=candidates[i],b=candidates[j],left=a.x<b.x?a:b,right=a.x<b.x?b:a;
+   if(Math.abs(a.y-b.y)>Math.max(8,(a.size+b.size)*.7)||right.x-left.x<src.cols*.2)continue;
+   pairs.push({left,right,y:(a.y+b.y)/2,width:right.x-left.x,size:(a.size+b.size)/2});
+  }
+  let best=null;
+  for(const top of pairs)for(const bottom of pairs){
+   const height=bottom.y-top.y,width=(top.width+bottom.width)/2;
+   if(height<Math.max(10,src.rows*.025)||bottom.y<=top.y||Math.abs(width-expectedWidth)>expectedWidth*.28||Math.abs(height-expectedHeight)>expectedHeight*.32||Math.abs(top.width-bottom.width)>width*.16||Math.abs(top.left.x-bottom.left.x)>width*.18||Math.abs(top.right.x-bottom.right.x)>width*.18)continue;
+   const aspect=width/height;if(aspect<.25||aspect>8)continue;
+   const points=[top.left,top.right,bottom.right,bottom.left];
+   if(new Set(points).size!==4)continue;
+   const sizes=points.map(point=>point.size),mean=sizes.reduce((sum,value)=>sum+value,0)/4;
+   if(Math.min(...sizes)<mean*.65||Math.max(...sizes)>mean*1.45)continue;
+   const score=Math.abs(aspect-expectedAspect)/Math.max(.6,expectedAspect)+Math.abs(top.left.x-bottom.left.x)/width+Math.abs(top.right.x-bottom.right.x)/width+Math.abs(top.width-bottom.width)/width;
+   if(!best||score<best.score)best={points,score};
+  }
+  return best&&best.score<.38?best.points:null;
+ }finally{gray.delete();binary.delete();contours.delete();hierarchy.delete()}
+}
+
+function rectifyAnswerTemplate(src,markers,count){
+ const width=1800,height=2546;
+ const source=cv.matFromArray(4,1,cv.CV_32FC2,markers.flatMap(point=>[point.x,point.y]));
+ const layout=answerTemplateLayout(count,width,height),target=cv.matFromArray(4,1,cv.CV_32FC2,layout.markerCenters.flatMap(point=>[point.x,point.y]));
+ const transform=cv.getPerspectiveTransform(source,target),normalized=new cv.Mat();
+ cv.warpPerspective(src,normalized,transform,new cv.Size(width,height),cv.INTER_CUBIC,cv.BORDER_CONSTANT,new cv.Scalar(255,255,255,255));
+ source.delete();target.delete();transform.delete();
+ return normalized;
+}
+
+/* Posições proporcionais do cartão final EJA, página A4 inteira.
+   As proporções funcionam em fotos e digitalizações de tamanhos diferentes. */
+function cluster1D(values,k){
+ const data=cv.matFromArray(values.length,1,cv.CV_32F,values);
+ const labels=new cv.Mat(),centers=new cv.Mat();
+ const crit=new cv.TermCriteria(cv.TERM_CRITERIA_EPS+cv.TERM_CRITERIA_MAX_ITER,150,0.05);
+ cv.kmeans(data,k,labels,crit,20,cv.KMEANS_PP_CENTERS,centers);
+ const out=[];
+ for(let i=0;i<k;i++)out.push(centers.floatAt(i,0));
+ data.delete();labels.delete();centers.delete();
+ return out.sort((a,b)=>a-b);
+}
+
+function uniquePoints(points){
+ const out=[];
+ points.sort((a,b)=>b.score-a.score);
+ for(const p of points){
+   if(!out.some(q=>Math.hypot(p.x-q.x,p.y-q.y)<Math.max(10,p.r*.7))) out.push(p);
+ }
+ return out;
+}
+
+function median(values){
+ const a=values.slice().sort((x,y)=>x-y);
+ return a.length?a[Math.floor(a.length/2)]:0;
+}
+
+function buildYGroups(points,gap){
+ const sorted=points.slice().sort((a,b)=>a.y-b.y);
+ const groups=[];
+ for(const p of sorted){
+   const g=groups[groups.length-1];
+   if(!g || Math.abs(p.y-g.center)>gap){
+     groups.push({points:[p],center:p.y});
+   }else{
+     g.points.push(p);
+     g.center=median(g.points.map(q=>q.y));
+   }
+ }
+ return groups;
+}
+
+function detectGrid(src){
+  // MODELO FINAL EJA — cartão 20×5 fornecido pelo professor, página A4.
+  const xLeft=[.174,.209,.244,.280,.316,.351,.386,.422,.458,.493];
+  const xRight=[.599,.635,.670,.705,.741,.777,.813,.848,.883,.919];
+  const yRows=[.506,.536,.565,.593,.622];
+
+  const xs=xLeft.concat(xRight).map(x=>x*src.cols);
+  const ys=yRows.map(y=>y*src.rows);
+
+  // Raio proporcional ao cartão. Usamos uma região interna para ignorar
+  // o contorno impresso da bolha e enxergar apenas a tinta do preenchimento.
+  const radius=Math.max(8,Math.min(src.cols,src.rows)*0.0175);
+
+  return {
+    leftX:xs.slice(0,10),
+    rightX:xs.slice(10),
+    ys,
+    blocks:2,
+    questions:20,
+    headerY:.49*src.rows,
+    colGap:.035*src.cols,
+    bubbleRadius:radius,
+    rowPoints:ys.map(y=>xs.map(x=>({x,y,r:radius}))),
+    template:true
+  };
+}
+
+function sampleAt(src,x,y,radiusHint=14){
+  const radius=Math.max(7,Math.min(42,radiusHint));
+  // Só o miolo da bolha. O anel e a letra impressos ficam parcialmente
+  // fora desta área; uma marca preenchida ocupa muito mais pixels.
+  const inner=radius*.48;
+
+  let dark=0,blue=0,total=0,lumSum=0;
+
+  const x0=Math.max(0,Math.floor(x-inner));
+  const x1=Math.min(src.cols-1,Math.ceil(x+inner));
+  const y0=Math.max(0,Math.floor(y-inner));
+  const y1=Math.min(src.rows-1,Math.ceil(y+inner));
+
+  for(let yy=y0;yy<=y1;yy++){
+    for(let xx=x0;xx<=x1;xx++){
+      const dx=xx-x,dy=yy-y;
+      if(dx*dx+dy*dy>inner*inner)continue;
+
+      const p=src.ucharPtr(yy,xx);
+      const lum=.299*p[0]+.587*p[1]+.114*p[2];
+
+      total++;
+      lumSum+=lum;
+
+      // Preto e azul escuro ficam visíveis sem converter a imagem inteira
+      // para HSV a cada uma das centenas de amostras da folha.
+      if(lum<170)dark++;
+      if(p[2]>p[0]*1.15&&p[2]>p[1]*1.08&&p[2]<245)blue++;
+    }
+  }
+
+  const darkRatio=dark/Math.max(1,total);
+  const blueRatio=blue/Math.max(1,total);
+  const meanLum=lumSum/Math.max(1,total);
+
+  // Peso maior para azul/preto, mas sem depender da cor da caneta.
+  return darkRatio*.72 + blueRatio*.95 +
+         Math.max(0,(190-meanLum)/255)*.28;
+}
+
+function detectTemplateRows(src,layout){
+ const halfWidth=Math.round(7*layout.pxPerMm),halfHeight=Math.round(1.2*layout.pxPerMm),minY=Math.round(12*layout.pxPerMm),maxY=Math.round(src.rows-12*layout.pxPerMm),step=2,threshold=.025,signals=[];
+ for(let y=minY;y<=maxY;y+=step){
+  let ink=0,total=0;
+  for(let dy=-halfHeight;dy<=halfHeight;dy++)for(let dx=-halfWidth;dx<=0;dx++){
+    const px=Math.round(layout.questionX)+dx,py=y+dy;if(px<0||px>=src.cols||py<0||py>=src.rows)continue;
+    const row=src.ucharPtr(py),index=px*4,lum=.299*row[index]+.587*row[index+1]+.114*row[index+2];
+    if(lum<185)ink++;total++;
+  }
+  signals.push({y,score:ink/Math.max(1,total)});
+ }
+ const groups=[];let group=null,lastY=0,maxGap=layout.pxPerMm*1.8;
+ for(const signal of signals){
+  if(signal.score<threshold)continue;
+  if(!group||signal.y-lastY>maxGap){group={peak:signal};groups.push(group)}
+  else if(signal.score>group.peak.score)group.peak=signal;
+  lastY=signal.y;
+ }
+ return groups.map(item=>item.peak.y).filter((y,index,all)=>index===0||y-all[index-1]>layout.pxPerMm*3).slice(0,50);
+}
+
+function answerScoresFromGrid(src,rowCenters,layout){
+ const scores=[],radius=layout.bubbleRadius;
+ rowCenters.forEach(y=>{
+  const vals=layout.bubbleXs.map(x=>sampleAt(src,x,y,radius));
+  const ordered=vals.map((v,i)=>({v,i})).sort((a,b)=>b.v-a.v),best=ordered[0],second=ordered[1];
+  const avg=vals.reduce((a,b)=>a+b,0)/vals.length,spread=best.v-avg,gap=best.v-second.v;
+  scores.push({answer:spread>=.055&&gap>=.025?L[best.i]:"?",values:vals,confidence:Math.max(0,gap)});
+ });
+ return scores;
+}
+
+function readSheet(im,count=questionCount){
+ const src=matFromImage(im),markers=locateAnswerTemplate(src,count);
+ let normalized=null,layout=null,rowCenters=[];
+ if(markers){normalized=rectifyAnswerTemplate(src,markers,count);layout=answerTemplateLayout(count,normalized.cols,normalized.rows);rowCenters=detectTemplateRows(normalized,layout);}
+ else if(src.rows&&src.cols/src.rows>=.62&&src.cols/src.rows<=.78){
+  // Sem as marcas, exigimos várias linhas para não confundir o cartão antigo,
+  // cujos números das questões ficam alinhados numa única faixa.
+  layout=answerTemplateLayout(count,src.cols,src.rows);rowCenters=detectTemplateRows(src,layout);
+  if(rowCenters.length>=2||(count===1&&rowCenters.length===1))normalized=src;
+ }
+ if(normalized){
+  const detectedCount=rowCenters.length||count;
+  const scores=answerScoresFromGrid(normalized,rowCenters.length?rowCenters:Array.from({length:count},(_,index)=>layout.startY+index*layout.pitch),layout);
+  scores.answerTemplate=true;scores.questionCount=detectedCount;scores.countInferred=rowCenters.length>0;
+  if(normalized!==src)normalized.delete();src.delete();return scores;
+ }
+
+ // Compatibilidade com o cartão EJA anterior, sem marcas de alinhamento.
+ const grid=detectGrid(src),scores=[];
+ for(let q=0;q<20;q++){
+  const vals=grid.rowPoints.map(row=>sampleAt(src,row[q].x,row[q].y,grid.bubbleRadius));
+  const ordered=vals.map((v,i)=>({v,i})).sort((a,b)=>b.v-a.v),best=ordered[0],second=ordered[1];
+  const avg=vals.reduce((a,b)=>a+b,0)/vals.length,spread=best.v-avg,gap=best.v-second.v;
+  scores.push({answer:spread>=.055&&gap>=.025?L[best.i]:"?",values:vals,confidence:Math.max(0,gap)});
+ }
+ src.delete();return scores;
+}
+
+function showDetected(n,label="estrutura detectada"){
+ const box=document.getElementById("detected");
+ box.textContent=n+" questões · "+label;
+ box.style.display="block";
+}
+function scoreSheet(scores){
+ const answers=scores.filter(item=>item.answer!=="?").length;
+ const confidence=scores.reduce((sum,item)=>sum+(item.confidence||0),0);
+ return {answers,confidence,rank:answers*10+confidence};
+}
+function bestSheetFromPages(pages,count){
+ let best=null;
+ for(let index=0;index<pages.length;index++){
+  const scores=readSheet(pages[index],count),quality=scoreSheet(scores);
+  if(!best||quality.rank>best.quality.rank)best={scores,quality,index};
+ }
+ return best;
+}
+
+let cameraStream=null;
+async function toggleCamera(force){
+ const box=document.getElementById("cameraBox");
+ if(force===false || cameraStream){
+   if(cameraStream)cameraStream.getTracks().forEach(t=>t.stop());
+   cameraStream=null;box.style.display="none";return;
+ }
+ try{
+   cameraStream=await navigator.mediaDevices.getUserMedia({video:{facingMode:{ideal:"environment"},width:{ideal:1280},height:{ideal:1920}},audio:false});
+   document.getElementById("video").srcObject=cameraStream;
+   box.style.display="block";
+ }catch(e){msg("Não foi possível abrir a câmera. Verifique a permissão do navegador.");}
+}
+
+function captureFrame(){
+ const v=document.getElementById("video");
+ if(!v.videoWidth)return;
+ const c=document.createElement("canvas");c.width=v.videoWidth;c.height=v.videoHeight;
+ c.getContext("2d").drawImage(v,0,0);
+ const im=new Image();
+ im.onload=()=>{studentImage=im;drawPreview(im);scanStudent();};
+ im.src=c.toDataURL("image/jpeg",.92);
+}
+
+async function readKeyPhoto(){
+ if(!keyImage)return;
+ try{
+  msg("Preparando a leitura óptica...","keyStatus");
+  await ensureOpenCvReady();
+  msg("Lendo o gabarito...","keyStatus");
+  const pages=keyPages.length?keyPages:[keyImage],best=bestSheetFromPages(pages,questionCount),pageScores=best?.scores||[];
+  const detectedAnswers=pageScores.length?pageScores.map(x=>x.answer):null,detectedCount=pageScores.questionCount||null,countInferred=!!pageScores.countInferred;
+  if(countInferred&&detectedCount&&detectedCount!==questionCount){document.getElementById("questionCount").value=detectedCount;updateQuestionCount();}
+  const found=Array.from({length:questionCount},(_,i)=>document.getElementById("q"+(i+1))?.value||"");
+  if(detectedAnswers)detectedAnswers.forEach((answer,i)=>{if(i<found.length&&answer!=="?")found[i]=answer;});
+  found.forEach((x,i)=>{const el=document.getElementById("q"+(i+1));if(el)el.value=x;});
+  key=found.slice();
+  showDetected(questionCount,`${pages.length>1?`página ${best.index+1} de ${pages.length} · `:""}${countInferred?"questões reconhecidas pela grade":detectedCount?"grade reconhecida; confira as respostas":"quantidade selecionada; confira as respostas"}`);
+  msg(best.quality.answers===0?"O arquivo abriu, mas não encontrei marcações preenchidas. Confira se a grade aparece na página selecionada.":key.some(x=>!x)?`Leitura preliminar: ${best.quality.answers} marcações reconhecidas. Confira e complete as respostas restantes.`:"Respostas lidas. Confira e salve o gabarito.","keyStatus");
+ }catch(e){console.error(e);msg(e?.message||"Não consegui ler este PDF ou imagem.","keyStatus");}
+}
+
+async function scanStudent(){
+ if(!key.length||key.some(x=>!x)){msg("Primeiro informe e salve o gabarito completo.");return}
+ if(!studentImage||!studentPages.length){msg("Escolha uma foto ou PDF primeiro.");return}
+ try{
+  msg("Preparando a leitura óptica...");
+  await ensureOpenCvReady();
+  msg("Lendo a folha...");
+  let offset=0,r=[];
+  if(studentPages.length>1){
+   const best=bestSheetFromPages(studentPages,questionCount),pageScores=best?.scores||[],templateCount=pageScores.questionCount||null;
+   if(templateCount&&templateCount!==key.length){msg("A grade da folha tem "+templateCount+" questões, mas o gabarito salvo tem "+key.length+". Confira o modelo e o gabarito antes de corrigir.");return}
+   r=pageScores.map(x=>x.answer).slice(0,key.length);
+   if(best)msg(`Grade mais legível encontrada na página ${best.index+1} de ${studentPages.length}.`);
+  }else{
+   const page=Number(document.getElementById("photoPage").value);
+   if(!Number.isInteger(page)||page<1){msg("Informe um número de página válido.");return}
+   const pageScores=readSheet(studentImage,questionCount);
+   if(pageScores.answerTemplate){if(pageScores.questionCount!==key.length){msg("A grade da folha tem "+pageScores.questionCount+" questões, mas o gabarito salvo tem "+key.length+". Confira o modelo e o gabarito antes de corrigir.");return}r=pageScores.map(x=>x.answer).slice(0,key.length);}
+   else{offset=(page-1)*20;if(offset>=key.length){msg("Essa página está fora da quantidade de questões do gabarito.");return}r=pageScores.map(x=>x.answer).slice(0,Math.min(20,key.length-offset));}
+  }
+  showDetected(r.length,"questões localizadas na folha");
+  showResult(r,offset);
+  msg(r.some(x=>x==="?")?"Folha lida. Confira as questões com Revisar.":"Folha lida com sucesso.");
+ }catch(e){console.error(e);msg(e?.message||"Não consegui localizar a grade. Use a folha inteira, sem cortar a região das respostas, e tente com boa iluminação.")}
+}
+
+function showResult(r,offset=0){
+ let hits=0;
+ document.getElementById("body").innerHTML=r.map((x,i)=>{
+   const answerIndex=offset+i,cl=x==="?"?"warn":x===key[answerIndex]?"ok":"err";
+   if(x===key[answerIndex])hits++;
+   return `<tr><td>${answerIndex+1}</td><td>${x}</td><td>${key[answerIndex]}</td><td class="${cl}">${x==="?"?"⚠ Revisar":x===key[answerIndex]?"✓ Acerto":"✕ Erro"}</td></tr>`;
+ }).join("");
+ document.getElementById("score").innerHTML=hits+"/"+r.length+"<small>questões acertadas</small>";
+ document.getElementById("results").style.display="block";
+ requestAnimationFrame(()=>document.getElementById("results").scrollIntoView({behavior:"smooth",block:"start"}));
+}
+</script>
+</body>
+</html>
