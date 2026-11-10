@@ -6,6 +6,8 @@ export const PAGE_HEIGHT_MM = 297;
 export const INITIAL_GEOMETRY = Object.freeze({
   bubbleDiameterMm: 4.5,
   objectiveRowPitchMm: 6.2,
+  maximumObjectivePitchMm: 14,
+  minimumObjectivePitchMm: 4.85,
   choicePitchMm: 5.2,
   codeRowPitchMm: 5.2,
   numericRowPitchMm: 5.1,
@@ -168,7 +170,7 @@ function chooseColumns(definition, size, bounds, startY, endY, geometry, request
   const safeWidth = bounds.width;
   const layoutQuestions = definition.layoutQuestions || definition.questions;
   const maxChoiceWidth = Math.max(...layoutQuestions.map(question => requiredContentWidth(question.type, geometry)));
-  const gapMm = size.kind === "A4" ? 2.4 : 1.5;
+  const gapMm = size.kind === "A4" ? 1 : 1.5;
   const maxColumns = Math.max(1, Math.min(layoutQuestions.length, Math.floor((safeWidth + gapMm) / (maxChoiceWidth + gapMm))));
   const availableHeight = endY - startY;
   const candidates = [];
@@ -178,17 +180,18 @@ function chooseColumns(definition, size, bounds, startY, endY, geometry, request
     const columnWidthMm = (safeWidth - gapMm * (columns - 1)) / columns;
     if (columnWidthMm < maxChoiceWidth) continue;
     const packed = optimalContiguousColumns(layoutQuestions, columns, geometry);
-    if (!packed || packed.maxHeightMm > availableHeight) continue;
+    if (!packed) continue;
+    const labelHeights = packed.heights.map((height, index) => height - packed.columns[index].length * geometry.objectiveRowPitchMm);
+    const compactPitch = Math.min(geometry.maximumObjectivePitchMm, ...packed.columns.map((column, index) => (availableHeight - labelHeights[index]) / column.length));
+    if (compactPitch < geometry.minimumObjectivePitchMm) continue;
+    packed.rowPitchMm = compactPitch;
+    packed.heights = packed.columns.map((column, index) => labelHeights[index] + column.length * compactPitch);
+    packed.maxHeightMm = Math.max(...packed.heights);
     const spread = Math.max(...packed.heights) - Math.min(...packed.heights);
     candidates.push({ ...packed, columnCount: columns, columnWidthMm, gapMm, spread, targetColumns: target, cost: Math.abs(columns - target) * 1000 + packed.maxHeightMm + spread * 0.18 + columns * 0.01 });
   }
   const selected = candidates.sort((a, b) => a.cost - b.cost)[0];
   if (!selected) return null;
-  const labels = selected.heights.map((height, index) => height - selected.columns[index].length * geometry.objectiveRowPitchMm);
-  const rowPitchMm = Math.max(geometry.objectiveRowPitchMm, Math.min(14, ...selected.columns.map((column, index) => (availableHeight - labels[index]) / column.length)));
-  selected.rowPitchMm = rowPitchMm;
-  selected.heights = selected.columns.map((column, index) => labels[index] + column.length * rowPitchMm);
-  selected.maxHeightMm = Math.max(...selected.heights);
   return selected;
 }
 
@@ -234,7 +237,8 @@ function createCduPlacements(groups, bounds, startY, geometry) {
   const questions = [];
   const sections = [];
   const columnsPerRow = Math.max(1, Math.floor(bounds.width / 22.6));
-  const rowHeight = 12 + 9 * geometry.numericRowPitchMm + geometry.bubbleDiameterMm / 2 + 1;
+  const bubbleStart = 12.2;
+  const rowHeight = bubbleStart + 9 * geometry.numericRowPitchMm + geometry.bubbleDiameterMm / 2 + 1;
   let y = startY;
   for (const group of groups) {
     const sectionTop = y;
@@ -254,7 +258,7 @@ function createCduPlacements(groups, bounds, startY, geometry) {
             place,
             digit,
             x: x + 7.8 + placeIndex * geometry.choicePitchMm,
-            y: rowTop + 12 + digit * geometry.numericRowPitchMm,
+            y: rowTop + bubbleStart + digit * geometry.numericRowPitchMm,
             radiusMm: geometry.bubbleDiameterMm / 2,
           }));
         }
@@ -269,6 +273,14 @@ function createCduPlacements(groups, bounds, startY, geometry) {
         width: 22.6,
         height: rowHeight,
         bubbles: Object.freeze(bubbles),
+        responseBoxes: Object.freeze(["C", "D", "U"].map((place, placeIndex) => Object.freeze({
+          place,
+          x: x + 7.8 + placeIndex * geometry.choicePitchMm - 2.1,
+          y: rowTop + 5.2,
+          width: 4.2,
+          height: 4.2,
+          centerX: x + 7.8 + placeIndex * geometry.choicePitchMm,
+        }))),
         numericPlaces: Object.freeze(["C", "D", "U"]),
         region: "CDU",
         columnIndex: column,
@@ -321,6 +333,35 @@ export function validateLayoutManifest(manifest) {
     if (matching.length !== 10) errors.push(`A coluna ${column.index + 1} não contém dez bolhas.`);
     if (Math.abs(column.box.centerX - column.centerX) > 1e-6) errors.push(`A caixa da coluna ${column.index + 1} está desalinhada.`);
   }
+  for (const question of manifest.questions.filter(item => item.type === "CDU")) {
+    if (question.bubbles.length !== 30 || question.responseBoxes?.length !== 3) errors.push(`A questão C-D-U ${question.number} precisa de 30 bolhas e três caixas de resposta.`);
+    for (const box of question.responseBoxes || []) {
+      const related = question.bubbles.filter(bubble => bubble.place === box.place);
+      if (!related.length || Math.abs(related[0].x - box.centerX) > 1e-6) errors.push(`A caixa ${box.place} da questão C-D-U ${question.number} está desalinhada.`);
+      if (related.some(bubble => bubble.y - bubble.radiusMm < box.y + box.height)) errors.push(`A caixa ${box.place} da questão C-D-U ${question.number} invade as bolhas.`);
+    }
+  }
+  const border = manifest.technicalRegions.border;
+  const borderGap = manifest.geometry.fiducialSizeMm / 2 + manifest.geometry.borderStrokeMm / 2;
+  const safeBorderGap = 4;
+  for (const section of manifest.sections) {
+    if (section.x < border.x + safeBorderGap - 1e-6 || section.x + section.width > border.x + border.width - safeBorderGap + 1e-6
+      || section.y < border.y + safeBorderGap - 1e-6 || section.y + section.height > border.y + border.height - safeBorderGap + 1e-6) {
+      errors.push(`A seção ${section.sectionId} invade a margem interna da borda.`);
+    }
+  }
+  for (const question of manifest.questions) {
+    if (question.x < border.x + safeBorderGap - 1e-6 || question.x + question.width > border.x + border.width - safeBorderGap + 1e-6
+      || question.y < border.y + safeBorderGap - 1e-6 || question.y + question.height > border.y + border.height - safeBorderGap + 1e-6) {
+      errors.push(`A questão ${question.number} invade a margem interna da borda.`);
+    }
+  }
+  for (const marker of manifest.technicalRegions.fiducials) {
+    if (Math.abs(marker.x - border.x) < borderGap && Math.abs(marker.y - border.y) < borderGap) errors.push("A borda invade o marcador superior esquerdo.");
+    if (Math.abs((manifest.paper.widthMm - marker.x) - (manifest.paper.widthMm - border.x - border.width)) < borderGap && Math.abs(marker.y - border.y) < borderGap) errors.push("A borda invade o marcador superior direito.");
+    if (Math.abs((manifest.paper.widthMm - marker.x) - (manifest.paper.widthMm - border.x - border.width)) < borderGap && Math.abs((manifest.paper.heightMm - marker.y) - (manifest.paper.heightMm - border.y - border.height)) < borderGap) errors.push("A borda invade o marcador inferior direito.");
+    if (Math.abs(marker.x - border.x) < borderGap && Math.abs((manifest.paper.heightMm - marker.y) - (manifest.paper.heightMm - border.y - border.height)) < borderGap) errors.push("A borda invade o marcador inferior esquerdo.");
+  }
   return report(errors, manifest.mode === "embedded" ? ["Dimensões incorporáveis não foram homologadas fisicamente; imprimir e validar em escala real."] : ["Diâmetros e espaçamentos são parâmetros iniciais, ainda não homologados em impressão física."]);
 }
 
@@ -352,14 +393,18 @@ export function composeLayout(input, options = {}) {
   const layoutQuestions = definition.layoutQuestions || definition.questions;
   const objectiveQuestions = layoutQuestions.filter(question => question.type !== "CDU");
   const cduGroups = definition.sections.map(section => ({ section, questions: section.questions.filter(question => question.type === "CDU") })).filter(group => group.questions.length);
-  const cduColumnsPerRow = Math.max(1, Math.floor(safeBoundsMm.width / 22.6));
-  const cduRowHeight = 12 + 9 * geometry.numericRowPitchMm + geometry.bubbleDiameterMm / 2 + 1;
+  const contentInsetMm = size.kind === "A4" ? 18 : 7;
+  const contentBoundsMm = Object.freeze({ x: contentInsetMm, y: contentInsetMm, width: size.widthMm - contentInsetMm * 2, height: size.heightMm - contentInsetMm * 2 });
+  const cduColumnsPerRow = Math.max(1, Math.floor(contentBoundsMm.width / 22.6));
+  const cduRowHeight = 12.2 + 9 * geometry.numericRowPitchMm + geometry.bubbleDiameterMm / 2 + 1;
   const cduRegionHeight = cduGroups.reduce((sum, group) => sum + 4.5 + Math.ceil(group.questions.length / cduColumnsPerRow) * cduRowHeight, 0);
-  const cduStartY = endY - cduRegionHeight;
-  const objectiveEndY = cduGroups.length ? cduStartY - 3 : endY;
-  const questionBounds = Object.freeze({ x: margin, y: startY, width: safeBoundsMm.width, height: Math.max(0, objectiveEndY - startY) });
+  const cduPosition = definition.metadata?.cduPosition === "top" ? "top" : "bottom";
+  const cduStartY = cduGroups.length && cduPosition === "top" ? startY : endY - cduRegionHeight;
+  const objectiveStartY = cduGroups.length && cduPosition === "top" ? cduStartY + cduRegionHeight + 3 : startY;
+  const objectiveEndY = cduGroups.length && cduPosition === "bottom" ? cduStartY - 3 : endY;
+  const questionBounds = Object.freeze({ x: contentBoundsMm.x, y: objectiveStartY, width: contentBoundsMm.width, height: Math.max(0, objectiveEndY - objectiveStartY) });
   const objectiveDefinition = { ...definition, questions: objectiveQuestions, layoutQuestions: objectiveQuestions, questionCount: objectiveQuestions.length };
-  const packed = objectiveQuestions.length ? chooseColumns(objectiveDefinition, size, questionBounds, startY, objectiveEndY, geometry) : null;
+  const packed = objectiveQuestions.length ? chooseColumns(objectiveDefinition, size, questionBounds, objectiveStartY, objectiveEndY, geometry) : null;
   if ((objectiveQuestions.length && !packed) || cduStartY < startY || cduStartY + cduRegionHeight > endY) {
     const maxChoiceWidth = objectiveQuestions.length ? Math.max(...objectiveQuestions.map(question => requiredContentWidth(question.type, geometry))) : 0;
     return {
@@ -370,8 +415,8 @@ export function composeLayout(input, options = {}) {
       ], maxChoiceWidth ? [`Largura mínima de coluna objetiva calculada: ${maxChoiceWidth.toFixed(1)} mm.`] : []),
     };
   }
-  const objectivePlacements = packed ? createColumnPlacements(objectiveDefinition, packed, questionBounds, startY, objectiveEndY, geometry) : { columns: Object.freeze([]), sections: Object.freeze([]), questions: Object.freeze([]) };
-  const cduPlacements = cduGroups.length ? createCduPlacements(cduGroups, safeBoundsMm, cduStartY, geometry) : { sections: Object.freeze([]), questions: Object.freeze([]) };
+  const objectivePlacements = packed ? createColumnPlacements(objectiveDefinition, packed, questionBounds, objectiveStartY, objectiveEndY, geometry) : { columns: Object.freeze([]), sections: Object.freeze([]), questions: Object.freeze([]) };
+  const cduPlacements = cduGroups.length ? createCduPlacements(cduGroups, contentBoundsMm, cduStartY, geometry) : { sections: Object.freeze([]), questions: Object.freeze([]) };
   const fiducials = [
     // Keep the reader/normalizer v4 corner contract: marker centers at 8 mm.
     { markerId: "fiducial-tl", x: 8, y: 8 },
@@ -379,7 +424,10 @@ export function composeLayout(input, options = {}) {
     { markerId: "fiducial-br", x: size.widthMm - 8, y: size.heightMm - 8 },
     { markerId: "fiducial-bl", x: 8, y: size.heightMm - 8 },
   ].map(marker => Object.freeze({ ...marker, sizeMm: geometry.fiducialSizeMm }));
-  const border = Object.freeze({ x: margin - 1, y: margin - 1, width: size.widthMm - 2 * (margin - 1), height: size.heightMm - 2 * (margin - 1), strokeMm: geometry.borderStrokeMm });
+  // The embedded-card border surrounds the inserted card itself; on A4 it
+  // stays outside the nominal identity grid while leaving all fiducials clear.
+  const borderInset = size.kind === "A4" ? 12 : 3;
+  const border = Object.freeze({ x: borderInset, y: borderInset, width: size.widthMm - borderInset * 2, height: size.heightMm - borderInset * 2, strokeMm: geometry.borderStrokeMm });
   const placementsById = new Map([...objectivePlacements.questions, ...cduPlacements.questions].map(placement => [placement.questionId, placement]));
   const questions = layoutQuestions.map(source => {
     const placement = placementsById.get(source.questionId);
@@ -399,9 +447,10 @@ export function composeLayout(input, options = {}) {
     mode: definition.mode,
     paper: Object.freeze(size),
     identity: Object.freeze({ mode: identityCode.mode, showName: definition.identity.showName, showClass: definition.identity.showClass }),
-    header: Object.freeze(header),
+    header: Object.freeze({ ...header, ...definition.metadata, kind: definition.metadata?.kind || "", subject: definition.metadata?.subject || "", className: definition.metadata?.className || "", date: definition.metadata?.date || "", teacher: definition.metadata?.teacher || "", grade: definition.metadata?.grade || "", schoolYear: definition.metadata?.schoolYear || "" }),
     geometry: manifestGeometry,
     safeBoundsMm,
+    contentBoundsMm,
     technicalRegions: Object.freeze({
       border,
       fiducials: Object.freeze(fiducials),
@@ -417,7 +466,13 @@ export function composeLayout(input, options = {}) {
     questionCount: definition.questionCount,
     pages: Object.freeze([{ page: 1, widthMm: size.widthMm, heightMm: size.heightMm }]),
   };
-  const contentHash = stableHash({ ...manifestCore, contentHash: undefined });
+  const hashSource = JSON.parse(JSON.stringify(manifestCore));
+  if (hashSource.identityCode) {
+    delete hashSource.identityCode.student;
+    if (Array.isArray(hashSource.identityCode.columns)) hashSource.identityCode.columns = hashSource.identityCode.columns.map(column => ({ ...column, printedDigit: "" }));
+  }
+  hashSource.identityBubbles = hashSource.identityBubbles.map(bubble => ({ ...bubble, filled: false }));
+  const contentHash = stableHash({ ...hashSource, contentHash: undefined });
   const manifest = deepFreeze({ ...manifestCore, contentHash });
   return { manifest, validation: validateLayoutManifest(manifest) };
 }

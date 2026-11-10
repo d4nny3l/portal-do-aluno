@@ -6,7 +6,7 @@ import { createLayoutManifest, INITIAL_GEOMETRY, LayoutCapacityError, validateLa
 import { createTemplate, layoutTemplate, MAX_QUESTIONS_PER_PAGE, PAGE_HEIGHT_MM, PAGE_WIDTH_MM, TEMPLATE_VERSION } from "../omr/template.mjs";
 import { DEFAULT_CARD_HEADER, renderHeaderPreviewSvg, renderTemplateSvg } from "../omr/render.mjs";
 import { readRaster, READER_VERSION } from "../omr/reader.mjs";
-import { buildManifestJson, buildPrintDocument, EXPORT_VERSION } from "../omr/export.mjs";
+import { addJpegDensity, addPngDensity, buildManifestJson, buildPrintDocument, EXPORT_VERSION, getLayoutVersion, listLayoutVersions, saveLayoutVersion, selectStudentPages, sortStudentRoster } from "../omr/export.mjs";
 import { reorderQuestion, reorderSection, restoreAutomaticArrangement } from "../omr/editor.mjs";
 
 const card = (count, type = "A-E", options = {}) => createTemplate([{ type, count, label: "Questões" }], options);
@@ -20,11 +20,11 @@ test("assessment definition preserves stable IDs and explicit question numbers",
   assert.throws(() => createAssessmentDefinition({ sections: [{ type: "A-D", items: [{ number: 1 }, { number: 1 }] }] }), /aparece mais de uma vez/);
 });
 
-test("10–100 A–E question cards fit one A4 with fixed circles and equal-width columns", () => {
-  assert.equal(TEMPLATE_VERSION, "salta-omr-a4-v5");
+test("10–150 A–E question cards fit one A4 with fixed circles and equal-width columns", () => {
+  assert.equal(TEMPLATE_VERSION, "salta-omr-a4-v7");
   assert.equal(MAX_QUESTIONS_PER_PAGE, 150);
   assert.equal(INITIAL_GEOMETRY.bubbleDiameterMm, 4.5);
-  for (const count of [10, 20, 30, 50, 100]) {
+  for (const count of [10, 20, 30, 50, 100, 150]) {
     const template = card(count);
     const layout = layoutTemplate(template, { width: 2100, height: 2970 });
     assert.equal(template.pageCount, 1);
@@ -34,6 +34,7 @@ test("10–100 A–E question cards fit one A4 with fixed circles and equal-widt
     assert.equal(layout.manifest.pages.length, 1);
     assert.equal(validateLayoutManifest(layout.manifest).valid, true);
     assert.ok(layout.columns >= 2 && layout.columns <= 5);
+    if (count === 150) { assert.equal(layout.columns, 5); assert.ok(layout.manifest.geometry.objectiveRowPitchMm >= 4.85); assert.ok(layout.manifest.geometry.objectiveRowPitchMm < 6.2); }
     assert.ok(layout.manifest.sections.every(group => group.height === 4.5));
     if (count >= 20) assert.equal(layout.manifest.sections.filter(group => group.label === "Questões").length, 1, "A section title is printed only at its first physical occurrence");
     for (const cell of layout.cells) {
@@ -66,12 +67,12 @@ test("case matrix T01–T15 produces the planned acceptance decisions", () => {
     ["T03", { student: { code: "7654321" } }, [{ type: "A-E", count: 50 }], true],
     ["T04", {}, [{ type: "A-D", count: 15 }, { type: "A-E", count: 20 }, { type: "C-E", count: 10 }], true],
     ["T05", {}, [{ type: "A-E", count: 100 }], true],
-    ["T06", {}, [{ type: "A-E", count: 150 }], false],
+    ["T06", {}, [{ type: "A-E", count: 150 }], true],
     ["T07", {}, [{ type: "A-D", count: 50 }, { type: "A-E", count: 50 }, { type: "CDU", count: 50 }], false],
     ["T08", {}, [{ type: "A-E", count: 65 }, { type: "CDU", count: 5 }], true],
     ["T09", {}, [{ type: "CDU", count: 20 }, { type: "A-E", count: 80 }], false],
     ["T10", { identityMode: "qr" }, [{ type: "A-E", count: 15 }], false],
-    ["T11", {}, [{ type: "A-E", count: 150 }], false],
+    ["T11", {}, [{ type: "A-E", count: 150 }], true],
     ["T12", { identityMode: "manual" }, [{ type: "C-E", count: 30 }], true],
   ];
   for (const [id, options, sections, expected] of cases) {
@@ -154,12 +155,13 @@ test("manual identity omits the bubble grid and QR is blocked without an authori
   assert.throws(() => createLayoutManifest(card(10, "A-D", { identityMode: "qr" })), LayoutCapacityError);
 });
 
-test("150 A–E questions are rejected instead of shrinking bubbles or creating page two", () => {
-  const result = (() => {
-    try { return createLayoutManifest(card(150)); } catch (error) { return error; }
-  })();
-  assert.ok(result instanceof LayoutCapacityError);
-  assert.match(result.message, /não cabem em uma única folha/);
+test("150 A–E fit one A4 by compacting row pitch without shrinking 4.5 mm bubbles", () => {
+  const manifest = createLayoutManifest(card(150));
+  assert.equal(manifest.pages.length, 1);
+  assert.equal(manifest.columns.length, 5);
+  assert.equal(manifest.geometry.bubbleDiameterMm, 4.5);
+  assert.ok(manifest.geometry.objectiveRowPitchMm >= 4.85);
+  assert.equal(manifest.questions.length, 150);
   assert.equal(card(150).pageCount, 1);
   assert.throws(() => layoutTemplate(card(10), { width: 210, height: 297, page: 2 }), /única página/);
 });
@@ -172,6 +174,25 @@ test("layout validator detects forced collisions and does not repair them silent
   const result = validateLayoutManifest(mutated);
   assert.equal(result.valid, false);
   assert.ok(result.errors.some(error => error.includes("Colisão")));
+});
+
+test("section rules, questions and footer stay inside the black border with a physical gap", () => {
+  for (const template of [card(30, "A-E"), card(2, "CDU", { mode: "embedded", embeddedSize: { widthMm: 90, heightMm: 180 }, identityMode: "manual" })]) {
+    const manifest = createLayoutManifest(template);
+    const border = manifest.technicalRegions.border;
+    for (const section of manifest.sections) {
+      assert.ok(section.x >= border.x + 4);
+      assert.ok(section.x + section.width <= border.x + border.width - 4);
+    }
+    for (const question of manifest.questions) {
+      assert.ok(question.x >= border.x + 4);
+      assert.ok(question.x + question.width <= border.x + border.width - 4);
+    }
+    const svg = renderTemplateSvg(template);
+    assert.match(svg, /class="omr-card-border"/);
+    const footerY = Number(svg.match(/<text x="[^"]+" y="([^"]+)"[^>]*>MODELO/)?.[1]);
+    assert.ok(footerY < border.y + border.height);
+  }
 });
 
 test("dense mixed CDU layout is rejected when it exceeds the physical A4 region", () => {
@@ -187,8 +208,9 @@ test("SVG uses A4 physical dimensions, black-and-white marks, labels, code boxes
   const svg = renderTemplateSvg(template, { header: { ...DEFAULT_CARD_HEADER, institution: "CEM 02" } });
   assert.match(svg, /width="210mm" height="297mm" viewBox="0 0 210 297"/);
   assert.match(svg, /data-page="1\/1"/);
-  assert.match(svg, /data-template-version="salta-omr-layout-v1-r5"/);
+  assert.match(svg, /data-template-version="salta-omr-layout-v1-r7"/);
   assert.equal((svg.match(/class="omr-fiducial"/g) || []).length, 4);
+  assert.match(svg, /class="omr-card-border"[^>]*x="12" y="12"/);
   assert.equal((svg.match(/class="omr-answer-bubble"/g) || []).length, 100);
   assert.equal((svg.match(/class="omr-identity-bubble"/g) || []).length, 70);
   assert.equal((svg.match(/class="omr-question"/g) || []).length, 20);
@@ -231,6 +253,98 @@ test("print export creates exactly N isolated A4 pages and omits student codes f
   assert.equal(JSON.parse(json).manifest.identityBubbles.filter(bubble => bubble.filled).length, 0);
 });
 
+test("nominal student names and classes appear in code and manual cards and structured PDF batch", () => {
+  const student = { name: "Aluna Sintética", className: "2º A Sintética", code: "0001200" };
+  const coded = card(5, "A-D", { student });
+  const codedSvg = renderTemplateSvg(coded, { header: { ...DEFAULT_CARD_HEADER, institution: "Escola Sintética", title: "Prova de Matemática", subject: "Matemática", className: "2º A", date: "2026-11-10", visible: { ...DEFAULT_CARD_HEADER.visible, subject: true, className: true, date: true } } });
+  assert.match(codedSvg, /Aluna Sintética/);
+  assert.match(codedSvg, /2º A Sintética/);
+  assert.match(codedSvg, /Prova de Matemática/);
+  assert.match(codedSvg, /Matemática/);
+  assert.equal((codedSvg.match(/class="omr-identity-bubble"[^>]*fill="#000"/g) || []).length, 7);
+  const manual = card(5, "A-D", { identityMode: "manual", student: { name: student.name, className: student.className } });
+  const manualSvg = renderTemplateSvg(manual);
+  assert.match(manualSvg, /Aluna Sintética/);
+  assert.match(manualSvg, /2º A Sintética/);
+  const html = buildPrintDocument(coded, { students: [student, { ...student, name: "Aluno Sintético Dois", code: "0001201" }] });
+  assert.equal((html.match(/class="print-page"/g) || []).length, 2);
+  assert.match(html, /Aluna Sintética/);
+  assert.match(html, /Aluno Sintético Dois/);
+  assert.match(html, /2º A Sintética/);
+  assert.equal((html.match(/class="omr-identity-bubble"[^>]*fill="#000"/g) || []).length, 14);
+});
+
+test("CDU draws digits inside each C/D/U bubble and three aligned handwritten boxes per original question", () => {
+  const template = createTemplate([{ type: "A-E", label: "Objetivas", items: [{ number: 2, type: "A-E" }] }, { type: "CDU", label: "Numéricas", items: [{ number: 8, type: "CDU" }, { number: 12, type: "CDU" }] }], { identityMode: "manual" });
+  const manifest = createLayoutManifest(template);
+  const svg = renderTemplateSvg(template);
+  const numericQuestions = manifest.questions.filter(question => question.type === "CDU");
+  assert.deepEqual(numericQuestions.map(question => question.number), [8, 12]);
+  assert.ok(numericQuestions.every(question => question.responseBoxes.length === 3 && question.bubbles.length === 30));
+  assert.equal((svg.match(/class="omr-cdu-response-box"/g) || []).length, 6);
+  assert.equal((svg.match(/data-place="[CDU]" data-digit="[0-9]"/g) || []).length, 60);
+  for (const question of numericQuestions) for (const box of question.responseBoxes) {
+    const firstBubble = question.bubbles.find(bubble => bubble.place === box.place && bubble.digit === 0);
+    assert.equal(firstBubble.x, box.centerX);
+    assert.ok(firstBubble.y - firstBubble.radiusMm > box.y + box.height);
+  }
+});
+
+test("header content is versioned while student PII does not change geometry hash", () => {
+  const first = card(8, "A-E", { student: { name: "Pessoa Um", className: "Turma Um", code: "0000001" }, title: "Avaliação A", schoolName: "Escola A", metadata: { subject: "Matemática", className: "1º A", date: "2026-11-10", teacher: "Professor A" } });
+  const second = card(8, "A-E", { student: { name: "Pessoa Dois", className: "Turma Dois", code: "0000002" }, title: "Avaliação A", schoolName: "Escola A", metadata: { subject: "Matemática", className: "1º A", date: "2026-11-10", teacher: "Professor A" } });
+  assert.equal(createLayoutManifest(first).contentHash, createLayoutManifest(second).contentHash);
+  const otherHeader = card(8, "A-E", { title: "Avaliação B", schoolName: "Escola A", metadata: { subject: "Matemática", className: "1º A", date: "2026-11-10", teacher: "Professor A" } });
+  assert.notEqual(createLayoutManifest(first).contentHash, createLayoutManifest(otherHeader).contentHash);
+  const visibleField = card(8, "A-E", { metadata: { customFields: [{ label: "Sala", value: "12", visible: true }] } });
+  const hiddenField = card(8, "A-E", { metadata: { customFields: [{ label: "Sala", value: "12", visible: false }] } });
+  assert.notEqual(createLayoutManifest(visibleField).contentHash, createLayoutManifest(hiddenField).contentHash);
+});
+
+test("layout version history keeps exact local geometry without student identity data", () => {
+  const storage = { value: "[]", getItem() { return this.value; }, setItem(_key, value) { this.value = value; } };
+  const template = card(7, "A-D", { student: { name: "Não guardar", className: "Não guardar turma", code: "1234567" } });
+  const manifest = createLayoutManifest(template);
+  const saved = saveLayoutVersion(manifest, storage);
+  assert.equal(listLayoutVersions(storage).length, 1);
+  assert.equal(getLayoutVersion(saved.key, storage).manifest.contentHash, manifest.contentHash);
+  assert.deepEqual(getLayoutVersion(saved.key, storage).manifest.questions.map(question => question.questionId), manifest.questions.map(question => question.questionId));
+  assert.doesNotMatch(storage.value, /Não guardar|1234567/);
+});
+
+test("PNG and JPG exports record their 300 DPI print density", () => {
+  const png = new Uint8Array(45);
+  png.set([137, 80, 78, 71, 13, 10, 26, 10], 0);
+  png.set([0, 0, 0, 13, 73, 72, 68, 82], 8);
+  png.set([0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0], 16);
+  png.set([0, 0, 0, 0], 29);
+  png.set([0, 0, 0, 0, 73, 69, 78, 68, 0, 0, 0, 0], 33);
+  const output = addPngDensity(png, 300);
+  const pHYs = new TextDecoder().decode(output).indexOf("pHYs");
+  assert.ok(pHYs > 0);
+  const pixelsPerMeter = ((output[pHYs + 4] << 24) | (output[pHYs + 5] << 16) | (output[pHYs + 6] << 8) | output[pHYs + 7]) >>> 0;
+  assert.equal(Math.round(pixelsPerMeter * 0.0254), 300);
+  assert.throws(() => addPngDensity(png, 50), /72 e 600 DPI/);
+  const jpeg = addJpegDensity(new Uint8Array([0xff, 0xd8, 0xff, 0xd9]), 300);
+  assert.deepEqual([...jpeg.slice(13, 18)], [1, 1, 44, 1, 44]);
+});
+
+test("batch roster defaults alphabetically and selects explicit 1-based page ranges", () => {
+  const students = [
+    { name: "Zélia", className: "2º B", code: "0000003" },
+    { name: "ana", className: "1º A", code: "0000001" },
+    { name: "Bruno", className: "1º A", code: "0000002" },
+  ];
+  assert.deepEqual(sortStudentRoster(students).map(item => item.name), ["ana", "Bruno", "Zélia"]);
+  assert.deepEqual(sortStudentRoster(students, "input"), students);
+  const sorted = sortStudentRoster(students);
+  assert.deepEqual(selectStudentPages(sorted, "1, 3-3").map(item => item.name), ["ana", "Zélia"]);
+  assert.deepEqual(selectStudentPages(sorted, "").map(item => item.name), ["ana", "Bruno", "Zélia"]);
+  assert.throws(() => selectStudentPages(sorted, "1, quatro"), /formato 1, 3-5/);
+  assert.throws(() => selectStudentPages(sorted, "2-4"), /entre 1 e 3/);
+  assert.throws(() => sortStudentRoster(students, "random"), /desconhecida/);
+});
+
 test("browser modules pin generator assets and keep the legacy route intact", async () => {
   const [renderSource, readerSource, pageSource, teacherSource, themeSource, corretorCss, legacyRoute] = await Promise.all([
     readFile(new URL("../omr/render.mjs", import.meta.url), "utf8"),
@@ -241,10 +355,10 @@ test("browser modules pin generator assets and keep the legacy route intact", as
     readFile(new URL("../../../plataforma/corretor-v2.css", import.meta.url), "utf8"),
     readFile(new URL("../../../corretor/index.html", import.meta.url), "utf8"),
   ]);
-  assert.match(renderSource, /from ["']\.\/template\.mjs\?v=20261110a["']/);
-  assert.match(readerSource, /from ["']\.\/template\.mjs\?v=20261110a["']/);
-  assert.match(pageSource, /omr\/(?:template|render|reader|normalize|export)\.mjs\?v=20261110a/g);
-  assert.match(teacherSource, /corretor-v2\.html\?v=20261110a/g);
+  assert.match(renderSource, /from ["']\.\/template\.mjs\?v=20261110c["']/);
+  assert.match(readerSource, /from ["']\.\/template\.mjs\?v=20261110c["']/);
+  assert.match(pageSource, /omr\/(?:template|render|reader|normalize|export)\.mjs\?v=20261110c/g);
+  assert.match(teacherSource, /corretor-v2\.html\?v=20261110c/g);
   assert.match(teacherSource, /professor-theme\.css\?v=20261109n/);
   assert.match(pageSource, /professor-theme\.css\?v=20261109n/);
   assert.match(pageSource, /id="dashboard"/);
@@ -253,7 +367,11 @@ test("browser modules pin generator assets and keep the legacy route intact", as
   assert.match(pageSource, /id="manualAlign"/);
   assert.match(pageSource, /id="captureHistory"/);
   assert.match(pageSource, /id="restoreArrangement"/);
-  assert.match(pageSource, /function currentSvg\(\)\{if\(!build\(\)\)/);
+  assert.match(pageSource, /function currentSvg\(\)\{if\(!template\|\|!activeManifest\|\|!activeSvg\)/);
+  assert.match(pageSource, /id="batchOrder"[\s\S]*?Alfabética \(padrão\)/);
+  assert.match(pageSource, /id="batchPages"/);
+  assert.match(pageSource, /sortStudentRoster\(students,\$\('batchOrder'\)\.value\)/);
+  assert.match(pageSource, /selectStudentPages\(ordered,\$\('batchPages'\)\.value\)/);
   assert.doesNotMatch(pageSource, /onclick="window\.print\(\)"/);
   assert.match(legacyRoute, /location\.replace\('\.\.\/plataforma\/corretor-v2\.html/);
   assert.match(pageSource, /class="modules-grid"/);

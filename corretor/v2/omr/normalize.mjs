@@ -1,4 +1,4 @@
-import { PAGE_HEIGHT_MM, PAGE_WIDTH_MM } from "./template.mjs?v=20261110a";
+import { PAGE_HEIGHT_MM, PAGE_WIDTH_MM } from "./template.mjs?v=20261110c";
 
 export const NORMALIZER_VERSION = "salta-omr-normalizer-v1";
 

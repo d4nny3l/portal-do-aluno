@@ -1,7 +1,7 @@
 import { createAssessmentDefinition, MAX_QUESTIONS, QUESTION_TYPES } from "./assessment.mjs";
 import { composeLayout, PAGE_HEIGHT_MM, PAGE_WIDTH_MM } from "./layout.mjs";
 
-export const TEMPLATE_VERSION = "salta-omr-a4-v5";
+export const TEMPLATE_VERSION = "salta-omr-a4-v7";
 export { PAGE_HEIGHT_MM, PAGE_WIDTH_MM };
 // Compatibility name used by the reader; v5 always represents one physical page.
 export const MAX_QUESTIONS_PER_PAGE = MAX_QUESTIONS;
@@ -9,12 +9,13 @@ export { QUESTION_TYPES };
 
 const cleanLabel = value => String(value ?? "").replace(/[\u0000-\u001f\u007f]/g, "").trim().slice(0, 64);
 
-export function createTemplate(sections, { templateId = "omr-a4", revision = 5, title = "CARTÃO DE RESPOSTAS", schoolName = "", identityMode = "seven-digit-code", student = null, mode = "full-page", embeddedSize = null, columnCount = null } = {}) {
+export function createTemplate(sections, { templateId = "omr-a4", revision = 7, title = "CARTÃO DE RESPOSTAS", schoolName = "", identityMode = "seven-digit-code", student = null, mode = "full-page", embeddedSize = null, columnCount = null, metadata = {} } = {}) {
   if (!Array.isArray(sections) || sections.length === 0) throw new TypeError("Informe ao menos uma seção.");
   const definition = createAssessmentDefinition({
     templateId,
     title: cleanLabel(title),
     schoolName: cleanLabel(schoolName),
+    metadata,
     mode,
     embeddedSize,
     columnCount,

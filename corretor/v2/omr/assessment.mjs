@@ -89,6 +89,16 @@ export function createAssessmentDefinition(input, { templateId = "salta-assessme
   if (identityMode === "seven-digit-code" && student?.code && !/^\d{7}$/.test(student.code)) {
     throw new TypeError("O código nominal precisa conter exatamente sete dígitos, incluindo zeros à esquerda.");
   }
+  const metadataSource = input.metadata && typeof input.metadata === "object" ? input.metadata : {};
+  const metadata = Object.freeze(Object.fromEntries(["kind", "subject", "className", "date", "teacher", "grade", "schoolYear", "logoWidthMm", "secondaryLogoWidthMm", "logoAspect", "secondaryLogoAspect", "cduPosition", "customFields", "visibleFields", "headerLayout"]
+    .filter(key => metadataSource[key] != null)
+    .map(key => [key, key === "customFields"
+      ? Object.freeze((Array.isArray(metadataSource.customFields) ? metadataSource.customFields : []).filter(field => field && String(field.label || "").trim() && String(field.value || "").trim()).slice(0, 4).map(field => Object.freeze({ label: clean(field.label, 24), value: clean(field.value, 50), visible: field.visible !== false })))
+      : key === "visibleFields"
+        ? Object.freeze(Object.fromEntries(["institution", "teacher", "subject", "className", "grade", "date", "schoolYear", "title", "studentName"].map(name => [name, Boolean(metadataSource.visibleFields?.[name])])))
+      : key === "headerLayout"
+        ? ["text", "logo-left", "dual-logo", "compact"].includes(metadataSource.headerLayout) ? metadataSource.headerLayout : "text"
+      : ["logoWidthMm", "secondaryLogoWidthMm", "logoAspect", "secondaryLogoAspect"].includes(key) ? Number(metadataSource[key]) : clean(metadataSource[key], 96)])));
   if (identityMode === "qr" && !input.qrTokenProvider) {
     // Deliberately record an unconfigured adapter; no student data is turned
     // into a QR payload by the generator itself.
@@ -99,6 +109,7 @@ export function createAssessmentDefinition(input, { templateId = "salta-assessme
     revision,
     title: clean(input.title, 96),
     schoolName: clean(input.schoolName, 96),
+    metadata,
     mode,
     columnCount,
     embeddedSize: input.embeddedSize ? Object.freeze({ widthMm: Number(input.embeddedSize.widthMm), heightMm: Number(input.embeddedSize.heightMm) }) : null,

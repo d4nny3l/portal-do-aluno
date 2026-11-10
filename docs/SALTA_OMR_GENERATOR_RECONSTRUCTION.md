@@ -16,7 +16,7 @@ A página mantém o shell SALTA e gera/processa os arquivos no navegador. Avalia
 - `corretor/v2/omr/export.mjs`: SVG, PNG/JPG por Canvas, JSON de geometria sem identidade e documento de impressão A4, inclusive lote local.
 - `plataforma/corretor-v2.html` e `.css`: interface integrada ao shell existente; editor de blocos e cabeçalho, prévia e exportações.
 
-O contrato do leitor continua `salta-omr-reader-v4`; o cartão/manifesto é `salta-omr-a4-v5` / `salta-layout-manifest-v1`. O leitor não interpreta C-D-U e rejeita esse formato explicitamente. Mudanças nos parâmetros de geometria exigem nova revisão; bolhas não são reduzidas para caber.
+O contrato do leitor continua `salta-omr-reader-v4`; o cartão é `salta-omr-a4-v7` / `salta-layout-manifest-v1`, com revisão geométrica 7. O leitor não interpreta C-D-U e rejeita esse formato explicitamente. Nesta revisão, leitor e normalizador receberam apenas uma nova versão no endereço de importação para invalidar o cache; câmera, normalização e interpretação não foram modificadas. Mudanças nos parâmetros de geometria exigem nova revisão; bolhas não são reduzidas para caber.
 
 ## Geometria física atual
 
@@ -26,7 +26,7 @@ O contrato do leitor continua `salta-omr-reader-v4`; o cartão/manifesto é `sal
 | Margem segura | 10 mm em A4 |
 | Bolhas de resposta e identificação | diâmetro fixo 4,5 mm |
 | Passo entre alternativas | 5,2 mm |
-| Passo vertical objetivo inicial | 6,2 mm; pode aumentar para distribuir poucos itens sem mudar o diâmetro |
+| Passo vertical objetivo | variável de 4,85 a 14 mm conforme o espaço disponível; o diâmetro não muda |
 | Código nominal | 7 colunas × 10 dígitos = 70 bolhas; caixas e centros de coluna alinhados |
 | Passo das bolhas do código | 5,2 mm |
 | Marcadores de leitura | quadrados pretos de 5,5 mm; centros preservados a 8 mm de cada canto, compatíveis com o contrato v4 |
@@ -45,7 +45,8 @@ O compositor rejeita cartões que não cabem dentro de uma única folha, preserv
 | 65 A–E + 5 CDU | cabe na configuração testada |
 | 50 A–D + 50 A–E + 50 CDU | rejeitado por falta de área física |
 | 20 CDU + 80 A–E | rejeitado por falta de área física |
-| 150 A–E | rejeitado; não reduz bolhas nem cria segunda página |
+| 150 A–E | cabe em cinco colunas na A4 testada, passo mínimo de pelo menos 4,85 mm e círculos de 4,5 mm |
+| 150 A–E em lote sintético | prévia de 150 questões e PDF local de duas identidades sintéticas, uma página A4 por cartão |
 | 15 A–E com QR sem provedor de tokens/codificador | bloqueado antes da exportação |
 | Reordenação visual de seções com formatos diferentes | IDs e números estáveis; o índice do leitor continua ligado ao número da questão |
 | Cartão incorporável manual 100 × 180 mm | SVG físico preservado e centralizado na página A4 de impressão |
@@ -53,17 +54,20 @@ O compositor rejeita cartões que não cabem dentro de uma única folha, preserv
 | Manifesto sintético de leitura | resposta marcada lida; questão em branco sinalizada para revisão |
 | Colisão forçada entre círculos | validação rejeita o manifesto |
 | Exportação JSON nominal | código, nome, turma e pré-marcações removidos |
-| PDF/lote | documento de impressão cria N páginas A4 isoladas; geração do PDF final é feita pelo diálogo de impressão do navegador |
+| PDF/lote | documento de impressão cria N páginas A4 isoladas; ordenação alfabética é padrão, ordem de entrada pode ser mantida, e páginas podem ser selecionadas por índices/faixas; geração do PDF final é feita pelo diálogo de impressão do navegador |
+| Borda e conteúdo | linhas de seção, caixas, bolhas e rodapé são validados dentro do contorno, com folga para a borda e os quatro marcadores |
 
-Há testes específicos para casos aceitos e recusados. Os cartões 10, 20, 30, 50, 100 e um misto foram também renderizados em SVG e inspecionados no Chrome local; as fotos de validação não são mockups. Os cartões são sintéticos.
+Há testes específicos para casos aceitos e recusados. Os cartões 10, 20, 30, 50, 100, 150 A–E e um misto foram renderizados em SVG e inspecionados no Chrome local; também foi inspecionado um PDF A4 de duas páginas. As imagens são renderizações locais com dados sintéticos, sem validação física.
 
 ## Testes realmente executados
 
-- `node --test corretor/v2/tests/*.test.mjs`: 26 passaram, 0 falharam.
-- `node --check corretor/v2/omr/*.mjs`: sintaxe dos módulos validada.
+- `node --test corretor/v2/tests/*.test.mjs`: 33 passaram, 0 falharam após a revisão geométrica final.
+- `node --check` em cada módulo OMR e no script ES module extraído da página: passou.
 - Extração do bloco `<script type="module">` da página para arquivo `.mjs` temporário e `node --check`: passou.
-- `git diff --check`: passou antes da consolidação final; será repetido no commit.
-- Chrome local: abriu o shell SALTA, navegou ao editor, adicionou um bloco, gerou a prévia A4 e exibiu o cartão SVG. Esta inspeção não foi feita no site publicado.
+- `git diff --check`: passou após as alterações.
+- Chrome local: cartões A4 para 10, 20, 30, 50, 100, 150 A–E e seções mistas foram renderizados e conferidos; a prévia de 150 questões foi gerada na interface. Viewport mobile de 390 × 844 px sem rolagem horizontal.
+- Chrome headless, `pdfinfo` e `pdftoppm`: lote sintético gerou PDF de duas páginas A4 (594,96 × 841,92 pt); ambas as páginas foram renderizadas e inspecionadas. Isso valida o arquivo local, não a impressão física.
+- GitHub Pages e CI ainda aguardam validação no commit publicado.
 
 ## Limitações ainda abertas
 
@@ -71,9 +75,9 @@ Há testes específicos para casos aceitos e recusados. Os cartões 10, 20, 30, 
 2. **C-D-U:** a geração está disponível, mas o leitor atual não a interpreta. A aba de captura continua oferecendo apenas A–D, A–E e C–E.
 3. **Persistência:** avaliações, cabeçalhos e resultados não são salvos entre sessões e não são enviados a qualquer backend.
 4. **PDF:** o navegador prepara um documento A4 vetorial; o arquivo PDF é salvo pelo diálogo de impressão, não por biblioteca PDF direta.
-5. **Lote:** recebe códigos digitados na interface, gera cartões locais e ainda não importa lista nominal do Diário nem oferece critérios de ordenação/seleção de páginas.
+5. **Lote:** recebe registros nominais inseridos localmente e gera cartões sem comunicação com o Diário; ainda não importa a lista nominal do Diário. Ordenação, ordem de entrada e seleção de páginas atuam nesta impressão. O mapeamento entre versão/hash do layout e estudantes permanece apenas no armazenamento local do navegador.
 6. **Validação física:** bolhas, marcadores e impressão em escala real ainda precisam ser homologados em impressora e fotografias reais. Não se declara precisão física ou câmera homologada.
-7. **Correção automática local:** composição inviável fica preservada como estado de edição e bloqueia exportação, com causa apresentada; não se reposicionam automaticamente logos ou decisões do professor.
+7. **Composição automática:** ao detectar uma configuração impossível, o editor tenta a organização automática e apresenta o resultado para conferência; se continuar inviável, apaga a prévia e bloqueia exportações. Posição de logos e decisões pedagógicas não são alteradas automaticamente.
 
 ## Guia de homologação física futura
 
@@ -86,4 +90,4 @@ Há testes específicos para casos aceitos e recusados. Os cartões 10, 20, 30, 
 
 ## Arquivos desta branch
 
-Veja `git diff --stat` e a lista de arquivos da PR. A branch não deve ser mesclada nem implantada como definitiva sem revisão e homologação do usuário.
+Veja `git diff --stat` e a lista de arquivos da PR. O usuário autorizou integração e publicação para inspeção visual. A branch só deve ser integrada após publicar o commit final, obter CI verde e confirmar as proteções do repositório. A publicação não equivale à homologação física do cartão ou do leitor.
