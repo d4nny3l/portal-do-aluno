@@ -157,8 +157,8 @@ test("browser module imports pin cache versions for transitive OMR dependencies"
   ]);
   assert.match(renderSource, /from ["']\.\/template\.mjs\?v=20261109i["']/);
   assert.match(readerSource, /from ["']\.\/template\.mjs\?v=20261109i["']/);
-  assert.match(pageSource, /omr\/(?:template|render|reader|normalize)\.mjs\?v=20261109o/g);
-  assert.match(teacherSource, /corretor-v2\.html\?v=20261109o/g);
+  assert.match(pageSource, /omr\/(?:template|render|reader|normalize)\.mjs\?v=20261109p/g);
+  assert.match(teacherSource, /corretor-v2\.html\?v=20261109p/g);
   assert.match(teacherSource, /professor-theme\.css\?v=20261109n/);
   assert.match(pageSource, /professor-theme\.css\?v=20261109n/);
   assert.match(pageSource, /<select id="type"><option>A-D<\/option><option>A-E<\/option><option>C-E<\/option><\/select>/);
@@ -166,8 +166,9 @@ test("browser module imports pin cache versions for transitive OMR dependencies"
   assert.match(pageSource, /id=\"dashboard\"/);
   assert.match(pageSource, /data-view=\"criar\"/);
   assert.match(pageSource, /createTemplate\(sections,\{templateId:'omr-a4'\}\)/);
+  assert.match(pageSource, /id="modelos"[\s\S]*?data-go="criar">Criar avaliação e cartão/);
   assert.doesNotMatch(pageSource, /href="#(?:gabaritos|cartao|resultados)"/);
-  assert.match(pageSource, /<link rel="stylesheet" href="\.\/corretor-v2\.css\?v=20261109o">/);
+  assert.match(pageSource, /<link rel="stylesheet" href="\.\/corretor-v2\.css\?v=20261109p">/);
   assert.match(corretorCss, /\.module-nav button\[aria-current=page\]/);
   assert.match(corretorCss, /\.camera-guides i\[data-found="true"\]/);
   assert.match(corretorCss, /@media\(max-width:760px\)/);
