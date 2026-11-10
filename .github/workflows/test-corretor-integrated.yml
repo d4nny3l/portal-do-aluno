@@ -4,6 +4,15 @@ on:
     paths:
       - "plataforma/corretor-v2.html"
       - "plataforma/professor.html"
+      - "plataforma/admin-shell.mjs"
+      - "plataforma/professor-theme.css"
+      - "plataforma/corretor-v2.css"
+      - "plataforma/estatistica*.html"
+      - "plataforma/mensagens.html"
+      - "plataforma/fechamento-bimestre.html"
+      - "plataforma/festival-consciencia-negra-admin.html"
+      - "plataforma/tests/**"
+      - "mostra-cultural.html"
       - "corretor/v2/omr/**"
       - ".github/workflows/test-corretor-integrated.yml"
 permissions:
@@ -19,8 +28,10 @@ jobs:
         with:
           node-version: 24
       - run: node --test corretor/v2/tests/*.test.mjs
+      - run: node --test plataforma/tests/*.test.mjs
       - name: Check OMR modules and inline scripts
         run: |
+          node --check plataforma/admin-shell.mjs
           for file in corretor/v2/omr/*.mjs; do node --check "$file"; done
           python3 - <<'PY'
           import re, subprocess

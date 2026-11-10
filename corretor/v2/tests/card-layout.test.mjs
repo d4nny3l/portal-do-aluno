@@ -358,12 +358,12 @@ test("browser modules pin generator assets and keep the legacy route intact", as
   assert.match(renderSource, /from ["']\.\/template\.mjs\?v=20261110c["']/);
   assert.match(readerSource, /from ["']\.\/template\.mjs\?v=20261110c["']/);
   assert.match(pageSource, /omr\/(?:template|render|reader|normalize|export)\.mjs\?v=20261110c/g);
-  assert.match(teacherSource, /corretor-v2\.html\?v=20261110c/g);
-  assert.match(teacherSource, /professor-theme\.css\?v=20261109n/);
-  assert.match(pageSource, /professor-theme\.css\?v=20261109n/);
+  assert.match(teacherSource, /corretor-v2\.html\?v=20261110ux1/g);
+  assert.match(teacherSource, /professor-theme\.css\?v=20261110ux1/);
+  assert.match(pageSource, /professor-theme\.css\?v=20261110ux1/);
   assert.match(pageSource, /id="dashboard"/);
   assert.match(pageSource, /data-view="criar"/);
-  assert.match(pageSource, /id="modelos"[\s\S]*?data-go="criar">Criar avaliação e cartão/);
+  assert.doesNotMatch(pageSource, /id="modelos"|id="minhas"|id="revisoes"|id="analise"/);
   assert.match(pageSource, /id="manualAlign"/);
   assert.match(pageSource, /id="captureHistory"/);
   assert.match(pageSource, /id="restoreArrangement"/);
@@ -375,7 +375,7 @@ test("browser modules pin generator assets and keep the legacy route intact", as
   assert.doesNotMatch(pageSource, /onclick="window\.print\(\)"/);
   assert.match(legacyRoute, /location\.replace\('\.\.\/plataforma\/corretor-v2\.html/);
   assert.match(pageSource, /class="modules-grid"/);
-  assert.equal((pageSource.match(/class="module-card secondary" data-go=/g) || []).length, 7);
+  assert.equal((pageSource.match(/class="module-card secondary" data-go=/g) || []).length, 3);
   assert.doesNotMatch(pageSource, /corretor-grid|corretor-link/);
   assert.ok(themeSource.includes(".modules-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:14px}"));
   assert.ok(corretorCss.includes("@media(max-width:760px)"));
