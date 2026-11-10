@@ -427,4 +427,3 @@ export function createLayoutManifest(input, options = {}) {
   if (!result.validation.valid) throw new LayoutCapacityError(result.validation);
   return result.manifest;
 }
-

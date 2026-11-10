@@ -117,4 +117,3 @@ export function createAssessmentDefinition(input, { templateId = "salta-assessme
     schemaVersion: "salta-assessment-definition-v1",
   });
 }
-
