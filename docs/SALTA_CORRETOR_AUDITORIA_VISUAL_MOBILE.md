@@ -1,7 +1,7 @@
 # SALTA — auditoria visual e leitura móvel do Corretor
 
-**Branch:** `codex/corretor-visual-audit`  
-**Base:** `origin/main` em `920861458cc833b136f7a7e4770a9d708ee98dd4`  
+**Branch:** `codex/corretor-visual-audit`
+**Base:** `origin/main` em `920861458cc833b136f7a7e4770a9d708ee98dd4`
 **Escopo:** interface de `plataforma/corretor-v2.html` e segurança da orientação do leitor local. Sem mudanças em Auth, Workers, D1, Crypto Core ou Diário.
 
 ## Inconsistências verificadas
