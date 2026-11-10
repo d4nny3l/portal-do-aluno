@@ -1,170 +1,133 @@
-export const TEMPLATE_VERSION = "salta-omr-a4-v4";
-export const PAGE_WIDTH_MM = 210;
-export const PAGE_HEIGHT_MM = 297;
-export const MAX_QUESTIONS_PER_PAGE = 50;
-export const QUESTION_TYPES = Object.freeze({
-  "A-D": Object.freeze(["A", "B", "C", "D"]),
-  "A-E": Object.freeze(["A", "B", "C", "D", "E"]),
-  "C-E": Object.freeze(["C", "E"]),
-});
+import { createAssessmentDefinition, MAX_QUESTIONS, QUESTION_TYPES } from "./assessment.mjs";
+import { composeLayout, PAGE_HEIGHT_MM, PAGE_WIDTH_MM } from "./layout.mjs";
 
-const cleanLabel = value => String(value ?? "").replace(/[\u0000-\u001f\u007f]/g, "").trim().slice(0, 48);
+export const TEMPLATE_VERSION = "salta-omr-a4-v5";
+export { PAGE_HEIGHT_MM, PAGE_WIDTH_MM };
+// Compatibility name used by the reader; v5 always represents one physical page.
+export const MAX_QUESTIONS_PER_PAGE = MAX_QUESTIONS;
+export { QUESTION_TYPES };
 
-function assertType(type) {
-  if (!Object.hasOwn(QUESTION_TYPES, type)) throw new TypeError(`Formato inválido: ${type}`);
-}
+const cleanLabel = value => String(value ?? "").replace(/[\u0000-\u001f\u007f]/g, "").trim().slice(0, 64);
 
-export function createTemplate(sections, { templateId = "omr-a4", revision = 4 } = {}) {
+export function createTemplate(sections, { templateId = "omr-a4", revision = 5, title = "CARTÃO DE RESPOSTAS", schoolName = "", identityMode = "seven-digit-code", student = null, mode = "full-page", embeddedSize = null, columnCount = null } = {}) {
   if (!Array.isArray(sections) || sections.length === 0) throw new TypeError("Informe ao menos uma seção.");
-  if (sections.length > 8) throw new RangeError("O cartão aceita até 8 seções para manter os rótulos legíveis.");
-  const normalized = [];
-  sections.forEach((section, sectionIndex) => {
-    assertType(section.type);
-    if (!Number.isInteger(section.count) || section.count < 1) throw new TypeError("Quantidade de questões inválida.");
-    const label = cleanLabel(section.label) || `Seção ${sectionIndex + 1} · ${section.type}`;
-    for (let i = 0; i < section.count; i++) {
-      normalized.push(Object.freeze({
-        number: normalized.length + 1,
-        type: section.type,
-        choices: QUESTION_TYPES[section.type],
-        sectionIndex,
-        sectionLabel: label,
-      }));
-    }
-  });
-  if (normalized.length > 100) throw new RangeError("O cartão aceita no máximo 100 questões.");
-  const pages = Math.ceil(normalized.length / MAX_QUESTIONS_PER_PAGE);
+  const definition = createAssessmentDefinition({
+    templateId,
+    title: cleanLabel(title),
+    schoolName: cleanLabel(schoolName),
+    mode,
+    embeddedSize,
+    columnCount,
+    identity: { mode: identityMode, student },
+    sections: sections.map((section, sectionIndex) => {
+      if (!section || !Object.hasOwn(QUESTION_TYPES, section.type)) throw new TypeError(`Formato inválido na seção ${sectionIndex + 1}.`);
+      const label = cleanLabel(section.label) || `Seção ${sectionIndex + 1} · ${section.type}`;
+      if (Array.isArray(section.items)) return { ...section, sectionId: section.sectionId || `section-${sectionIndex + 1}`, label };
+      return { ...section, sectionId: section.sectionId || `section-${sectionIndex + 1}`, label };
+    }),
+  }, { templateId, revision });
   return Object.freeze({
-    templateId: cleanLabel(templateId) || "omr-a4",
-    revision,
+    ...definition,
     version: TEMPLATE_VERSION,
-    widthMm: PAGE_WIDTH_MM,
-    heightMm: PAGE_HEIGHT_MM,
-    questionCount: normalized.length,
-    pageCount: pages,
+    widthMm: definition.mode === "full-page" ? PAGE_WIDTH_MM : definition.embeddedSize?.widthMm,
+    heightMm: definition.mode === "full-page" ? PAGE_HEIGHT_MM : definition.embeddedSize?.heightMm,
+    layoutQuestions: Object.freeze(definition.questions.map(question => Object.freeze({
+      ...question,
+      sectionLabel: definition.sections[question.sectionIndex].label,
+    }))),
+    questions: Object.freeze(definition.questions.map(question => Object.freeze({
+      ...question,
+      sectionLabel: definition.sections[question.sectionIndex].label,
+    })).sort((left, right) => left.number - right.number)),
     questionsPerPage: MAX_QUESTIONS_PER_PAGE,
-    questions: Object.freeze(normalized),
+    pageCount: 1,
   });
-}
-
-function columnsFor(count) {
-  if (count <= 10) return 2;
-  return Math.min(3, Math.ceil(count / 10));
 }
 
 /**
- * Coordinates are millimetres when width/height are 210×297, and scale to
- * the supplied raster dimensions when called by the OMR reader. v4 adapts
- * question rows into up to three columns with a compact, fixed vertical rhythm.
+ * Reader adapter. Physical coordinates from the immutable millimetre manifest
+ * are scaled to the supplied raster without changing the print geometry.
  */
 export function layoutTemplate(template, { width, height, page = 1, showCode = true } = {}) {
   if (!template || template.version !== TEMPLATE_VERSION || !Number.isFinite(width) || !Number.isFinite(height) || width <= 0 || height <= 0) {
     throw new TypeError("Template ou dimensões inválidas.");
   }
-  if (!Number.isInteger(page) || page < 1 || page > template.pageCount) throw new RangeError("Página do cartão inválida.");
-  const scaleX = width / PAGE_WIDTH_MM;
-  const scaleY = height / PAGE_HEIGHT_MM;
-  const radius = 2.45 * Math.min(scaleX, scaleY); // 4.9 mm diameter at 100% A4.
-  const pitchX = 6.25 * scaleX;
-  const startYmm = showCode ? 96 : 57;
-  const endYmm = 280;
-  const pageStart = (page - 1) * MAX_QUESTIONS_PER_PAGE;
-  const pageQuestions = template.questions.slice(pageStart, pageStart + MAX_QUESTIONS_PER_PAGE);
-  const columns = columnsFor(pageQuestions.length);
-  const columnWidthMm = (PAGE_WIDTH_MM - 28) / columns;
-  const chunks = Array.from({ length: columns }, (_, col) => {
-    const start = Math.floor(pageQuestions.length * col / columns);
-    const end = Math.floor(pageQuestions.length * (col + 1) / columns);
-    return pageQuestions.slice(start, end);
-  });
-  const groupCount = chunk => chunk.reduce((n, question, i) => n + (i === 0 || question.sectionIndex !== chunk[i - 1].sectionIndex ? 1 : 0), 0);
-  const maxSlots = Math.max(1, ...chunks.map(chunk => chunk.length + groupCount(chunk)));
-  const totalHeight = (endYmm - startYmm) * scaleY;
-  // Short cards use wider row spacing to reduce empty paper; dense cards
-  // shrink the spacing to fit the printable area safely.
-  const rowPitch = Math.min(totalHeight / maxSlots, 23 * scaleY);
-  if (radius < 2.2 * Math.min(scaleX, scaleY) || rowPitch / scaleY < 7.1) {
-    throw new RangeError("A seção excede a área imprimível segura; reduza questões por seção ou divida a avaliação.");
+  if (page !== 1) throw new RangeError("O cartão v5 ocupa uma única página A4.");
+  if (template.questions.some(question => question.type === "CDU")) {
+    throw new TypeError("O leitor atual não interpreta respostas C-D-U. O cartão pode ser gerado, mas essa leitura exige uma etapa futura do leitor.");
   }
-  const cells = [];
-  const groups = [];
-  chunks.forEach((chunk, col) => {
-    const xMm = 14 + col * columnWidthMm;
-    const rows = [];
-    let slot = 0;
-    let currentGroup = null;
-    for (const question of chunk) {
-      if (!currentGroup || currentGroup.sectionIndex !== question.sectionIndex) {
-        if (currentGroup) currentGroup.endSlot = slot;
-        currentGroup = { sectionIndex: question.sectionIndex, label: question.sectionLabel, type: question.type, startSlot: slot, endSlot: slot };
-        groups.push(currentGroup);
-        slot++;
-      }
-      rows.push({ question, slot });
-      slot++;
-    }
-    if (currentGroup) currentGroup.endSlot = slot;
-    const topOffset = 0;
-    const colGroups = groups.filter(group => chunk.some(q => q.sectionIndex === group.sectionIndex) && group._column === undefined);
-    // Group positions are derived from each question's slot; avoid mutating template data.
-    for (const group of groups) if (group._column === undefined && chunk.some(q => q.sectionIndex === group.sectionIndex)) group._column = col;
-    for (const row of rows) {
-      const { question, slot: rowSlot } = row;
-      const x = xMm * scaleX;
-      const y = startYmm * scaleY + topOffset + (rowSlot + 0.5) * rowPitch;
-      const choiceStepMm = 8;
-      const contentWidthMm = 54;
-      const contentXmm = xMm + Math.max(0, (columnWidthMm - contentWidthMm) / 2);
-      cells.push(Object.freeze({
-        number: question.number,
-        type: question.type,
-        sectionIndex: question.sectionIndex,
-        sectionLabel: question.sectionLabel,
-        x: contentXmm * scaleX,
-        y,
-        bubbleRadius: radius,
-        bubbles: Object.freeze(question.choices.map((choice, i) => Object.freeze({
-          choice,
-          x: (contentXmm + 22 + i * choiceStepMm) * scaleX,
-          y,
-        }))),
-      }));
-    }
-    for (const group of colGroups) {
-      if (group._column !== col) continue;
-      const top = startYmm * scaleY + topOffset + group.startSlot * rowPitch;
-      const bottom = startYmm * scaleY + topOffset + group.endSlot * rowPitch;
-      group.x = xMm * scaleX;
-      group.y = top;
-      group.width = columnWidthMm * scaleX;
-      group.height = bottom - top;
-    }
-  });
-  const fiducialSize = 6 * Math.min(scaleX, scaleY);
-  const fiducials = [
-    { x: 8, y: 8 }, { x: PAGE_WIDTH_MM - 8, y: 8 },
-    { x: PAGE_WIDTH_MM - 8, y: PAGE_HEIGHT_MM - 8 }, { x: 8, y: PAGE_HEIGHT_MM - 8 },
-  ].map(point => Object.freeze({ x: point.x * scaleX, y: point.y * scaleY, size: fiducialSize }));
-  const codeGrid = showCode ? Array.from({ length: 7 }, (_, column) => Array.from({ length: 10 }, (_, digit) => Object.freeze({
-    column: column + 1,
-    digit,
-    x: (153 + column * 6.1) * scaleX,
-    y: (51 + digit * 4) * scaleY,
-    radius: 1.55 * Math.min(scaleX, scaleY),
-  }))).flat() : [];
+  const orderedNumbers = [...template.questions].map(question => question.number).sort((a, b) => a - b);
+  if (orderedNumbers.some((number, index) => number !== index + 1)) {
+    throw new TypeError("O leitor atual exige numeração de 1 até o total de questões. A disposição visual pode mudar, mas os números devem permanecer contínuos.");
+  }
+  let source = template;
+  if (!showCode && template.identity?.mode === "seven-digit-code") {
+    source = {
+      ...template,
+      identity: Object.freeze({ mode: "manual", showName: template.identity.showName, showClass: template.identity.showClass, student: template.identity.student }),
+    };
+  }
+  const result = composeLayout(source);
+  if (!result.manifest || !result.validation.valid) throw new RangeError(result.validation.errors.join(" ") || "Layout inválido.");
+  const manifest = result.manifest;
+  const scaleX = width / manifest.paper.widthMm;
+  const scaleY = height / manifest.paper.heightMm;
+  const scale = Math.min(scaleX, scaleY);
+  const cells = manifest.questions.map(question => Object.freeze({
+    questionId: question.questionId,
+    number: question.number,
+    type: question.type,
+    sectionIndex: question.sectionIndex,
+    sectionLabel: template.sections?.[question.sectionIndex]?.label || "",
+    x: question.x * scaleX,
+    y: question.y * scaleY + question.height * scaleY / 2,
+    bubbleRadius: manifest.geometry.bubbleDiameterMm / 2 * scale,
+    bubbles: Object.freeze(question.bubbles.map(bubble => Object.freeze({
+      choice: bubble.choice,
+      x: bubble.x * scaleX,
+      y: bubble.y * scaleY,
+    }))),
+  }));
+  const groups = manifest.sections.map(section => Object.freeze({
+    sectionId: section.sectionId,
+    sectionIndex: template.sections?.findIndex(sourceSection => sourceSection.sectionId === section.sectionId) ?? -1,
+    label: section.label,
+    x: section.x * scaleX,
+    y: section.y * scaleY,
+    width: section.width * scaleX,
+    height: section.height * scaleY,
+  }));
+  const codeGrid = manifest.identityBubbles.map(bubble => Object.freeze({
+    column: bubble.column,
+    digit: bubble.digit,
+    x: bubble.x * scaleX,
+    y: bubble.y * scaleY,
+    radius: bubble.radiusMm * scale,
+    filled: bubble.filled,
+  }));
   return Object.freeze({
-    templateId: template.templateId,
-    revision: template.revision,
-    version: template.version,
+    templateId: manifest.templateId,
+    revision: manifest.revision,
+    version: TEMPLATE_VERSION,
     width,
     height,
-    page,
-    pageCount: template.pageCount,
-    columns,
-    rowPitch,
-    fiducials: Object.freeze(fiducials),
+    page: 1,
+    pageCount: 1,
+    columns: manifest.columns.length,
+    columnWidth: manifest.columnWidthMm * scaleX,
+    rowPitch: manifest.geometry.objectiveRowPitchMm * scaleY,
+    fiducials: Object.freeze(manifest.technicalRegions.fiducials.map(marker => Object.freeze({
+      x: marker.x * scaleX,
+      y: marker.y * scaleY,
+      size: marker.sizeMm * scale,
+      markerId: marker.markerId,
+    }))),
     codeGrid: Object.freeze(codeGrid),
-    groups: Object.freeze(groups.map(({ _column, ...group }) => Object.freeze(group))),
+    identityCode: manifest.identityCode,
+    identityBubbles: Object.freeze(manifest.identityBubbles),
+    sections: Object.freeze(groups),
+    groups: Object.freeze(groups),
     cells: Object.freeze(cells.sort((a, b) => a.number - b.number)),
+    manifest,
   });
 }
