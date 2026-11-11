@@ -6,8 +6,8 @@
 <link rel="icon" type="image/svg+xml" href="../favicon.svg">
 <meta name="theme-color" content="#f4f5fb">
 <title>Área do Professor — Prof. Dannyel Moisés</title>
-<link rel="stylesheet" href="../salta-theme.css?v=20261109n">
-<link rel="stylesheet" href="./professor-theme.css?v=20261109n">
+<link rel="stylesheet" href="../salta-theme.css?v=20261110ux1">
+<link rel="stylesheet" href="./professor-theme.css?v=20261110ux1">
 <script src="https://challenges.cloudflare.com/turnstile/v0/api.js?render=explicit" async defer></script>
 <style>
 :root{
@@ -103,33 +103,8 @@ h1{margin:0;color:#303451;font-size:25px;letter-spacing:-.8px;font-weight:800}.p
 </section>
 
 <div class="app-shell" id="appShell" hidden>
-  <header class="topbar">
-    <div class="topbar-left">
-      <button class="menu-toggle" id="menuToggle" type="button" aria-label="Abrir menu" aria-expanded="false"><svg viewBox="0 0 24 24" fill="none" stroke-width="1.8"><path d="M4 6h16M4 12h16M4 18h16"/></svg></button>
-      <a class="brand" href="./" aria-label="SALTA — plataforma educacional">
-        <span class="brand-mark">S</span><span class="brand-copy"><span class="brand-name">SALTA</span><span class="brand-sub">PORTAL EDUCACIONAL</span></span>
-      </a>
-    </div>
-    <div class="topbar-right"><span class="top-context">AMBIENTE DO PROFESSOR</span><a class="platform-link" href="./"><svg viewBox="0 0 24 24" fill="none" stroke-width="1.8"><path d="M3 10.5L12 3l9 7.5M5.5 9v11h13V9M9 20v-6h6v6"/></svg> Plataforma SALTA</a></div>
-  </header>
-  <aside class="sidebar" id="sidebar" aria-label="Menu principal">
-    <div class="menu-caption">Menu principal</div>
-    <a class="nav-link active" href="#inicio" aria-current="page"><svg viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="3" width="7" height="7" rx="1.5"/><rect x="3" y="14" width="7" height="7" rx="1.5"/><rect x="14" y="14" width="7" height="7" rx="1.5"/></svg> Visão geral</a>
-    <div class="sidebar-divider"></div>
-    <div class="menu-caption">Ferramentas acadêmicas</div>
-    <a class="nav-link" href="./estatistica.html"><svg viewBox="0 0 24 24"><path d="M4 19V5M4 19h17"/><rect x="7" y="11" width="3" height="6" rx=".5"/><rect x="13" y="7" width="3" height="10" rx=".5"/><rect x="19" y="4" width="2" height="13" rx=".5"/></svg> Relatórios acadêmicos</a>
-    <a class="nav-link" href="./diario-teste.html"><svg viewBox="0 0 24 24"><path d="M5 3h14v18H5z"/><path d="M8 7h8M8 11h8M8 15h5"/></svg> Diário de classe</a>
-    <a class="nav-link" href="./corretor-v2.html?v=20261110c"><svg viewBox="0 0 24 24"><path d="M7 3h8l4 4v14H7a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2Z"/><path d="M14 3v5h5M9 13h7M9 17h5"/></svg> Corretor de avaliações</a>
-    <a class="nav-link" href="./mensagens.html"><svg viewBox="0 0 24 24"><path d="M18 9a6 6 0 0 0-12 0c0 7-3 7-3 9h18c0-2-3-2-3-9ZM10 21h4"/></svg> Central de avisos</a>
-    <a class="nav-link" href="./fechamento-bimestre.html"><svg viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="17" rx="2"/><path d="M8 2v4M16 2v4M3 9h18M8 13h3M8 17h8"/></svg> Fechamento de bimestre</a>
-    <div class="sidebar-divider"></div>
-    <div class="menu-caption">Projetos e eventos</div>
-    <a class="nav-link" href="./festival-consciencia-negra-admin.html"><svg viewBox="0 0 24 24"><path d="M12 3v3M5.6 5.6l2.1 2.1M3 12h3M18 12h3M16.3 7.7l2.1-2.1M8 14.5a4 4 0 1 1 8 0c0 1.6-.8 2.4-1.7 3.3-.6.6-.8 1.1-.8 2.2h-3c0-1.1-.2-1.6-.8-2.2C8.8 16.9 8 16.1 8 14.5Z"/></svg> Festival da Consciência Negra</a>
-    <a class="nav-link" href="../mostra-cultural.html?admin=1"><svg viewBox="0 0 24 24"><path d="M4 19V5l8-3 8 3v14l-8 3-8-3Z"/><path d="m4 5 8 3 8-3M12 8v14"/></svg> Avaliação da Mostra Cultural</a>
-    <div class="sidebar-bottom"><strong><svg viewBox="0 0 24 24" fill="none" stroke-width="1.8"><path d="M12 22s8-4 8-11V5l-8-3-8 3v6c0 7 8 11 8 11Z"/><path d="m9 12 2 2 4-4"/></svg> Acesso protegido</strong><p>Área restrita para organização pedagógica e gerenciamento das ferramentas da SALTA.</p></div>
-  </aside>
-  <div class="mobile-overlay" id="mobileOverlay"></div>
-  <main class="main" id="inicio">
+  <div data-salta-admin-shell></div><script type="module" src="./admin-shell.mjs?v=20261110ux1"></script>
+<main class="main" id="inicio">
     <div class="page-wrap">
       <div class="breadcrumb"><span>SALTA</span><svg viewBox="0 0 24 24" fill="none" stroke-width="2"><path d="m9 18 6-6-6-6"/></svg><strong>Área do Professor</strong></div>
       <section class="page-heading">
@@ -146,7 +121,7 @@ h1{margin:0;color:#303451;font-size:25px;letter-spacing:-.8px;font-weight:800}.p
         <div class="modules-grid">
           <a class="module-card" href="./estatistica.html"><div class="module-head"><span class="module-icon"><svg viewBox="0 0 24 24"><path d="M4 19V5M4 19h17"/><rect x="7" y="11" width="3" height="6" rx=".5"/><rect x="13" y="7" width="3" height="10" rx=".5"/><rect x="19" y="4" width="2" height="13" rx=".5"/></svg></span><span class="module-tag">Relatórios</span></div><h3>Relatórios acadêmicos</h3><p>Consulte relatórios individuais e acompanhe o desempenho por turma e no conjunto.</p><span class="module-action">Acessar módulo <svg viewBox="0 0 24 24"><path d="M5 12h14M13 6l6 6-6 6"/></svg></span></a>
           <a class="module-card" href="./diario-teste.html"><div class="module-head"><span class="module-icon purple"><svg viewBox="0 0 24 24"><path d="M5 3h14v18H5z"/><path d="M8 7h8M8 11h8M8 15h5"/></svg></span><span class="module-tag">Gestão acadêmica</span></div><h3>Diário de classe</h3><p>Cadastre turmas e alunos, organize avaliações, atividades e vistos, lance notas, acompanhe médias e exporte relatórios.</p><span class="module-action">Acessar diário de classe <svg viewBox="0 0 24 24"><path d="M5 12h14M13 6l6 6-6 6"/></svg></span></a>
-          <a class="module-card" href="./corretor-v2.html?v=20261110c"><div class="module-head"><span class="module-icon teal"><svg viewBox="0 0 24 24"><path d="M7 3h8l4 4v14H7a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2Z"/><path d="M14 3v5h5M9 13h7M9 17h5"/></svg></span><span class="module-tag">Avaliações</span></div><h3>Corretor de avaliações</h3><p>Abra o corretor de avaliações e faça a leitura dos cartões de respostas por foto.</p><span class="module-action">Acessar módulo <svg viewBox="0 0 24 24"><path d="M5 12h14M13 6l6 6-6 6"/></svg></span></a>
+          <a class="module-card" href="./corretor-v2.html?v=20261110ux1"><div class="module-head"><span class="module-icon teal"><svg viewBox="0 0 24 24"><path d="M7 3h8l4 4v14H7a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2Z"/><path d="M14 3v5h5M9 13h7M9 17h5"/></svg></span><span class="module-tag">Avaliações</span></div><h3>Corretor de avaliações</h3><p>Abra o corretor de avaliações e faça a leitura dos cartões de respostas por foto.</p><span class="module-action">Acessar módulo <svg viewBox="0 0 24 24"><path d="M5 12h14M13 6l6 6-6 6"/></svg></span></a>
           <a class="module-card" href="./mensagens.html"><div class="module-head"><span class="module-icon orange"><svg viewBox="0 0 24 24"><path d="M18 9a6 6 0 0 0-12 0c0 7-3 7-3 9h18c0-2-3-2-3-9ZM10 21h4"/></svg></span><span class="module-tag">Comunicação</span></div><h3>Central de avisos</h3><p>Publique comunicados globais ou escolha um aluno pela turma.</p><span class="module-action">Acessar módulo <svg viewBox="0 0 24 24"><path d="M5 12h14M13 6l6 6-6 6"/></svg></span></a>
           <a class="module-card" href="./fechamento-bimestre.html"><div class="module-head"><span class="module-icon green"><svg viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="17" rx="2"/><path d="M8 2v4M16 2v4M3 9h18M8 13h3M8 17h8"/></svg></span><span class="module-tag">Organização acadêmica</span></div><h3>Fechamento de bimestre</h3><p>Arquive notas e atividades antes de atualizar os dados com a próxima planilha.</p><span class="module-action">Acessar módulo <svg viewBox="0 0 24 24"><path d="M5 12h14M13 6l6 6-6 6"/></svg></span></a>
           <a class="module-card" href="./festival-consciencia-negra-admin.html"><div class="module-head"><span class="module-icon purple"><svg viewBox="0 0 24 24"><path d="M12 3v3M5.6 5.6l2.1 2.1M3 12h3M18 12h3M16.3 7.7l2.1-2.1M8 14.5a4 4 0 1 1 8 0c0 1.6-.8 2.4-1.7 3.3-.6.6-.8 1.1-.8 2.2h-3c0-1.1-.2-1.6-.8-2.2C8.8 16.9 8 16.1 8 14.5Z"/></svg></span><span class="module-tag">Eventos escolares</span></div><h3>Festival da Consciência Negra</h3><p>Configure critérios, gere códigos individuais para os avaliadores e acompanhe os resultados.</p><span class="module-action">Acessar módulo <svg viewBox="0 0 24 24"><path d="M5 12h14M13 6l6 6-6 6"/></svg></span></a>
@@ -176,14 +151,14 @@ function mostrarPainel(){
     document.getElementById("sessionLoading").hidden=true;
     document.getElementById("loginScreen").hidden=true;
     document.getElementById("appShell").hidden=false;
-    document.body.classList.add("is-authenticated");
+    document.body.classList.add("is-authenticated","professor-layout");
 }
 
 function mostrarLogin(mensagem=""){
     document.getElementById("sessionLoading").hidden=true;
     document.getElementById("loginScreen").hidden=false;
     document.getElementById("appShell").hidden=true;
-    document.body.classList.remove("is-authenticated","sidebar-open");
+    document.body.classList.remove("is-authenticated","sidebar-open","professor-layout");
     const erro=document.getElementById("erro");
     erro.textContent=mensagem || "Usuário ou senha incorretos.";
     erro.style.display=mensagem ? "block" : "none";
@@ -256,13 +231,6 @@ document.getElementById("sair").addEventListener("click",async()=>{
     location.reload();
 });
 
-const menuToggle=document.getElementById("menuToggle");
-const mobileOverlay=document.getElementById("mobileOverlay");
-function fecharMenu(){document.body.classList.remove("sidebar-open");menuToggle?.setAttribute("aria-expanded","false");}
-menuToggle?.addEventListener("click",()=>{const aberto=document.body.classList.toggle("sidebar-open");menuToggle.setAttribute("aria-expanded",String(aberto));});
-mobileOverlay?.addEventListener("click",fecharMenu);
-document.querySelectorAll(".sidebar .nav-link").forEach(link=>link.addEventListener("click",()=>{if(link.getAttribute("href")==="#inicio"){document.querySelectorAll(".sidebar .nav-link").forEach(item=>item.classList.remove("active"));link.classList.add("active");}fecharMenu();}));
-document.addEventListener("keydown",event=>{if(event.key==="Escape")fecharMenu();});
 
 verificarSessao();
 </script>

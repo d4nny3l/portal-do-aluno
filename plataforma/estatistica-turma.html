@@ -38,47 +38,11 @@ body .salta-grid{position:fixed;inset:0;pointer-events:none;z-index:0;background
 @media(max-width:850px){.grid{grid-template-columns:repeat(2,1fr)}.two{grid-template-columns:1fr}.evo{grid-template-columns:repeat(2,1fr)}}@media(max-width:700px){.controls{grid-template-columns:1fr}}@media(max-width:560px){.wrap{width:calc(100% - 26px)}main{padding:76px 0 55px}.hero h1{font-size:34px}.grid{grid-template-columns:1fr 1fr}.card{padding:17px;border-radius:19px}.metric strong{font-size:26px}.bar-row{grid-template-columns:78px 1fr 38px}.panel{padding:18px;border-radius:20px}}
 @media(max-width:700px){.pdf-toolbar{align-items:flex-start;flex-direction:column}.pdf-actions{width:100%}.pdf-actions button{flex:1}}
 </style>
-<link rel="stylesheet" href="../salta-theme.css?v=20261106">
-<link rel="stylesheet" href="./professor-theme.css?v=20261105">
+<link rel="stylesheet" href="../salta-theme.css?v=20261110ux1">
+<link rel="stylesheet" href="./professor-theme.css?v=20261110ux1">
 </head>
 <body class="professor-layout">
-<header class="teacher-shell-topbar">
-  <div class="teacher-shell-brandzone">
-    <button class="teacher-shell-toggle" id="teacherShellToggle" type="button" aria-label="Abrir menu" aria-expanded="false"><svg viewBox="0 0 24 24"><path d="M4 6h16M4 12h16M4 18h16"/></svg></button>
-    <a class="teacher-shell-brand" href="./professor.html" aria-label="SALTA — Área do Professor"><span class="teacher-shell-brand-mark">S</span><span class="teacher-shell-brand-copy"><strong>SALTA</strong><small>PORTAL EDUCACIONAL</small></span></a>
-  </div>
-  <div class="teacher-shell-actions"><span class="teacher-shell-context">AMBIENTE DO PROFESSOR</span><a class="teacher-shell-home" href="./"><svg viewBox="0 0 24 24"><path d="M3 10.5L12 3l9 7.5M5.5 9v11h13V9M9 20v-6h6v6"/></svg> Plataforma SALTA</a></div>
-</header>
-<aside class="teacher-shell-sidebar" aria-label="Navegação da Área Administrativa">
-  <div class="teacher-shell-caption">Menu principal</div>
-  <a class="teacher-shell-link" href="./professor.html"><svg viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="3" width="7" height="7" rx="1.5"/><rect x="3" y="14" width="7" height="7" rx="1.5"/><rect x="14" y="14" width="7" height="7" rx="1.5"/></svg><span>Visão geral</span></a>
-  <div class="teacher-shell-divider"></div>
-  <div class="teacher-shell-caption">Ferramentas acadêmicas</div>
-  <a class="teacher-shell-link active" aria-current="page" href="./estatistica.html"><svg viewBox="0 0 24 24"><path d="M4 19V5M4 19h17"/><rect x="7" y="11" width="3" height="6" rx=".5"/><rect x="13" y="7" width="3" height="10" rx=".5"/><rect x="19" y="4" width="2" height="13" rx=".5"/></svg><span>Relatórios acadêmicos</span></a>
-  <a class="teacher-shell-link" href="./diario-teste.html"><svg viewBox="0 0 24 24"><path d="M7 3h11a2 2 0 0 1 2 2v16H7a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2Z"/><path d="M8 3v18M12 8h5M12 12h5M12 16h5"/></svg><span>Diário de classe</span></a>
-  <a class="teacher-shell-link" href="./corretor-v2.html?v=20261109p"><svg viewBox="0 0 24 24"><path d="M7 3h8l4 4v14H7a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2Z"/><path d="M14 3v5h5M9 13h7M9 17h5"/></svg><span>Corretor de avaliações</span></a>
-  <a class="teacher-shell-link" href="./mensagens.html"><svg viewBox="0 0 24 24"><path d="M18 9a6 6 0 0 0-12 0c0 7-3 7-3 9h18c0-2-3-2-3-9ZM10 21h4"/></svg><span>Central de avisos</span></a>
-  <a class="teacher-shell-link" href="./fechamento-bimestre.html"><svg viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="17" rx="2"/><path d="M8 2v4M16 2v4M3 9h18M8 13h3M8 17h8"/></svg><span>Fechamento de bimestre</span></a>
-  <div class="teacher-shell-divider"></div>
-  <div class="teacher-shell-caption">Projetos e eventos</div>
-  <a class="teacher-shell-link" href="./festival-consciencia-negra-admin.html"><svg viewBox="0 0 24 24"><path d="M12 3v3M5.6 5.6l2.1 2.1M3 12h3M18 12h3M16.3 7.7l2.1-2.1M8 14.5a4 4 0 1 1 8 0c0 1.6-.8 2.4-1.7 3.3-.6.6-.8 1.1-.8 2.2h-3c0-1.1-.2-1.6-.8-2.2C8.8 16.9 8 16.1 8 14.5Z"/></svg><span>Festival da Consciência Negra</span></a>
-  <a class="teacher-shell-link" href="../mostra-cultural.html?admin=1"><svg viewBox="0 0 24 24"><path d="M4 19V5l8-3 8 3v14l-8 3-8-3Z"/><path d="m4 5 8 3 8-3M12 8v14"/></svg><span>Avaliação da Mostra Cultural</span></a>
-  <div class="teacher-shell-note"><strong>Sessão administrativa protegida</strong><p>Você está em uma ferramenta restrita da SALTA. A navegação mantém os módulos e suas permissões originais.</p></div>
-</aside>
-<div class="teacher-shell-overlay" id="teacherShellOverlay"></div>
-<script>
-(() => {
- const toggle=document.getElementById("teacherShellToggle");
- const overlay=document.getElementById("teacherShellOverlay");
- const close=()=>{document.body.classList.remove("teacher-nav-open");toggle?.setAttribute("aria-expanded","false");};
- toggle?.addEventListener("click",()=>{const open=document.body.classList.toggle("teacher-nav-open");toggle.setAttribute("aria-expanded",String(open));});
- overlay?.addEventListener("click",close);
- document.querySelectorAll(".teacher-shell-sidebar a").forEach(link=>link.addEventListener("click",close));
- document.addEventListener("keydown",event=>{if(event.key==="Escape")close();});
-})();
-</script>
-<div class="salta-grid"></div>
-<a class="salta-platform-button" href="./" aria-label="Ir para a Plataforma SALTA" title="Plataforma SALTA">S</a>
+<div data-salta-admin-shell></div><script type="module" src="./admin-shell.mjs?v=20261110ux1"></script>
 <main><div class="wrap">
 <a class="back" href="./estatistica.html" style="margin:0 0 20px">← Voltar para Relatórios</a>
 <section class="hero">
