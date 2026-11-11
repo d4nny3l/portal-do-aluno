@@ -1,53 +1,49 @@
 # SALTA — auditoria de interface administrativa
 
-## Escopo
+## Escopo e preservação
 
-Esta revisão consolida a navegação administrativa em um componente compartilhado e organiza a interface do Corretor 2.0. O trabalho foi feito em worktree isolado na branch `codex/salta-admin-ux-audit`, baseada na `origin/main` em `dec31ff`.
+O PR #29 consolida a navegação administrativa e organiza a interface do Corretor 2.0. A revisão final foi feita em worktree limpo, a partir da branch remota `codex/salta-admin-ux-audit` (`bf460bf`), incorporando `main` em `a93089e` por merge, sem reescrever o histórico.
 
-Não foram alterados Workers, D1, notas, frequência, rotinas de autenticação no servidor, o leitor OMR ou os dados acadêmicos. O fluxo de autenticação do professor foi preservado; na Visão Geral, a classe visual da área administrativa só é ativada depois da resposta de sessão autenticada.
+O hotfix do Diário do PR #30 foi preservado integralmente. O Diário, os diretórios `stats-worker`, `auth-worker` e `corretor/v2/omr` são idênticos à `main` atualizada. A câmera, a captura e os algoritmos de leitura OMR não foram modificados. Não houve acesso ou escrita em dados acadêmicos reais, D1 ou configurações Cloudflare. O fluxo de autenticação por sessão e cookies foi mantido.
 
-## Implementado
+## Padronização implementada
 
-- `plataforma/admin-shell.mjs` centraliza cabeçalho, menu lateral, estado ativo, retorno à Visão Geral, botão responsivo, backdrop e fechamento por `Escape`.
-- O shell foi integrado à Visão Geral, relatórios acadêmicos, Corretor, avisos, fechamento bimestral, Festival da Consciência Negra e administração da Mostra Cultural.
-- O Corretor deixou de repetir a navegação administrativa e passou a usar o mesmo shell. O menu interno agora contém quatro etapas de trabalho. Painéis que eram apenas placeholders de persistência, análises ou revisões foram removidos da navegação visível; as operações existentes de captura, leitura, conferência e exportação foram preservadas.
-- O formulário do gerador foi organizado em dados da avaliação, questões e apresentação. Identificação por código, dimensões do quadro incorporado e posição C-D-U aparecem conforme o formato escolhido.
-- Removi `assessmentValue`, que não era lido pelo código nem participava do gabarito ou do cálculo de nota. O valor da correção continua no controle ativo da área de leitura.
-- Título, componente, turma e data da avaliação são definidos uma vez; o modal do cabeçalho mantém instituição, professor, série, ano letivo e elementos visuais.
-- PDF/impressão passou a ser a ação principal. SVG, PNG e JPG ficam em “Outros formatos”; JSON e mapas de layout ficam em “Arquivos técnicos”; impressão em lote fica recolhida separadamente. O seletor de página única não aparece, mas seu elemento oculto foi mantido por compatibilidade com a leitura existente.
-- As cores e o layout dos cards passaram a seguir os componentes `.module-card` da Área do Professor. Corrigi a regra global de botões SALTA que originalmente pintava os cards inteiros de roxo.
-- O contraste de foco, alvos de navegação e textos da navegação compartilhada foram ajustados. Os links do Corretor usam um identificador de cache novo para servir o HTML/CSS revisados.
+- `plataforma/admin-shell.mjs` centraliza cabeçalho, oito links administrativos, grupos, estado ativo, menu responsivo, backdrop e fechamento por Escape.
+- O shell atende Visão Geral, relatórios acadêmicos, Corretor, avisos, fechamento bimestral, Festival e administração da Mostra Cultural.
+- O Corretor usa quatro etapas: Visão geral, Criar avaliação, Corrigir cartões e Cartão-resposta. Placeholders sem função foram removidos da navegação visível.
+- O formulário agrupa dados da avaliação, questões e apresentação. Dimensões incorporadas, identificação por código e posição C-D-U aparecem conforme a seleção.
+- Os dados da avaliação são definidos uma vez. O modal mantém instituição, professor, série, ano e elementos visuais.
+- PDF/impressão é a ação principal; outros formatos, arquivos técnicos e impressão em lote ficam em grupos recolhíveis. O seletor de página única foi mantido oculto por compatibilidade.
+- Cards, cores, botões, foco e navegação seguem o tema compartilhado da Área do Professor. Os alvos do menu têm ao menos 44 px de altura.
 
-## Páginas consideradas
+## Falhas corrigidas na revisão final
 
-Foram auditados: `plataforma/professor.html`, `plataforma/corretor-v2.html`, `plataforma/estatistica.html`, `plataforma/estatistica-individual.html`, `plataforma/estatistica-turma.html`, `plataforma/estatistica-acessos.html`, `plataforma/mensagens.html`, `plataforma/fechamento-bimestre.html`, `plataforma/festival-consciencia-negra-admin.html` e `mostra-cultural.html`.
+1. O link “Plataforma SALTA” apontava um nível acima do correto. Agora retorna a `plataforma/` tanto nas páginas internas quanto na Mostra, respeitando o prefixo do GitHub Pages.
+2. O cabeçalho público da Mostra havia sido removido. Foi restaurado, mantendo a navegação compartilhada no modo administrativo.
+3. O botão `logoutButton` da Central de avisos havia sido removido, mas seu listener permanecia e interrompia a inicialização. O botão Sair foi recolocado no título da página; o handler de autenticação original não foi alterado.
+4. Uma regra CSS mais específica mantinha a largura de desktop em quatro páginas no celular, reduzindo o conteúdo a 138 px num viewport de 390 px. A regra responsiva agora prevalece e usa toda a largura.
+5. Cabeçalho e barra lateral receberam `box-sizing` consistente, e a Visão Geral usa as mesmas dimensões do shell.
+6. Escape devolve o foco ao botão do menu somente quando o menu estava aberto, preservando o comportamento dos outros controles.
 
-### Bloqueio do Diário
+## Diário e bloqueio anterior
 
-`plataforma/diario-teste.html` foi identificado como arquivo binário (“data”), não HTML textual. A leitura não permite delimitar o shell, confirmar seu fluxo ou aplicar a navegação sem reconstruir/substituir conteúdo. Como esta auditoria proíbe mudanças no Diário e nos dados, ele não foi editado. A rota do Diário permanece no menu compartilhado; é necessário recuperar uma versão textual íntegra antes de padronizar essa página.
+O diagnóstico inicial encontrou `plataforma/diario-teste.html` corrompido e binário. O PR #30 restaurou o HTML e adicionou a CI de integridade. Após incorporar `a93089e`, o teste de períodos e do adaptador HTTP passou. Nenhuma correção adicional no Diário foi necessária ou aplicada. Sua navegação interna permanece fora do escopo deste PR; o link para ele está preservado no menu compartilhado.
 
-## Validação realizada
+## Validação final antes do merge
 
-- 38 testes combinados de layout/OMR e do shell passaram (`node --test plataforma/tests/*.test.mjs corretor/v2/tests/*.test.mjs`).
-- `node --check` passou no componente do shell e em todos os módulos OMR.
-- 11 scripts inline das páginas administrativas analisadas passaram em `node --check`.
-- Verificações estáticas confirmaram IDs únicos na página do Corretor, ausência de referências `$()` sem elemento e uma ocorrência de cada controle de impressão.
-- Navegador local (Chrome): menu administrativo renderizado na Mostra em modo administrativo; área restrita continuou bloqueada quando a sessão local não estava disponível.
-- Para avaliar a tela do Corretor visualmente, foi usado um fixture local temporário que substituiu somente o gate de sessão no arquivo de `/tmp`; nenhum arquivo de autenticação do repositório ou serviço foi modificado. Foram renderizados o dashboard em 1440 px e 390 px, e a tela de criação em 1280 px. No viewport mobile emulado por CDP, a largura do documento foi 390 px, sem overflow horizontal. Cards brancos, abas neutras, menu hambúrguer e uma coluna foram confirmados.
-- No mesmo navegador local, a tela de criação confirmou que as dimensões incorporadas ficam ocultas inicialmente e aparecem ao selecionar quadro incorporado; o controle C-D-U aparece ao selecionar esse formato.
-- `git diff --check` passou.
+- 51 testes aprovados: `node --test corretor/v2/tests/*.test.mjs stats-worker/tests/*.test.mjs plataforma/tests/*.test.mjs`.
+- Sintaxe do shell, de todos os módulos OMR e dos 11 scripts inline em dez páginas aprovada.
+- `git diff --check` aprovado; comparação com a main confirma ausência de mudanças no Diário, Workers e módulos OMR.
+- Chrome em 1440 × 900 e 390 × 900: dez páginas administrativas e a Mostra pública, totalizando 22 combinações. Sem erros JavaScript ou overflow horizontal do documento. Todas as páginas administrativas têm oito links, um estado ativo e retorno correto à plataforma.
+- Menu móvel verificado nas dez páginas administrativas: abertura, `aria-expanded`, fechamento por Escape e retorno do foco. A largura de conteúdo móvel é 390 px; a Mostra pública mantém margens e largura de 364 px.
+- Corretor: campos condicionais de quadro incorporado e C-D-U, navegação entre etapas e geração de uma prévia SVG verificados nas duas larguras.
+- Sete páginas verificadas com resposta de sessão não autenticada: login/redirecionamento ou painel bloqueado; nenhum painel acadêmico liberado.
+- A CI de integração foi ampliada para executar também os testes do Diário e conferir a sintaxe de todas as páginas revisadas.
 
-### Teste amplo do Worker
+As verificações visuais e de sessão usam contextos de navegador isolados com respostas de rede simuladas e dados vazios. Os arquivos publicados mantêm o gate original. Login com credenciais reais e operações acadêmicas de escrita não foram exercitados. A auditoria não substitui uma avaliação formal com leitor de tela.
 
-O comando `node --test corretor/v2/tests/*.test.mjs stats-worker/tests/*.test.mjs plataforma/tests/*.test.mjs` terminou com 38 testes aprovados e 1 falha preexistente em `stats-worker/tests/diario-periods.test.mjs`: o teste não consegue extrair o adaptador HTTP da interface do Diário. A causa é a mesma limitação do arquivo binário acima. Não tentei contornar isso alterando o Diário ou o Worker.
+## Publicação e reversão
 
-## Limites e próximos passos
+A publicação desta revisão está autorizada pelo responsável. O terminal não possui autenticação para push; a atualização é feita pelo conector GitHub autorizado, com conferência do SHA esperado da branch e sem force push. O merge só deve ocorrer após CI verde. Depois, deve ser conferida a execução do GitHub Pages e a correspondência dos arquivos servidos com o commit integrado.
 
-- Esta branch não foi publicada, mesclada nem implantada; não há CI remoto a reportar.
-- O login real não foi exercitado por este preview local. Nenhum token, senha ou sessão foi gravado ou alterado.
-- O Diario aguarda recuperação do HTML textual. A Mostra foi inspecionada com backend local indisponível, de modo que os dados e ações administrativas continuaram protegidos.
-- A auditoria não é certificação de acessibilidade. Foram verificados rótulos, foco visível, estado ativo, menu por teclado e largura mobile; uma avaliação formal com leitor de tela ainda é necessária.
-
-## Reversão
-
-Como as alterações estão isoladas em `codex/salta-admin-ux-audit`, a reversão é simplesmente fechar ou excluir essa branch/worktree após revisão. Nenhum deploy, merge ou alteração remota foi realizado.
+Se for necessária reversão após publicação, reverta o merge deste PR, preservando o hotfix `a93089e` e os dados existentes.

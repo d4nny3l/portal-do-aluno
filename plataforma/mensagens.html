@@ -91,7 +91,7 @@ footer .wrap{display:flex;justify-content:space-between;gap:12px}
 <main class="wrap">
  <section id="lockedPanel" class="locked" hidden>Esta central exige uma sessão válida de professor. <a href="./professor.html">Entre pela Área do Professor</a> e abra a central novamente.</section>
  <div id="app" hidden>
-  <div class="page-head"><div><div class="eyebrow">AMBIENTE DO PROFESSOR</div><h1>Central de avisos</h1><p class="lead">Publique comunicados para todas as turmas, para uma turma específica ou para alunos selecionados. O aviso aparece na Área do Aluno.</p></div></div>
+  <div class="page-head"><div><div class="eyebrow">AMBIENTE DO PROFESSOR</div><h1>Central de avisos</h1><p class="lead">Publique comunicados para todas as turmas, para uma turma específica ou para alunos selecionados. O aviso aparece na Área do Aluno.</p></div><button class="refresh" id="logoutButton" type="button">Sair</button></div>
    <div class="status" id="globalStatus" role="status" aria-live="polite"></div>
    <section class="stats"><article class="stat"><label>Avisos publicados</label><strong id="statAnnouncements">0</strong><small>Histórico recente</small></article><article class="stat"><label>Avisos globais</label><strong id="statGlobal">0</strong><small>Visíveis para todos</small></article><article class="stat"><label>Avisos direcionados</label><strong id="statIndividual">0</strong><small>Para alunos ou turmas</small></article></section>
    <section class="grid"><article class="card"><div class="card-head"><h2>Publicar um aviso</h2><p>Escolha o público do comunicado. Avisos de turma aparecem somente aos alunos daquela turma.</p></div><div class="card-body"><form id="announcementForm">

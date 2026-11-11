@@ -35,12 +35,23 @@
 
 body.professor-layout,
 body.admin-mode {
+  margin: 0;
   min-height: 100vh;
   color: var(--teacher-ink);
   background: radial-gradient(circle at 50% -5%,#fff 0,#f4f5fb 58%,#eeeffb 100%);
   font-family: Inter,-apple-system,BlinkMacSystemFont,"Segoe UI",Arial,sans-serif;
   -webkit-font-smoothing: antialiased;
 }
+body.professor-layout {
+  --sidebar-width: var(--teacher-sidebar-width);
+  --header-height: var(--teacher-header-height);
+}
+.teacher-shell-topbar,
+.teacher-shell-topbar *,
+.teacher-shell-sidebar,
+.teacher-shell-sidebar *,
+.teacher-shell-overlay,
+.module-card { box-sizing: border-box; }
 body.professor-layout .app-shell:not([hidden]) { display: contents; }
 body.professor-layout::before,
 body.admin-mode::before {
@@ -308,6 +319,9 @@ body.admin-mode :is(table td,table th) { border-color: #ececf6; }
   body.professor-layout.teacher-nav-open .teacher-shell-overlay,
   body.admin-mode.teacher-nav-open .teacher-shell-overlay { display: block; }
   body.professor-layout > main,
+  body.professor-layout > main.wrap,
+  body.admin-mode > main.shell,
+  body.admin-mode > main.wrap,
   body.admin-mode > main {
     width: 100% !important;
     max-width: none !important;

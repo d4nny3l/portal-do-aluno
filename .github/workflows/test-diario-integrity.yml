@@ -1,0 +1,39 @@
+name: SALTA Diário de Classe integrity
+on:
+  pull_request:
+    paths:
+      - "plataforma/diario-teste.html"
+      - "stats-worker/tests/diario-periods.test.mjs"
+      - ".github/workflows/test-diario-integrity.yml"
+  push:
+    branches: [main]
+    paths:
+      - "plataforma/diario-teste.html"
+      - "stats-worker/tests/diario-periods.test.mjs"
+      - ".github/workflows/test-diario-integrity.yml"
+permissions:
+  contents: read
+jobs:
+  diary-integrity:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+      - name: Validate Diário HTML is intact UTF-8
+        run: |
+          node --input-type=module <<'NODE'
+          import { readFileSync } from "node:fs";
+          import assert from "node:assert/strict";
+          const bytes = readFileSync("plataforma/diario-teste.html");
+          const page = new TextDecoder("utf-8", { fatal: true }).decode(bytes);
+          assert.match(page, /^\s*<!doctype html>/i);
+          assert.match(page, /<html\b[^>]*lang=["']pt-BR["']/i);
+          assert.ok(page.includes("async function api("), "Adaptador HTTP do Diário ausente");
+          assert.ok(page.includes("\nconst WEEKDAY_NAMES="), "Marcador de calendário ausente");
+          assert.match(page, /<\/html>\s*$/i);
+          console.log("Diário UTF-8 e estrutura HTML: OK");
+          NODE
+      - name: Run Diário period and frontend API tests
+        run: node --test stats-worker/tests/diario-periods.test.mjs

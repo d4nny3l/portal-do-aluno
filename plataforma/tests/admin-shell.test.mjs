@@ -52,3 +52,25 @@ test("formulário do Corretor esconde controles que não se aplicam ao modo esco
   assert.doesNotMatch(source, /data-view="(?:minhas|revisoes|modelos|cabecalhos|analise)"/);
   assert.match(source, /aria-label="Exportações técnicas avançadas"/);
 });
+
+
+test("retorno à plataforma preserva o subdiretório do GitHub Pages nas duas profundidades", async () => {
+  assert.match(renderAdminShell(), /class="teacher-shell-home" href="\.\/"/);
+  globalThis.location = { pathname: "/portal-do-aluno/mostra-cultural.html", search: "?admin=1" };
+  try {
+    const rootShell = await import("../admin-shell.mjs?root-route");
+    const markup = rootShell.renderAdminShell();
+    assert.match(markup, /class="teacher-shell-home" href="\.\/plataforma\/"/);
+    assert.match(markup, /href="\.\/plataforma\/diario-teste\.html"/);
+    assert.equal((markup.match(/aria-current="page"/g) || []).length, 1);
+  } finally {
+    delete globalThis.location;
+  }
+});
+
+test("integração preserva a saída da Central de avisos e o retorno público da Mostra", async () => {
+  const notices = await readFile(new URL("../mensagens.html", import.meta.url), "utf8");
+  assert.equal((notices.match(/id="logoutButton"/g) || []).length, 1);
+  const show = await readFile(new URL("../../mostra-cultural.html", import.meta.url), "utf8");
+  assert.match(show, /<header class="topbar">[\s\S]*?href="\.\/plataforma\/"[\s\S]*?Plataforma principal[\s\S]*?<\/header>/);
+});

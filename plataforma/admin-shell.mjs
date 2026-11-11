@@ -3,7 +3,7 @@ const currentSearch = () => typeof location === "undefined" ? "" : location.sear
 const ROOT = "./";
 const ROOT_MOSTRA = currentPath().endsWith("/mostra-cultural.html");
 const PREFIX = ROOT_MOSTRA ? "./plataforma/" : ROOT;
-const PLATFORM_HOME = ROOT_MOSTRA ? "./" : "../";
+const PLATFORM_HOME = ROOT_MOSTRA ? "./plataforma/" : "./";
 
 export const ADMIN_MODULES = Object.freeze([
   { id: "home", label: "Visão geral", href: `${PREFIX}professor.html#inicio`, group: "Menu principal", icon: '<rect x="3" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="3" width="7" height="7" rx="1.5"/><rect x="3" y="14" width="7" height="7" rx="1.5"/><rect x="14" y="14" width="7" height="7" rx="1.5"/>' },
@@ -55,7 +55,7 @@ export function mountAdminShell(documentRef = document) {
   });
   overlay?.addEventListener("click", () => close({ returnFocus: true }));
   mount.querySelectorAll(".teacher-shell-sidebar a").forEach(link => link.addEventListener("click", () => close()));
-  documentRef.addEventListener("keydown", event => { if (event.key === "Escape") close({ returnFocus: true }); });
+  documentRef.addEventListener("keydown", event => { if (event.key === "Escape" && documentRef.body.classList.contains("teacher-nav-open")) close({ returnFocus: true }); });
   return true;
 }
 

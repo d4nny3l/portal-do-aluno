@@ -28,7 +28,7 @@ jobs:
         with:
           node-version: 24
       - run: node --test corretor/v2/tests/*.test.mjs
-      - run: node --test plataforma/tests/*.test.mjs
+      - run: node --test plataforma/tests/*.test.mjs stats-worker/tests/*.test.mjs
       - name: Check OMR modules and inline scripts
         run: |
           node --check plataforma/admin-shell.mjs
@@ -36,11 +36,16 @@ jobs:
           python3 - <<'PY'
           import re, subprocess
           from pathlib import Path
-          html = Path("plataforma/corretor-v2.html").read_text(encoding="utf-8")
-          scripts = [s for s in re.findall(r"<script(?:\s[^>]*)?>([\s\S]*?)</script>", html, re.I) if s.strip()]
-          for i, script in enumerate(scripts, 1):
-              result = subprocess.run(["node", "--check", "--input-type=module", "-"], input=script, text=True, capture_output=True)
-              if result.returncode: raise SystemExit(f"Script inline {i}: {result.stderr}")
-          print(f"{len(scripts)} scripts inline: sintaxe OK")
+          pages = ["professor", "corretor-v2", "estatistica", "estatistica-individual", "estatistica-turma", "estatistica-acessos", "mensagens", "fechamento-bimestre", "festival-consciencia-negra-admin"]
+          files = [Path(f"plataforma/{page}.html") for page in pages] + [Path("mostra-cultural.html")]
+          count = 0
+          for file in files:
+              html = file.read_text(encoding="utf-8")
+              scripts = [s for s in re.findall(r"<script(?:\s[^>]*)?>([\s\S]*?)</script>", html, re.I) if s.strip()]
+              for i, script in enumerate(scripts, 1):
+                  result = subprocess.run(["node", "--check", "--input-type=module", "-"], input=script, text=True, capture_output=True)
+                  if result.returncode: raise SystemExit(f"{file}, script inline {i}: {result.stderr}")
+                  count += 1
+          print(f"{len(files)} páginas, {count} scripts inline: sintaxe OK")
           PY
       - run: git diff --check HEAD^ HEAD
