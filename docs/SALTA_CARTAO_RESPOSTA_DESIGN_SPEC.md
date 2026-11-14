@@ -1,8 +1,8 @@
 # SALTA — Dossiê visual definitivo de referência do cartão-resposta
 
-**Versão:** 1.0 — 14/11/2026  
-**Status:** requisitos de produto aprovados; proposta geométrica e implementação ainda sujeitas a homologação OMR.  
-**Escopo:** gerador de cartão-resposta SALTA, impressão e legibilidade óptica (não inclui redesign da prova de questões).  
+**Versão:** 1.0 — 14/11/2026
+**Status:** requisitos de produto aprovados; proposta geométrica e implementação ainda sujeitas a homologação OMR.
+**Escopo:** gerador de cartão-resposta SALTA, impressão e legibilidade óptica (não inclui redesign da prova de questões).
 **Fontes analisadas:** `TESTE.pdf` (cartão A4 produzido pela SALTA, 1 página); `2_SEM_EJA_MEDIO_OLAVO_BILAC_1BIM_2025_MATEMATICA.pdf` (referência institucional, especialmente página 1; as páginas 2–4 são o caderno de questões); código do repositório `d4nny3l/portal-do-aluno` na `main` `4411dcf` e PR #31 de limpeza do Corretor. As fontes PDF são **referências visuais** e não devem ser inseridas integralmente em repositório público sem necessidade.
 
 ## 1. Decisão central de design
@@ -161,8 +161,8 @@ Sugestão para o cabeçalho: reservar integralmente a zona óptica direita, proj
 
 ## 7. Ordem de execução e entregáveis do Codex
 
-**Etapa A — diagnóstico e protótipo:** auditar o código do PR #31, identificar bloqueios geométricos, propor o cabeçalho e as molduras com wireframe/previews de 20 questões; apresentar a proposta visual e limitações técnicas.  
-**Etapa B — implementação:** aplicar CV-01 a CV-09, preservar os contratos do leitor, ampliar testes de colisão, verificação visual e regressão.  
+**Etapa A — diagnóstico e protótipo:** auditar o código do PR #31, identificar bloqueios geométricos, propor o cabeçalho e as molduras com wireframe/previews de 20 questões; apresentar a proposta visual e limitações técnicas.
+**Etapa B — implementação:** aplicar CV-01 a CV-09, preservar os contratos do leitor, ampliar testes de colisão, verificação visual e regressão.
 **Etapa C — homologação e PR:** gerar PDFs e SVGs sintéticos para 20/50/100 questões, relatar CI, checklist físico pendente e criar/atualizar PR em draft para revisão. Não integrar à `main` sem autorização.
 
 **Arquivos de entrega esperados**: relatório técnico de modificações, PDFs comparativos (com dados fictícios), imagens das variantes, logs dos testes, incompatibilidades potenciais, checklist físico e link do PR. Não publicar como “homologado” sem fotografias/testes reais.
