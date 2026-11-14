@@ -30,7 +30,7 @@ Data impressa em ISO (`2026-12-01`) em vez de formato brasileiro (`01/12/2026`);
 Melhorar distância entre logo, título da prova e campos. O rótulo de seção está apenas na primeira coluna. Avaliar título por seção e cabeçalho sem duplicação. Evitar fontes abaixo da legibilidade impressa e truncamentos.
 
 ### C-05 — Identificação e impressão — segurança geométrica
-Preservar quatro marcadores fiduciais nos cantos, margens, A4, escala 100% e padrão de sete dígitos. O rodapé de modelo/revisão pode permanecer para rastreabilidade mesmo que discreto. Não prometer leitura estável sem ensaio com lotes físicos.
+Preservar quatro marcadores fiduciais nos cantos, margens, A4, escala 100% e padrão de sete dígitos. DECISÃO NOVA (14/11/2026): remover totalmente o rodapé técnico visível de modelo/revisão/hash, mantendo a rastreabilidade exclusivamente na camada interna do manifesto/JSON, sem imprimir o texto. Não prometer leitura estável sem ensaio com lotes físicos.
 
 ## Critérios de aceite da revisão do cartão
 
@@ -41,6 +41,9 @@ Preservar quatro marcadores fiduciais nos cantos, margens, A4, escala 100% e pad
 5. PDF, SVG, PNG e JPG coerentes; sem “alinhamento correto” só na prévia do navegador.
 6. Alterar layout somente com atualização de manifesto geométrico/reader quando necessário, teste de regressão e prova física.
 7. Nenhuma mudança publicada sem PR, CI e autorização. Registrar escopo visual e motor preservado.
+
+## Decisões aprovadas em 14/11/2026
+Consultar a especificação atual e prevalente em `docs/SALTA_CARTAO_RESPOSTA_DESIGN_SPEC.md`: todos os títulos centrais, cabeçalho institucional com zona óptica isolada, moldura fechada para cada grupo de questões, layout original SALTA e rodapé técnico ausente em todos os formatos.
 
 ## Pendências de decisão do responsável
 As observações C-01 a C-05 são propostas técnicas derivadas da amostra. Antes de mudar desenho do cartão, coletar preferências específicas de aparência e registrar aprovação de posições/tamanhos finais. A limpeza dos textos de interface é separada do projeto gráfico do PDF.
