@@ -1,5 +1,5 @@
 import { PAGE_HEIGHT_MM, PAGE_WIDTH_MM } from "./template.mjs?v=20261110c";
-import { createCardManifest, renderTemplateSvg, DEFAULT_CARD_HEADER } from "./render.mjs?v=20261110c";
+import { createCardManifest, renderTemplateSvg, DEFAULT_CARD_HEADER } from "./render.mjs?v=20261114v1";
 
 export const EXPORT_VERSION = "salta-omr-export-v1";
 
@@ -147,7 +147,7 @@ export function buildPrintDocument(template, { header = DEFAULT_CARD_HEADER, stu
     const svg = renderTemplateSvg(template, { header, manifest: studentManifest });
     return `<section class="print-page" data-card="${index + 1}">${svg}</section>`;
   }).join("\n");
-  return `<!doctype html><html lang="pt-BR"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Cartões de resposta</title><style>@page{size:A4 portrait;margin:0}html,body{margin:0;padding:0;background:#fff}.print-page{width:210mm;height:297mm;display:flex;align-items:center;justify-content:center;page-break-after:always;break-after:page;overflow:hidden}.print-page:last-child{page-break-after:auto;break-after:auto}.print-page svg{display:block;width:auto;height:auto;max-width:210mm;max-height:297mm}@media screen{body{background:#eee}.print-page{margin:12px auto;background:#fff;box-shadow:0 2px 14px #0002}}@media print{.print-page{margin:0;box-shadow:none}}</style><body>${pages}<script>addEventListener('load',()=>setTimeout(()=>print(),200))</script></body></html>`;
+  return `<!doctype html><html lang="pt-BR"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Cartões de resposta</title><style>@page{size:A4 portrait;margin:0}html,body{margin:0;padding:0;background:#fff}.print-page{width:210mm;height:297mm;display:flex;align-items:center;justify-content:center;page-break-after:always;break-after:page;overflow:hidden}.print-page:last-of-type{page-break-after:auto;break-after:auto}.print-page svg{display:block;width:auto;height:auto;max-width:210mm;max-height:297mm}@media screen{body{background:#eee}.print-page{margin:12px auto;background:#fff;box-shadow:0 2px 14px #0002}}@media print{.print-page{margin:0;box-shadow:none}}</style><body>${pages}<script>addEventListener('load',()=>setTimeout(()=>print(),200))</script></body></html>`;
 }
 
 export function buildManifestJson(template, { header = DEFAULT_CARD_HEADER, manifest: suppliedManifest = null } = {}) {

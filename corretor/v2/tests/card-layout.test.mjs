@@ -87,7 +87,7 @@ test("embedded card SVG preserves its smaller physical size and prints centered 
   const template = card(10, "A-E", { mode: "embedded", embeddedSize: { widthMm: 100, heightMm: 180 }, identityMode: "manual" });
   const svg = renderTemplateSvg(template);
   assert.match(svg, /width="100mm" height="180mm" viewBox="0 0 100 180"/);
-  assert.match(svg, /<line x1="19" y1="33\.3" x2="93"/);
+  assert.match(svg, /data-header-field="Nome"/);
   const printHtml = buildPrintDocument(template);
   assert.match(printHtml, /width:210mm;height:297mm;display:flex;align-items:center;justify-content:center/);
   assert.match(printHtml, /width="100mm" height="180mm"/);
@@ -176,7 +176,7 @@ test("layout validator detects forced collisions and does not repair them silent
   assert.ok(result.errors.some(error => error.includes("Colisão")));
 });
 
-test("section rules, questions and footer stay inside the black border with a physical gap", () => {
+test("section rules and questions stay inside the black border without a technical footer", () => {
   for (const template of [card(30, "A-E"), card(2, "CDU", { mode: "embedded", embeddedSize: { widthMm: 90, heightMm: 180 }, identityMode: "manual" })]) {
     const manifest = createLayoutManifest(template);
     const border = manifest.technicalRegions.border;
@@ -190,8 +190,7 @@ test("section rules, questions and footer stay inside the black border with a ph
     }
     const svg = renderTemplateSvg(template);
     assert.match(svg, /class="omr-card-border"/);
-    const footerY = Number(svg.match(/<text x="[^"]+" y="([^"]+)"[^>]*>MODELO/)?.[1]);
-    assert.ok(footerY < border.y + border.height);
+    assert.doesNotMatch(svg, />MODELO[^<]*<\/text>/);
   }
 });
 
@@ -361,7 +360,8 @@ test("browser modules pin generator assets and keep the legacy route intact", as
   assert.match(teacherSource, /corretor-v2\.html\?v=20261110ux1/g);
   assert.match(teacherSource, /professor-theme\.css\?v=20261110ux1/);
   assert.match(pageSource, /professor-theme\.css\?v=20261110ux1/);
-  assert.match(pageSource, /id="dashboard"/);
+  assert.doesNotMatch(pageSource, /id="dashboard"/);
+  assert.match(pageSource, /class="corretor-card module-view active" id="criar"/);
   assert.match(pageSource, /data-view="criar"/);
   assert.doesNotMatch(pageSource, /id="modelos"|id="minhas"|id="revisoes"|id="analise"/);
   assert.match(pageSource, /id="manualAlign"/);
@@ -374,8 +374,8 @@ test("browser modules pin generator assets and keep the legacy route intact", as
   assert.match(pageSource, /selectStudentPages\(ordered,\$\('batchPages'\)\.value\)/);
   assert.doesNotMatch(pageSource, /onclick="window\.print\(\)"/);
   assert.match(legacyRoute, /location\.replace\('\.\.\/plataforma\/corretor-v2\.html/);
-  assert.match(pageSource, /class="modules-grid"/);
-  assert.equal((pageSource.match(/class="module-card secondary" data-go=/g) || []).length, 3);
+  assert.doesNotMatch(pageSource, /class="modules-grid"/);
+  assert.equal((pageSource.match(/class="module-card secondary" data-go=/g) || []).length, 0);
   assert.doesNotMatch(pageSource, /corretor-grid|corretor-link/);
   assert.ok(themeSource.includes(".modules-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:14px}"));
   assert.ok(corretorCss.includes("@media(max-width:760px)"));
