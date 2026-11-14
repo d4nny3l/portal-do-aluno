@@ -1,140 +1,54 @@
-import { createAssessmentDefinition } from "./assessment.mjs?v=20261110c";
-import { createLayoutManifest, PAGE_HEIGHT_MM, PAGE_WIDTH_MM } from "./layout.mjs?v=20261110c";
-import { createTemplate } from "./template.mjs?v=20261110c";
-import { ARTWORK_VERSION, headerArtwork, sectionFrames } from "./artwork.mjs?v=20261114v1";
-
-const esc = value => String(value ?? "").replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&apos;" }[c]));
-const imageHref = value => /^data:image\/(?:png|jpeg|webp);base64,[A-Za-z0-9+/=]{1,2800000}$/i.test(value || "") ? value : "";
-
-export const DEFAULT_CARD_HEADER = Object.freeze({
-  layout: "text", institution: "", teacher: "", subject: "", className: "", grade: "", date: "", schoolYear: "",
-  title: "CARTÃO DE RESPOSTAS", logo: "", secondaryLogo: "", showStudentCode: true,
-  visible: Object.freeze({ institution: true, teacher: false, subject: false, className: false, grade: false, date: false, schoolYear: false, title: true, studentName: true }),
-  customFields: Object.freeze([]),
-});
-
-function drawText(x, y, value, { size = 3, weight = 400, anchor = "start", maxWidth } = {}) {
-  if (!String(value ?? "").trim()) return "";
-  const estimate = [...String(value)].length * size * 0.56;
-  const fit = Number.isFinite(maxWidth) && estimate > maxWidth ? ` textLength="${maxWidth}" lengthAdjust="spacingAndGlyphs"` : "";
-  return `<text x="${x}" y="${y}" text-anchor="${anchor}" font-family="Arial,sans-serif" font-size="${size}" font-weight="${weight}" fill="#000"${fit}>${esc(value)}</text>`;
+import { createLayoutManifest, validateLayoutManifest, PAGE_WIDTH_MM, PAGE_HEIGHT_MM } from './layout.mjs?v=20261114v2';
+import { createTemplate } from './template.mjs?v=20261114v2';
+import { createCardManifest as legacyManifest, renderTemplateSvg as legacyRender, renderHeaderPreviewSvg as legacyHeader, DEFAULT_CARD_HEADER as LEGACY_HEADER } from './render-v1.mjs?v=20261114v2';
+import { wrapText } from './artwork.mjs?v=20261114v1';
+export { createAssessmentDefinition } from './assessment.mjs?v=20261114v2';
+export { createLayoutManifest };
+export const DEFAULT_CARD_HEADER=Object.freeze({...LEGACY_HEADER,showInstructions:false,instructions:'',customFields:Object.freeze([])});
+const esc=value=>String(value??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&apos;'}[c]));
+const text=(x,y,value,size=3,weight=400,anchor='start')=>value?`<text x="${x}" y="${y}" text-anchor="${anchor}" font-family="Arial,sans-serif" font-size="${size}" font-weight="${weight}" fill="#000">${esc(value)}</text>`:'';
+const frame=(f,cls)=>`<rect class="${cls}" x="${f.x}" y="${f.y}" width="${f.width}" height="${f.height}" rx="1" ry="1" fill="none" stroke="#000" stroke-width="0.25"/>`;
+export function createCardManifest(template,header=null){
+ if(template.layoutVersion==='v1'||template.version==='salta-omr-a4-v7')return legacyManifest(template,header||LEGACY_HEADER);
+ if(header===DEFAULT_CARD_HEADER)header=null;
+ const h={...DEFAULT_CARD_HEADER,...template.metadata,institution:template.schoolName,title:template.title,...(header||{})};
+ const mode=template.identity.mode==='none'?'none':h.showStudentCode===false&&template.identity.mode==='seven-digit-code'?'manual':template.identity.mode;
+ const source={...template,title:h.title||template.title,schoolName:h.institution||'',metadata:{...template.metadata,...h},identity:{...template.identity,mode,showName:mode!=='none'&&(h.visible?.studentName??template.identity.showName)}};
+ return createLayoutManifest(source);
 }
-
-function drawHeader(header, manifest) {
-  const h = { ...DEFAULT_CARD_HEADER, ...manifest.header, ...header };
-  // Invalid remote logos remain excluded; a configured valid logo is never
-  // silently removed just because a different header style was selected.
-  h.logo = imageHref(h.logo); h.secondaryLogo = imageHref(h.secondaryLogo);
-  const artwork = headerArtwork(manifest, h);
-  const parts = ['<defs><filter id="salta-logo-monochrome"><feColorMatrix type="saturate" values="0"/><feComponentTransfer><feFuncR type="discrete" tableValues="0 1"/><feFuncG type="discrete" tableValues="0 1"/><feFuncB type="discrete" tableValues="0 1"/></feComponentTransfer></filter></defs>'];
-  for (const logo of artwork.logos) parts.push(`<image href="${logo.href}" x="${logo.x}" y="${logo.y}" width="${logo.width}" height="${logo.height}" preserveAspectRatio="xMidYMid meet" filter="url(#salta-logo-monochrome)"/>`);
-  for (const rule of artwork.rules) parts.push(`<line x1="${rule.x1}" y1="${rule.y1}" x2="${rule.x2}" y2="${rule.y2}" stroke="#000" stroke-width="0.2"/>`);
-  for (const text of artwork.texts) parts.push(`<g data-header-field="${esc(text.id)}">${drawText(text.textX, text.baseline, text.text, { size: text.size, weight: text.weight, anchor: text.anchor })}</g>`);
-  return parts.join("");
+function drawQuestion(q){
+ const parts=[];const cy=q.type==='CDU'?q.y+3.3:q.y+q.height/2;
+ parts.push(text(q.x+5.8,cy+.85,String(q.number).padStart(2,'0'),2.6,600,'end'));
+ for(const box of q.responseBoxes||[]){parts.push(text(box.centerX,box.y-.7,box.place,1.9,500,'middle'));parts.push(`<rect class="omr-cdu-response-box" x="${box.x}" y="${box.y}" width="${box.width}" height="${box.height}" rx="1" ry="1" fill="#fff" stroke="#000" stroke-width="0.25"/>`);}
+ for(const b of q.bubbles){parts.push(`<circle class="omr-answer-bubble" data-question-id="${esc(q.questionId)}" data-question="${q.number}" ${q.type==='CDU'?`data-place="${b.place}" data-digit="${b.digit}"`:`data-choice="${b.choice}"`} cx="${b.x}" cy="${b.y}" r="${b.radiusMm}" fill="#fff" stroke="#000" stroke-width="0.25"/>`);parts.push(text(b.x,b.y+.72,q.type==='CDU'?String(b.digit):b.choice,q.type==='CDU'?1.85:2.2,500,'middle'));}
+ return parts.join('');
 }
-
-function drawIdentity(manifest) {
-  const items = [];
-  if (manifest.identity.mode === "seven-digit-code") {
-    const grid = manifest.identityCode;
-    for (const column of grid.columns) {
-      items.push(`<rect x="${column.box.x}" y="${column.box.y}" width="${column.box.width}" height="${column.box.height}" fill="#fff" stroke="#000" stroke-width="0.25"/>`);
-      items.push(drawText(column.centerX, column.box.y + 3.05, column.printedDigit, { size: 2.8, weight: 700, anchor: "middle" }));
-      for (const bubble of manifest.identityBubbles.filter(item => item.column === column.index + 1)) {
-        items.push(`<circle class="omr-identity-bubble" data-column="${bubble.column}" data-digit="${bubble.digit}" cx="${bubble.x}" cy="${bubble.y}" r="${bubble.radiusMm}" fill="${bubble.filled ? "#000" : "#fff"}" stroke="#000" stroke-width="0.25"/>`);
-        if (!bubble.filled) items.push(drawText(bubble.x, bubble.y + 0.68, String(bubble.digit), { size: 1.85, weight: 700, anchor: "middle", maxWidth: 2.7 }));
-      }
-    }
-  } else if (manifest.identity.mode === "qr") {
-    const { x, y, width, height, matrix } = manifest.technicalRegions.qr;
-    const moduleSize = Math.min(width / matrix.length, height / matrix.length);
-    items.push(drawText(x, y - 2, "IDENTIFICAÇÃO", { size: 2.2, weight: 700 }));
-    matrix.forEach((row, rowIndex) => row.forEach((dark, columnIndex) => {
-      if (dark) items.push(`<rect x="${x + columnIndex * moduleSize}" y="${y + rowIndex * moduleSize}" width="${moduleSize}" height="${moduleSize}" fill="#000"/>`);
-    }));
-  }
-  return items.join("");
+export function renderTemplateSvg(template,{page=1,header=null,manifest:suppliedManifest=null,width=template?.widthMm??PAGE_WIDTH_MM,height=template?.heightMm??PAGE_HEIGHT_MM}={}){
+ const m=suppliedManifest||createCardManifest(template,header);
+ if(m.schemaVersion==='salta-layout-manifest-v1')return legacyRender(template,{page,header:header||LEGACY_HEADER,manifest:m,width,height});
+ if(page!==1||width!==m.paper.widthMm||height!==m.paper.heightMm)throw new RangeError('A exportação deve preservar uma única folha e as dimensões do manifesto.');
+ const validation=validateLayoutManifest(m);if(!validation.valid)throw new RangeError(validation.errors.join(' '));
+ const b=m.technicalRegions.border;
+ const parts=[`<svg xmlns="http://www.w3.org/2000/svg" width="${width}mm" height="${height}mm" viewBox="0 0 ${width} ${height}" role="img" aria-label="Cartão de respostas" data-template-version="${esc(m.version)}" data-template-id="${esc(m.templateId)}" data-layout-hash="${m.contentHash}" data-artwork-version="salta-card-artwork-v2" data-page="1/1">`,`<rect width="${width}" height="${height}" fill="#fff"/>`,`<rect class="omr-card-border" x="${b.x}" y="${b.y}" width="${b.width}" height="${b.height}" fill="none" stroke="#000" stroke-width="0.25"/>`];
+ parts.push('<defs><filter id="salta-monochrome"><feColorMatrix type="saturate" values="0"/><feComponentTransfer><feFuncR type="discrete" tableValues="0 1"/><feFuncG type="discrete" tableValues="0 1"/><feFuncB type="discrete" tableValues="0 1"/></feComponentTransfer></filter></defs>');
+ const student=m.identityCode.student;
+ const hp=m.panels.header;parts.push('<g class="card-header">',frame(hp.frame,'omr-header-frame'));
+ for(const l of hp.logos)parts.push(`<image href="${esc(l.href)}" x="${l.x}" y="${l.y}" width="${l.width}" height="${l.height}" preserveAspectRatio="xMidYMid meet" filter="url(#salta-monochrome)"/>`);
+ for(const t of hp.texts){
+ if(t.id==='TURMA'&&!m.header.className&&student?.className){const ls=wrapText('TURMA: '+student.className,t.box.width,t.size);if(ls.length*t.size*1.3>t.box.height+.001)throw new RangeError('A turma nominal não cabe na célula do cabeçalho.');ls.forEach((line,i)=>parts.push(text(t.x,t.y+i*t.size*1.3,line,t.size,t.weight,t.anchor)));continue;}
+ parts.push(`<g data-header-field="${esc(t.id)}">${text(t.x,t.y,t.text,t.size,t.weight,t.anchor)}</g>`);}
+ for(const l of hp.rules)parts.push(`<line x1="${l.x1}" y1="${l.y1}" x2="${l.x2}" y2="${l.y2}" stroke="#000" stroke-width="0.2"/>`);parts.push('</g>');
+ if(m.panels.name){const f=m.panels.name;parts.push(frame(f,'omr-name-frame'),text(f.x+3,f.y+7,'NOME:',3,700));const value=student?.name;if(value){const ls=wrapText(value,f.width-22,3);if(ls.length>2)throw new RangeError('O nome nominal não cabe em duas linhas. Confira o cadastro antes de imprimir.');ls.forEach((line,i)=>parts.push(text(f.x+18,f.y+4.5+i*3.9,line,3)));}else parts.push(`<line x1="${f.x+18}" y1="${f.y+8}" x2="${f.x+f.width-3}" y2="${f.y+8}" stroke="#000" stroke-width="0.2"/>`);}
+ if(m.panels.instructions){const f=m.panels.instructions;parts.push(frame(f,'omr-instructions-frame'));f.lines.forEach((line,i)=>parts.push(text(f.x+3,f.y+3.5+i*3.25,line,2.5)));}
+ for(const f of m.sections){parts.push(`<g class="omr-section-frame" data-section-id="${esc(f.sectionId)}">`,frame(f,'omr-section-border'));f.titleLines.forEach((line,i)=>parts.push(text(f.x+f.width/2,f.y+3.6+i*3.38,line,2.6,700,'middle')));parts.push('</g>');}
+ for(const q of m.questions)parts.push(`<g class="omr-question" data-question-id="${esc(q.questionId)}" data-question="${q.number}" data-type="${q.type}">${drawQuestion(q)}</g>`);
+ if(m.panels.code){const f=m.panels.code;parts.push(frame(f,'omr-code-frame'),text(f.x+f.width/2,f.y+4,'CÓDIGO SALTA',2.2,700,'middle'));for(const c of m.identityCode.columns)parts.push(`<rect x="${c.box.x}" y="${c.box.y}" width="4.2" height="4.2" rx="1" ry="1" fill="#fff" stroke="#000" stroke-width="0.25"/>`,text(c.centerX,c.box.y+3.1,c.printedDigit,2.8,600,'middle'));for(const bubble of m.identityBubbles){parts.push(`<circle class="omr-identity-bubble" data-column="${bubble.column}" data-digit="${bubble.digit}" cx="${bubble.x}" cy="${bubble.y}" r="2.25" fill="${bubble.filled?'#000':'#fff'}" stroke="#000" stroke-width="0.25"/>`);if(!bubble.filled)parts.push(text(bubble.x,bubble.y+.65,String(bubble.digit),1.85,500,'middle'));}}
+ for(const f of m.technicalRegions.fiducials)parts.push(`<rect class="omr-fiducial" data-marker="${f.markerId}" x="${f.x-f.sizeMm/2}" y="${f.y-f.sizeMm/2}" width="${f.sizeMm}" height="${f.sizeMm}" fill="#000"/>`);
+ return parts.join('')+'</svg>';
 }
-
-function drawQuestion(question) {
-  const pieces = [];
-  const centerY = question.type === "CDU" ? question.y + 3.3 : question.y + question.height / 2;
-  pieces.push(drawText(question.x + 5.8, centerY + 0.9, String(question.number).padStart(2, "0"), { size: 2.8, weight: 700, anchor: "end" }));
-  if (question.type === "CDU") {
-    const places = ["C", "D", "U"];
-    for (let placeIndex = 0; placeIndex < places.length; placeIndex += 1) {
-      const box = question.responseBoxes?.[placeIndex];
-      if (box) {
-        pieces.push(drawText(box.centerX, box.y - 0.7, places[placeIndex], { size: 1.8, weight: 700, anchor: "middle" }));
-        pieces.push(`<rect class="omr-cdu-response-box" data-place="${places[placeIndex]}" x="${box.x}" y="${box.y}" width="${box.width}" height="${box.height}" fill="#fff" stroke="#000" stroke-width="0.25"/>`);
-      }
-    }
-    for (const bubble of question.bubbles) {
-      pieces.push(`<circle class="omr-answer-bubble" data-question-id="${esc(question.questionId)}" data-question="${question.number}" data-place="${bubble.place}" data-digit="${bubble.digit}" cx="${bubble.x}" cy="${bubble.y}" r="${bubble.radiusMm}" fill="#fff" stroke="#000" stroke-width="0.25"/>`);
-      pieces.push(drawText(bubble.x, bubble.y + 0.63, String(bubble.digit), { size: 1.85, weight: 700, anchor: "middle", maxWidth: 2.7 }));
-    }
-  } else {
-    for (const bubble of question.bubbles) {
-      pieces.push(`<circle class="omr-answer-bubble" data-question-id="${esc(question.questionId)}" data-question="${question.number}" data-choice="${bubble.choice}" cx="${bubble.x}" cy="${bubble.y}" r="${bubble.radiusMm}" fill="#fff" stroke="#000" stroke-width="0.25"/>`);
-      // Hollow glyphs keep the printed label legible while limiting dark ink in
-      // the reader's central sampling area; the physical reader stays untouched.
-      pieces.push(`<text x="${bubble.x}" y="${bubble.y + 0.72}" text-anchor="middle" font-family="Arial,sans-serif" font-size="2.05" font-weight="700" fill="#fff" stroke="#000" stroke-width="0.16" paint-order="stroke">${esc(bubble.choice)}</text>`);
-    }
-  }
-  return pieces.join("");
+export function renderHeaderPreviewSvg(header=DEFAULT_CARD_HEADER){
+ const template=createTemplate([{type:'A-D',count:1,label:'Prévia'}],{identityMode:'none',title:header.title,schoolName:header.institution});
+ const m=createCardManifest(template,{...header,visible:{...header.visible,studentName:false}});
+ const h=m.panels.header.frame.y+m.panels.header.frame.height+2;
+ return renderTemplateSvg(template,{header,manifest:m}).replace('height="297mm"',`height="${h}mm"`).replace('viewBox="0 0 210 297"',`viewBox="0 0 210 ${h}"`);
 }
-
-export function createCardManifest(template, header = DEFAULT_CARD_HEADER) {
-  const source = {
-    ...template,
-    title: header?.title || template.title,
-    schoolName: header?.institution || template.schoolName,
-    metadata: {
-      ...template.metadata,
-      ...header,
-      logoAspect: header?.logoAspect ?? template.metadata?.logoAspect,
-      secondaryLogoAspect: header?.secondaryLogoAspect ?? template.metadata?.secondaryLogoAspect,
-      cduPosition: template.metadata?.cduPosition || "bottom",
-    },
-    identity: Object.freeze({
-      ...template.identity,
-      mode: header?.showStudentCode === false ? "manual" : template.identity?.mode,
-      showName: header?.visible?.studentName ?? template.identity?.showName,
-      showClass: template.identity?.student?.className ? true : header?.visible?.className ?? template.identity?.showClass,
-    }),
-  };
-  return Object.freeze({ ...createLayoutManifest(source), artworkVersion: ARTWORK_VERSION });
-}
-
-export function renderTemplateSvg(template, { page = 1, header = DEFAULT_CARD_HEADER, manifest: suppliedManifest = null, width = template?.widthMm ?? PAGE_WIDTH_MM, height = template?.heightMm ?? PAGE_HEIGHT_MM } = {}) {
-  if (page !== 1) throw new RangeError("O cartão individual ocupa uma única página A4.");
-  const manifest = suppliedManifest || createCardManifest(template, header);
-  if (width !== manifest.paper.widthMm || height !== manifest.paper.heightMm) throw new RangeError("A exportação precisa preservar as dimensões físicas do manifesto.");
-  const parts = [
-    `<svg xmlns="http://www.w3.org/2000/svg" width="${manifest.paper.widthMm}mm" height="${manifest.paper.heightMm}mm" viewBox="0 0 ${manifest.paper.widthMm} ${manifest.paper.heightMm}" role="img" aria-label="Cartão de respostas" data-template-version="${esc(manifest.version)}" data-template-id="${esc(manifest.templateId)}" data-layout-hash="${manifest.contentHash}" data-page="1/1" data-artwork-version="${ARTWORK_VERSION}">`,
-    `<rect width="${manifest.paper.widthMm}" height="${manifest.paper.heightMm}" fill="#fff"/>`,
-    `<rect class="omr-card-border" x="${manifest.technicalRegions.border.x}" y="${manifest.technicalRegions.border.y}" width="${manifest.technicalRegions.border.width}" height="${manifest.technicalRegions.border.height}" fill="none" stroke="#000" stroke-width="${manifest.technicalRegions.border.strokeMm}"/>`,
-    `<g class="card-header">${drawHeader(header, manifest)}${drawIdentity(manifest)}</g>`,
-  ];
-  for (const marker of manifest.technicalRegions.fiducials) {
-    parts.push(`<rect class="omr-fiducial" data-marker="${marker.markerId}" x="${marker.x - marker.sizeMm / 2}" y="${marker.y - marker.sizeMm / 2}" width="${marker.sizeMm}" height="${marker.sizeMm}" fill="#000"/>`);
-  }
-  for (const frame of sectionFrames(manifest)) {
-    parts.push(`<g class="omr-section-frame" data-section-id="${esc(frame.sectionId)}"><rect x="${frame.x}" y="${frame.y}" width="${frame.width}" height="${frame.height}" rx="1" ry="1" fill="none" stroke="#000" stroke-width="0.2"/>`);
-    parts.push(drawText(frame.x + frame.width / 2, frame.y + 3.1, frame.label, { size: frame.size, weight: 700, anchor: "middle" }));
-    parts.push("</g>");
-  }
-  for (const question of manifest.questions) parts.push(`<g class="omr-question" data-question-id="${esc(question.questionId)}" data-question="${question.number}" data-type="${question.type}">${drawQuestion(question)}</g>`);
-
-  parts.push("</svg>");
-  return parts.join("");
-}
-
-export function renderHeaderPreviewSvg(header = DEFAULT_CARD_HEADER) {
-  const template = createTemplate([{ type: "A-D", count: 1, label: "Prévia" }], { identityMode: header.showStudentCode === false ? "manual" : "seven-digit-code" });
-  const svg = renderTemplateSvg(template, { header, height: PAGE_HEIGHT_MM });
-  return svg.replace('height="297mm"', 'height="95mm"').replace('viewBox="0 0 210 297"', 'viewBox="0 0 210 95"');
-}
-
-// Explicit exports keep the canonical model available to the browser editor.
-export { createAssessmentDefinition, createLayoutManifest };

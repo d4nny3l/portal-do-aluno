@@ -2,9 +2,9 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
 import { createAssessmentDefinition } from "../omr/assessment.mjs";
-import { createLayoutManifest, INITIAL_GEOMETRY, LayoutCapacityError, validateLayoutManifest } from "../omr/layout.mjs";
-import { createTemplate, layoutTemplate, MAX_QUESTIONS_PER_PAGE, PAGE_HEIGHT_MM, PAGE_WIDTH_MM, TEMPLATE_VERSION } from "../omr/template.mjs";
-import { DEFAULT_CARD_HEADER, renderHeaderPreviewSvg, renderTemplateSvg } from "../omr/render.mjs";
+import { createLayoutManifest, INITIAL_GEOMETRY, LayoutCapacityError, validateLayoutManifest } from "../omr/layout-v1.mjs";
+import { createLegacyTemplate as createTemplate, layoutTemplate, MAX_QUESTIONS_PER_PAGE, PAGE_HEIGHT_MM, PAGE_WIDTH_MM, LEGACY_TEMPLATE_VERSION as TEMPLATE_VERSION } from "../omr/template.mjs";
+import { DEFAULT_CARD_HEADER, renderHeaderPreviewSvg, renderTemplateSvg } from "../omr/render-v1.mjs";
 import { readRaster, READER_VERSION } from "../omr/reader.mjs";
 import { addJpegDensity, addPngDensity, buildManifestJson, buildPrintDocument, EXPORT_VERSION, getLayoutVersion, listLayoutVersions, saveLayoutVersion, selectStudentPages, sortStudentRoster } from "../omr/export.mjs";
 import { reorderQuestion, reorderSection, restoreAutomaticArrangement } from "../omr/editor.mjs";
@@ -219,7 +219,7 @@ test("SVG uses A4 physical dimensions, black-and-white marks, labels, code boxes
 });
 
 test("reader adapter consumes matching v5 coordinates and keeps uncertain answers for review", () => {
-  assert.equal(READER_VERSION, "salta-omr-reader-v4");
+  assert.equal(READER_VERSION, "salta-omr-reader-v5");
   const template = card(10, "A-D");
   const width = 420, height = 594;
   const layout = layoutTemplate(template, { width, height });
@@ -346,7 +346,7 @@ test("batch roster defaults alphabetically and selects explicit 1-based page ran
 
 test("browser modules pin generator assets and keep the legacy route intact", async () => {
   const [renderSource, readerSource, pageSource, teacherSource, themeSource, corretorCss, legacyRoute] = await Promise.all([
-    readFile(new URL("../omr/render.mjs", import.meta.url), "utf8"),
+    readFile(new URL("../omr/render-v1.mjs", import.meta.url), "utf8"),
     readFile(new URL("../omr/reader.mjs", import.meta.url), "utf8"),
     readFile(new URL("../../../plataforma/corretor-v2.html", import.meta.url), "utf8"),
     readFile(new URL("../../../plataforma/professor.html", import.meta.url), "utf8"),
@@ -354,10 +354,10 @@ test("browser modules pin generator assets and keep the legacy route intact", as
     readFile(new URL("../../../plataforma/corretor-v2.css", import.meta.url), "utf8"),
     readFile(new URL("../../../corretor/index.html", import.meta.url), "utf8"),
   ]);
-  assert.match(renderSource, /from ["']\.\/template\.mjs\?v=20261110c["']/);
-  assert.match(readerSource, /from ["']\.\/template\.mjs\?v=20261110c["']/);
-  assert.match(pageSource, /omr\/(?:template|render|reader|normalize|export)\.mjs\?v=20261110c/g);
-  assert.match(teacherSource, /corretor-v2\.html\?v=20261110ux1/g);
+  assert.match(renderSource, /from ["']\.\/template\.mjs\?v=20261114v2["']/);
+  assert.match(readerSource, /from ["']\.\/template\.mjs\?v=20261114v2["']/);
+  assert.match(pageSource, /omr\/(?:template|render|reader|normalize|export)\.mjs\?v=20261114v2/g);
+  assert.match(teacherSource, /corretor-v2\.html\?v=20261114v2/g);
   assert.match(teacherSource, /professor-theme\.css\?v=20261110ux1/);
   assert.match(pageSource, /professor-theme\.css\?v=20261110ux1/);
   assert.doesNotMatch(pageSource, /id="dashboard"/);

@@ -31,6 +31,13 @@ Este arquivo é a memória operacional permanente do projeto. Antes de mudanças
 - Correção OMR gera proposta revisável; publicação no Diário exige confirmação humana e idempotência.
 
 
+## Cartão-resposta SALTA V2 — autorização e contrato atual
+
+- Pedido atual: `docs/SALTA_CARTAO_RESPOSTA_V2_SPEC.md`; implementação/limites em `docs/SALTA_CARTAO_RESPOSTA_V2_IMPLEMENTACAO.md`. Essas decisões substituem as escolhas visuais V1 abaixo para novos cartões.
+- V2 usa cabeçalho institucional único, texto livre multilinha, faixa Professor/Turma/Data, nome independente, código fora do cabeçalho, letras pretas convencionais e seções com larguras uniformes/alturas naturais. Instruções são opcionais e desligadas por padrão.
+- Geometria nova tem versão própria; preservar os modelos V1 e usar o manifesto exato ao corrigir. Não inventar reconhecimento automático de versão por fotografia. CDU e leitura de quadros incorporados não estão homologados.
+- Nesta missão V2 o responsável **autorizou expressamente merge e GitHub Pages após CI, testes e revisão visual disponíveis**, sem exigir nova confirmação. Ensaios físicos continuam pendentes e devem ser declarados; não equivalem à publicação da interface. Isso não autoriza Worker, D1 ou dados acadêmicos.
+
 ## Cartão-resposta SALTA — decisões visuais aprovadas em 14/11/2026
 - **Documento principal:** `docs/SALTA_CARTAO_RESPOSTA_DESIGN_SPEC.md`. **Roteiro de execução:** `docs/SALTA_CODEX_CARTAO_RESPOSTA_EXECUCAO.md`.
 - Não imprimir metadados `MODELO ... · REV ... · hash` no rodapé: preservar a identificação de layout somente em manifesto/JSON e mecanismo técnico confiável, sem texto visível.

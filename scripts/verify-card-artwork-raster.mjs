@@ -16,13 +16,14 @@ const raster = svg => sharp(Buffer.from(svg), { density: 96 }).resize({ width, h
 const results = [];
 for (const type of ['A-D', 'A-E', 'C-E']) for (const count of [10, 20, 50, 100, 150]) {
   const template = createTemplate([{ type, count, label: 'Matemática' }]);
-  const svg = renderTemplateSvg(template, { header });
+  const manifest = createCardManifest(template, header);
+  const svg = renderTemplateSvg(template, { header, manifest });
   const pixels = await raster(svg).greyscale().raw().toBuffer();
-  const blank = readRaster(template, pixels, width, height);
+  const blank = readRaster(template, pixels, width, height, {manifest});
   assert.ok(blank.observations.every(item => item.state === 'blank'), `${type}/${count}: false mark`);
   assert.equal(detectFiducials(pixels, width, height).found, true, `${type}/${count}: lost fiducials`);
   const selected = svg.replace(/<circle class="omr-answer-bubble"[^>]+>/g, tag => tag.includes('data-question="1"') && tag.includes('data-choice="C"') ? tag.replace('fill="#fff"', 'fill="#000"') : tag);
-  const marked = readRaster(template, await raster(selected).greyscale().raw().toBuffer(), width, height);
+  const marked = readRaster(template, await raster(selected).greyscale().raw().toBuffer(), width, height, {manifest});
   assert.equal(marked.observations[0].answer, 'C');
   results.push({ type, count, width, height, falseMarks: 0, selected: 'C', fiducials: true });
   if (type === 'A-E' && [20, 50, 100].includes(count)) {
@@ -32,7 +33,7 @@ for (const type of ['A-D', 'A-E', 'C-E']) for (const count of [10, 20, 50, 100, 
     await raster(svg).png().withMetadata({ density: 300 }).toFile(`${prefix}.png`);
     await raster(svg).jpeg({ quality: 95 }).withMetadata({ density: 300 }).toFile(`${prefix}.jpg`);
     const jpeg = await sharp(`${prefix}.jpg`).greyscale().raw().toBuffer();
-    assert.ok(readRaster(template, jpeg, width, height).observations.every(item => item.state === 'blank'), 'JPEG introduced a mark');
+    assert.ok(readRaster(template, jpeg, width, height, {manifest}).observations.every(item => item.state === 'blank'), 'JPEG introduced a mark');
   }
 }
 await writeFile(`${output}/results.json`, JSON.stringify(results, null, 2));
@@ -44,6 +45,7 @@ const variants = [
   { name: 'um-logo', options: {}, sections: [{type:'A-E',count:20,label:'Matemática'}], header: {...header, layout:'logo-left',logo} },
   { name: 'dois-logos', options: {}, sections: [{type:'A-E',count:20,label:'Matemática'}], header: {...header, layout:'dual-logo',logo,secondaryLogo:logo} },
   { name: 'compacto', options: {}, sections: [{type:'A-D',count:20,label:'Matemática'}], header: {...header,layout:'compact'} },
+  { name: 'misto-desigual', options: {}, sections: [{type:'A-D',count:7,label:'Álgebra'},{type:'C-E',count:3,label:'Lógica'},{type:'A-E',count:19,label:'Geometria'}], header },
   { name: 'misto-cdu', options: {}, sections: [{type:'A-E',count:20,label:'Objetivas'},{type:'CDU',count:2,label:'Numéricas'}], header },
   { name: 'incorporado', options: {mode:'embedded',embeddedSize:{widthMm:100,heightMm:180},identityMode:'manual'}, sections:[{type:'A-D',count:10,label:'Matemática'}], header: DEFAULT_CARD_HEADER },
 ];
@@ -60,7 +62,25 @@ for (const variant of variants) {
     assert.ok(Math.abs(detection.corners[index].x-x/210*width)<3,`${variant.name}: marker x`);
     assert.ok(Math.abs(detection.corners[index].y-y/297*height)<3,`${variant.name}: marker y`);
   }
-  if(!variant.sections.some(section=>section.type==='CDU')) assert.ok(readRaster(template,pixels,width,height).observations.every(item=>item.state==='blank'));
+  if(!variant.sections.some(section=>section.type==='CDU')) assert.ok(readRaster(template,pixels,width,height,{manifest}).observations.every(item=>item.state==='blank'));
   await raster(svg).png().withMetadata({density:300}).toFile(`${output}/${variant.name}.png`);
 }
 console.log('Single/dual synthetic logos, compact header, mixed CDU and embedded SVG OK.');
+
+const coverage=[];
+for(const identityMode of ['manual','none','seven-digit-code'])for(const institution of ['', 'ESCOLA FICTÍCIA SALTA', 'SECRETARIA SINTÉTICA\nESCOLA FICTÍCIA SALTA'])for(const showInstructions of [false,true]){
+ const t=createTemplate([{type:'A-E',count:20,label:'Matemática'}],{identityMode});const h={...header,institution,showInstructions};const m=createCardManifest(t,h);const svg=renderTemplateSvg(t,{manifest:m});
+ const pixels=await raster(svg).greyscale().raw().toBuffer();const result=readRaster(t,pixels,width,height,{manifest:m});assert.ok(result.observations.every(o=>o.state==='blank'));assert.equal(result.identity.code,null);
+ coverage.push({identityMode,institutionLines:institution?institution.split('\n').length:0,showInstructions,blank:true,hash:m.contentHash});
+}
+const nominal=createTemplate([{type:'A-E',count:20,label:'Matemática'}],{student:{name:'Pessoa Fictícia de Nome Extenso para Teste',className:'Turma Fictícia',code:'0001200'}});
+const nominalManifest=createCardManifest(nominal,header),nominalSvg=renderTemplateSvg(nominal,{manifest:nominalManifest});
+const nominalRaster=await raster(nominalSvg).greyscale().raw().toBuffer();assert.equal(readRaster(nominal,nominalRaster,width,height,{manifest:nominalManifest}).identity.code,'0001200');
+for(const [variant,color,expected]of [['double','#000','double'],['weak','#b4b4b4','blank']]){
+ const markedSvg=nominalSvg.replace(/<circle class="omr-answer-bubble"[^>]+>/g,tag=>tag.includes('data-question="1"')&&(tag.includes('data-choice="C"')||(variant==='double'&&tag.includes('data-choice="D"')))?tag.replace('fill="#fff"',`fill="${color}"`):tag);
+ const pixels=await raster(markedSvg).greyscale().raw().toBuffer();const result=readRaster(nominal,pixels,width,height,{manifest:nominalManifest});assert.equal(result.observations[0].state,expected);assert.equal(result.needsReview,true);
+ coverage.push({variant,state:result.observations[0].state,needsReview:result.needsReview});
+ await raster(markedSvg).png().withMetadata({density:300}).toFile(`${output}/${variant}.png`);
+}
+await writeFile(`${output}/coverage-v2.json`,JSON.stringify(coverage,null,2));
+console.log('18 identity/institution/instructions combinations + nominal code 0001200 + double/weak review OK.');

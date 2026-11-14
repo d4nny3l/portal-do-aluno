@@ -5,7 +5,7 @@ export const QUESTION_TYPES = Object.freeze({
   CDU: Object.freeze(["C", "D", "U"]),
 });
 
-export const IDENTITY_MODES = Object.freeze(["manual", "seven-digit-code", "qr"]);
+export const IDENTITY_MODES = Object.freeze(["manual", "seven-digit-code", "none", "qr"]);
 export const ASSESSMENT_MODES = Object.freeze(["full-page", "embedded"]);
 export const MAX_QUESTIONS = 150;
 
@@ -80,6 +80,7 @@ export function createAssessmentDefinition(input, { templateId = "salta-assessme
   const columnCount = input.columnCount == null ? null : Number(input.columnCount);
   if (columnCount != null && (!Number.isInteger(columnCount) || columnCount < 1 || columnCount > 5)) throw new RangeError("A quantidade manual de colunas deve ficar entre 1 e 5.");
   const studentInput = input.identity?.student || input.student;
+  if (studentInput && (String(studentInput.name || '').trim().length > 96 || String(studentInput.className || '').trim().length > 64)) throw new RangeError('Nome ou turma nominal excede o limite; revise os dados sem truncar.');
   const student = studentInput && typeof studentInput === "object" ? Object.freeze({
     id: clean(studentInput.id, 96),
     name: clean(studentInput.name, 96),
@@ -90,15 +91,15 @@ export function createAssessmentDefinition(input, { templateId = "salta-assessme
     throw new TypeError("O código nominal precisa conter exatamente sete dígitos, incluindo zeros à esquerda.");
   }
   const metadataSource = input.metadata && typeof input.metadata === "object" ? input.metadata : {};
-  const metadata = Object.freeze(Object.fromEntries(["kind", "subject", "className", "date", "teacher", "grade", "schoolYear", "logoWidthMm", "secondaryLogoWidthMm", "logoAspect", "secondaryLogoAspect", "cduPosition", "customFields", "visibleFields", "headerLayout"]
+  const metadata = Object.freeze(Object.fromEntries(["kind", "subject", "className", "date", "teacher", "grade", "schoolYear", "logoWidthMm", "secondaryLogoWidthMm", "logoAspect", "secondaryLogoAspect", "cduPosition", "customFields", "visibleFields", "headerLayout", "showInstructions", "instructions", "institution", "logo", "secondaryLogo", "layoutVersion"]
     .filter(key => metadataSource[key] != null)
-    .map(key => [key, key === "customFields"
+    .map(key => [key, key === "showInstructions" ? Boolean(metadataSource[key]) : ["institution", "instructions"].includes(key) ? String(metadataSource[key]).replace(/\r\n?/g,"\n").trim() : ["logo", "secondaryLogo"].includes(key) ? String(metadataSource[key]) : key === "customFields"
       ? Object.freeze((Array.isArray(metadataSource.customFields) ? metadataSource.customFields : []).filter(field => field && String(field.label || "").trim() && String(field.value || "").trim()).slice(0, 4).map(field => Object.freeze({ label: clean(field.label, 24), value: clean(field.value, 50), visible: field.visible !== false })))
       : key === "visibleFields"
         ? Object.freeze(Object.fromEntries(["institution", "teacher", "subject", "className", "grade", "date", "schoolYear", "title", "studentName"].map(name => [name, Boolean(metadataSource.visibleFields?.[name])])))
       : key === "headerLayout"
         ? ["text", "logo-left", "dual-logo", "compact"].includes(metadataSource.headerLayout) ? metadataSource.headerLayout : "text"
-      : ["logoWidthMm", "secondaryLogoWidthMm", "logoAspect", "secondaryLogoAspect"].includes(key) ? Number(metadataSource[key]) : clean(metadataSource[key], 96)])));
+      : ["logoWidthMm", "secondaryLogoWidthMm", "logoAspect", "secondaryLogoAspect"].includes(key) ? Number(metadataSource[key]) : clean(metadataSource[key], ({ teacher: 256, className: 128, subject: 160, grade: 128 })[key] || 96)])));
   if (identityMode === "qr" && !input.qrTokenProvider) {
     // Deliberately record an unconfigured adapter; no student data is turned
     // into a QR payload by the generator itself.
@@ -107,8 +108,8 @@ export function createAssessmentDefinition(input, { templateId = "salta-assessme
   return Object.freeze({
     templateId: idPart(input.templateId || templateId),
     revision,
-    title: clean(input.title, 96),
-    schoolName: clean(input.schoolName, 96),
+    title: clean(input.title, 160),
+    schoolName: String(input.schoolName || "").replace(/\r\n?/g, "\n").trim(),
     metadata,
     mode,
     columnCount,
