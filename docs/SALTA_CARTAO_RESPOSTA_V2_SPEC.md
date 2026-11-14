@@ -1,7 +1,7 @@
 # CODEX — SALTA V2 | REFORMULAÇÃO DEFINITIVA DO CARTÃO-RESPOSTA E PUBLICAÇÃO
 
-**Repositório:** `d4nny3l/portal-do-aluno`  
-**PR de referência:** #31  
+**Repositório:** `d4nny3l/portal-do-aluno`
+**PR de referência:** #31
 **Objetivo:** implementar integralmente o novo cartão-resposta SALTA V2, validar seu funcionamento e publicar a versão aprovada tecnicamente no GitHub Pages.
 
 ## 1. INSTRUÇÃO PRINCIPAL
@@ -38,7 +38,7 @@ Na aba **Título**, permitir um único campo de texto multilinha para a identifi
 
 Exemplo:
 
-SECRETARIA DE ESTADO DA EDUCAÇÃO  
+SECRETARIA DE ESTADO DA EDUCAÇÃO
 COLÉGIO ESTADUAL OLAVO BILAC
 
 Requisitos:
