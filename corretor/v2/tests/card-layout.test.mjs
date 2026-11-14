@@ -375,8 +375,8 @@ test("browser modules pin generator assets and keep the legacy route intact", as
   assert.match(pageSource, /selectStudentPages\(ordered,\$\('batchPages'\)\.value\)/);
   assert.doesNotMatch(pageSource, /onclick="window\.print\(\)"/);
   assert.match(legacyRoute, /location\.replace\('\.\.\/plataforma\/corretor-v2\.html/);
-  assert.match(pageSource, /class="modules-grid"/);
-  assert.equal((pageSource.match(/class="module-card secondary" data-go=/g) || []).length, 3);
+  assert.doesNotMatch(pageSource, /class="modules-grid"/);
+  assert.equal((pageSource.match(/class="module-card secondary" data-go=/g) || []).length, 0);
   assert.doesNotMatch(pageSource, /corretor-grid|corretor-link/);
   assert.ok(themeSource.includes(".modules-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:14px}"));
   assert.ok(corretorCss.includes("@media(max-width:760px)"));
