@@ -1,7 +1,8 @@
-import { createAssessmentDefinition, MAX_QUESTIONS, QUESTION_TYPES } from "./assessment.mjs";
-import { composeLayout, PAGE_HEIGHT_MM, PAGE_WIDTH_MM } from "./layout.mjs";
+import { createAssessmentDefinition, MAX_QUESTIONS, QUESTION_TYPES } from "./assessment.mjs?v=20261114v2";
+import { composeLayout, validateLayoutManifest, PAGE_HEIGHT_MM, PAGE_WIDTH_MM } from "./layout.mjs?v=20261114v2";
 
-export const TEMPLATE_VERSION = "salta-omr-a4-v7";
+export const TEMPLATE_VERSION = "salta-omr-a4-v8";
+export const LEGACY_TEMPLATE_VERSION = "salta-omr-a4-v7";
 export { PAGE_HEIGHT_MM, PAGE_WIDTH_MM };
 // Compatibility name used by the reader; v5 always represents one physical page.
 export const MAX_QUESTIONS_PER_PAGE = MAX_QUESTIONS;
@@ -9,17 +10,18 @@ export { QUESTION_TYPES };
 
 const cleanLabel = value => String(value ?? "").replace(/[\u0000-\u001f\u007f]/g, "").trim().slice(0, 64);
 
-export function createTemplate(sections, { templateId = "omr-a4", revision = 7, title = "CARTÃO DE RESPOSTAS", schoolName = "", identityMode = "seven-digit-code", student = null, mode = "full-page", embeddedSize = null, columnCount = null, metadata = {} } = {}) {
+export function createTemplate(sections, { templateId = "omr-a4", revision = 8, layoutVersion = "v2", title = "CARTÃO DE RESPOSTAS", schoolName = "", identityMode = "seven-digit-code", showName = true, student = null, mode = "full-page", embeddedSize = null, columnCount = null, metadata = {} } = {}) {
   if (!Array.isArray(sections) || sections.length === 0) throw new TypeError("Informe ao menos uma seção.");
+  if(layoutVersion!=="v1")for(const[label,value,max]of[["Título",title,160],["Identificação institucional",schoolName,600],["Professor",metadata.teacher,256],["Turma",metadata.className,128],["Componente",metadata.subject,160]])if(String(value||"").length>max)throw new RangeError(`${label} excede ${max} caracteres. Revise o texto; nada foi cortado.`);
   const definition = createAssessmentDefinition({
     templateId,
-    title: cleanLabel(title),
-    schoolName: cleanLabel(schoolName),
+    title: layoutVersion === "v1" ? cleanLabel(title) : String(title || "CARTÃO DE RESPOSTAS"),
+    schoolName: layoutVersion === "v1" ? cleanLabel(schoolName) : String(schoolName || ""),
     metadata,
     mode,
     embeddedSize,
     columnCount,
-    identity: { mode: identityMode, student },
+    identity: { mode: identityMode, student, showName },
     sections: sections.map((section, sectionIndex) => {
       if (!section || !Object.hasOwn(QUESTION_TYPES, section.type)) throw new TypeError(`Formato inválido na seção ${sectionIndex + 1}.`);
       const label = cleanLabel(section.label) || `Seção ${sectionIndex + 1} · ${section.type}`;
@@ -29,7 +31,8 @@ export function createTemplate(sections, { templateId = "omr-a4", revision = 7, 
   }, { templateId, revision });
   return Object.freeze({
     ...definition,
-    version: TEMPLATE_VERSION,
+    version: layoutVersion === "v1" ? LEGACY_TEMPLATE_VERSION : TEMPLATE_VERSION,
+    layoutVersion,
     widthMm: definition.mode === "full-page" ? PAGE_WIDTH_MM : definition.embeddedSize?.widthMm,
     heightMm: definition.mode === "full-page" ? PAGE_HEIGHT_MM : definition.embeddedSize?.heightMm,
     layoutQuestions: Object.freeze(definition.questions.map(question => Object.freeze({
@@ -49,8 +52,8 @@ export function createTemplate(sections, { templateId = "omr-a4", revision = 7, 
  * Reader adapter. Physical coordinates from the immutable millimetre manifest
  * are scaled to the supplied raster without changing the print geometry.
  */
-export function layoutTemplate(template, { width, height, page = 1, showCode = true } = {}) {
-  if (!template || template.version !== TEMPLATE_VERSION || !Number.isFinite(width) || !Number.isFinite(height) || width <= 0 || height <= 0) {
+export function layoutTemplate(template, { width, height, page = 1, showCode = true, manifest: suppliedManifest = null } = {}) {
+  if (!template || ![TEMPLATE_VERSION, LEGACY_TEMPLATE_VERSION].includes(template.version) || !Number.isFinite(width) || !Number.isFinite(height) || width <= 0 || height <= 0) {
     throw new TypeError("Template ou dimensões inválidas.");
   }
   if (page !== 1) throw new RangeError("O cartão v5 ocupa uma única página A4.");
@@ -68,9 +71,10 @@ export function layoutTemplate(template, { width, height, page = 1, showCode = t
       identity: Object.freeze({ mode: "manual", showName: template.identity.showName, showClass: template.identity.showClass, student: template.identity.student }),
     };
   }
-  const result = composeLayout(source);
+  const result = suppliedManifest ? { manifest: suppliedManifest, validation: validateLayoutManifest(suppliedManifest) } : composeLayout(source);
   if (!result.manifest || !result.validation.valid) throw new RangeError(result.validation.errors.join(" ") || "Layout inválido.");
   const manifest = result.manifest;
+  if (manifest.questionCount !== template.questionCount || manifest.questions.some(q => !template.questions.some(t => t.questionId === q.questionId && t.number === q.number && t.type === q.type))) throw new TypeError("O modelo selecionado não corresponde ao manifesto da folha.");
   const scaleX = width / manifest.paper.widthMm;
   const scaleY = height / manifest.paper.heightMm;
   const scale = Math.min(scaleX, scaleY);
@@ -109,7 +113,7 @@ export function layoutTemplate(template, { width, height, page = 1, showCode = t
   return Object.freeze({
     templateId: manifest.templateId,
     revision: manifest.revision,
-    version: TEMPLATE_VERSION,
+    version: template.version,
     width,
     height,
     page: 1,
@@ -132,3 +136,5 @@ export function layoutTemplate(template, { width, height, page = 1, showCode = t
     manifest,
   });
 }
+
+export function createLegacyTemplate(sections, options = {}) { return createTemplate(sections, { ...options, layoutVersion: "v1", revision: options.revision ?? 7 }); }

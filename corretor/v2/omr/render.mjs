@@ -1,213 +1,54 @@
-import { createAssessmentDefinition } from "./assessment.mjs?v=20261110c";
-import { createLayoutManifest, PAGE_HEIGHT_MM, PAGE_WIDTH_MM } from "./layout.mjs?v=20261110c";
-import { createTemplate } from "./template.mjs?v=20261110c";
-
-const esc = value => String(value ?? "").replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&apos;" }[c]));
-const imageHref = value => /^data:image\/(?:png|jpeg|webp);base64,[A-Za-z0-9+/=]{1,2800000}$/i.test(value || "") ? value : "";
-
-export const DEFAULT_CARD_HEADER = Object.freeze({
-  layout: "text", institution: "", teacher: "", subject: "", className: "", grade: "", date: "", schoolYear: "",
-  title: "CARTÃO DE RESPOSTAS", logo: "", secondaryLogo: "", showStudentCode: true,
-  visible: Object.freeze({ institution: true, teacher: false, subject: false, className: false, grade: false, date: false, schoolYear: false, title: true, studentName: true }),
-  customFields: Object.freeze([]),
-});
-
-function drawText(x, y, value, { size = 3, weight = 400, anchor = "start", maxWidth } = {}) {
-  if (!String(value ?? "").trim()) return "";
-  const estimate = [...String(value)].length * size * 0.56;
-  const fit = Number.isFinite(maxWidth) && estimate > maxWidth ? ` textLength="${maxWidth}" lengthAdjust="spacingAndGlyphs"` : "";
-  return `<text x="${x}" y="${y}" text-anchor="${anchor}" font-family="Arial,sans-serif" font-size="${size}" font-weight="${weight}" fill="#000"${fit}>${esc(value)}</text>`;
+import { createLayoutManifest, validateLayoutManifest, PAGE_WIDTH_MM, PAGE_HEIGHT_MM } from './layout.mjs?v=20261114v2';
+import { createTemplate } from './template.mjs?v=20261114v2';
+import { createCardManifest as legacyManifest, renderTemplateSvg as legacyRender, renderHeaderPreviewSvg as legacyHeader, DEFAULT_CARD_HEADER as LEGACY_HEADER } from './render-v1.mjs?v=20261114v2';
+import { wrapText } from './artwork.mjs?v=20261114v1';
+export { createAssessmentDefinition } from './assessment.mjs?v=20261114v2';
+export { createLayoutManifest };
+export const DEFAULT_CARD_HEADER=Object.freeze({...LEGACY_HEADER,showInstructions:false,instructions:'',customFields:Object.freeze([])});
+const esc=value=>String(value??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&apos;'}[c]));
+const text=(x,y,value,size=3,weight=400,anchor='start')=>value?`<text x="${x}" y="${y}" text-anchor="${anchor}" font-family="Arial,sans-serif" font-size="${size}" font-weight="${weight}" fill="#000">${esc(value)}</text>`:'';
+const frame=(f,cls)=>`<rect class="${cls}" x="${f.x}" y="${f.y}" width="${f.width}" height="${f.height}" rx="1" ry="1" fill="none" stroke="#000" stroke-width="0.25"/>`;
+export function createCardManifest(template,header=null){
+ if(template.layoutVersion==='v1'||template.version==='salta-omr-a4-v7')return legacyManifest(template,header||LEGACY_HEADER);
+ if(header===DEFAULT_CARD_HEADER)header=null;
+ const h={...DEFAULT_CARD_HEADER,...template.metadata,institution:template.schoolName,title:template.title,...(header||{})};
+ const mode=template.identity.mode==='none'?'none':h.showStudentCode===false&&template.identity.mode==='seven-digit-code'?'manual':template.identity.mode;
+ const source={...template,title:h.title||template.title,schoolName:h.institution||'',metadata:{...template.metadata,...h},identity:{...template.identity,mode,showName:mode!=='none'&&(h.visible?.studentName??template.identity.showName)}};
+ return createLayoutManifest(source);
 }
-
-function drawHeader(header, manifest) {
-  const h = { ...DEFAULT_CARD_HEADER, ...header };
-  const visible = (key, fallback = false) => h.visible?.[key] ?? fallback;
-  const items = [];
-  const layout = ["text", "logo-left", "dual-logo", "compact"].includes(h.layout) ? h.layout : "text";
-  const leftLogo = imageHref(h.logo);
-  const rightLogo = imageHref(h.secondaryLogo);
-  const image = (href, x, y, width = 22, height = 22) => href ? `<image href="${href}" x="${x}" y="${y}" width="${width}" height="${height}" preserveAspectRatio="xMidYMid meet" style="filter:grayscale(1)"/>` : "";
-  if (manifest.mode === "embedded") {
-    const width = manifest.paper.widthMm;
-    if (leftLogo) items.push(image(leftLogo, 7, 5, Math.min(16, width / 5), 16));
-    if (rightLogo) items.push(image(rightLogo, width - 23, 5, Math.min(16, width / 5), 16));
-    const centerX = width / 2;
-    const maxWidth = width - (leftLogo || rightLogo ? 46 : 14);
-    if (visible("institution", true)) items.push(drawText(centerX, 10, h.institution || manifest.header.schoolName, { size: 3, weight: 700, anchor: "middle", maxWidth }));
-    if (visible("title", true)) items.push(drawText(centerX, 17, h.title || manifest.header.title, { size: 4, weight: 700, anchor: "middle", maxWidth }));
-    const fields = [
-      ["Professor", h.teacher || manifest.header.teacher, "teacher"], ["Componente", h.subject || manifest.header.subject, "subject",], ["Turma", h.className || manifest.header.className, "className"],
-      ["Ano/série", h.grade || manifest.header.grade, "grade"], ["Data", h.date || manifest.header.date, "date"], ["Ano letivo", h.schoolYear || manifest.header.schoolYear, "schoolYear"],
-    ].filter(([, value, key]) => value && visible(key)).slice(0, 2);
-    fields.forEach(([label, value], index) => items.push(drawText(7, 23 + index * 4, `${label}: ${value}`, { size: 2.4, maxWidth: width - 14 })));
-    if (manifest.identity.mode === "manual" && visible("studentName", true)) {
-      items.push(drawText(7, 34, "Nome:", { size: 2.7, weight: 700 }));
-      const studentName = manifest.identity.student?.name;
-      if (studentName) items.push(drawText(19, 34, studentName, { size: 2.7, maxWidth: width - 26 }));
-      else items.push(`<line x1="19" y1="33.3" x2="${width - 7}" y2="33.3" stroke="#000" stroke-width="0.25"/>`);
-    }
-    return items.join("");
-  }
-  const logoDimensions = (aspect, requestedWidth) => {
-    const safeAspect = Number.isFinite(Number(aspect)) && Number(aspect) > 0 ? Number(aspect) : 1;
-    let width = Math.min(30, Math.max(14, Number(requestedWidth) || 22));
-    let height = width / safeAspect;
-    if (height > 22) { height = 22; width = height * safeAspect; }
-    return { width, height, y: 13 + (22 - height) / 2 };
-  };
-  const logo1 = logoDimensions(h.logoAspect, h.logoWidthMm);
-  const logo2 = logoDimensions(h.secondaryLogoAspect, h.secondaryLogoWidthMm);
-  if (layout === "logo-left" || layout === "dual-logo") items.push(image(leftLogo, 14, logo1.y, logo1.width, logo1.height));
-  if (layout === "dual-logo") items.push(image(rightLogo, 196 - logo2.width, logo2.y, logo2.width, logo2.height));
-  const anchor = ["text", "dual-logo"].includes(layout) ? "middle" : "start";
-  const x = anchor === "middle" ? 105 : layout === "logo-left" ? 42 : 14;
-  const maxWidth = layout === "dual-logo" ? 128 : layout === "logo-left" ? 154 : 182;
-  if (visible("institution", true)) items.push(drawText(x, 19, h.institution || manifest.header.schoolName, { size: 4, weight: 700, anchor, maxWidth }));
-  if (visible("title", true)) items.push(drawText(x, 27, h.title || manifest.header.title, { size: 5, weight: 700, anchor, maxWidth }));
-  if (layout === "compact") {
-    const fields = [h.teacher || manifest.header.teacher, h.subject || manifest.header.subject, h.className || manifest.header.className, h.grade || manifest.header.grade, h.date || manifest.header.date, h.schoolYear || manifest.header.schoolYear].filter(Boolean).join(" · ");
-    items.push(drawText(14, 36, fields, { size: 2.7, maxWidth: 182 }));
-  } else {
-    const fields = [
-      ["Professor", h.teacher || manifest.header.teacher, "teacher"], ["Componente", h.subject || manifest.header.subject, "subject"], ["Turma", h.className || manifest.header.className, "className"],
-      ["Ano/série", h.grade || manifest.header.grade, "grade"], ["Data", h.date || manifest.header.date, "date"], ["Ano letivo", h.schoolYear || manifest.header.schoolYear, "schoolYear"],
-    ].filter(([, value, key]) => value && visible(key)).slice(0, 6);
-    const columns = [14, 78, 142];
-    const custom = Array.isArray(h.customFields)
-      ? h.customFields.filter(field => field && field.visible !== false && String(field.label || "").trim() && String(field.value || "").trim()).slice(0, 4).map(field => [field.label, field.value])
-      : [];
-    [...fields, ...custom].forEach(([label, value], index) => items.push(drawText(columns[index % 3], 35 + Math.floor(index / 3) * 4.6, `${label}: ${value}`, { size: 2.6, maxWidth: 54 })));
-  }
-  if (manifest.identity.mode === "manual" && visible("studentName", true)) {
-    const studentName = manifest.identityCode.student?.name;
-    const studentClass = manifest.identityCode.student?.className;
-    items.push(drawText(14, 52, "Nome:", { size: 3, weight: 700 }));
-    if (studentName) items.push(drawText(27, 52, studentName, { size: 3, maxWidth: manifest.identity.showClass ? 108 : 169 }));
-    else items.push(`<line x1="27" y1="51.2" x2="${manifest.identity.showClass ? 135 : 196}" y2="51.2" stroke="#000" stroke-width="0.25"/>`);
-    if (manifest.identity.showClass) {
-      items.push(drawText(141, 52, "Turma:", { size: 3, weight: 700 }));
-      if (studentClass) items.push(drawText(157, 52, studentClass, { size: 3, maxWidth: 39 }));
-      else items.push(`<line x1="157" y1="51.2" x2="196" y2="51.2" stroke="#000" stroke-width="0.25"/>`);
-    }
-  }
-  return items.join("");
+function drawQuestion(q){
+ const parts=[];const cy=q.type==='CDU'?q.y+3.3:q.y+q.height/2;
+ parts.push(text(q.x+5.8,cy+.85,String(q.number).padStart(2,'0'),2.6,600,'end'));
+ for(const box of q.responseBoxes||[]){parts.push(text(box.centerX,box.y-.7,box.place,1.9,500,'middle'));parts.push(`<rect class="omr-cdu-response-box" x="${box.x}" y="${box.y}" width="${box.width}" height="${box.height}" rx="1" ry="1" fill="#fff" stroke="#000" stroke-width="0.25"/>`);}
+ for(const b of q.bubbles){parts.push(`<circle class="omr-answer-bubble" data-question-id="${esc(q.questionId)}" data-question="${q.number}" ${q.type==='CDU'?`data-place="${b.place}" data-digit="${b.digit}"`:`data-choice="${b.choice}"`} cx="${b.x}" cy="${b.y}" r="${b.radiusMm}" fill="#fff" stroke="#000" stroke-width="0.25"/>`);parts.push(text(b.x,b.y+.72,q.type==='CDU'?String(b.digit):b.choice,q.type==='CDU'?1.85:2.2,500,'middle'));}
+ return parts.join('');
 }
-
-function drawIdentity(manifest) {
-  const items = [];
-  if (manifest.identity.mode === "seven-digit-code") {
-    const grid = manifest.identityCode;
-    items.push(drawText(14, 56, "CÓDIGO DO ALUNO · 7 DÍGITOS", { size: 3, weight: 700 }));
-    items.push(drawText(14, 61, "Preencha uma opção em cada coluna", { size: 2.2 }));
-    if (manifest.identity.showName) {
-      items.push(drawText(14, 72, "Nome:", { size: 3, weight: 700 }));
-      const rightEdge = grid.x - 8;
-      if (manifest.identityCode.student?.name) items.push(drawText(26, 72, manifest.identityCode.student.name, { size: 3, maxWidth: Math.max(0, rightEdge - 26) }));
-      else if (rightEdge > 28) items.push(`<line x1="26" y1="71.2" x2="${rightEdge}" y2="71.2" stroke="#000" stroke-width="0.25"/>`);
-    }
-    if (manifest.identity.showClass) {
-      items.push(drawText(14, 81, "Turma:", { size: 3, weight: 700 }));
-      const rightEdge = grid.x - 8;
-      if (manifest.identityCode.student?.className) items.push(drawText(28, 81, manifest.identityCode.student.className, { size: 3, maxWidth: Math.max(0, rightEdge - 28) }));
-      else if (rightEdge > 30) items.push(`<line x1="28" y1="80.2" x2="${rightEdge}" y2="80.2" stroke="#000" stroke-width="0.25"/>`);
-    }
-    for (const column of grid.columns) {
-      items.push(`<rect x="${column.box.x}" y="${column.box.y}" width="${column.box.width}" height="${column.box.height}" fill="#fff" stroke="#000" stroke-width="0.25"/>`);
-      items.push(drawText(column.centerX, column.box.y + 3.05, column.printedDigit, { size: 2.8, weight: 700, anchor: "middle" }));
-      for (const bubble of manifest.identityBubbles.filter(item => item.column === column.index + 1)) {
-        items.push(`<circle class="omr-identity-bubble" data-column="${bubble.column}" data-digit="${bubble.digit}" cx="${bubble.x}" cy="${bubble.y}" r="${bubble.radiusMm}" fill="${bubble.filled ? "#000" : "#fff"}" stroke="#000" stroke-width="0.25"/>`);
-        if (!bubble.filled) items.push(drawText(bubble.x, bubble.y + 0.68, String(bubble.digit), { size: 1.75, weight: 700, anchor: "middle", maxWidth: 2.7 }));
-      }
-    }
-  } else if (manifest.identity.mode === "qr") {
-    const { x, y, width, height, matrix } = manifest.technicalRegions.qr;
-    const moduleSize = Math.min(width / matrix.length, height / matrix.length);
-    items.push(drawText(x, y - 2, "IDENTIFICAÇÃO", { size: 2.2, weight: 700 }));
-    matrix.forEach((row, rowIndex) => row.forEach((dark, columnIndex) => {
-      if (dark) items.push(`<rect x="${x + columnIndex * moduleSize}" y="${y + rowIndex * moduleSize}" width="${moduleSize}" height="${moduleSize}" fill="#000"/>`);
-    }));
-  }
-  return items.join("");
+export function renderTemplateSvg(template,{page=1,header=null,manifest:suppliedManifest=null,width=template?.widthMm??PAGE_WIDTH_MM,height=template?.heightMm??PAGE_HEIGHT_MM}={}){
+ const m=suppliedManifest||createCardManifest(template,header);
+ if(m.schemaVersion==='salta-layout-manifest-v1')return legacyRender(template,{page,header:header||LEGACY_HEADER,manifest:m,width,height});
+ if(page!==1||width!==m.paper.widthMm||height!==m.paper.heightMm)throw new RangeError('A exportação deve preservar uma única folha e as dimensões do manifesto.');
+ const validation=validateLayoutManifest(m);if(!validation.valid)throw new RangeError(validation.errors.join(' '));
+ const b=m.technicalRegions.border;
+ const parts=[`<svg xmlns="http://www.w3.org/2000/svg" width="${width}mm" height="${height}mm" viewBox="0 0 ${width} ${height}" role="img" aria-label="Cartão de respostas" data-template-version="${esc(m.version)}" data-template-id="${esc(m.templateId)}" data-layout-hash="${m.contentHash}" data-artwork-version="salta-card-artwork-v2" data-page="1/1">`,`<rect width="${width}" height="${height}" fill="#fff"/>`,`<rect class="omr-card-border" x="${b.x}" y="${b.y}" width="${b.width}" height="${b.height}" fill="none" stroke="#000" stroke-width="0.25"/>`];
+ parts.push('<defs><filter id="salta-monochrome"><feColorMatrix type="saturate" values="0"/><feComponentTransfer><feFuncR type="discrete" tableValues="0 1"/><feFuncG type="discrete" tableValues="0 1"/><feFuncB type="discrete" tableValues="0 1"/></feComponentTransfer></filter></defs>');
+ const student=m.identityCode.student;
+ const hp=m.panels.header;parts.push('<g class="card-header">',frame(hp.frame,'omr-header-frame'));
+ for(const l of hp.logos)parts.push(`<image href="${esc(l.href)}" x="${l.x}" y="${l.y}" width="${l.width}" height="${l.height}" preserveAspectRatio="xMidYMid meet" filter="url(#salta-monochrome)"/>`);
+ for(const t of hp.texts){
+ if(t.id==='TURMA'&&!m.header.className&&student?.className){const ls=wrapText('TURMA: '+student.className,t.box.width,t.size);if(ls.length*t.size*1.3>t.box.height+.001)throw new RangeError('A turma nominal não cabe na célula do cabeçalho.');ls.forEach((line,i)=>parts.push(text(t.x,t.y+i*t.size*1.3,line,t.size,t.weight,t.anchor)));continue;}
+ parts.push(`<g data-header-field="${esc(t.id)}">${text(t.x,t.y,t.text,t.size,t.weight,t.anchor)}</g>`);}
+ for(const l of hp.rules)parts.push(`<line x1="${l.x1}" y1="${l.y1}" x2="${l.x2}" y2="${l.y2}" stroke="#000" stroke-width="0.2"/>`);parts.push('</g>');
+ if(m.panels.name){const f=m.panels.name;parts.push(frame(f,'omr-name-frame'),text(f.x+3,f.y+7,'NOME:',3,700));const value=student?.name;if(value){const ls=wrapText(value,f.width-22,3);if(ls.length>2)throw new RangeError('O nome nominal não cabe em duas linhas. Confira o cadastro antes de imprimir.');ls.forEach((line,i)=>parts.push(text(f.x+18,f.y+4.5+i*3.9,line,3)));}else parts.push(`<line x1="${f.x+18}" y1="${f.y+8}" x2="${f.x+f.width-3}" y2="${f.y+8}" stroke="#000" stroke-width="0.2"/>`);}
+ if(m.panels.instructions){const f=m.panels.instructions;parts.push(frame(f,'omr-instructions-frame'));f.lines.forEach((line,i)=>parts.push(text(f.x+3,f.y+3.5+i*3.25,line,2.5)));}
+ for(const f of m.sections){parts.push(`<g class="omr-section-frame" data-section-id="${esc(f.sectionId)}">`,frame(f,'omr-section-border'));f.titleLines.forEach((line,i)=>parts.push(text(f.x+f.width/2,f.y+3.6+i*3.38,line,2.6,700,'middle')));parts.push('</g>');}
+ for(const q of m.questions)parts.push(`<g class="omr-question" data-question-id="${esc(q.questionId)}" data-question="${q.number}" data-type="${q.type}">${drawQuestion(q)}</g>`);
+ if(m.panels.code){const f=m.panels.code;parts.push(frame(f,'omr-code-frame'),text(f.x+f.width/2,f.y+4,'CÓDIGO SALTA',2.2,700,'middle'));for(const c of m.identityCode.columns)parts.push(`<rect x="${c.box.x}" y="${c.box.y}" width="4.2" height="4.2" rx="1" ry="1" fill="#fff" stroke="#000" stroke-width="0.25"/>`,text(c.centerX,c.box.y+3.1,c.printedDigit,2.8,600,'middle'));for(const bubble of m.identityBubbles){parts.push(`<circle class="omr-identity-bubble" data-column="${bubble.column}" data-digit="${bubble.digit}" cx="${bubble.x}" cy="${bubble.y}" r="2.25" fill="${bubble.filled?'#000':'#fff'}" stroke="#000" stroke-width="0.25"/>`);if(!bubble.filled)parts.push(text(bubble.x,bubble.y+.65,String(bubble.digit),1.85,500,'middle'));}}
+ for(const f of m.technicalRegions.fiducials)parts.push(`<rect class="omr-fiducial" data-marker="${f.markerId}" x="${f.x-f.sizeMm/2}" y="${f.y-f.sizeMm/2}" width="${f.sizeMm}" height="${f.sizeMm}" fill="#000"/>`);
+ return parts.join('')+'</svg>';
 }
-
-function drawQuestion(question) {
-  const pieces = [];
-  const centerY = question.type === "CDU" ? question.y + 3.3 : question.y + question.height / 2;
-  pieces.push(drawText(question.x + 5.8, centerY + 0.9, String(question.number).padStart(2, "0"), { size: 2.8, weight: 700, anchor: "end" }));
-  if (question.type === "CDU") {
-    const places = ["C", "D", "U"];
-    for (let placeIndex = 0; placeIndex < places.length; placeIndex += 1) {
-      const box = question.responseBoxes?.[placeIndex];
-      if (box) {
-        pieces.push(drawText(box.centerX, box.y - 0.7, places[placeIndex], { size: 1.8, weight: 700, anchor: "middle" }));
-        pieces.push(`<rect class="omr-cdu-response-box" data-place="${places[placeIndex]}" x="${box.x}" y="${box.y}" width="${box.width}" height="${box.height}" fill="#fff" stroke="#000" stroke-width="0.25"/>`);
-      }
-    }
-    for (const bubble of question.bubbles) {
-      pieces.push(`<circle class="omr-answer-bubble" data-question-id="${esc(question.questionId)}" data-question="${question.number}" data-place="${bubble.place}" data-digit="${bubble.digit}" cx="${bubble.x}" cy="${bubble.y}" r="${bubble.radiusMm}" fill="#fff" stroke="#000" stroke-width="0.25"/>`);
-      pieces.push(drawText(bubble.x, bubble.y + 0.63, String(bubble.digit), { size: 1.7, weight: 700, anchor: "middle", maxWidth: 2.7 }));
-    }
-  } else {
-    for (const bubble of question.bubbles) {
-      pieces.push(`<circle class="omr-answer-bubble" data-question-id="${esc(question.questionId)}" data-question="${question.number}" data-choice="${bubble.choice}" cx="${bubble.x}" cy="${bubble.y}" r="${bubble.radiusMm}" fill="#fff" stroke="#000" stroke-width="0.25"/>`);
-      // Hollow glyphs keep the printed label legible while limiting dark ink in
-      // the reader's central sampling area; the physical reader stays untouched.
-      pieces.push(`<text x="${bubble.x}" y="${bubble.y + 0.72}" text-anchor="middle" font-family="Arial,sans-serif" font-size="2.05" font-weight="700" fill="#fff" stroke="#000" stroke-width="0.12" paint-order="stroke">${esc(bubble.choice)}</text>`);
-    }
-  }
-  return pieces.join("");
+export function renderHeaderPreviewSvg(header=DEFAULT_CARD_HEADER){
+ const template=createTemplate([{type:'A-D',count:1,label:'Prévia'}],{identityMode:'none',title:header.title,schoolName:header.institution});
+ const m=createCardManifest(template,{...header,visible:{...header.visible,studentName:false}});
+ const h=m.panels.header.frame.y+m.panels.header.frame.height+2;
+ return renderTemplateSvg(template,{header,manifest:m}).replace('height="297mm"',`height="${h}mm"`).replace('viewBox="0 0 210 297"',`viewBox="0 0 210 ${h}"`);
 }
-
-export function createCardManifest(template, header = DEFAULT_CARD_HEADER) {
-  const source = {
-    ...template,
-    title: header?.title || template.title,
-    schoolName: header?.institution || template.schoolName,
-    metadata: {
-      ...template.metadata,
-      ...header,
-      logoAspect: header?.logoAspect ?? template.metadata?.logoAspect,
-      secondaryLogoAspect: header?.secondaryLogoAspect ?? template.metadata?.secondaryLogoAspect,
-      cduPosition: template.metadata?.cduPosition || "bottom",
-    },
-    identity: Object.freeze({
-      ...template.identity,
-      mode: header?.showStudentCode === false ? "manual" : template.identity?.mode,
-      showName: header?.visible?.studentName ?? template.identity?.showName,
-      showClass: template.identity?.student?.className ? true : header?.visible?.className ?? template.identity?.showClass,
-    }),
-  };
-  return createLayoutManifest(source);
-}
-
-export function renderTemplateSvg(template, { page = 1, header = DEFAULT_CARD_HEADER, manifest: suppliedManifest = null, width = template?.widthMm ?? PAGE_WIDTH_MM, height = template?.heightMm ?? PAGE_HEIGHT_MM } = {}) {
-  if (page !== 1) throw new RangeError("O cartão individual ocupa uma única página A4.");
-  const manifest = suppliedManifest || createCardManifest(template, header);
-  if (width !== manifest.paper.widthMm || height !== manifest.paper.heightMm) throw new RangeError("A exportação precisa preservar as dimensões físicas do manifesto.");
-  const parts = [
-    `<svg xmlns="http://www.w3.org/2000/svg" width="${manifest.paper.widthMm}mm" height="${manifest.paper.heightMm}mm" viewBox="0 0 ${manifest.paper.widthMm} ${manifest.paper.heightMm}" role="img" aria-label="Cartão de respostas" data-template-version="${esc(manifest.version)}" data-template-id="${esc(manifest.templateId)}" data-layout-hash="${manifest.contentHash}" data-page="1/1">`,
-    `<rect width="${manifest.paper.widthMm}" height="${manifest.paper.heightMm}" fill="#fff"/>`,
-    `<rect class="omr-card-border" x="${manifest.technicalRegions.border.x}" y="${manifest.technicalRegions.border.y}" width="${manifest.technicalRegions.border.width}" height="${manifest.technicalRegions.border.height}" fill="none" stroke="#000" stroke-width="${manifest.technicalRegions.border.strokeMm}"/>`,
-    `<g class="card-header">${drawHeader(header, manifest)}${drawIdentity(manifest)}</g>`,
-  ];
-  for (const marker of manifest.technicalRegions.fiducials) {
-    parts.push(`<rect class="omr-fiducial" data-marker="${marker.markerId}" x="${marker.x - marker.sizeMm / 2}" y="${marker.y - marker.sizeMm / 2}" width="${marker.sizeMm}" height="${marker.sizeMm}" fill="#000"/>`);
-  }
-  for (const section of manifest.sections) {
-    parts.push(drawText(section.x, section.y + 3.2, section.label, { size: 2.7, weight: 700, maxWidth: section.width }));
-    parts.push(`<line x1="${section.x}" y1="${section.y + section.height}" x2="${section.x + section.width}" y2="${section.y + section.height}" stroke="#000" stroke-width="0.2"/>`);
-  }
-  for (const question of manifest.questions) parts.push(`<g class="omr-question" data-question-id="${esc(question.questionId)}" data-question="${question.number}" data-type="${question.type}">${drawQuestion(question)}</g>`);
-  parts.push(drawText(manifest.technicalRegions.border.x + 2, manifest.technicalRegions.border.y + manifest.technicalRegions.border.height - 2, `MODELO ${esc(manifest.templateId)} · REV ${manifest.revision} · ${manifest.contentHash.slice(0, 8)}`, { size: 2, maxWidth: manifest.paper.widthMm - 28 }));
-  parts.push("</svg>");
-  return parts.join("");
-}
-
-export function renderHeaderPreviewSvg(header = DEFAULT_CARD_HEADER) {
-  const template = createTemplate([{ type: "A-D", count: 1, label: "Prévia" }], { identityMode: "manual" });
-  const svg = renderTemplateSvg(template, { header: { ...header, showStudentCode: false }, height: PAGE_HEIGHT_MM });
-  return svg.replace('height="297mm"', 'height="95mm"').replace('viewBox="0 0 210 297"', 'viewBox="0 0 210 95"');
-}
-
-// Explicit exports keep the canonical model available to the browser editor.
-export { createAssessmentDefinition, createLayoutManifest };
