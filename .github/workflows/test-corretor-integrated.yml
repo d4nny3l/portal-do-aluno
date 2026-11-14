@@ -16,6 +16,7 @@ on:
       - "corretor/v2/omr/**"
       - "corretor/v2/tests/**"
       - "scripts/verify-card-artwork-raster.mjs"
+      - "scripts/verify-card-header-raster.mjs"
       - ".github/workflows/test-corretor-integrated.yml"
 permissions:
   contents: read
@@ -54,6 +55,7 @@ jobs:
         run: |
           npm install --prefix "$RUNNER_TEMP/salta-raster" --no-save sharp@0.35.5
           SALTA_SHARP_MODULE="$RUNNER_TEMP/salta-raster/node_modules/sharp/dist/index.cjs" node scripts/verify-card-artwork-raster.mjs
+          SALTA_SHARP_MODULE="$RUNNER_TEMP/salta-raster/node_modules/sharp/dist/index.cjs" node scripts/verify-card-header-raster.mjs
       - uses: actions/upload-artifact@v4
         with:
           name: salta-card-artwork-synthetic

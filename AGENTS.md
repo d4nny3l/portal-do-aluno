@@ -38,6 +38,8 @@ Este arquivo é a memória operacional permanente do projeto. Antes de mudanças
 - Geometria nova tem versão própria; preservar os modelos V1 e usar o manifesto exato ao corrigir. Não inventar reconhecimento automático de versão por fotografia. CDU e leitura de quadros incorporados não estão homologados.
 - Nesta missão V2 o responsável **autorizou expressamente merge e GitHub Pages após CI, testes e revisão visual disponíveis**, sem exigir nova confirmação. Ensaios físicos continuam pendentes e devem ser declarados; não equivalem à publicação da interface. Isso não autoriza Worker, D1 ou dados acadêmicos.
 
+- Ajuste posterior de cabeçalho/logos: `docs/SALTA_V2_CORRECAO_CABECALHO_LOGOS.md`. Todos os campos administrativos visíveis compartilham uma faixa com capacidade explícita. Logos permitem escala de cinza suave, com transparência e proporção preservadas; não reaplicar binarização 0/1.
+
 ## Cartão-resposta SALTA — decisões visuais aprovadas em 14/11/2026
 - **Documento principal:** `docs/SALTA_CARTAO_RESPOSTA_DESIGN_SPEC.md`. **Roteiro de execução:** `docs/SALTA_CODEX_CARTAO_RESPOSTA_EXECUCAO.md`.
 - Não imprimir metadados `MODELO ... · REV ... · hash` no rodapé: preservar a identificação de layout somente em manifesto/JSON e mecanismo técnico confiável, sem texto visível.

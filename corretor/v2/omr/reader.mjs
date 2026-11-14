@@ -1,4 +1,4 @@
-import { layoutTemplate } from "./template.mjs?v=20261114v2";
+import { layoutTemplate } from "./template.mjs?v=20261114v2h1";
 
 export const READER_VERSION = "salta-omr-reader-v5";
 

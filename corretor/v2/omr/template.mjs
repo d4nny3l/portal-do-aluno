@@ -1,5 +1,5 @@
-import { createAssessmentDefinition, MAX_QUESTIONS, QUESTION_TYPES } from "./assessment.mjs?v=20261114v2";
-import { composeLayout, validateLayoutManifest, PAGE_HEIGHT_MM, PAGE_WIDTH_MM } from "./layout.mjs?v=20261114v2";
+import { createAssessmentDefinition, MAX_QUESTIONS, QUESTION_TYPES } from "./assessment.mjs?v=20261114v2h1";
+import { composeLayout, validateLayoutManifest, PAGE_HEIGHT_MM, PAGE_WIDTH_MM } from "./layout.mjs?v=20261114v2h1";
 
 export const TEMPLATE_VERSION = "salta-omr-a4-v8";
 export const LEGACY_TEMPLATE_VERSION = "salta-omr-a4-v7";

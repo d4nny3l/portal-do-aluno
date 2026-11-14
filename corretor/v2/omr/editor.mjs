@@ -1,4 +1,4 @@
-import { createAssessmentDefinition } from "./assessment.mjs?v=20261114v2";
+import { createAssessmentDefinition } from "./assessment.mjs?v=20261114v2h1";
 
 function toInput(definition, sections) {
   return createAssessmentDefinition({
