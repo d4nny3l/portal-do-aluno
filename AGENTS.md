@@ -30,6 +30,17 @@ Este arquivo é a memória operacional permanente do projeto. Antes de mudanças
 - Identificação por código numérico de sete dígitos e informações nominais requerem cuidado de privacidade. QR, integração ao Diário e publicação de nota não devem ser declarados prontos sem teste ponta a ponta.
 - Correção OMR gera proposta revisável; publicação no Diário exige confirmação humana e idempotência.
 
+
+## Cartão-resposta SALTA — decisões visuais aprovadas em 14/11/2026
+- **Documento principal:** `docs/SALTA_CARTAO_RESPOSTA_DESIGN_SPEC.md`. **Roteiro de execução:** `docs/SALTA_CODEX_CARTAO_RESPOSTA_EXECUCAO.md`.
+- Não imprimir metadados `MODELO ... · REV ... · hash` no rodapé: preservar a identificação de layout somente em manifesto/JSON e mecanismo técnico confiável, sem texto visível.
+- Todos os **títulos** centrais (título principal e títulos de seções) são centralizados em suas regiões. Campos de metadados continuam com alinhamentos funcionais.
+- Cabeçalho institucional segmentado, com espaço protegido para o código óptico de **7 dígitos**; nenhum dado de turma/data/professor invade a grade, logotipos ou os quatro marcadores.
+- Cada seção de questões deve ser envolvida por **borda fechada**, não somente linha separadora; se dividir em colunas, desenhar segmentos visuais corretos sem duplicar questões.
+- Estilo institucional original da SALTA, sofisticado e de alto contraste: **preto sobre branco**, sem cinza no cartão. Melhorar letras A–E sem criar falsos positivos de leitura óptica.
+- A data visível deve estar no formato `dd/mm/aaaa`, preservando valores internos em ISO. Não alterar o motor/posicionamento OMR sem atualizar o manifesto e testar leitura, impressão e compatibilidade antiga.
+- O redesenho do cartão somente pode ser aceito após testes automatizados e ensaios impressos/fotografados; não publicar a partir de uma prévia bonita.
+
 ## Arquitetura e segurança
 - GitHub Pages no frontend; Workers Cloudflare para autenticação, estatísticas e Diário; bancos D1 separados `DB` e `DIARIO_DB`. Não presumir sincronização, isolamento institucional ou E2EE completo sem verificação.
 - Verificar autorização por papel, instituição e turma no servidor antes de expandir a escolas/múltiplos professores.
