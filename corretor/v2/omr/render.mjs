@@ -1,17 +1,17 @@
-import { createLayoutManifest, validateLayoutManifest, PAGE_WIDTH_MM, PAGE_HEIGHT_MM } from './layout.mjs?v=20261114v2';
-import { createTemplate } from './template.mjs?v=20261114v2';
-import { createCardManifest as legacyManifest, renderTemplateSvg as legacyRender, renderHeaderPreviewSvg as legacyHeader, DEFAULT_CARD_HEADER as LEGACY_HEADER } from './render-v1.mjs?v=20261114v2';
+import { createLayoutManifest, validateLayoutManifest, PAGE_WIDTH_MM, PAGE_HEIGHT_MM } from './layout.mjs?v=20261114v2h1';
+import { createTemplate } from './template.mjs?v=20261114v2h1';
+import { createCardManifest as legacyManifest, renderTemplateSvg as legacyRender, renderHeaderPreviewSvg as legacyHeader, DEFAULT_CARD_HEADER as LEGACY_HEADER } from './render-v1.mjs?v=20261114v2h1';
 import { wrapText } from './artwork.mjs?v=20261114v1';
-export { createAssessmentDefinition } from './assessment.mjs?v=20261114v2';
+export { createAssessmentDefinition } from './assessment.mjs?v=20261114v2h1';
 export { createLayoutManifest };
-export const DEFAULT_CARD_HEADER=Object.freeze({...LEGACY_HEADER,showInstructions:false,instructions:'',customFields:Object.freeze([])});
+export const DEFAULT_CARD_HEADER=Object.freeze({...LEGACY_HEADER,visible:Object.freeze({...LEGACY_HEADER.visible,teacher:true,className:true,date:true,subject:true}),showInstructions:false,instructions:'',customFields:Object.freeze([])});
 const esc=value=>String(value??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&apos;'}[c]));
 const text=(x,y,value,size=3,weight=400,anchor='start')=>value?`<text x="${x}" y="${y}" text-anchor="${anchor}" font-family="Arial,sans-serif" font-size="${size}" font-weight="${weight}" fill="#000">${esc(value)}</text>`:'';
 const frame=(f,cls)=>`<rect class="${cls}" x="${f.x}" y="${f.y}" width="${f.width}" height="${f.height}" rx="1" ry="1" fill="none" stroke="#000" stroke-width="0.25"/>`;
 export function createCardManifest(template,header=null){
  if(template.layoutVersion==='v1'||template.version==='salta-omr-a4-v7')return legacyManifest(template,header||LEGACY_HEADER);
  if(header===DEFAULT_CARD_HEADER)header=null;
- const h={...DEFAULT_CARD_HEADER,...template.metadata,institution:template.schoolName,title:template.title,...(header||{})};
+ const h={...DEFAULT_CARD_HEADER,...template.metadata,institution:template.schoolName,title:template.title,...(header||{}),visible:{...DEFAULT_CARD_HEADER.visible,...template.metadata?.visibleFields,...header?.visible}};
  const mode=template.identity.mode==='none'?'none':h.showStudentCode===false&&template.identity.mode==='seven-digit-code'?'manual':template.identity.mode;
  const source={...template,title:h.title||template.title,schoolName:h.institution||'',metadata:{...template.metadata,...h},identity:{...template.identity,mode,showName:mode!=='none'&&(h.visible?.studentName??template.identity.showName)}};
  return createLayoutManifest(source);
@@ -30,12 +30,14 @@ export function renderTemplateSvg(template,{page=1,header=null,manifest:supplied
  const validation=validateLayoutManifest(m);if(!validation.valid)throw new RangeError(validation.errors.join(' '));
  const b=m.technicalRegions.border;
  const parts=[`<svg xmlns="http://www.w3.org/2000/svg" width="${width}mm" height="${height}mm" viewBox="0 0 ${width} ${height}" role="img" aria-label="Cartão de respostas" data-template-version="${esc(m.version)}" data-template-id="${esc(m.templateId)}" data-layout-hash="${m.contentHash}" data-artwork-version="salta-card-artwork-v2" data-page="1/1">`,`<rect width="${width}" height="${height}" fill="#fff"/>`,`<rect class="omr-card-border" x="${b.x}" y="${b.y}" width="${b.width}" height="${b.height}" fill="none" stroke="#000" stroke-width="0.25"/>`];
- parts.push('<defs><filter id="salta-monochrome"><feColorMatrix type="saturate" values="0"/><feComponentTransfer><feFuncR type="discrete" tableValues="0 1"/><feFuncG type="discrete" tableValues="0 1"/><feFuncB type="discrete" tableValues="0 1"/></feComponentTransfer></filter></defs>');
+ // Continuous luminance, sRGB and untouched alpha preserve subtle/logo details.
+ parts.push('<defs><filter id="salta-monochrome" color-interpolation-filters="sRGB"><feColorMatrix type="saturate" values="0"/></filter></defs>');
  const student=m.identityCode.student;
  const hp=m.panels.header;parts.push('<g class="card-header">',frame(hp.frame,'omr-header-frame'));
  for(const l of hp.logos)parts.push(`<image href="${esc(l.href)}" x="${l.x}" y="${l.y}" width="${l.width}" height="${l.height}" preserveAspectRatio="xMidYMid meet" filter="url(#salta-monochrome)"/>`);
+ let nominalClassDrawn=false;
  for(const t of hp.texts){
- if(t.id==='TURMA'&&!m.header.className&&student?.className){const ls=wrapText('TURMA: '+student.className,t.box.width,t.size);if(ls.length*t.size*1.3>t.box.height+.001)throw new RangeError('A turma nominal não cabe na célula do cabeçalho.');ls.forEach((line,i)=>parts.push(text(t.x,t.y+i*t.size*1.3,line,t.size,t.weight,t.anchor)));continue;}
+ if(t.id==='TURMA'&&!m.header.className&&student?.className){if(nominalClassDrawn)continue;nominalClassDrawn=true;const ls=wrapText('TURMA: '+student.className,t.box.width,t.size);if(ls.length*t.size*1.3>t.box.height+.001)throw new RangeError('A turma nominal não cabe na célula do cabeçalho.');ls.forEach((line,i)=>parts.push(text(t.x,t.y+i*t.size*1.3,line,t.size,t.weight,t.anchor)));continue;}
  parts.push(`<g data-header-field="${esc(t.id)}">${text(t.x,t.y,t.text,t.size,t.weight,t.anchor)}</g>`);}
  for(const l of hp.rules)parts.push(`<line x1="${l.x1}" y1="${l.y1}" x2="${l.x2}" y2="${l.y2}" stroke="#000" stroke-width="0.2"/>`);parts.push('</g>');
  if(m.panels.name){const f=m.panels.name;parts.push(frame(f,'omr-name-frame'),text(f.x+3,f.y+7,'NOME:',3,700));const value=student?.name;if(value){const ls=wrapText(value,f.width-22,3);if(ls.length>2)throw new RangeError('O nome nominal não cabe em duas linhas. Confira o cadastro antes de imprimir.');ls.forEach((line,i)=>parts.push(text(f.x+18,f.y+4.5+i*3.9,line,3)));}else parts.push(`<line x1="${f.x+18}" y1="${f.y+8}" x2="${f.x+f.width-3}" y2="${f.y+8}" stroke="#000" stroke-width="0.2"/>`);}
