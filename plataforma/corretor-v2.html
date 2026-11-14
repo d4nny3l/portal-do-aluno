@@ -14,9 +14,9 @@ let cameraStream;
 </script>
 <script type="module">
 import { createTemplate } from '../corretor/v2/omr/template.mjs?v=20261110c';
-import { createCardManifest, renderTemplateSvg, renderHeaderPreviewSvg, DEFAULT_CARD_HEADER } from '../corretor/v2/omr/render.mjs?v=20261110c';
-import { buildManifestJson, buildPrintDocument, createDownload, selectStudentPages, sortStudentRoster, svgToBlob } from '../corretor/v2/omr/export.mjs?v=20261110c';
-import { listLayoutVersions, getLayoutVersion, saveLayoutVersion } from '../corretor/v2/omr/export.mjs?v=20261110c';
+import { createCardManifest, renderTemplateSvg, renderHeaderPreviewSvg, DEFAULT_CARD_HEADER } from '../corretor/v2/omr/render.mjs?v=20261114v1';
+import { buildManifestJson, buildPrintDocument, createDownload, selectStudentPages, sortStudentRoster, svgToBlob } from '../corretor/v2/omr/export.mjs?v=20261114v1';
+import { listLayoutVersions, getLayoutVersion, saveLayoutVersion } from '../corretor/v2/omr/export.mjs?v=20261114v1';
 import { readRaster } from '../corretor/v2/omr/reader.mjs?v=20261110c';
 import { detectFiducials, normalizeCard, warpFromFiducials } from '../corretor/v2/omr/normalize.mjs?v=20261110c';
 let sections=[],template,activeManifest=null,activeSvg="",nextQuestionNumber=1,nextSectionOrder=0,layoutRevision=7;

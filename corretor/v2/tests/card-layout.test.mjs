@@ -87,7 +87,7 @@ test("embedded card SVG preserves its smaller physical size and prints centered 
   const template = card(10, "A-E", { mode: "embedded", embeddedSize: { widthMm: 100, heightMm: 180 }, identityMode: "manual" });
   const svg = renderTemplateSvg(template);
   assert.match(svg, /width="100mm" height="180mm" viewBox="0 0 100 180"/);
-  assert.match(svg, /<line x1="19" y1="33\.3" x2="93"/);
+  assert.match(svg, /data-header-field="Nome"/);
   const printHtml = buildPrintDocument(template);
   assert.match(printHtml, /width:210mm;height:297mm;display:flex;align-items:center;justify-content:center/);
   assert.match(printHtml, /width="100mm" height="180mm"/);
@@ -176,7 +176,7 @@ test("layout validator detects forced collisions and does not repair them silent
   assert.ok(result.errors.some(error => error.includes("Colisão")));
 });
 
-test("section rules, questions and footer stay inside the black border with a physical gap", () => {
+test("section rules and questions stay inside the black border without a technical footer", () => {
   for (const template of [card(30, "A-E"), card(2, "CDU", { mode: "embedded", embeddedSize: { widthMm: 90, heightMm: 180 }, identityMode: "manual" })]) {
     const manifest = createLayoutManifest(template);
     const border = manifest.technicalRegions.border;
@@ -190,8 +190,7 @@ test("section rules, questions and footer stay inside the black border with a ph
     }
     const svg = renderTemplateSvg(template);
     assert.match(svg, /class="omr-card-border"/);
-    const footerY = Number(svg.match(/<text x="[^"]+" y="([^"]+)"[^>]*>MODELO/)?.[1]);
-    assert.ok(footerY < border.y + border.height);
+    assert.doesNotMatch(svg, />MODELO[^<]*<\/text>/);
   }
 });
 
