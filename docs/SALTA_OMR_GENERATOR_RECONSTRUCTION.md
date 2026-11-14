@@ -1,5 +1,7 @@
 # SALTA — Gerador de Cartões-Resposta: reconstrução e validação
 
+> Atualização de apresentação em 14/11/2026: ver `SALTA_CARTAO_RESPOSTA_V1_IMPLEMENTACAO.md`. O rodapé técnico foi removido na origem; a geometria descrita abaixo permanece. Os ensaios e autorizações históricos deste documento não autorizam merge/deploy da revisão atual.
+
 ## Escopo desta entrega
 
 Esta branch reconstrói o modelo de avaliação, a composição física, a renderização SVG, a edição visual e as exportações locais do gerador. O leitor OMR existente foi preservado: não foi refeita a câmera, a normalização de perspectiva nem a decisão de respostas. Diário, autenticação, Workers, D1, dados reais, cartões EJA e o corretor legado não foram alterados funcionalmente.

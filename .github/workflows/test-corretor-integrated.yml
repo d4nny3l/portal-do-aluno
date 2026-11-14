@@ -14,6 +14,8 @@ on:
       - "plataforma/tests/**"
       - "mostra-cultural.html"
       - "corretor/v2/omr/**"
+      - "corretor/v2/tests/**"
+      - "scripts/verify-card-artwork-raster.mjs"
       - ".github/workflows/test-corretor-integrated.yml"
 permissions:
   contents: read
@@ -48,4 +50,12 @@ jobs:
                   count += 1
           print(f"{len(files)} páginas, {count} scripts inline: sintaxe OK")
           PY
+      - name: Raster OMR regression and synthetic evidence
+        run: |
+          npm install --prefix "$RUNNER_TEMP/salta-raster" --no-save sharp@0.35.5
+          SALTA_SHARP_MODULE="$RUNNER_TEMP/salta-raster/node_modules/sharp/dist/index.cjs" node scripts/verify-card-artwork-raster.mjs
+      - uses: actions/upload-artifact@v4
+        with:
+          name: salta-card-artwork-synthetic
+          path: tmp/card-artwork-evidence/
       - run: git diff --check HEAD^ HEAD
