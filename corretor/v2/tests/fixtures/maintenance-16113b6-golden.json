@@ -1,0 +1,95 @@
+{
+  "baseCommit": "16113b6d2c40971335e9eb7e2b8c071ee557300b",
+  "records": [
+    {
+      "type": "A-D",
+      "count": 10,
+      "manifestSha256": "896f10b73ffc4c5f94cec3e18949e5863a791e9da31211f9217f04413d5107b6",
+      "svgSha256AfterTitleChange": "7866db86de734942984c675dc36c0a77b092ee4a3dcde84e52c1ff3ff5a5e254"
+    },
+    {
+      "type": "A-D",
+      "count": 20,
+      "manifestSha256": "03cd13a48318c58f4cc1df88c50eb15f5f84969494f9e35984526f076253899d",
+      "svgSha256AfterTitleChange": "0fdea6cfc33c54e0b349e627cae0a5f3c736040fe62671d6891013dcd75155b1"
+    },
+    {
+      "type": "A-D",
+      "count": 50,
+      "manifestSha256": "02297863ce0d5b141c77c042951b4c5b827a6fc8304f80fb51b2444de16e0a22",
+      "svgSha256AfterTitleChange": "916c5244bd861c746e2a61a8d9d3917162a92776d65389ed92c622e7cde334a7"
+    },
+    {
+      "type": "A-D",
+      "count": 100,
+      "manifestSha256": "16b77ac7eb32359cc9c12860f7c5b7cace47141484e5ed7a6b448d2725617daa",
+      "svgSha256AfterTitleChange": "d302011ba093c9ffbda9d7d42c37dccfc89f80073f76ee1ab20c6fb50103803d"
+    },
+    {
+      "type": "A-D",
+      "count": 150,
+      "manifestSha256": "af6d4ba3e8c50115f80ebe7cee9f878297f3d6b964def3bfa6ccc14b90279817",
+      "svgSha256AfterTitleChange": "69a0cac3e58ecdc12bbf5ada947b4ed7c75647b393605b0879515f9f4516cf60"
+    },
+    {
+      "type": "A-E",
+      "count": 10,
+      "manifestSha256": "052bb977c6c9d089bca73d38cc74c3dfe1e0acfde55f59afb0266861cdc80dd7",
+      "svgSha256AfterTitleChange": "b8ce9c8ee49f733755adcc9d51a640da6b85eb137ffd2abca9400169d0b4296b"
+    },
+    {
+      "type": "A-E",
+      "count": 20,
+      "manifestSha256": "09e79abf247b854f1a559a7cc5f7120a676df49e2199e6acfaa690ab7e9d73d0",
+      "svgSha256AfterTitleChange": "098e1edba01c351cb2b278dc29f034eb119c1a7e8b5ce009290ee0dbffaa6f38"
+    },
+    {
+      "type": "A-E",
+      "count": 50,
+      "manifestSha256": "685868eab7b94a21ceab63be476c56285ce5b8bea84830de18d74597903c709a",
+      "svgSha256AfterTitleChange": "2b3b09c6aa998e30eb28998d91cf47d716f0911dedc01fde0ffe1eb73591edee"
+    },
+    {
+      "type": "A-E",
+      "count": 100,
+      "manifestSha256": "1ab4b1105d3f181310abf75deb456672845bf1914ddea7a2573f86844c10d6bb",
+      "svgSha256AfterTitleChange": "48be5ca44b500fb4b1c872dfc1df12a3e24a3bfde35517f46362f80b20d36f17"
+    },
+    {
+      "type": "A-E",
+      "count": 150,
+      "manifestSha256": "aa92d222164c1a93d1f7509364d7101bb5ae0b65552f94c7b3d15b06ddbcbacf",
+      "svgSha256AfterTitleChange": "2cbe5845fc5f9b2b5af4947427413f820849381fab2362e7f11bb3b0c5ebf0af"
+    },
+    {
+      "type": "C-E",
+      "count": 10,
+      "manifestSha256": "17bf4c38f50dc3de8c9e9bd4df6a6fb7bf5a8196b4c7ea3a91918ca8956e2bb5",
+      "svgSha256AfterTitleChange": "35ad512584d68b8dc756559ff72e427b204e5b217a5545da4d4a8126011dbe32"
+    },
+    {
+      "type": "C-E",
+      "count": 20,
+      "manifestSha256": "c6c09919aaa3292a0298675e7314701b03daca684dbfbd1b4422db59fd6dee0f",
+      "svgSha256AfterTitleChange": "573b27f16387a4f3355b86abd635596a9644f583a50791dd3837d841ef72428b"
+    },
+    {
+      "type": "C-E",
+      "count": 50,
+      "manifestSha256": "505939de22ab1fc82f07cb611bf26bd75f54a6722e0c8b12a050840b79454cac",
+      "svgSha256AfterTitleChange": "d9e1a6574090dba7598141d02f79845f9fd53210c571b75fa93c34f672123b25"
+    },
+    {
+      "type": "C-E",
+      "count": 100,
+      "manifestSha256": "b4ef316e11fd43b8b7ba555722aa01c8a8c090fde9f266e9729ac1baf85cd11c",
+      "svgSha256AfterTitleChange": "d5a55cab52f01927d98b144a3d709a1ab0eb8dddf6aa8fd717c91d55393fdddb"
+    },
+    {
+      "type": "C-E",
+      "count": 150,
+      "manifestSha256": "ba7b32d7ac53d3d4001f9ae7b860f2a81d62b44318b0188f2a5c77f2d5012870",
+      "svgSha256AfterTitleChange": "c1aa5e109fb70437432bc67fdfdce20ce02047c68b176010283f5a361dc7b24b"
+    }
+  ]
+}

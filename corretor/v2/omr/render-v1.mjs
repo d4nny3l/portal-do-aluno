@@ -1,6 +1,6 @@
-import { createAssessmentDefinition } from "./assessment.mjs?v=20261114v2h1";
-import { createLayoutManifest, PAGE_HEIGHT_MM, PAGE_WIDTH_MM } from "./layout-v1.mjs?v=20261114v2h1";
-import { createLegacyTemplate as createTemplate } from "./template.mjs?v=20261114v2h1";
+import { createAssessmentDefinition } from "./assessment.mjs?v=20261114v2final";
+import { createLayoutManifest, PAGE_HEIGHT_MM, PAGE_WIDTH_MM } from "./layout-v1.mjs?v=20261114v2final";
+import { createLegacyTemplate as createTemplate } from "./template.mjs?v=20261114v2final";
 import { ARTWORK_VERSION, headerArtwork, sectionFrames } from "./artwork.mjs?v=20261114v1";
 
 const esc = value => String(value ?? "").replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&apos;" }[c]));

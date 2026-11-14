@@ -1,4 +1,4 @@
-import { createAssessmentDefinition, MAX_QUESTIONS, QUESTION_TYPES } from "./assessment.mjs?v=20261114v2h1";
+import { createAssessmentDefinition, MAX_QUESTIONS, QUESTION_TYPES } from "./assessment.mjs?v=20261114v2final";
 
 export const LAYOUT_MANIFEST_VERSION = "salta-layout-manifest-v1";
 export const PAGE_WIDTH_MM = 210;

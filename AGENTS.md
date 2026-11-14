@@ -40,6 +40,8 @@ Este arquivo é a memória operacional permanente do projeto. Antes de mudanças
 
 - Ajuste posterior de cabeçalho/logos: `docs/SALTA_V2_CORRECAO_CABECALHO_LOGOS.md`. Todos os campos administrativos visíveis compartilham uma faixa com capacidade explícita. Logos permitem escala de cinza suave, com transparência e proporção preservadas; não reaplicar binarização 0/1.
 
+- Acabamento aprovado: `docs/SALTA_V2_ACABAMENTO_E_AUDITORIA.md`. O módulo numérico V2 imprime CÓDIGO DO ALUNO, sem alterar coordenadas/esquemas. A-03 (correção com números não contíguos) está documentado para revisão separada; não renumerar silenciosamente cartões ou alterar regras de nota.
+
 ## Cartão-resposta SALTA — decisões visuais aprovadas em 14/11/2026
 - **Documento principal:** `docs/SALTA_CARTAO_RESPOSTA_DESIGN_SPEC.md`. **Roteiro de execução:** `docs/SALTA_CODEX_CARTAO_RESPOSTA_EXECUCAO.md`.
 - Não imprimir metadados `MODELO ... · REV ... · hash` no rodapé: preservar a identificação de layout somente em manifesto/JSON e mecanismo técnico confiável, sem texto visível.
