@@ -354,10 +354,10 @@ test("browser modules pin generator assets and keep the legacy route intact", as
     readFile(new URL("../../../plataforma/corretor-v2.css", import.meta.url), "utf8"),
     readFile(new URL("../../../corretor/index.html", import.meta.url), "utf8"),
   ]);
-  assert.match(renderSource, /from ["']\.\/template\.mjs\?v=20261114v2h1["']/);
-  assert.match(readerSource, /from ["']\.\/template\.mjs\?v=20261114v2h1["']/);
-  assert.match(pageSource, /omr\/(?:template|render|reader|normalize|export)\.mjs\?v=20261114v2h1/g);
-  assert.match(teacherSource, /corretor-v2\.html\?v=20261114v2h1/g);
+  assert.match(renderSource, /from ["']\.\/template\.mjs\?v=20261114v2final["']/);
+  assert.match(readerSource, /from ["']\.\/template\.mjs\?v=20261114v2final["']/);
+  assert.match(pageSource, /omr\/(?:template|render|reader|normalize|export)\.mjs\?v=20261114v2final/g);
+  assert.match(teacherSource, /corretor-v2\.html\?v=20261114v2final/g);
   assert.match(teacherSource, /professor-theme\.css\?v=20261110ux1/);
   assert.match(pageSource, /professor-theme\.css\?v=20261110ux1/);
   assert.doesNotMatch(pageSource, /id="dashboard"/);

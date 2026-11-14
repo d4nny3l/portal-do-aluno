@@ -1,5 +1,5 @@
-import { PAGE_HEIGHT_MM, PAGE_WIDTH_MM } from "./template.mjs?v=20261114v2h1";
-import { createCardManifest, renderTemplateSvg, DEFAULT_CARD_HEADER } from "./render.mjs?v=20261114v2h1";
+import { PAGE_HEIGHT_MM, PAGE_WIDTH_MM } from "./template.mjs?v=20261114v2final";
+import { createCardManifest, renderTemplateSvg, DEFAULT_CARD_HEADER } from "./render.mjs?v=20261114v2final";
 
 export const EXPORT_VERSION = "salta-omr-export-v1";
 
@@ -127,7 +127,7 @@ function bindStudentToManifest(manifest, student) {
   const bound = JSON.parse(JSON.stringify(manifest));
   if (bound.identityCode?.mode === "seven-digit-code") {
     const code = String(student?.code || "");
-    if (code && !/^\d{7}$/.test(code)) throw new TypeError("O código nominal precisa conter exatamente sete dígitos.");
+    if (code && !/^\d{7}$/.test(code)) throw new TypeError("O código do aluno precisa conter exatamente sete dígitos.");
     bound.identityCode.student = student || null;
     bound.identityCode.columns = bound.identityCode.columns.map(column => ({ ...column, printedDigit: code ? code[column.index] : "" }));
     bound.identityBubbles = bound.identityBubbles.map(bubble => ({ ...bubble, filled: Boolean(code) && code[bubble.column - 1] === String(bubble.digit) }));

@@ -1,0 +1,2543 @@
+{
+  "headerRevision": "salta-v2-header-1",
+  "schemaVersion": "salta-layout-manifest-v2",
+  "templateId": "omr-a4",
+  "revision": 8,
+  "version": "salta-omr-layout-v2-r8",
+  "layoutVersion": "v2",
+  "artworkVersion": "salta-card-artwork-v2",
+  "mode": "full-page",
+  "paper": {
+    "kind": "A4",
+    "widthMm": 210,
+    "heightMm": 297
+  },
+  "identity": {
+    "mode": "seven-digit-code",
+    "showName": true,
+    "showClass": false
+  },
+  "identityCode": {
+    "mode": "seven-digit-code",
+    "student": null,
+    "columns": [
+      {
+        "index": 0,
+        "centerX": 89.4,
+        "box": {
+          "x": 87.30000000000001,
+          "y": 158.35999999999999,
+          "width": 4.2,
+          "height": 4.2,
+          "centerX": 89.4
+        },
+        "printedDigit": ""
+      },
+      {
+        "index": 1,
+        "centerX": 94.60000000000001,
+        "box": {
+          "x": 92.50000000000001,
+          "y": 158.35999999999999,
+          "width": 4.2,
+          "height": 4.2,
+          "centerX": 94.60000000000001
+        },
+        "printedDigit": ""
+      },
+      {
+        "index": 2,
+        "centerX": 99.80000000000001,
+        "box": {
+          "x": 97.70000000000002,
+          "y": 158.35999999999999,
+          "width": 4.2,
+          "height": 4.2,
+          "centerX": 99.80000000000001
+        },
+        "printedDigit": ""
+      },
+      {
+        "index": 3,
+        "centerX": 105,
+        "box": {
+          "x": 102.9,
+          "y": 158.35999999999999,
+          "width": 4.2,
+          "height": 4.2,
+          "centerX": 105
+        },
+        "printedDigit": ""
+      },
+      {
+        "index": 4,
+        "centerX": 110.2,
+        "box": {
+          "x": 108.10000000000001,
+          "y": 158.35999999999999,
+          "width": 4.2,
+          "height": 4.2,
+          "centerX": 110.2
+        },
+        "printedDigit": ""
+      },
+      {
+        "index": 5,
+        "centerX": 115.4,
+        "box": {
+          "x": 113.30000000000001,
+          "y": 158.35999999999999,
+          "width": 4.2,
+          "height": 4.2,
+          "centerX": 115.4
+        },
+        "printedDigit": ""
+      },
+      {
+        "index": 6,
+        "centerX": 120.60000000000001,
+        "box": {
+          "x": 118.50000000000001,
+          "y": 158.35999999999999,
+          "width": 4.2,
+          "height": 4.2,
+          "centerX": 120.60000000000001
+        },
+        "printedDigit": ""
+      }
+    ]
+  },
+  "identityBubbles": [
+    {
+      "bubbleId": "identity:0:0",
+      "column": 1,
+      "digit": 0,
+      "x": 89.4,
+      "y": 167.85999999999999,
+      "radiusMm": 2.25,
+      "filled": false
+    },
+    {
+      "bubbleId": "identity:0:1",
+      "column": 1,
+      "digit": 1,
+      "x": 89.4,
+      "y": 173.05999999999997,
+      "radiusMm": 2.25,
+      "filled": false
+    },
+    {
+      "bubbleId": "identity:0:2",
+      "column": 1,
+      "digit": 2,
+      "x": 89.4,
+      "y": 178.26,
+      "radiusMm": 2.25,
+      "filled": false
+    },
+    {
+      "bubbleId": "identity:0:3",
+      "column": 1,
+      "digit": 3,
+      "x": 89.4,
+      "y": 183.45999999999998,
+      "radiusMm": 2.25,
+      "filled": false
+    },
+    {
+      "bubbleId": "identity:0:4",
+      "column": 1,
+      "digit": 4,
+      "x": 89.4,
+      "y": 188.66,
+      "radiusMm": 2.25,
+      "filled": false
+    },
+    {
+      "bubbleId": "identity:0:5",
+      "column": 1,
+      "digit": 5,
+      "x": 89.4,
+      "y": 193.85999999999999,
+      "radiusMm": 2.25,
+      "filled": false
+    },
+    {
+      "bubbleId": "identity:0:6",
+      "column": 1,
+      "digit": 6,
+      "x": 89.4,
+      "y": 199.06,
+      "radiusMm": 2.25,
+      "filled": false
+    },
+    {
+      "bubbleId": "identity:0:7",
+      "column": 1,
+      "digit": 7,
+      "x": 89.4,
+      "y": 204.26,
+      "radiusMm": 2.25,
+      "filled": false
+    },
+    {
+      "bubbleId": "identity:0:8",
+      "column": 1,
+      "digit": 8,
+      "x": 89.4,
+      "y": 209.45999999999998,
+      "radiusMm": 2.25,
+      "filled": false
+    },
+    {
+      "bubbleId": "identity:0:9",
+      "column": 1,
+      "digit": 9,
+      "x": 89.4,
+      "y": 214.66,
+      "radiusMm": 2.25,
+      "filled": false
+    },
+    {
+      "bubbleId": "identity:1:0",
+      "column": 2,
+      "digit": 0,
+      "x": 94.60000000000001,
+      "y": 167.85999999999999,
+      "radiusMm": 2.25,
+      "filled": false
+    },
+    {
+      "bubbleId": "identity:1:1",
+      "column": 2,
+      "digit": 1,
+      "x": 94.60000000000001,
+      "y": 173.05999999999997,
+      "radiusMm": 2.25,
+      "filled": false
+    },
+    {
+      "bubbleId": "identity:1:2",
+      "column": 2,
+      "digit": 2,
+      "x": 94.60000000000001,
+      "y": 178.26,
+      "radiusMm": 2.25,
+      "filled": false
+    },
+    {
+      "bubbleId": "identity:1:3",
+      "column": 2,
+      "digit": 3,
+      "x": 94.60000000000001,
+      "y": 183.45999999999998,
+      "radiusMm": 2.25,
+      "filled": false
+    },
+    {
+      "bubbleId": "identity:1:4",
+      "column": 2,
+      "digit": 4,
+      "x": 94.60000000000001,
+      "y": 188.66,
+      "radiusMm": 2.25,
+      "filled": false
+    },
+    {
+      "bubbleId": "identity:1:5",
+      "column": 2,
+      "digit": 5,
+      "x": 94.60000000000001,
+      "y": 193.85999999999999,
+      "radiusMm": 2.25,
+      "filled": false
+    },
+    {
+      "bubbleId": "identity:1:6",
+      "column": 2,
+      "digit": 6,
+      "x": 94.60000000000001,
+      "y": 199.06,
+      "radiusMm": 2.25,
+      "filled": false
+    },
+    {
+      "bubbleId": "identity:1:7",
+      "column": 2,
+      "digit": 7,
+      "x": 94.60000000000001,
+      "y": 204.26,
+      "radiusMm": 2.25,
+      "filled": false
+    },
+    {
+      "bubbleId": "identity:1:8",
+      "column": 2,
+      "digit": 8,
+      "x": 94.60000000000001,
+      "y": 209.45999999999998,
+      "radiusMm": 2.25,
+      "filled": false
+    },
+    {
+      "bubbleId": "identity:1:9",
+      "column": 2,
+      "digit": 9,
+      "x": 94.60000000000001,
+      "y": 214.66,
+      "radiusMm": 2.25,
+      "filled": false
+    },
+    {
+      "bubbleId": "identity:2:0",
+      "column": 3,
+      "digit": 0,
+      "x": 99.80000000000001,
+      "y": 167.85999999999999,
+      "radiusMm": 2.25,
+      "filled": false
+    },
+    {
+      "bubbleId": "identity:2:1",
+      "column": 3,
+      "digit": 1,
+      "x": 99.80000000000001,
+      "y": 173.05999999999997,
+      "radiusMm": 2.25,
+      "filled": false
+    },
+    {
+      "bubbleId": "identity:2:2",
+      "column": 3,
+      "digit": 2,
+      "x": 99.80000000000001,
+      "y": 178.26,
+      "radiusMm": 2.25,
+      "filled": false
+    },
+    {
+      "bubbleId": "identity:2:3",
+      "column": 3,
+      "digit": 3,
+      "x": 99.80000000000001,
+      "y": 183.45999999999998,
+      "radiusMm": 2.25,
+      "filled": false
+    },
+    {
+      "bubbleId": "identity:2:4",
+      "column": 3,
+      "digit": 4,
+      "x": 99.80000000000001,
+      "y": 188.66,
+      "radiusMm": 2.25,
+      "filled": false
+    },
+    {
+      "bubbleId": "identity:2:5",
+      "column": 3,
+      "digit": 5,
+      "x": 99.80000000000001,
+      "y": 193.85999999999999,
+      "radiusMm": 2.25,
+      "filled": false
+    },
+    {
+      "bubbleId": "identity:2:6",
+      "column": 3,
+      "digit": 6,
+      "x": 99.80000000000001,
+      "y": 199.06,
+      "radiusMm": 2.25,
+      "filled": false
+    },
+    {
+      "bubbleId": "identity:2:7",
+      "column": 3,
+      "digit": 7,
+      "x": 99.80000000000001,
+      "y": 204.26,
+      "radiusMm": 2.25,
+      "filled": false
+    },
+    {
+      "bubbleId": "identity:2:8",
+      "column": 3,
+      "digit": 8,
+      "x": 99.80000000000001,
+      "y": 209.45999999999998,
+      "radiusMm": 2.25,
+      "filled": false
+    },
+    {
+      "bubbleId": "identity:2:9",
+      "column": 3,
+      "digit": 9,
+      "x": 99.80000000000001,
+      "y": 214.66,
+      "radiusMm": 2.25,
+      "filled": false
+    },
+    {
+      "bubbleId": "identity:3:0",
+      "column": 4,
+      "digit": 0,
+      "x": 105,
+      "y": 167.85999999999999,
+      "radiusMm": 2.25,
+      "filled": false
+    },
+    {
+      "bubbleId": "identity:3:1",
+      "column": 4,
+      "digit": 1,
+      "x": 105,
+      "y": 173.05999999999997,
+      "radiusMm": 2.25,
+      "filled": false
+    },
+    {
+      "bubbleId": "identity:3:2",
+      "column": 4,
+      "digit": 2,
+      "x": 105,
+      "y": 178.26,
+      "radiusMm": 2.25,
+      "filled": false
+    },
+    {
+      "bubbleId": "identity:3:3",
+      "column": 4,
+      "digit": 3,
+      "x": 105,
+      "y": 183.45999999999998,
+      "radiusMm": 2.25,
+      "filled": false
+    },
+    {
+      "bubbleId": "identity:3:4",
+      "column": 4,
+      "digit": 4,
+      "x": 105,
+      "y": 188.66,
+      "radiusMm": 2.25,
+      "filled": false
+    },
+    {
+      "bubbleId": "identity:3:5",
+      "column": 4,
+      "digit": 5,
+      "x": 105,
+      "y": 193.85999999999999,
+      "radiusMm": 2.25,
+      "filled": false
+    },
+    {
+      "bubbleId": "identity:3:6",
+      "column": 4,
+      "digit": 6,
+      "x": 105,
+      "y": 199.06,
+      "radiusMm": 2.25,
+      "filled": false
+    },
+    {
+      "bubbleId": "identity:3:7",
+      "column": 4,
+      "digit": 7,
+      "x": 105,
+      "y": 204.26,
+      "radiusMm": 2.25,
+      "filled": false
+    },
+    {
+      "bubbleId": "identity:3:8",
+      "column": 4,
+      "digit": 8,
+      "x": 105,
+      "y": 209.45999999999998,
+      "radiusMm": 2.25,
+      "filled": false
+    },
+    {
+      "bubbleId": "identity:3:9",
+      "column": 4,
+      "digit": 9,
+      "x": 105,
+      "y": 214.66,
+      "radiusMm": 2.25,
+      "filled": false
+    },
+    {
+      "bubbleId": "identity:4:0",
+      "column": 5,
+      "digit": 0,
+      "x": 110.2,
+      "y": 167.85999999999999,
+      "radiusMm": 2.25,
+      "filled": false
+    },
+    {
+      "bubbleId": "identity:4:1",
+      "column": 5,
+      "digit": 1,
+      "x": 110.2,
+      "y": 173.05999999999997,
+      "radiusMm": 2.25,
+      "filled": false
+    },
+    {
+      "bubbleId": "identity:4:2",
+      "column": 5,
+      "digit": 2,
+      "x": 110.2,
+      "y": 178.26,
+      "radiusMm": 2.25,
+      "filled": false
+    },
+    {
+      "bubbleId": "identity:4:3",
+      "column": 5,
+      "digit": 3,
+      "x": 110.2,
+      "y": 183.45999999999998,
+      "radiusMm": 2.25,
+      "filled": false
+    },
+    {
+      "bubbleId": "identity:4:4",
+      "column": 5,
+      "digit": 4,
+      "x": 110.2,
+      "y": 188.66,
+      "radiusMm": 2.25,
+      "filled": false
+    },
+    {
+      "bubbleId": "identity:4:5",
+      "column": 5,
+      "digit": 5,
+      "x": 110.2,
+      "y": 193.85999999999999,
+      "radiusMm": 2.25,
+      "filled": false
+    },
+    {
+      "bubbleId": "identity:4:6",
+      "column": 5,
+      "digit": 6,
+      "x": 110.2,
+      "y": 199.06,
+      "radiusMm": 2.25,
+      "filled": false
+    },
+    {
+      "bubbleId": "identity:4:7",
+      "column": 5,
+      "digit": 7,
+      "x": 110.2,
+      "y": 204.26,
+      "radiusMm": 2.25,
+      "filled": false
+    },
+    {
+      "bubbleId": "identity:4:8",
+      "column": 5,
+      "digit": 8,
+      "x": 110.2,
+      "y": 209.45999999999998,
+      "radiusMm": 2.25,
+      "filled": false
+    },
+    {
+      "bubbleId": "identity:4:9",
+      "column": 5,
+      "digit": 9,
+      "x": 110.2,
+      "y": 214.66,
+      "radiusMm": 2.25,
+      "filled": false
+    },
+    {
+      "bubbleId": "identity:5:0",
+      "column": 6,
+      "digit": 0,
+      "x": 115.4,
+      "y": 167.85999999999999,
+      "radiusMm": 2.25,
+      "filled": false
+    },
+    {
+      "bubbleId": "identity:5:1",
+      "column": 6,
+      "digit": 1,
+      "x": 115.4,
+      "y": 173.05999999999997,
+      "radiusMm": 2.25,
+      "filled": false
+    },
+    {
+      "bubbleId": "identity:5:2",
+      "column": 6,
+      "digit": 2,
+      "x": 115.4,
+      "y": 178.26,
+      "radiusMm": 2.25,
+      "filled": false
+    },
+    {
+      "bubbleId": "identity:5:3",
+      "column": 6,
+      "digit": 3,
+      "x": 115.4,
+      "y": 183.45999999999998,
+      "radiusMm": 2.25,
+      "filled": false
+    },
+    {
+      "bubbleId": "identity:5:4",
+      "column": 6,
+      "digit": 4,
+      "x": 115.4,
+      "y": 188.66,
+      "radiusMm": 2.25,
+      "filled": false
+    },
+    {
+      "bubbleId": "identity:5:5",
+      "column": 6,
+      "digit": 5,
+      "x": 115.4,
+      "y": 193.85999999999999,
+      "radiusMm": 2.25,
+      "filled": false
+    },
+    {
+      "bubbleId": "identity:5:6",
+      "column": 6,
+      "digit": 6,
+      "x": 115.4,
+      "y": 199.06,
+      "radiusMm": 2.25,
+      "filled": false
+    },
+    {
+      "bubbleId": "identity:5:7",
+      "column": 6,
+      "digit": 7,
+      "x": 115.4,
+      "y": 204.26,
+      "radiusMm": 2.25,
+      "filled": false
+    },
+    {
+      "bubbleId": "identity:5:8",
+      "column": 6,
+      "digit": 8,
+      "x": 115.4,
+      "y": 209.45999999999998,
+      "radiusMm": 2.25,
+      "filled": false
+    },
+    {
+      "bubbleId": "identity:5:9",
+      "column": 6,
+      "digit": 9,
+      "x": 115.4,
+      "y": 214.66,
+      "radiusMm": 2.25,
+      "filled": false
+    },
+    {
+      "bubbleId": "identity:6:0",
+      "column": 7,
+      "digit": 0,
+      "x": 120.60000000000001,
+      "y": 167.85999999999999,
+      "radiusMm": 2.25,
+      "filled": false
+    },
+    {
+      "bubbleId": "identity:6:1",
+      "column": 7,
+      "digit": 1,
+      "x": 120.60000000000001,
+      "y": 173.05999999999997,
+      "radiusMm": 2.25,
+      "filled": false
+    },
+    {
+      "bubbleId": "identity:6:2",
+      "column": 7,
+      "digit": 2,
+      "x": 120.60000000000001,
+      "y": 178.26,
+      "radiusMm": 2.25,
+      "filled": false
+    },
+    {
+      "bubbleId": "identity:6:3",
+      "column": 7,
+      "digit": 3,
+      "x": 120.60000000000001,
+      "y": 183.45999999999998,
+      "radiusMm": 2.25,
+      "filled": false
+    },
+    {
+      "bubbleId": "identity:6:4",
+      "column": 7,
+      "digit": 4,
+      "x": 120.60000000000001,
+      "y": 188.66,
+      "radiusMm": 2.25,
+      "filled": false
+    },
+    {
+      "bubbleId": "identity:6:5",
+      "column": 7,
+      "digit": 5,
+      "x": 120.60000000000001,
+      "y": 193.85999999999999,
+      "radiusMm": 2.25,
+      "filled": false
+    },
+    {
+      "bubbleId": "identity:6:6",
+      "column": 7,
+      "digit": 6,
+      "x": 120.60000000000001,
+      "y": 199.06,
+      "radiusMm": 2.25,
+      "filled": false
+    },
+    {
+      "bubbleId": "identity:6:7",
+      "column": 7,
+      "digit": 7,
+      "x": 120.60000000000001,
+      "y": 204.26,
+      "radiusMm": 2.25,
+      "filled": false
+    },
+    {
+      "bubbleId": "identity:6:8",
+      "column": 7,
+      "digit": 8,
+      "x": 120.60000000000001,
+      "y": 209.45999999999998,
+      "radiusMm": 2.25,
+      "filled": false
+    },
+    {
+      "bubbleId": "identity:6:9",
+      "column": 7,
+      "digit": 9,
+      "x": 120.60000000000001,
+      "y": 214.66,
+      "radiusMm": 2.25,
+      "filled": false
+    }
+  ],
+  "header": {
+    "layout": "text",
+    "institution": "SECRETARIA SINTÉTICA\nESCOLA FICTÍCIA SALTA",
+    "teacher": "Docente Fictício",
+    "subject": "",
+    "className": "2ª A",
+    "grade": "2ª série",
+    "date": "2026-12-01",
+    "schoolYear": "2026",
+    "title": "CARTÃO DE RESPOSTAS",
+    "logo": "data:image/png;base64,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",
+    "secondaryLogo": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAPAAAAA8CAYAAABYfzddAAAACXBIWXMAAAsTAAALEwEAmpwYAAAEcUlEQVR4nO2cz0tjVxTHT6GLgUIXhbbQP8HCuzcbIaEQXfhjoRAREReKIoiCWsHa4KqiKBEJvqxk7MD0x6I4GxmGKW6qC1tKpVLfC+2ui0JL201Xbbe3nBC6mzLN5OXc8+73A1+SvLxnruec77kngYQIAAAAAAAAAAAAAAAAAFBLmqZvJknyfpIkJ2ma3ocQg7zXQJIkJ1zzXPuknfY/Ih5UCDFIexyDZrO5RdrBzgvjhNo8kyQ5Ie1IBxFCDFLBGJB2YCAYKOQaIO1IBzBUnZ+ff7a/v/8Fi+9LrydUkXakAxiCrq6uPmo0Gp+vrq5+W6lUfiqVSn+NjIz8vrCw0GTxfT7Gz/E5fC5fI73uEETakQ5g3nR7e/vh2dnZo93d3au5ubkfBgcH/yiVSn9OTU39WK1Wvzo9PX18c3PzoFvXQSkMjCLovAguLi4+rdfrF8vLy9+Njo7+WiwW/+ZbfszHLy8vP+70b19fXz9k425sbHwzMTHR2rnZ2GxwNjobHrlLYWAUgR5DZdkwQhRpRzqAvkrLSKtlnamnIu1IB9AX5Wln82FS0CLSjnQAUeC9iUGeGlQKA4djYIyYiEv6H/VB2pE2WLeFnabz2IU4epN2pAP4Igqx4HqtvDdE0o50AJ9XGIXlc5DHPJB2pAMYaufPkzRPQqQdH74PrLkAIL0NOMnD94F7/YsceRvBIL15bzab75F2+HeB+KdFstqJNXRiKKzJK0mSEzbv3d3dG9L+84r+/v5Xoyh6xxhTtdY+Mcb8Yoz53lp731o7Z4x5m4hekl4n8JdCofBWFEXj1tqatfZLa+1v7dta+/jr0mvMBeVy+WU2JBuTDdo26s/W2kfW2nfZyOVy+Z70OoFuyqiz7hFF0SvGmIYx5uv27vrUWvtBoVAY7evre62LLwXAM+Fa45rj2uMabNci12SDa/TZVwYODAx8oA8GznS04fe+VYzQoJt1ZoxZMsZ8grdqGYIPscCLUsCHWP+POI5dljo4OHCbm5tudnbWDQ8Pu2Kx2Lrlx3y8Vqtl+vqQvzE4Ojpy29vbbnFx0Y2Pj7tSqeQGBgbc9PS0W1tbczs7O+74+DjTNahvub1OGieEE8MJ4kRxwjhxnEBOJCe0Xq+LFxeUTd5XVlbc5OTkv3mvVCpuaWlJLO+kHR8K1YdODIU5eZF2pAOovQAg3Q2YtCMdwOcVRm+/8uDbKBzDwPqkufNrUd4nIdKOdABRcP4oxIZI2pEOYNbC6B3GKBzDwOEoxJ0m76Nw3KFIO9IB9EV5KvAQG1TcoUg70gH0VVpGb4zCMQwsXYRa5MPOlqdJIfZApB3pAGpXlobyoWHkXaQd6QDmTZ2O3hiFYxgYBvZTh4eHbmtry83Pz7uxsbGWoYeGhtzMzExLfJ+P8XN8Dp/L10ivOwSRdqQDGKr29vbc+vp6S3xfej2hirQjHUAIMYhhYBgYjQCNIMYOjCJAIwirBkg70gGEEIMYBoaB0QjQCOIQd2AAAAAAAAAAAAAAAAAAFC7/AMXxYN8hLOLFAAAAAElFTkSuQmCC",
+    "showStudentCode": true,
+    "visible": {
+      "institution": true,
+      "teacher": true,
+      "subject": true,
+      "className": true,
+      "grade": true,
+      "date": true,
+      "schoolYear": true,
+      "title": true,
+      "studentName": true
+    },
+    "customFields": [
+      {
+        "label": "Sala",
+        "value": "201"
+      },
+      {
+        "label": "Turno",
+        "value": "Manhã"
+      }
+    ],
+    "showInstructions": false,
+    "instructions": "",
+    "logoAspect": 0.25,
+    "secondaryLogoAspect": 4
+  },
+  "panels": {
+    "header": {
+      "frame": {
+        "x": 14,
+        "y": 14,
+        "width": 182,
+        "height": 46.48,
+        "role": "header"
+      },
+      "texts": [
+        {
+          "id": "institution",
+          "text": "SECRETARIA SINTÉTICA",
+          "x": 105,
+          "y": 26.1,
+          "size": 3,
+          "weight": 700,
+          "anchor": "middle",
+          "box": {
+            "x": 44,
+            "y": 23.1,
+            "width": 122,
+            "height": 7.800000000000001
+          }
+        },
+        {
+          "id": "institution",
+          "text": "ESCOLA FICTÍCIA SALTA",
+          "x": 105,
+          "y": 30,
+          "size": 3,
+          "weight": 700,
+          "anchor": "middle",
+          "box": {
+            "x": 44,
+            "y": 23.1,
+            "width": 122,
+            "height": 7.800000000000001
+          }
+        },
+        {
+          "id": "title",
+          "text": "CARTÃO DE RESPOSTAS",
+          "x": 105,
+          "y": 46.4,
+          "size": 4.4,
+          "weight": 700,
+          "anchor": "middle",
+          "box": {
+            "x": 17,
+            "y": 42,
+            "width": 176,
+            "height": 5.720000000000001
+          }
+        },
+        {
+          "id": "PROFESSOR",
+          "text": "PROF.: Docente",
+          "x": 16,
+          "y": 54.32,
+          "size": 2.6,
+          "weight": 400,
+          "anchor": "start",
+          "box": {
+            "x": 16,
+            "y": 51.72,
+            "width": 30.982572688421158,
+            "height": 6.76
+          }
+        },
+        {
+          "id": "PROFESSOR",
+          "text": "Fictício",
+          "x": 16,
+          "y": 57.7,
+          "size": 2.6,
+          "weight": 400,
+          "anchor": "start",
+          "box": {
+            "x": 16,
+            "y": 51.72,
+            "width": 30.982572688421158,
+            "height": 6.76
+          }
+        },
+        {
+          "id": "TURMA",
+          "text": "TURMA: 2ª",
+          "x": 50.98257268842116,
+          "y": 54.32,
+          "size": 2.6,
+          "weight": 400,
+          "anchor": "start",
+          "box": {
+            "x": 50.98257268842116,
+            "y": 51.72,
+            "width": 17.343588011553784,
+            "height": 6.76
+          }
+        },
+        {
+          "id": "TURMA",
+          "text": "A",
+          "x": 50.98257268842116,
+          "y": 57.7,
+          "size": 2.6,
+          "weight": 400,
+          "anchor": "start",
+          "box": {
+            "x": 50.98257268842116,
+            "y": 51.72,
+            "width": 17.343588011553784,
+            "height": 6.76
+          }
+        },
+        {
+          "id": "DATA",
+          "text": "DATA:",
+          "x": 72.32616069997493,
+          "y": 54.32,
+          "size": 2.6,
+          "weight": 400,
+          "anchor": "start",
+          "box": {
+            "x": 72.32616069997493,
+            "y": 51.72,
+            "width": 24.326363753725882,
+            "height": 6.76
+          }
+        },
+        {
+          "id": "DATA",
+          "text": "01/12/2026",
+          "x": 72.32616069997493,
+          "y": 57.7,
+          "size": 2.6,
+          "weight": 400,
+          "anchor": "start",
+          "box": {
+            "x": 72.32616069997493,
+            "y": 51.72,
+            "width": 24.326363753725882,
+            "height": 6.76
+          }
+        },
+        {
+          "id": "SERIE",
+          "text": "ANO/SÉRIE: 2ª",
+          "x": 100.65252445370082,
+          "y": 54.32,
+          "size": 2.6,
+          "weight": 400,
+          "anchor": "start",
+          "box": {
+            "x": 100.65252445370082,
+            "y": 51.72,
+            "width": 25.086217348704277,
+            "height": 6.76
+          }
+        },
+        {
+          "id": "SERIE",
+          "text": "série",
+          "x": 100.65252445370082,
+          "y": 57.7,
+          "size": 2.6,
+          "weight": 400,
+          "anchor": "start",
+          "box": {
+            "x": 100.65252445370082,
+            "y": 51.72,
+            "width": 25.086217348704277,
+            "height": 6.76
+          }
+        },
+        {
+          "id": "ANO",
+          "text": "ANO LETIVO:",
+          "x": 129.73874180240512,
+          "y": 54.32,
+          "size": 2.6,
+          "weight": 400,
+          "anchor": "start",
+          "box": {
+            "x": 129.73874180240512,
+            "y": 51.72,
+            "width": 25.9033782236238,
+            "height": 6.76
+          }
+        },
+        {
+          "id": "ANO",
+          "text": "2026",
+          "x": 129.73874180240512,
+          "y": 57.7,
+          "size": 2.6,
+          "weight": 400,
+          "anchor": "start",
+          "box": {
+            "x": 129.73874180240512,
+            "y": 51.72,
+            "width": 25.9033782236238,
+            "height": 6.76
+          }
+        },
+        {
+          "id": "CUSTOM-0",
+          "text": "Sala: 201",
+          "x": 159.6421200260289,
+          "y": 54.32,
+          "size": 2.6,
+          "weight": 400,
+          "anchor": "start",
+          "box": {
+            "x": 159.6421200260289,
+            "y": 51.72,
+            "width": 14.636609492905137,
+            "height": 6.76
+          }
+        },
+        {
+          "id": "CUSTOM-1",
+          "text": "Turno:",
+          "x": 178.27872951893403,
+          "y": 54.32,
+          "size": 2.6,
+          "weight": 400,
+          "anchor": "start",
+          "box": {
+            "x": 178.27872951893403,
+            "y": 51.72,
+            "width": 15.72127048106595,
+            "height": 6.76
+          }
+        },
+        {
+          "id": "CUSTOM-1",
+          "text": "Manhã",
+          "x": 178.27872951893403,
+          "y": 57.7,
+          "size": 2.6,
+          "weight": 400,
+          "anchor": "start",
+          "box": {
+            "x": 178.27872951893403,
+            "y": 51.72,
+            "width": 15.72127048106595,
+            "height": 6.76
+          }
+        }
+      ],
+      "rules": [
+        {
+          "x1": 14,
+          "y1": 40,
+          "x2": 196,
+          "y2": 40
+        },
+        {
+          "x1": 14,
+          "y1": 49.72,
+          "x2": 196,
+          "y2": 49.72
+        },
+        {
+          "x1": 48.98257268842116,
+          "y1": 49.72,
+          "x2": 48.98257268842116,
+          "y2": 60.48
+        },
+        {
+          "x1": 70.32616069997493,
+          "y1": 49.72,
+          "x2": 70.32616069997493,
+          "y2": 60.48
+        },
+        {
+          "x1": 98.65252445370082,
+          "y1": 49.72,
+          "x2": 98.65252445370082,
+          "y2": 60.48
+        },
+        {
+          "x1": 127.7387418024051,
+          "y1": 49.72,
+          "x2": 127.7387418024051,
+          "y2": 60.48
+        },
+        {
+          "x1": 157.6421200260289,
+          "y1": 49.72,
+          "x2": 157.6421200260289,
+          "y2": 60.48
+        },
+        {
+          "x1": 176.27872951893403,
+          "y1": 49.72,
+          "x2": 176.27872951893403,
+          "y2": 60.48
+        }
+      ],
+      "logos": [
+        {
+          "href": "data:image/png;base64,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",
+          "width": 5.5,
+          "height": 22,
+          "side": 0,
+          "x": 17,
+          "y": 16
+        },
+        {
+          "href": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAPAAAAA8CAYAAABYfzddAAAACXBIWXMAAAsTAAALEwEAmpwYAAAEcUlEQVR4nO2cz0tjVxTHT6GLgUIXhbbQP8HCuzcbIaEQXfhjoRAREReKIoiCWsHa4KqiKBEJvqxk7MD0x6I4GxmGKW6qC1tKpVLfC+2ui0JL201Xbbe3nBC6mzLN5OXc8+73A1+SvLxnruec77kngYQIAAAAAAAAAAAAAAAAAFBLmqZvJknyfpIkJ2ma3ocQg7zXQJIkJ1zzXPuknfY/Ih5UCDFIexyDZrO5RdrBzgvjhNo8kyQ5Ie1IBxFCDFLBGJB2YCAYKOQaIO1IBzBUnZ+ff7a/v/8Fi+9LrydUkXakAxiCrq6uPmo0Gp+vrq5+W6lUfiqVSn+NjIz8vrCw0GTxfT7Gz/E5fC5fI73uEETakQ5g3nR7e/vh2dnZo93d3au5ubkfBgcH/yiVSn9OTU39WK1Wvzo9PX18c3PzoFvXQSkMjCLovAguLi4+rdfrF8vLy9+Njo7+WiwW/+ZbfszHLy8vP+70b19fXz9k425sbHwzMTHR2rnZ2GxwNjobHrlLYWAUgR5DZdkwQhRpRzqAvkrLSKtlnamnIu1IB9AX5Wln82FS0CLSjnQAUeC9iUGeGlQKA4djYIyYiEv6H/VB2pE2WLeFnabz2IU4epN2pAP4Igqx4HqtvDdE0o50AJ9XGIXlc5DHPJB2pAMYaufPkzRPQqQdH74PrLkAIL0NOMnD94F7/YsceRvBIL15bzab75F2+HeB+KdFstqJNXRiKKzJK0mSEzbv3d3dG9L+84r+/v5Xoyh6xxhTtdY+Mcb8Yoz53lp731o7Z4x5m4hekl4n8JdCofBWFEXj1tqatfZLa+1v7dta+/jr0mvMBeVy+WU2JBuTDdo26s/W2kfW2nfZyOVy+Z70OoFuyqiz7hFF0SvGmIYx5uv27vrUWvtBoVAY7evre62LLwXAM+Fa45rj2uMabNci12SDa/TZVwYODAx8oA8GznS04fe+VYzQoJt1ZoxZMsZ8grdqGYIPscCLUsCHWP+POI5dljo4OHCbm5tudnbWDQ8Pu2Kx2Lrlx3y8Vqtl+vqQvzE4Ojpy29vbbnFx0Y2Pj7tSqeQGBgbc9PS0W1tbczs7O+74+DjTNahvub1OGieEE8MJ4kRxwjhxnEBOJCe0Xq+LFxeUTd5XVlbc5OTkv3mvVCpuaWlJLO+kHR8K1YdODIU5eZF2pAOovQAg3Q2YtCMdwOcVRm+/8uDbKBzDwPqkufNrUd4nIdKOdABRcP4oxIZI2pEOYNbC6B3GKBzDwOEoxJ0m76Nw3KFIO9IB9EV5KvAQG1TcoUg70gH0VVpGb4zCMQwsXYRa5MPOlqdJIfZApB3pAGpXlobyoWHkXaQd6QDmTZ2O3hiFYxgYBvZTh4eHbmtry83Pz7uxsbGWoYeGhtzMzExLfJ+P8XN8Dp/L10ivOwSRdqQDGKr29vbc+vp6S3xfej2hirQjHUAIMYhhYBgYjQCNIMYOjCJAIwirBkg70gGEEIMYBoaB0QjQCOIQd2AAAAAAAAAAAAAAAAAAFC7/AMXxYN8hLOLFAAAAAElFTkSuQmCC",
+          "width": 22,
+          "height": 5.5,
+          "side": 1,
+          "x": 171,
+          "y": 24.25
+        }
+      ],
+      "adminBand": {
+        "x": 14,
+        "y": 49.72,
+        "width": 182,
+        "height": 10.76,
+        "cells": [
+          {
+            "id": "PROFESSOR",
+            "key": "teacher",
+            "label": "PROF.",
+            "value": "Docente Fictício",
+            "text": "PROF.: Docente Fictício",
+            "width": 34.98257268842116,
+            "x": 14,
+            "y": 49.72,
+            "height": 10.76
+          },
+          {
+            "id": "TURMA",
+            "key": "className",
+            "label": "TURMA",
+            "value": "2ª A",
+            "text": "TURMA: 2ª A",
+            "width": 21.343588011553784,
+            "x": 48.98257268842116,
+            "y": 49.72,
+            "height": 10.76
+          },
+          {
+            "id": "DATA",
+            "key": "date",
+            "label": "DATA",
+            "value": "01/12/2026",
+            "text": "DATA: 01/12/2026",
+            "width": 28.326363753725882,
+            "x": 70.32616069997493,
+            "y": 49.72,
+            "height": 10.76
+          },
+          {
+            "id": "SERIE",
+            "key": "grade",
+            "label": "ANO/SÉRIE",
+            "value": "2ª série",
+            "text": "ANO/SÉRIE: 2ª série",
+            "width": 29.086217348704277,
+            "x": 98.65252445370082,
+            "y": 49.72,
+            "height": 10.76
+          },
+          {
+            "id": "ANO",
+            "key": "schoolYear",
+            "label": "ANO LETIVO",
+            "value": "2026",
+            "text": "ANO LETIVO: 2026",
+            "width": 29.9033782236238,
+            "x": 127.7387418024051,
+            "y": 49.72,
+            "height": 10.76
+          },
+          {
+            "id": "CUSTOM-0",
+            "key": "sala",
+            "label": "Sala",
+            "value": "201",
+            "text": "Sala: 201",
+            "width": 18.636609492905137,
+            "x": 157.6421200260289,
+            "y": 49.72,
+            "height": 10.76
+          },
+          {
+            "id": "CUSTOM-1",
+            "key": "turno",
+            "label": "Turno",
+            "value": "Manhã",
+            "text": "Turno: Manhã",
+            "width": 19.72127048106595,
+            "x": 176.27872951893403,
+            "y": 49.72,
+            "height": 10.76
+          }
+        ]
+      },
+      "header": {
+        "layout": "text",
+        "institution": "SECRETARIA SINTÉTICA\nESCOLA FICTÍCIA SALTA",
+        "teacher": "Docente Fictício",
+        "subject": "",
+        "className": "2ª A",
+        "grade": "2ª série",
+        "date": "2026-12-01",
+        "schoolYear": "2026",
+        "title": "CARTÃO DE RESPOSTAS",
+        "logo": "data:image/png;base64,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",
+        "secondaryLogo": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAPAAAAA8CAYAAABYfzddAAAACXBIWXMAAAsTAAALEwEAmpwYAAAEcUlEQVR4nO2cz0tjVxTHT6GLgUIXhbbQP8HCuzcbIaEQXfhjoRAREReKIoiCWsHa4KqiKBEJvqxk7MD0x6I4GxmGKW6qC1tKpVLfC+2ui0JL201Xbbe3nBC6mzLN5OXc8+73A1+SvLxnruec77kngYQIAAAAAAAAAAAAAAAAAFBLmqZvJknyfpIkJ2ma3ocQg7zXQJIkJ1zzXPuknfY/Ih5UCDFIexyDZrO5RdrBzgvjhNo8kyQ5Ie1IBxFCDFLBGJB2YCAYKOQaIO1IBzBUnZ+ff7a/v/8Fi+9LrydUkXakAxiCrq6uPmo0Gp+vrq5+W6lUfiqVSn+NjIz8vrCw0GTxfT7Gz/E5fC5fI73uEETakQ5g3nR7e/vh2dnZo93d3au5ubkfBgcH/yiVSn9OTU39WK1Wvzo9PX18c3PzoFvXQSkMjCLovAguLi4+rdfrF8vLy9+Njo7+WiwW/+ZbfszHLy8vP+70b19fXz9k425sbHwzMTHR2rnZ2GxwNjobHrlLYWAUgR5DZdkwQhRpRzqAvkrLSKtlnamnIu1IB9AX5Wln82FS0CLSjnQAUeC9iUGeGlQKA4djYIyYiEv6H/VB2pE2WLeFnabz2IU4epN2pAP4Igqx4HqtvDdE0o50AJ9XGIXlc5DHPJB2pAMYaufPkzRPQqQdH74PrLkAIL0NOMnD94F7/YsceRvBIL15bzab75F2+HeB+KdFstqJNXRiKKzJK0mSEzbv3d3dG9L+84r+/v5Xoyh6xxhTtdY+Mcb8Yoz53lp731o7Z4x5m4hekl4n8JdCofBWFEXj1tqatfZLa+1v7dta+/jr0mvMBeVy+WU2JBuTDdo26s/W2kfW2nfZyOVy+Z70OoFuyqiz7hFF0SvGmIYx5uv27vrUWvtBoVAY7evre62LLwXAM+Fa45rj2uMabNci12SDa/TZVwYODAx8oA8GznS04fe+VYzQoJt1ZoxZMsZ8grdqGYIPscCLUsCHWP+POI5dljo4OHCbm5tudnbWDQ8Pu2Kx2Lrlx3y8Vqtl+vqQvzE4Ojpy29vbbnFx0Y2Pj7tSqeQGBgbc9PS0W1tbczs7O+74+DjTNahvub1OGieEE8MJ4kRxwjhxnEBOJCe0Xq+LFxeUTd5XVlbc5OTkv3mvVCpuaWlJLO+kHR8K1YdODIU5eZF2pAOovQAg3Q2YtCMdwOcVRm+/8uDbKBzDwPqkufNrUd4nIdKOdABRcP4oxIZI2pEOYNbC6B3GKBzDwOEoxJ0m76Nw3KFIO9IB9EV5KvAQG1TcoUg70gH0VVpGb4zCMQwsXYRa5MPOlqdJIfZApB3pAGpXlobyoWHkXaQd6QDmTZ2O3hiFYxgYBvZTh4eHbmtry83Pz7uxsbGWoYeGhtzMzExLfJ+P8XN8Dp/L10ivOwSRdqQDGKr29vbc+vp6S3xfej2hirQjHUAIMYhhYBgYjQCNIMYOjCJAIwirBkg70gGEEIMYBoaB0QjQCOIQd2AAAAAAAAAAAAAAAAAAFC7/AMXxYN8hLOLFAAAAAElFTkSuQmCC",
+        "showStudentCode": true,
+        "visible": {
+          "institution": true,
+          "teacher": true,
+          "subject": true,
+          "className": true,
+          "grade": true,
+          "date": true,
+          "schoolYear": true,
+          "title": true,
+          "studentName": true
+        },
+        "customFields": [
+          {
+            "label": "Sala",
+            "value": "201"
+          },
+          {
+            "label": "Turno",
+            "value": "Manhã"
+          }
+        ],
+        "showInstructions": false,
+        "instructions": "",
+        "logoAspect": 0.25,
+        "secondaryLogoAspect": 4
+      },
+      "end": 60.48
+    },
+    "name": {
+      "x": 14,
+      "y": 63.48,
+      "width": 182,
+      "height": 12,
+      "role": "name"
+    },
+    "instructions": null,
+    "code": {
+      "x": 84.15,
+      "y": 152.35999999999999,
+      "width": 41.7,
+      "height": 67,
+      "role": "code"
+    }
+  },
+  "technicalRegions": {
+    "border": {
+      "x": 12,
+      "y": 12,
+      "width": 186,
+      "height": 273,
+      "strokeMm": 0.25
+    },
+    "fiducials": [
+      {
+        "x": 8,
+        "y": 8,
+        "sizeMm": 5.5,
+        "markerId": "fiducial-tl"
+      },
+      {
+        "x": 202,
+        "y": 8,
+        "sizeMm": 5.5,
+        "markerId": "fiducial-tr"
+      },
+      {
+        "x": 202,
+        "y": 289,
+        "sizeMm": 5.5,
+        "markerId": "fiducial-br"
+      },
+      {
+        "x": 8,
+        "y": 289,
+        "sizeMm": 5.5,
+        "markerId": "fiducial-bl"
+      }
+    ],
+    "identityGrid": {
+      "x": 84.15,
+      "y": 152.35999999999999,
+      "width": 41.7,
+      "height": 67,
+      "role": "code"
+    },
+    "qr": null
+  },
+  "geometry": {
+    "bubbleDiameterMm": 4.5,
+    "objectiveRowPitchMm": 6.2,
+    "maximumObjectivePitchMm": 14,
+    "minimumObjectivePitchMm": 4.85,
+    "choicePitchMm": 5.2,
+    "codeRowPitchMm": 5.2,
+    "numericRowPitchMm": 5.1,
+    "fiducialSizeMm": 5.5,
+    "borderStrokeMm": 0.25,
+    "safeMarginMm": 10
+  },
+  "safeBoundsMm": {
+    "x": 14,
+    "y": 14,
+    "width": 182,
+    "height": 269
+  },
+  "contentBoundsMm": {
+    "x": 14,
+    "y": 78.47999999999999,
+    "width": 182,
+    "height": 204.52
+  },
+  "columns": [
+    {
+      "x": 14,
+      "width": 89.5,
+      "height": 69.88
+    },
+    {
+      "x": 106.5,
+      "width": 89.5,
+      "height": 69.88
+    }
+  ],
+  "columnWidthMm": 89.5,
+  "sections": [
+    {
+      "sectionId": "section-1",
+      "label": "Matemática",
+      "x": 14,
+      "y": 78.47999999999999,
+      "width": 89.5,
+      "height": 69.88,
+      "columnIndex": 0,
+      "titleLines": [
+        "Matemática"
+      ],
+      "type": "A-E",
+      "role": "section"
+    },
+    {
+      "sectionId": "section-1",
+      "label": "Matemática (cont.)",
+      "x": 106.5,
+      "y": 78.47999999999999,
+      "width": 89.5,
+      "height": 69.88,
+      "columnIndex": 1,
+      "titleLines": [
+        "Matemática (cont.)"
+      ],
+      "type": "A-E",
+      "role": "section"
+    }
+  ],
+  "questions": [
+    {
+      "questionId": "section-1-q1",
+      "number": 1,
+      "type": "A-E",
+      "choices": [
+        "A",
+        "B",
+        "C",
+        "D",
+        "E"
+      ],
+      "sectionId": "section-1",
+      "sectionIndex": 0,
+      "visualOrder": 0,
+      "sectionLabel": "Matemática",
+      "x": 41.9,
+      "y": 84.85999999999999,
+      "width": 33.7,
+      "height": 6.2,
+      "bubbles": [
+        {
+          "bubbleId": "section-1-q1:A",
+          "choice": "A",
+          "x": 51,
+          "y": 87.95999999999998,
+          "radiusMm": 2.25
+        },
+        {
+          "bubbleId": "section-1-q1:B",
+          "choice": "B",
+          "x": 56.2,
+          "y": 87.95999999999998,
+          "radiusMm": 2.25
+        },
+        {
+          "bubbleId": "section-1-q1:C",
+          "choice": "C",
+          "x": 61.4,
+          "y": 87.95999999999998,
+          "radiusMm": 2.25
+        },
+        {
+          "bubbleId": "section-1-q1:D",
+          "choice": "D",
+          "x": 66.6,
+          "y": 87.95999999999998,
+          "radiusMm": 2.25
+        },
+        {
+          "bubbleId": "section-1-q1:E",
+          "choice": "E",
+          "x": 71.8,
+          "y": 87.95999999999998,
+          "radiusMm": 2.25
+        }
+      ],
+      "responseBoxes": [],
+      "columnIndex": 0
+    },
+    {
+      "questionId": "section-1-q2",
+      "number": 2,
+      "type": "A-E",
+      "choices": [
+        "A",
+        "B",
+        "C",
+        "D",
+        "E"
+      ],
+      "sectionId": "section-1",
+      "sectionIndex": 0,
+      "visualOrder": 1,
+      "sectionLabel": "Matemática",
+      "x": 41.9,
+      "y": 91.05999999999999,
+      "width": 33.7,
+      "height": 6.2,
+      "bubbles": [
+        {
+          "bubbleId": "section-1-q2:A",
+          "choice": "A",
+          "x": 51,
+          "y": 94.15999999999998,
+          "radiusMm": 2.25
+        },
+        {
+          "bubbleId": "section-1-q2:B",
+          "choice": "B",
+          "x": 56.2,
+          "y": 94.15999999999998,
+          "radiusMm": 2.25
+        },
+        {
+          "bubbleId": "section-1-q2:C",
+          "choice": "C",
+          "x": 61.4,
+          "y": 94.15999999999998,
+          "radiusMm": 2.25
+        },
+        {
+          "bubbleId": "section-1-q2:D",
+          "choice": "D",
+          "x": 66.6,
+          "y": 94.15999999999998,
+          "radiusMm": 2.25
+        },
+        {
+          "bubbleId": "section-1-q2:E",
+          "choice": "E",
+          "x": 71.8,
+          "y": 94.15999999999998,
+          "radiusMm": 2.25
+        }
+      ],
+      "responseBoxes": [],
+      "columnIndex": 0
+    },
+    {
+      "questionId": "section-1-q3",
+      "number": 3,
+      "type": "A-E",
+      "choices": [
+        "A",
+        "B",
+        "C",
+        "D",
+        "E"
+      ],
+      "sectionId": "section-1",
+      "sectionIndex": 0,
+      "visualOrder": 2,
+      "sectionLabel": "Matemática",
+      "x": 41.9,
+      "y": 97.25999999999999,
+      "width": 33.7,
+      "height": 6.2,
+      "bubbles": [
+        {
+          "bubbleId": "section-1-q3:A",
+          "choice": "A",
+          "x": 51,
+          "y": 100.35999999999999,
+          "radiusMm": 2.25
+        },
+        {
+          "bubbleId": "section-1-q3:B",
+          "choice": "B",
+          "x": 56.2,
+          "y": 100.35999999999999,
+          "radiusMm": 2.25
+        },
+        {
+          "bubbleId": "section-1-q3:C",
+          "choice": "C",
+          "x": 61.4,
+          "y": 100.35999999999999,
+          "radiusMm": 2.25
+        },
+        {
+          "bubbleId": "section-1-q3:D",
+          "choice": "D",
+          "x": 66.6,
+          "y": 100.35999999999999,
+          "radiusMm": 2.25
+        },
+        {
+          "bubbleId": "section-1-q3:E",
+          "choice": "E",
+          "x": 71.8,
+          "y": 100.35999999999999,
+          "radiusMm": 2.25
+        }
+      ],
+      "responseBoxes": [],
+      "columnIndex": 0
+    },
+    {
+      "questionId": "section-1-q4",
+      "number": 4,
+      "type": "A-E",
+      "choices": [
+        "A",
+        "B",
+        "C",
+        "D",
+        "E"
+      ],
+      "sectionId": "section-1",
+      "sectionIndex": 0,
+      "visualOrder": 3,
+      "sectionLabel": "Matemática",
+      "x": 41.9,
+      "y": 103.45999999999998,
+      "width": 33.7,
+      "height": 6.2,
+      "bubbles": [
+        {
+          "bubbleId": "section-1-q4:A",
+          "choice": "A",
+          "x": 51,
+          "y": 106.55999999999997,
+          "radiusMm": 2.25
+        },
+        {
+          "bubbleId": "section-1-q4:B",
+          "choice": "B",
+          "x": 56.2,
+          "y": 106.55999999999997,
+          "radiusMm": 2.25
+        },
+        {
+          "bubbleId": "section-1-q4:C",
+          "choice": "C",
+          "x": 61.4,
+          "y": 106.55999999999997,
+          "radiusMm": 2.25
+        },
+        {
+          "bubbleId": "section-1-q4:D",
+          "choice": "D",
+          "x": 66.6,
+          "y": 106.55999999999997,
+          "radiusMm": 2.25
+        },
+        {
+          "bubbleId": "section-1-q4:E",
+          "choice": "E",
+          "x": 71.8,
+          "y": 106.55999999999997,
+          "radiusMm": 2.25
+        }
+      ],
+      "responseBoxes": [],
+      "columnIndex": 0
+    },
+    {
+      "questionId": "section-1-q5",
+      "number": 5,
+      "type": "A-E",
+      "choices": [
+        "A",
+        "B",
+        "C",
+        "D",
+        "E"
+      ],
+      "sectionId": "section-1",
+      "sectionIndex": 0,
+      "visualOrder": 4,
+      "sectionLabel": "Matemática",
+      "x": 41.9,
+      "y": 109.65999999999998,
+      "width": 33.7,
+      "height": 6.2,
+      "bubbles": [
+        {
+          "bubbleId": "section-1-q5:A",
+          "choice": "A",
+          "x": 51,
+          "y": 112.75999999999998,
+          "radiusMm": 2.25
+        },
+        {
+          "bubbleId": "section-1-q5:B",
+          "choice": "B",
+          "x": 56.2,
+          "y": 112.75999999999998,
+          "radiusMm": 2.25
+        },
+        {
+          "bubbleId": "section-1-q5:C",
+          "choice": "C",
+          "x": 61.4,
+          "y": 112.75999999999998,
+          "radiusMm": 2.25
+        },
+        {
+          "bubbleId": "section-1-q5:D",
+          "choice": "D",
+          "x": 66.6,
+          "y": 112.75999999999998,
+          "radiusMm": 2.25
+        },
+        {
+          "bubbleId": "section-1-q5:E",
+          "choice": "E",
+          "x": 71.8,
+          "y": 112.75999999999998,
+          "radiusMm": 2.25
+        }
+      ],
+      "responseBoxes": [],
+      "columnIndex": 0
+    },
+    {
+      "questionId": "section-1-q6",
+      "number": 6,
+      "type": "A-E",
+      "choices": [
+        "A",
+        "B",
+        "C",
+        "D",
+        "E"
+      ],
+      "sectionId": "section-1",
+      "sectionIndex": 0,
+      "visualOrder": 5,
+      "sectionLabel": "Matemática",
+      "x": 41.9,
+      "y": 115.85999999999999,
+      "width": 33.7,
+      "height": 6.2,
+      "bubbles": [
+        {
+          "bubbleId": "section-1-q6:A",
+          "choice": "A",
+          "x": 51,
+          "y": 118.95999999999998,
+          "radiusMm": 2.25
+        },
+        {
+          "bubbleId": "section-1-q6:B",
+          "choice": "B",
+          "x": 56.2,
+          "y": 118.95999999999998,
+          "radiusMm": 2.25
+        },
+        {
+          "bubbleId": "section-1-q6:C",
+          "choice": "C",
+          "x": 61.4,
+          "y": 118.95999999999998,
+          "radiusMm": 2.25
+        },
+        {
+          "bubbleId": "section-1-q6:D",
+          "choice": "D",
+          "x": 66.6,
+          "y": 118.95999999999998,
+          "radiusMm": 2.25
+        },
+        {
+          "bubbleId": "section-1-q6:E",
+          "choice": "E",
+          "x": 71.8,
+          "y": 118.95999999999998,
+          "radiusMm": 2.25
+        }
+      ],
+      "responseBoxes": [],
+      "columnIndex": 0
+    },
+    {
+      "questionId": "section-1-q7",
+      "number": 7,
+      "type": "A-E",
+      "choices": [
+        "A",
+        "B",
+        "C",
+        "D",
+        "E"
+      ],
+      "sectionId": "section-1",
+      "sectionIndex": 0,
+      "visualOrder": 6,
+      "sectionLabel": "Matemática",
+      "x": 41.9,
+      "y": 122.05999999999999,
+      "width": 33.7,
+      "height": 6.2,
+      "bubbles": [
+        {
+          "bubbleId": "section-1-q7:A",
+          "choice": "A",
+          "x": 51,
+          "y": 125.15999999999998,
+          "radiusMm": 2.25
+        },
+        {
+          "bubbleId": "section-1-q7:B",
+          "choice": "B",
+          "x": 56.2,
+          "y": 125.15999999999998,
+          "radiusMm": 2.25
+        },
+        {
+          "bubbleId": "section-1-q7:C",
+          "choice": "C",
+          "x": 61.4,
+          "y": 125.15999999999998,
+          "radiusMm": 2.25
+        },
+        {
+          "bubbleId": "section-1-q7:D",
+          "choice": "D",
+          "x": 66.6,
+          "y": 125.15999999999998,
+          "radiusMm": 2.25
+        },
+        {
+          "bubbleId": "section-1-q7:E",
+          "choice": "E",
+          "x": 71.8,
+          "y": 125.15999999999998,
+          "radiusMm": 2.25
+        }
+      ],
+      "responseBoxes": [],
+      "columnIndex": 0
+    },
+    {
+      "questionId": "section-1-q8",
+      "number": 8,
+      "type": "A-E",
+      "choices": [
+        "A",
+        "B",
+        "C",
+        "D",
+        "E"
+      ],
+      "sectionId": "section-1",
+      "sectionIndex": 0,
+      "visualOrder": 7,
+      "sectionLabel": "Matemática",
+      "x": 41.9,
+      "y": 128.26,
+      "width": 33.7,
+      "height": 6.2,
+      "bubbles": [
+        {
+          "bubbleId": "section-1-q8:A",
+          "choice": "A",
+          "x": 51,
+          "y": 131.35999999999999,
+          "radiusMm": 2.25
+        },
+        {
+          "bubbleId": "section-1-q8:B",
+          "choice": "B",
+          "x": 56.2,
+          "y": 131.35999999999999,
+          "radiusMm": 2.25
+        },
+        {
+          "bubbleId": "section-1-q8:C",
+          "choice": "C",
+          "x": 61.4,
+          "y": 131.35999999999999,
+          "radiusMm": 2.25
+        },
+        {
+          "bubbleId": "section-1-q8:D",
+          "choice": "D",
+          "x": 66.6,
+          "y": 131.35999999999999,
+          "radiusMm": 2.25
+        },
+        {
+          "bubbleId": "section-1-q8:E",
+          "choice": "E",
+          "x": 71.8,
+          "y": 131.35999999999999,
+          "radiusMm": 2.25
+        }
+      ],
+      "responseBoxes": [],
+      "columnIndex": 0
+    },
+    {
+      "questionId": "section-1-q9",
+      "number": 9,
+      "type": "A-E",
+      "choices": [
+        "A",
+        "B",
+        "C",
+        "D",
+        "E"
+      ],
+      "sectionId": "section-1",
+      "sectionIndex": 0,
+      "visualOrder": 8,
+      "sectionLabel": "Matemática",
+      "x": 41.9,
+      "y": 134.45999999999998,
+      "width": 33.7,
+      "height": 6.2,
+      "bubbles": [
+        {
+          "bubbleId": "section-1-q9:A",
+          "choice": "A",
+          "x": 51,
+          "y": 137.55999999999997,
+          "radiusMm": 2.25
+        },
+        {
+          "bubbleId": "section-1-q9:B",
+          "choice": "B",
+          "x": 56.2,
+          "y": 137.55999999999997,
+          "radiusMm": 2.25
+        },
+        {
+          "bubbleId": "section-1-q9:C",
+          "choice": "C",
+          "x": 61.4,
+          "y": 137.55999999999997,
+          "radiusMm": 2.25
+        },
+        {
+          "bubbleId": "section-1-q9:D",
+          "choice": "D",
+          "x": 66.6,
+          "y": 137.55999999999997,
+          "radiusMm": 2.25
+        },
+        {
+          "bubbleId": "section-1-q9:E",
+          "choice": "E",
+          "x": 71.8,
+          "y": 137.55999999999997,
+          "radiusMm": 2.25
+        }
+      ],
+      "responseBoxes": [],
+      "columnIndex": 0
+    },
+    {
+      "questionId": "section-1-q10",
+      "number": 10,
+      "type": "A-E",
+      "choices": [
+        "A",
+        "B",
+        "C",
+        "D",
+        "E"
+      ],
+      "sectionId": "section-1",
+      "sectionIndex": 0,
+      "visualOrder": 9,
+      "sectionLabel": "Matemática",
+      "x": 41.9,
+      "y": 140.66,
+      "width": 33.7,
+      "height": 6.2,
+      "bubbles": [
+        {
+          "bubbleId": "section-1-q10:A",
+          "choice": "A",
+          "x": 51,
+          "y": 143.76,
+          "radiusMm": 2.25
+        },
+        {
+          "bubbleId": "section-1-q10:B",
+          "choice": "B",
+          "x": 56.2,
+          "y": 143.76,
+          "radiusMm": 2.25
+        },
+        {
+          "bubbleId": "section-1-q10:C",
+          "choice": "C",
+          "x": 61.4,
+          "y": 143.76,
+          "radiusMm": 2.25
+        },
+        {
+          "bubbleId": "section-1-q10:D",
+          "choice": "D",
+          "x": 66.6,
+          "y": 143.76,
+          "radiusMm": 2.25
+        },
+        {
+          "bubbleId": "section-1-q10:E",
+          "choice": "E",
+          "x": 71.8,
+          "y": 143.76,
+          "radiusMm": 2.25
+        }
+      ],
+      "responseBoxes": [],
+      "columnIndex": 0
+    },
+    {
+      "questionId": "section-1-q11",
+      "number": 11,
+      "type": "A-E",
+      "choices": [
+        "A",
+        "B",
+        "C",
+        "D",
+        "E"
+      ],
+      "sectionId": "section-1",
+      "sectionIndex": 0,
+      "visualOrder": 10,
+      "sectionLabel": "Matemática",
+      "x": 134.4,
+      "y": 84.85999999999999,
+      "width": 33.7,
+      "height": 6.2,
+      "bubbles": [
+        {
+          "bubbleId": "section-1-q11:A",
+          "choice": "A",
+          "x": 143.5,
+          "y": 87.95999999999998,
+          "radiusMm": 2.25
+        },
+        {
+          "bubbleId": "section-1-q11:B",
+          "choice": "B",
+          "x": 148.7,
+          "y": 87.95999999999998,
+          "radiusMm": 2.25
+        },
+        {
+          "bubbleId": "section-1-q11:C",
+          "choice": "C",
+          "x": 153.9,
+          "y": 87.95999999999998,
+          "radiusMm": 2.25
+        },
+        {
+          "bubbleId": "section-1-q11:D",
+          "choice": "D",
+          "x": 159.1,
+          "y": 87.95999999999998,
+          "radiusMm": 2.25
+        },
+        {
+          "bubbleId": "section-1-q11:E",
+          "choice": "E",
+          "x": 164.3,
+          "y": 87.95999999999998,
+          "radiusMm": 2.25
+        }
+      ],
+      "responseBoxes": [],
+      "columnIndex": 1
+    },
+    {
+      "questionId": "section-1-q12",
+      "number": 12,
+      "type": "A-E",
+      "choices": [
+        "A",
+        "B",
+        "C",
+        "D",
+        "E"
+      ],
+      "sectionId": "section-1",
+      "sectionIndex": 0,
+      "visualOrder": 11,
+      "sectionLabel": "Matemática",
+      "x": 134.4,
+      "y": 91.05999999999999,
+      "width": 33.7,
+      "height": 6.2,
+      "bubbles": [
+        {
+          "bubbleId": "section-1-q12:A",
+          "choice": "A",
+          "x": 143.5,
+          "y": 94.15999999999998,
+          "radiusMm": 2.25
+        },
+        {
+          "bubbleId": "section-1-q12:B",
+          "choice": "B",
+          "x": 148.7,
+          "y": 94.15999999999998,
+          "radiusMm": 2.25
+        },
+        {
+          "bubbleId": "section-1-q12:C",
+          "choice": "C",
+          "x": 153.9,
+          "y": 94.15999999999998,
+          "radiusMm": 2.25
+        },
+        {
+          "bubbleId": "section-1-q12:D",
+          "choice": "D",
+          "x": 159.1,
+          "y": 94.15999999999998,
+          "radiusMm": 2.25
+        },
+        {
+          "bubbleId": "section-1-q12:E",
+          "choice": "E",
+          "x": 164.3,
+          "y": 94.15999999999998,
+          "radiusMm": 2.25
+        }
+      ],
+      "responseBoxes": [],
+      "columnIndex": 1
+    },
+    {
+      "questionId": "section-1-q13",
+      "number": 13,
+      "type": "A-E",
+      "choices": [
+        "A",
+        "B",
+        "C",
+        "D",
+        "E"
+      ],
+      "sectionId": "section-1",
+      "sectionIndex": 0,
+      "visualOrder": 12,
+      "sectionLabel": "Matemática",
+      "x": 134.4,
+      "y": 97.25999999999999,
+      "width": 33.7,
+      "height": 6.2,
+      "bubbles": [
+        {
+          "bubbleId": "section-1-q13:A",
+          "choice": "A",
+          "x": 143.5,
+          "y": 100.35999999999999,
+          "radiusMm": 2.25
+        },
+        {
+          "bubbleId": "section-1-q13:B",
+          "choice": "B",
+          "x": 148.7,
+          "y": 100.35999999999999,
+          "radiusMm": 2.25
+        },
+        {
+          "bubbleId": "section-1-q13:C",
+          "choice": "C",
+          "x": 153.9,
+          "y": 100.35999999999999,
+          "radiusMm": 2.25
+        },
+        {
+          "bubbleId": "section-1-q13:D",
+          "choice": "D",
+          "x": 159.1,
+          "y": 100.35999999999999,
+          "radiusMm": 2.25
+        },
+        {
+          "bubbleId": "section-1-q13:E",
+          "choice": "E",
+          "x": 164.3,
+          "y": 100.35999999999999,
+          "radiusMm": 2.25
+        }
+      ],
+      "responseBoxes": [],
+      "columnIndex": 1
+    },
+    {
+      "questionId": "section-1-q14",
+      "number": 14,
+      "type": "A-E",
+      "choices": [
+        "A",
+        "B",
+        "C",
+        "D",
+        "E"
+      ],
+      "sectionId": "section-1",
+      "sectionIndex": 0,
+      "visualOrder": 13,
+      "sectionLabel": "Matemática",
+      "x": 134.4,
+      "y": 103.45999999999998,
+      "width": 33.7,
+      "height": 6.2,
+      "bubbles": [
+        {
+          "bubbleId": "section-1-q14:A",
+          "choice": "A",
+          "x": 143.5,
+          "y": 106.55999999999997,
+          "radiusMm": 2.25
+        },
+        {
+          "bubbleId": "section-1-q14:B",
+          "choice": "B",
+          "x": 148.7,
+          "y": 106.55999999999997,
+          "radiusMm": 2.25
+        },
+        {
+          "bubbleId": "section-1-q14:C",
+          "choice": "C",
+          "x": 153.9,
+          "y": 106.55999999999997,
+          "radiusMm": 2.25
+        },
+        {
+          "bubbleId": "section-1-q14:D",
+          "choice": "D",
+          "x": 159.1,
+          "y": 106.55999999999997,
+          "radiusMm": 2.25
+        },
+        {
+          "bubbleId": "section-1-q14:E",
+          "choice": "E",
+          "x": 164.3,
+          "y": 106.55999999999997,
+          "radiusMm": 2.25
+        }
+      ],
+      "responseBoxes": [],
+      "columnIndex": 1
+    },
+    {
+      "questionId": "section-1-q15",
+      "number": 15,
+      "type": "A-E",
+      "choices": [
+        "A",
+        "B",
+        "C",
+        "D",
+        "E"
+      ],
+      "sectionId": "section-1",
+      "sectionIndex": 0,
+      "visualOrder": 14,
+      "sectionLabel": "Matemática",
+      "x": 134.4,
+      "y": 109.65999999999998,
+      "width": 33.7,
+      "height": 6.2,
+      "bubbles": [
+        {
+          "bubbleId": "section-1-q15:A",
+          "choice": "A",
+          "x": 143.5,
+          "y": 112.75999999999998,
+          "radiusMm": 2.25
+        },
+        {
+          "bubbleId": "section-1-q15:B",
+          "choice": "B",
+          "x": 148.7,
+          "y": 112.75999999999998,
+          "radiusMm": 2.25
+        },
+        {
+          "bubbleId": "section-1-q15:C",
+          "choice": "C",
+          "x": 153.9,
+          "y": 112.75999999999998,
+          "radiusMm": 2.25
+        },
+        {
+          "bubbleId": "section-1-q15:D",
+          "choice": "D",
+          "x": 159.1,
+          "y": 112.75999999999998,
+          "radiusMm": 2.25
+        },
+        {
+          "bubbleId": "section-1-q15:E",
+          "choice": "E",
+          "x": 164.3,
+          "y": 112.75999999999998,
+          "radiusMm": 2.25
+        }
+      ],
+      "responseBoxes": [],
+      "columnIndex": 1
+    },
+    {
+      "questionId": "section-1-q16",
+      "number": 16,
+      "type": "A-E",
+      "choices": [
+        "A",
+        "B",
+        "C",
+        "D",
+        "E"
+      ],
+      "sectionId": "section-1",
+      "sectionIndex": 0,
+      "visualOrder": 15,
+      "sectionLabel": "Matemática",
+      "x": 134.4,
+      "y": 115.85999999999999,
+      "width": 33.7,
+      "height": 6.2,
+      "bubbles": [
+        {
+          "bubbleId": "section-1-q16:A",
+          "choice": "A",
+          "x": 143.5,
+          "y": 118.95999999999998,
+          "radiusMm": 2.25
+        },
+        {
+          "bubbleId": "section-1-q16:B",
+          "choice": "B",
+          "x": 148.7,
+          "y": 118.95999999999998,
+          "radiusMm": 2.25
+        },
+        {
+          "bubbleId": "section-1-q16:C",
+          "choice": "C",
+          "x": 153.9,
+          "y": 118.95999999999998,
+          "radiusMm": 2.25
+        },
+        {
+          "bubbleId": "section-1-q16:D",
+          "choice": "D",
+          "x": 159.1,
+          "y": 118.95999999999998,
+          "radiusMm": 2.25
+        },
+        {
+          "bubbleId": "section-1-q16:E",
+          "choice": "E",
+          "x": 164.3,
+          "y": 118.95999999999998,
+          "radiusMm": 2.25
+        }
+      ],
+      "responseBoxes": [],
+      "columnIndex": 1
+    },
+    {
+      "questionId": "section-1-q17",
+      "number": 17,
+      "type": "A-E",
+      "choices": [
+        "A",
+        "B",
+        "C",
+        "D",
+        "E"
+      ],
+      "sectionId": "section-1",
+      "sectionIndex": 0,
+      "visualOrder": 16,
+      "sectionLabel": "Matemática",
+      "x": 134.4,
+      "y": 122.05999999999999,
+      "width": 33.7,
+      "height": 6.2,
+      "bubbles": [
+        {
+          "bubbleId": "section-1-q17:A",
+          "choice": "A",
+          "x": 143.5,
+          "y": 125.15999999999998,
+          "radiusMm": 2.25
+        },
+        {
+          "bubbleId": "section-1-q17:B",
+          "choice": "B",
+          "x": 148.7,
+          "y": 125.15999999999998,
+          "radiusMm": 2.25
+        },
+        {
+          "bubbleId": "section-1-q17:C",
+          "choice": "C",
+          "x": 153.9,
+          "y": 125.15999999999998,
+          "radiusMm": 2.25
+        },
+        {
+          "bubbleId": "section-1-q17:D",
+          "choice": "D",
+          "x": 159.1,
+          "y": 125.15999999999998,
+          "radiusMm": 2.25
+        },
+        {
+          "bubbleId": "section-1-q17:E",
+          "choice": "E",
+          "x": 164.3,
+          "y": 125.15999999999998,
+          "radiusMm": 2.25
+        }
+      ],
+      "responseBoxes": [],
+      "columnIndex": 1
+    },
+    {
+      "questionId": "section-1-q18",
+      "number": 18,
+      "type": "A-E",
+      "choices": [
+        "A",
+        "B",
+        "C",
+        "D",
+        "E"
+      ],
+      "sectionId": "section-1",
+      "sectionIndex": 0,
+      "visualOrder": 17,
+      "sectionLabel": "Matemática",
+      "x": 134.4,
+      "y": 128.26,
+      "width": 33.7,
+      "height": 6.2,
+      "bubbles": [
+        {
+          "bubbleId": "section-1-q18:A",
+          "choice": "A",
+          "x": 143.5,
+          "y": 131.35999999999999,
+          "radiusMm": 2.25
+        },
+        {
+          "bubbleId": "section-1-q18:B",
+          "choice": "B",
+          "x": 148.7,
+          "y": 131.35999999999999,
+          "radiusMm": 2.25
+        },
+        {
+          "bubbleId": "section-1-q18:C",
+          "choice": "C",
+          "x": 153.9,
+          "y": 131.35999999999999,
+          "radiusMm": 2.25
+        },
+        {
+          "bubbleId": "section-1-q18:D",
+          "choice": "D",
+          "x": 159.1,
+          "y": 131.35999999999999,
+          "radiusMm": 2.25
+        },
+        {
+          "bubbleId": "section-1-q18:E",
+          "choice": "E",
+          "x": 164.3,
+          "y": 131.35999999999999,
+          "radiusMm": 2.25
+        }
+      ],
+      "responseBoxes": [],
+      "columnIndex": 1
+    },
+    {
+      "questionId": "section-1-q19",
+      "number": 19,
+      "type": "A-E",
+      "choices": [
+        "A",
+        "B",
+        "C",
+        "D",
+        "E"
+      ],
+      "sectionId": "section-1",
+      "sectionIndex": 0,
+      "visualOrder": 18,
+      "sectionLabel": "Matemática",
+      "x": 134.4,
+      "y": 134.45999999999998,
+      "width": 33.7,
+      "height": 6.2,
+      "bubbles": [
+        {
+          "bubbleId": "section-1-q19:A",
+          "choice": "A",
+          "x": 143.5,
+          "y": 137.55999999999997,
+          "radiusMm": 2.25
+        },
+        {
+          "bubbleId": "section-1-q19:B",
+          "choice": "B",
+          "x": 148.7,
+          "y": 137.55999999999997,
+          "radiusMm": 2.25
+        },
+        {
+          "bubbleId": "section-1-q19:C",
+          "choice": "C",
+          "x": 153.9,
+          "y": 137.55999999999997,
+          "radiusMm": 2.25
+        },
+        {
+          "bubbleId": "section-1-q19:D",
+          "choice": "D",
+          "x": 159.1,
+          "y": 137.55999999999997,
+          "radiusMm": 2.25
+        },
+        {
+          "bubbleId": "section-1-q19:E",
+          "choice": "E",
+          "x": 164.3,
+          "y": 137.55999999999997,
+          "radiusMm": 2.25
+        }
+      ],
+      "responseBoxes": [],
+      "columnIndex": 1
+    },
+    {
+      "questionId": "section-1-q20",
+      "number": 20,
+      "type": "A-E",
+      "choices": [
+        "A",
+        "B",
+        "C",
+        "D",
+        "E"
+      ],
+      "sectionId": "section-1",
+      "sectionIndex": 0,
+      "visualOrder": 19,
+      "sectionLabel": "Matemática",
+      "x": 134.4,
+      "y": 140.66,
+      "width": 33.7,
+      "height": 6.2,
+      "bubbles": [
+        {
+          "bubbleId": "section-1-q20:A",
+          "choice": "A",
+          "x": 143.5,
+          "y": 143.76,
+          "radiusMm": 2.25
+        },
+        {
+          "bubbleId": "section-1-q20:B",
+          "choice": "B",
+          "x": 148.7,
+          "y": 143.76,
+          "radiusMm": 2.25
+        },
+        {
+          "bubbleId": "section-1-q20:C",
+          "choice": "C",
+          "x": 153.9,
+          "y": 143.76,
+          "radiusMm": 2.25
+        },
+        {
+          "bubbleId": "section-1-q20:D",
+          "choice": "D",
+          "x": 159.1,
+          "y": 143.76,
+          "radiusMm": 2.25
+        },
+        {
+          "bubbleId": "section-1-q20:E",
+          "choice": "E",
+          "x": 164.3,
+          "y": 143.76,
+          "radiusMm": 2.25
+        }
+      ],
+      "responseBoxes": [],
+      "columnIndex": 1
+    }
+  ],
+  "questionCount": 20,
+  "pages": [
+    {
+      "page": 1,
+      "widthMm": 210,
+      "heightMm": 297
+    }
+  ],
+  "contentHash": "5bdfd22120ed19f0"
+}

@@ -1,5 +1,5 @@
-import { createAssessmentDefinition, QUESTION_TYPES } from './assessment.mjs?v=20261114v2h1';
-import { INITIAL_GEOMETRY } from './layout-v1.mjs?v=20261114v2h1';
+import { createAssessmentDefinition, QUESTION_TYPES } from './assessment.mjs?v=20261114v2final';
+import { INITIAL_GEOMETRY } from './layout-v1.mjs?v=20261114v2final';
 import { wrapText, textWidth, brazilianDate } from './artwork.mjs?v=20261114v1';
 export const V2_SCHEMA='salta-layout-manifest-v2';
 const frozen=value=>{if(value&&typeof value==='object'&&!Object.isFrozen(value)){Object.values(value).forEach(frozen);Object.freeze(value);}return value;};

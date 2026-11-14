@@ -88,7 +88,7 @@ export function createAssessmentDefinition(input, { templateId = "salta-assessme
     code: clean(studentInput.code, 7),
   }) : null;
   if (identityMode === "seven-digit-code" && student?.code && !/^\d{7}$/.test(student.code)) {
-    throw new TypeError("O código nominal precisa conter exatamente sete dígitos, incluindo zeros à esquerda.");
+    throw new TypeError("O código do aluno precisa conter exatamente sete dígitos, incluindo zeros à esquerda.");
   }
   const metadataSource = input.metadata && typeof input.metadata === "object" ? input.metadata : {};
   const metadata = Object.freeze(Object.fromEntries(["kind", "subject", "className", "date", "teacher", "grade", "schoolYear", "logoWidthMm", "secondaryLogoWidthMm", "logoAspect", "secondaryLogoAspect", "cduPosition", "customFields", "visibleFields", "headerLayout", "showInstructions", "instructions", "institution", "logo", "secondaryLogo", "layoutVersion"]

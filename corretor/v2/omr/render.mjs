@@ -1,8 +1,8 @@
-import { createLayoutManifest, validateLayoutManifest, PAGE_WIDTH_MM, PAGE_HEIGHT_MM } from './layout.mjs?v=20261114v2h1';
-import { createTemplate } from './template.mjs?v=20261114v2h1';
-import { createCardManifest as legacyManifest, renderTemplateSvg as legacyRender, renderHeaderPreviewSvg as legacyHeader, DEFAULT_CARD_HEADER as LEGACY_HEADER } from './render-v1.mjs?v=20261114v2h1';
+import { createLayoutManifest, validateLayoutManifest, PAGE_WIDTH_MM, PAGE_HEIGHT_MM } from './layout.mjs?v=20261114v2final';
+import { createTemplate } from './template.mjs?v=20261114v2final';
+import { createCardManifest as legacyManifest, renderTemplateSvg as legacyRender, renderHeaderPreviewSvg as legacyHeader, DEFAULT_CARD_HEADER as LEGACY_HEADER } from './render-v1.mjs?v=20261114v2final';
 import { wrapText } from './artwork.mjs?v=20261114v1';
-export { createAssessmentDefinition } from './assessment.mjs?v=20261114v2h1';
+export { createAssessmentDefinition } from './assessment.mjs?v=20261114v2final';
 export { createLayoutManifest };
 export const DEFAULT_CARD_HEADER=Object.freeze({...LEGACY_HEADER,visible:Object.freeze({...LEGACY_HEADER.visible,teacher:true,className:true,date:true,subject:true}),showInstructions:false,instructions:'',customFields:Object.freeze([])});
 const esc=value=>String(value??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&apos;'}[c]));
@@ -44,7 +44,7 @@ export function renderTemplateSvg(template,{page=1,header=null,manifest:supplied
  if(m.panels.instructions){const f=m.panels.instructions;parts.push(frame(f,'omr-instructions-frame'));f.lines.forEach((line,i)=>parts.push(text(f.x+3,f.y+3.5+i*3.25,line,2.5)));}
  for(const f of m.sections){parts.push(`<g class="omr-section-frame" data-section-id="${esc(f.sectionId)}">`,frame(f,'omr-section-border'));f.titleLines.forEach((line,i)=>parts.push(text(f.x+f.width/2,f.y+3.6+i*3.38,line,2.6,700,'middle')));parts.push('</g>');}
  for(const q of m.questions)parts.push(`<g class="omr-question" data-question-id="${esc(q.questionId)}" data-question="${q.number}" data-type="${q.type}">${drawQuestion(q)}</g>`);
- if(m.panels.code){const f=m.panels.code;parts.push(frame(f,'omr-code-frame'),text(f.x+f.width/2,f.y+4,'CÓDIGO SALTA',2.2,700,'middle'));for(const c of m.identityCode.columns)parts.push(`<rect x="${c.box.x}" y="${c.box.y}" width="4.2" height="4.2" rx="1" ry="1" fill="#fff" stroke="#000" stroke-width="0.25"/>`,text(c.centerX,c.box.y+3.1,c.printedDigit,2.8,600,'middle'));for(const bubble of m.identityBubbles){parts.push(`<circle class="omr-identity-bubble" data-column="${bubble.column}" data-digit="${bubble.digit}" cx="${bubble.x}" cy="${bubble.y}" r="2.25" fill="${bubble.filled?'#000':'#fff'}" stroke="#000" stroke-width="0.25"/>`);if(!bubble.filled)parts.push(text(bubble.x,bubble.y+.65,String(bubble.digit),1.85,500,'middle'));}}
+ if(m.panels.code){const f=m.panels.code;parts.push(frame(f,'omr-code-frame'),text(f.x+f.width/2,f.y+4,'CÓDIGO DO ALUNO',2.2,700,'middle'));for(const c of m.identityCode.columns)parts.push(`<rect x="${c.box.x}" y="${c.box.y}" width="4.2" height="4.2" rx="1" ry="1" fill="#fff" stroke="#000" stroke-width="0.25"/>`,text(c.centerX,c.box.y+3.1,c.printedDigit,2.8,600,'middle'));for(const bubble of m.identityBubbles){parts.push(`<circle class="omr-identity-bubble" data-column="${bubble.column}" data-digit="${bubble.digit}" cx="${bubble.x}" cy="${bubble.y}" r="2.25" fill="${bubble.filled?'#000':'#fff'}" stroke="#000" stroke-width="0.25"/>`);if(!bubble.filled)parts.push(text(bubble.x,bubble.y+.65,String(bubble.digit),1.85,500,'middle'));}}
  for(const f of m.technicalRegions.fiducials)parts.push(`<rect class="omr-fiducial" data-marker="${f.markerId}" x="${f.x-f.sizeMm/2}" y="${f.y-f.sizeMm/2}" width="${f.sizeMm}" height="${f.sizeMm}" fill="#000"/>`);
  return parts.join('')+'</svg>';
 }
