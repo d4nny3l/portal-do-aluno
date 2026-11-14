@@ -361,7 +361,8 @@ test("browser modules pin generator assets and keep the legacy route intact", as
   assert.match(teacherSource, /corretor-v2\.html\?v=20261110ux1/g);
   assert.match(teacherSource, /professor-theme\.css\?v=20261110ux1/);
   assert.match(pageSource, /professor-theme\.css\?v=20261110ux1/);
-  assert.match(pageSource, /id="dashboard"/);
+  assert.doesNotMatch(pageSource, /id="dashboard"/);
+  assert.match(pageSource, /class="corretor-card module-view active" id="criar"/);
   assert.match(pageSource, /data-view="criar"/);
   assert.doesNotMatch(pageSource, /id="modelos"|id="minhas"|id="revisoes"|id="analise"/);
   assert.match(pageSource, /id="manualAlign"/);
