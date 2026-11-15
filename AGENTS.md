@@ -42,6 +42,8 @@ Este arquivo é a memória operacional permanente do projeto. Antes de mudanças
 
 - Acabamento aprovado: `docs/SALTA_V2_ACABAMENTO_E_AUDITORIA.md`. O módulo numérico V2 imprime CÓDIGO DO ALUNO, sem alterar coordenadas/esquemas. A-03 (correção com números não contíguos) está documentado para revisão separada; não renumerar silenciosamente cartões ou alterar regras de nota.
 
+- Fechamento da interface: `docs/SALTA_CORRETOR_FECHAMENTO_VISUAL.md`. Identificação e Personalizar cabeçalho são seções nativas expansíveis, independentes e inicialmente fechadas; não reintroduzir modal, seletor de geração V1, versões locais ou Recompor layout. Novos cartões são V2; a importação JSON exata continua lendo V1/V2. Não apagar armazenamento histórico do navegador. A-03 permanece sinalizado e não homologado. Preservar a imagem inteira ao reduzir fotografias no frontend; esse ajuste não modifica o algoritmo OMR.
+
 ## Cartão-resposta SALTA — decisões visuais aprovadas em 14/11/2026
 - **Documento principal:** `docs/SALTA_CARTAO_RESPOSTA_DESIGN_SPEC.md`. **Roteiro de execução:** `docs/SALTA_CODEX_CARTAO_RESPOSTA_EXECUCAO.md`.
 - Não imprimir metadados `MODELO ... · REV ... · hash` no rodapé: preservar a identificação de layout somente em manifesto/JSON e mecanismo técnico confiável, sem texto visível.

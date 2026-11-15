@@ -32,7 +32,7 @@ test("páginas textuais administrativas usam o shell central sem cópia do menu"
   const files = ["professor.html", "corretor-v2.html", "estatistica.html", "estatistica-individual.html", "estatistica-turma.html", "estatistica-acessos.html", "mensagens.html", "fechamento-bimestre.html", "festival-consciencia-negra-admin.html"];
   for (const file of files) {
     const source = await readFile(new URL(`../${file}`, import.meta.url), "utf8");
-    assert.match(source, file.includes("corretor-v2") ? /admin-shell\.mjs\?v=20261114v2final/ : /admin-shell\.mjs\?v=20261110ux1/, file);
+    assert.match(source, file.includes("corretor-v2") ? /admin-shell\.mjs\?v=20261114ui1/ : /admin-shell\.mjs\?v=20261110ux1/, file);
     assert.doesNotMatch(source, /<aside class="teacher-shell-sidebar"/, file);
   }
   const mostra = await readFile(new URL("../../mostra-cultural.html", import.meta.url), "utf8");
@@ -43,7 +43,9 @@ test("formulário do Corretor esconde controles que não se aplicam ao modo esco
   const source = await readFile(new URL("../corretor-v2.html", import.meta.url), "utf8");
   assert.match(source, /data-field-group="embedded"/);
   assert.match(source, /data-field-group="identity-code"/);
-  assert.match(source, /data-field-group="cdu"/);
+  assert.doesNotMatch(source, /id="cduPosition"/);
+  assert.match(source, /id="cardLimitStatus"/);
+  assert.match(source, /C-D-U pode ser impresso/);
   assert.doesNotMatch(source, /id="assessmentValue"/);
   assert.equal((source.match(/id="sectionManager"/g) || []).length, 1);
   assert.equal((source.match(/id="studentCodeBatch"/g) || []).length, 1);

@@ -33,12 +33,12 @@
 .scan-actions{align-items:end}.scan-actions label{flex:1 1 220px}.scan-actions input[type=file]{width:100%;max-width:100%}
 .scan-feedback{min-height:4px;margin:10px 0;color:#347a58;font-size:13px;font-weight:700}.scan-feedback.is-visible{padding:10px 12px;border:1px solid #cdebd8;border-radius:10px;background:#effaf2;animation:scan-flash .45s ease}
 @keyframes scan-flash{0%{background:#d8f8e3}100%{background:#effaf2}}
-.scan-canvas{display:block;width:min(100%,740px);height:auto;max-height:68vh;margin:12px auto;border:1px solid #e2e4ef;border-radius:10px;background:#f7f8fc;cursor:default}.scan-canvas.manual-align{cursor:crosshair;touch-action:manipulation}
+.scan-canvas{display:block;width:auto;max-width:min(100%,740px);height:auto;max-height:68vh;margin:12px auto;border:1px solid #e2e4ef;border-radius:10px;background:#f7f8fc;cursor:default}.scan-canvas.manual-align{cursor:crosshair;touch-action:manipulation}
 .key-entry{align-items:start}.key-entry label:first-child{flex:2 1 340px}.key-entry label:last-child{flex:1 1 180px}.key-entry input{width:100%}
 .scan-score{margin:14px 0;padding:16px 18px;border:1px solid #d8d8f4;border-radius:14px;background:#f5f4ff;color:#383a70}.scan-score strong{display:block;color:#4d4dc2;font-size:26px}.scan-score[data-review="true"]{border-color:#e7d5a9;background:#fffaf0;color:#66542d}.scan-score[data-review="true"] strong{color:#8a6820}
 .scan-history{margin-top:24px;padding-top:16px;border-top:1px solid #e9eafa}.scan-history h3{margin:0 0 10px;font-size:15px}.history-list{display:grid;gap:8px;margin:0;padding-left:22px;color:#747995;font-size:12px}.history-list li{padding:8px 10px;border-radius:8px;background:rgba(255,255,255,.72)}
-.omr-dialog{width:min(960px,calc(100vw - 28px));max-height:90vh;overflow:auto;border:1px solid #e2e4ef;border-radius:18px;padding:20px;color:#303451}.omr-dialog::backdrop{background:rgba(27,31,54,.45)}.omr-dialog-grid{display:grid;grid-template-columns:minmax(0,1.2fr) minmax(260px,.8fr);gap:18px}.omr-form-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}.omr-check{display:flex!important;align-items:center;gap:7px}.omr-check input{width:auto}.omr-header-preview{padding:8px;border-radius:10px;background:#f2f3f8}.omr-header-preview svg{display:block;width:100%;height:auto;background:#fff}.omr-custom-field{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr) auto auto;gap:6px;margin:8px 0}.omr-actions-end{display:flex;justify-content:flex-end;gap:8px;margin-top:14px}
-@media(max-width:760px){.corretor-hero,.corretor-card{padding:16px}.corretor-hero{margin-top:4px}.module-nav{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));padding:7px}.module-nav button{min-height:42px;padding:8px}.omr-dialog{padding:14px}.omr-dialog-grid,.omr-form-grid{grid-template-columns:1fr}.omr-preview{padding:6px}.camera-stage{height:min(64vh,700px);min-height:240px;margin:12px 0}.camera-guides i{width:18px;height:18px}.scan-canvas{max-height:55vh}.key-entry label:first-child,.key-entry label:last-child{flex-basis:100%}.omr-custom-field{grid-template-columns:minmax(0,1fr) minmax(0,1fr) auto auto}}
+.omr-header-grid{display:grid;grid-template-columns:minmax(0,1.2fr) minmax(260px,.8fr);gap:18px}.omr-form-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}.omr-check{display:flex!important;align-items:center;gap:7px}.omr-check input{width:auto}.omr-header-preview{padding:8px;border-radius:10px;background:#f2f3f8}.omr-header-preview svg{display:block;width:100%;height:auto;background:#fff}.omr-custom-field{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr) auto auto;gap:6px;margin:8px 0}
+@media(max-width:760px){.corretor-hero,.corretor-card{padding:16px}.corretor-hero{margin-top:4px}.module-nav{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));padding:7px}.module-nav button{min-height:42px;padding:8px}.omr-header-grid,.omr-form-grid{grid-template-columns:1fr}.omr-preview{padding:6px}.camera-stage{height:min(64vh,700px);min-height:240px;margin:12px 0}.camera-guides i{width:18px;height:18px}.scan-canvas{max-height:55vh}.key-entry label:first-child,.key-entry label:last-child{flex-basis:100%}.omr-custom-field{grid-template-columns:minmax(0,1fr) minmax(0,1fr) auto auto}}
 @media(max-width:760px){.section-item{grid-template-columns:minmax(0,1fr) auto auto}.section-item>strong{grid-column:1/-1}.section-item>button:last-of-type{grid-column:3}.section-questions{grid-template-columns:repeat(2,minmax(0,1fr))}.omr-toolbar label{flex-basis:100%}}
 @media(max-width:420px){.module-nav{grid-template-columns:1fr}.omr-row,.omr-toolbar{gap:8px}.omr-row label{flex-basis:100%}.omr-row>button{flex:1 1 auto}.scan-actions button{flex:1 1 calc(50% - 8px)}.scan-actions label{flex-basis:100%}.omr-custom-field{grid-template-columns:1fr 1fr auto auto}.scan-score strong{font-size:22px}}
 @media(prefers-reduced-motion:reduce){.scan-feedback.is-visible{animation:none}}
@@ -70,4 +70,19 @@
 
 [data-header-panel="title"]>label{display:flex;flex-direction:column;gap:6px;margin-top:12px}[data-header-panel] textarea{width:100%;min-height:110px;resize:vertical}[data-header-tab][aria-selected="false"]{background:#f1effb;color:#4d4590}
 
-#headerDialog [hidden]{display:none!important}
+#headerSettings [hidden]{display:none!important}
+
+.omr-header-grid{align-items:start}.omr-header-grid>div{min-width:0}
+.omr-advanced>summary:focus-visible{outline:3px solid rgba(91,91,214,.22);outline-offset:3px;border-radius:5px}
+.omr-header-settings input[type=file]{width:100%;max-width:100%}
+.omr-header-settings [data-header-panel="title"]>label{color:#555b78;font-size:12px;font-weight:650}
+.omr-header-settings [data-header-panel] textarea{box-sizing:border-box;padding:9px 11px;border:1px solid #dfe1ec;border-radius:9px;background:#fff;color:#353956;font:inherit;font-size:14px}
+
+.corretor-operation-status:empty{margin:0}
+.corretor-content button:disabled,.corretor-content select:disabled{opacity:.5;cursor:not-allowed}
+.section-questions select{min-width:0;max-width:90px}
+@media(max-width:420px){.section-questions{grid-template-columns:1fr}}
+
+.scan-canvas[hidden],.scan-template-controls [hidden]{display:none!important}
+#scanModelStatus{overflow-wrap:anywhere}
+@media print{.corretor-operation-status{display:none!important}}

@@ -357,7 +357,7 @@ test("browser modules pin generator assets and keep the legacy route intact", as
   assert.match(renderSource, /from ["']\.\/template\.mjs\?v=20261114v2final["']/);
   assert.match(readerSource, /from ["']\.\/template\.mjs\?v=20261114v2final["']/);
   assert.match(pageSource, /omr\/(?:template|render|reader|normalize|export)\.mjs\?v=20261114v2final/g);
-  assert.match(teacherSource, /corretor-v2\.html\?v=20261114v2final/g);
+  assert.match(teacherSource, /corretor-v2\.html\?v=20261114ui1/g);
   assert.match(teacherSource, /professor-theme\.css\?v=20261110ux1/);
   assert.match(pageSource, /professor-theme\.css\?v=20261110ux1/);
   assert.doesNotMatch(pageSource, /id="dashboard"/);
