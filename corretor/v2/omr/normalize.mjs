@@ -103,7 +103,16 @@ function components(image) {
       quality: Math.min(1, fill / 0.9) * Math.exp(-Math.abs(Math.log(aspect / 1.414)) * 0.2),
     });
   }
-  return found.sort((a, b) => b.quality - a.quality).slice(0, 32);
+  // Dense printed text can outscore a real corner marker. Keep a bounded
+  // spatial sample as well as the strongest components, without changing the
+  // darkness/area thresholds or the four-marker transformation.
+  const selected = new Set(found.sort((a, b) => b.quality - a.quality).slice(0, 16));
+  for (const [x, y] of [[0, 0], [width / scale, 0], [width / scale, height / scale], [0, height / scale]]) {
+    const nearest = [...found].sort((a, b) => ((a.x - x) * scale / width) ** 2 + ((a.y - y) * scale / height) ** 2
+      - (((b.x - x) * scale / width) ** 2 + ((b.y - y) * scale / height) ** 2));
+    nearest.slice(0, 4).forEach(point => selected.add(point));
+  }
+  return [...selected];
 }
 
 const distance = (a, b) => Math.hypot(a.x - b.x, a.y - b.y);
@@ -112,7 +121,9 @@ function orderedQuad(points) {
   const center = points.reduce((sum, point) => ({ x: sum.x + point.x / 4, y: sum.y + point.y / 4 }), { x: 0, y: 0 });
   const ring = [...points].sort((a, b) => Math.atan2(a.y - center.y, a.x - center.x) - Math.atan2(b.y - center.y, b.x - center.x));
   const variants = [];
-  for (const direction of [ring, [...ring].reverse()]) {
+  // Image coordinates increase downwards. Keep clockwise winding: the reverse
+  // ring has the same edge scores but reflects the normalized page.
+  for (const direction of [ring]) {
     for (let offset = 0; offset < 4; offset++) {
       const ordered = Array.from({ length: 4 }, (_, index) => direction[(index + offset) % 4]);
       const horizontal = (distance(ordered[0], ordered[1]) + distance(ordered[2], ordered[3])) / 2;
@@ -124,7 +135,12 @@ function orderedQuad(points) {
       variants.push({ ordered, ratioError, oppositeError });
     }
   }
-  variants.sort((a, b) => a.ratioError + a.oppositeError * 0.35 - (b.ratioError + b.oppositeError * 0.35));
+  variants.sort((a, b) => {
+    const delta = a.ratioError + a.oppositeError * 0.35 - (b.ratioError + b.oppositeError * 0.35);
+    // Opposite starts are geometrically equivalent. Floating point noise must
+    // not choose a 180° flip between adjacent frames. Prefer the upper start.
+    return Math.abs(delta) > 1e-9 ? delta : a.ordered[0].y - b.ordered[0].y || a.ordered[0].x - b.ordered[0].x;
+  });
   return variants[0];
 }
 
@@ -142,12 +158,27 @@ function chooseQuad(candidates, width, height) {
     for (let c = b + 1; c < n - 1; c++) for (let d = c + 1; d < n; d++) {
       const points = [candidates[a], candidates[b], candidates[c], candidates[d]];
       const order = orderedQuad(points);
+      const turns = order.ordered.map((p, i) => {
+        const q = order.ordered[(i + 1) % 4], r = order.ordered[(i + 2) % 4];
+        return (q.x - p.x) * (r.y - q.y) - (q.y - p.y) * (r.x - q.x);
+      });
+      if (turns.some(turn => turn <= 0)) continue;
       const areaRatio = quadArea(order.ordered) / (width * height);
       if (areaRatio < 0.08 || areaRatio > 0.99) continue;
       if (order.ratioError > 0.85 || order.oppositeError > 1.15) continue;
       const markerQuality = points.reduce((sum, point) => sum + point.quality, 0) / 4;
-      const score = markerQuality - order.ratioError * 0.28 - order.oppositeError * 0.12 + Math.min(areaRatio, 0.72) * 0.08;
-      if (!best || score > best.score) best = { corners: order.ordered, score, confidence: Math.max(0, Math.min(1, score)), areaRatio };
+      // All supported page markers are solid 5.5 mm squares. A text glyph or
+      // filled answer may have a similar bounding box but not the physical area
+      // implied by the adjacent 194 × 281 mm marker-center spans.
+      const sizeError = order.ordered.reduce((sum, p, i) => {
+        const previous = order.ordered[(i + 3) % 4], next = order.ordered[(i + 1) % 4];
+        const localArea = Math.abs((previous.x-p.x)*(next.y-p.y)-(previous.y-p.y)*(next.x-p.x));
+        const expectedArea = localArea * 5.5 ** 2 / (194 * 281);
+        return sum + Math.abs(Math.log(p.area / expectedArea));
+      }, 0) / 4;
+      const geometricScore = markerQuality - order.ratioError * 0.28 - order.oppositeError * 0.12 + Math.min(areaRatio, 0.72) * 0.08;
+      const score = geometricScore - sizeError * 0.3;
+      if (!best || score > best.score) best = { corners: order.ordered, score, confidence: Math.max(0, Math.min(1, geometricScore)), areaRatio };
     }
   }
   return best;

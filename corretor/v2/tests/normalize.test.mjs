@@ -95,3 +95,31 @@ test("normalização preserva as coordenadas v4 e permite ler uma resposta marca
   assert.equal(result.observations[0].state, "read");
   assert.equal(result.observations[0].answer, "B");
 });
+
+test('poses próximas nunca espelham nem alternam o topo por desempate numérico',()=>{
+  for(let n=0;n<20;n++){
+    const width=900,height=1000,points=[{x:130+n*2,y:80+n},{x:660-n,y:110},{x:700,y:890-n*2},{x:120,y:860}];
+    const raster=markerRaster(width,height,points),detection=detectFiducials(raster,width,height);
+    assert.equal(detection.found,true);
+    const order=detection.corners.map(p=>points.findIndex(q=>Math.hypot(p.x-q.x,p.y-q.y)<3));
+    assert.deepEqual(order,[0,1,2,3],`pose ${n}: ${order}`);
+    const automatic=normalizeCard(raster,width,height,{outputWidth:300});
+    const manual=warpFromFiducials(raster,width,height,points,{outputWidth:300});
+    assert.deepEqual(automatic.pixels,manual.pixels);
+  }
+});
+
+test('mapeia cada marcador para o canto físico correto após mudança retrato/paisagem',()=>{
+  for(const points of [
+    [{x:120,y:80},{x:650,y:100},{x:680,y:890},{x:100,y:870}],
+    [{x:850,y:120},{x:830,y:650},{x:40,y:680},{x:60,y:100}],
+  ]){
+    const width=1000,height=1000,detected=detectFiducials(markerRaster(width,height,points),width,height);
+    assert.deepEqual(detected.corners.map(p=>points.findIndex(q=>Math.hypot(p.x-q.x,p.y-q.y)<3)),[0,1,2,3]);
+  }
+});
+
+test('três marcadores externos e um ponto interno não formam uma folha convexa',()=>{
+ const width=900,height=1000,points=[{x:120,y:100},{x:700,y:100},{x:700,y:890},{x:460,y:430}];
+ assert.equal(detectFiducials(markerRaster(width,height,points),width,height).found,false);
+});

@@ -92,3 +92,12 @@
 #assessmentReaderBank label{display:grid;min-width:0;gap:6px}
 #readingAssessment{width:100%;max-width:100%;min-width:0;min-height:40px}
 #assessmentReadingStatus{overflow-wrap:anywhere}
+
+/* Camera diagnostics preserve each intrinsic bitmap ratio, including narrow screens. */
+.camera-settings{margin:12px 0}.camera-settings summary,.camera-comparison summary{cursor:pointer;font-weight:700;padding:10px 0}.camera-settings [hidden],.camera-comparison[hidden]{display:none!important}
+.camera-stage video{object-position:center;transform:none}
+.camera-comparison>div{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}.camera-comparison figure{margin:0;min-width:0}.camera-comparison figcaption{font-size:12px;margin:8px 0}.camera-comparison canvas{display:block;width:100%;height:auto;max-width:100%;border:1px solid #e2e4ef}
+.scan-canvas{object-fit:contain}
+@media(max-width:760px){.camera-comparison>div{grid-template-columns:1fr}}
+.camera-settings .status{overflow-wrap:anywhere}.camera-settings .omr-row>*{min-width:0;max-width:100%}
+.camera-settings label.camera-check{display:flex;align-items:center;gap:8px}.camera-settings input[type=checkbox]{min-height:0;width:18px;height:18px;padding:0;flex:0 0 18px}.camera-settings input[type=range]{padding:0}

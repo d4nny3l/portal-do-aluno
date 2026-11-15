@@ -17,6 +17,7 @@ on:
       - "corretor/v2/tests/**"
       - "scripts/verify-card-artwork-raster.mjs"
       - "scripts/verify-card-header-raster.mjs"
+      - "scripts/verify-camera-geometry.mjs"
       - ".github/workflows/test-corretor-integrated.yml"
 permissions:
   contents: read
@@ -56,8 +57,11 @@ jobs:
           npm install --prefix "$RUNNER_TEMP/salta-raster" --no-save sharp@0.35.5
           SALTA_SHARP_MODULE="$RUNNER_TEMP/salta-raster/node_modules/sharp/dist/index.cjs" node scripts/verify-card-artwork-raster.mjs
           SALTA_SHARP_MODULE="$RUNNER_TEMP/salta-raster/node_modules/sharp/dist/index.cjs" node scripts/verify-card-header-raster.mjs
+          SALTA_SHARP_MODULE="$RUNNER_TEMP/salta-raster/node_modules/sharp/dist/index.cjs" node scripts/verify-camera-geometry.mjs
       - uses: actions/upload-artifact@v4
         with:
           name: salta-card-artwork-synthetic
-          path: tmp/card-artwork-evidence/
+          path: |
+            tmp/card-artwork-evidence/
+            tmp/camera-evidence/
       - run: git diff --check HEAD^ HEAD

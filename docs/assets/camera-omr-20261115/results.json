@@ -1,0 +1,536 @@
+{
+  "projections": [
+    {
+      "name": "perspective",
+      "fixtureRadialCoefficient": 0,
+      "metrics": {
+        "lines": [
+          {
+            "axis": "x",
+            "positionMm": 30,
+            "offsetMm": -0.16405381327642488,
+            "slope": 0.000007028613990673233,
+            "rmsMm": 0.013308543730723538
+          },
+          {
+            "axis": "x",
+            "positionMm": 60,
+            "offsetMm": -0.1696608488393494,
+            "slope": -0.000042155048978767784,
+            "rmsMm": 0.021854386010812982
+          },
+          {
+            "axis": "x",
+            "positionMm": 90,
+            "offsetMm": -0.15985886937808402,
+            "slope": 0.000012105046638197692,
+            "rmsMm": 0.03327692367546375
+          },
+          {
+            "axis": "x",
+            "positionMm": 120,
+            "offsetMm": -0.17417551505558038,
+            "slope": -0.00002807983795837955,
+            "rmsMm": 0.027861489099802475
+          },
+          {
+            "axis": "x",
+            "positionMm": 150,
+            "offsetMm": -0.18831824845088363,
+            "slope": 0.0003407097855337036,
+            "rmsMm": 0.057382403121259695
+          },
+          {
+            "axis": "x",
+            "positionMm": 180,
+            "offsetMm": -0.17598976498553043,
+            "slope": 0.00022697731075215166,
+            "rmsMm": 0.06591575536483246
+          },
+          {
+            "axis": "y",
+            "positionMm": 48.5,
+            "offsetMm": -0.3318573793893407,
+            "slope": 0.00010928417441419358,
+            "rmsMm": 0.04698112789577386
+          },
+          {
+            "axis": "y",
+            "positionMm": 88.5,
+            "offsetMm": -0.3378889848414559,
+            "slope": 0.00002881897258583833,
+            "rmsMm": 0.047221315621407314
+          },
+          {
+            "axis": "y",
+            "positionMm": 128.5,
+            "offsetMm": -0.32718280322134774,
+            "slope": -0.00005677132278447245,
+            "rmsMm": 0.05019882641481299
+          },
+          {
+            "axis": "y",
+            "positionMm": 168.5,
+            "offsetMm": -0.3521841470275433,
+            "slope": -0.0003585653673952236,
+            "rmsMm": 0.04480507771905429
+          },
+          {
+            "axis": "y",
+            "positionMm": 208.5,
+            "offsetMm": -0.3301776367259208,
+            "slope": 0.0000054927941140189005,
+            "rmsMm": 0.053708976206867695
+          },
+          {
+            "axis": "y",
+            "positionMm": 248.5,
+            "offsetMm": -0.32856689636977876,
+            "slope": -0.00013063928607345157,
+            "rmsMm": 0.04990940383433118
+          }
+        ],
+        "maxCurvatureMm": 0.06591575536483246,
+        "maxOffsetMm": 0.3521841470275433,
+        "centerSharpness": 11.183749874787138,
+        "edgeSharpness": 11.228918713598379,
+        "edgeToCenter": 1.0040387919362423,
+        "lensCorrection": false
+      },
+      "automaticMetrics": {
+        "lines": [
+          {
+            "axis": "x",
+            "positionMm": 30,
+            "offsetMm": 0.008161725674842302,
+            "slope": -0.00004454434432457756,
+            "rmsMm": 0.016900176562054545
+          },
+          {
+            "axis": "x",
+            "positionMm": 60,
+            "offsetMm": 0.0038587891914332317,
+            "slope": -0.000076621574705309,
+            "rmsMm": 0.024532470257555505
+          },
+          {
+            "axis": "x",
+            "positionMm": 90,
+            "offsetMm": 0.014361614664906597,
+            "slope": 7.398539100008677e-7,
+            "rmsMm": 0.03203860477120354
+          },
+          {
+            "axis": "x",
+            "positionMm": 120,
+            "offsetMm": 0.004216456447153405,
+            "slope": 0.00006421492779435493,
+            "rmsMm": 0.03163392021753523
+          },
+          {
+            "axis": "x",
+            "positionMm": 150,
+            "offsetMm": -0.014246174522725141,
+            "slope": 0.00037369985087648495,
+            "rmsMm": 0.05518664386076727
+          },
+          {
+            "axis": "x",
+            "positionMm": 180,
+            "offsetMm": -0.010848371043209681,
+            "slope": 0.00032152606743148844,
+            "rmsMm": 0.0611738348446555
+          },
+          {
+            "axis": "y",
+            "positionMm": 48.5,
+            "offsetMm": 0.026933040796450314,
+            "slope": 0.00033284866128310337,
+            "rmsMm": 0.04392072909256031
+          },
+          {
+            "axis": "y",
+            "positionMm": 88.5,
+            "offsetMm": -0.03809626522516396,
+            "slope": 0.0002651178422238252,
+            "rmsMm": 0.044529767303324176
+          },
+          {
+            "axis": "y",
+            "positionMm": 128.5,
+            "offsetMm": -0.07903404796877567,
+            "slope": 0.00013213977294826388,
+            "rmsMm": 0.04558695120347353
+          },
+          {
+            "axis": "y",
+            "positionMm": 168.5,
+            "offsetMm": -0.004635921861677161,
+            "slope": -0.0002959059899282289,
+            "rmsMm": 0.043105891053418444
+          },
+          {
+            "axis": "y",
+            "positionMm": 208.5,
+            "offsetMm": -0.03219841429060466,
+            "slope": 0.00014353894914089817,
+            "rmsMm": 0.048750144012681594
+          },
+          {
+            "axis": "y",
+            "positionMm": 248.5,
+            "offsetMm": -0.07346065775988109,
+            "slope": -0.00003309602608565446,
+            "rmsMm": 0.052636148648892184
+          }
+        ],
+        "maxCurvatureMm": 0.0611738348446555,
+        "maxOffsetMm": 0.07903404796877567,
+        "centerSharpness": 5.999265722835517,
+        "edgeSharpness": 5.825039265047504,
+        "edgeToCenter": 0.9709587029751258,
+        "lensCorrection": false
+      },
+      "source": [
+        900,
+        1000
+      ],
+      "normalized": [
+        630,
+        891
+      ]
+    },
+    {
+      "name": "radial-synthetic",
+      "fixtureRadialCoefficient": 0.45,
+      "metrics": {
+        "lines": [
+          {
+            "axis": "x",
+            "positionMm": 30,
+            "offsetMm": 4.241071027074632,
+            "slope": -0.0008241018505069677,
+            "rmsMm": 1.084196068664633
+          },
+          {
+            "axis": "x",
+            "positionMm": 60,
+            "offsetMm": 3.3908329168665787,
+            "slope": -0.0004559763181649587,
+            "rmsMm": 0.7747748216698764
+          },
+          {
+            "axis": "x",
+            "positionMm": 90,
+            "offsetMm": 1.9152201718862045,
+            "slope": -0.00013664855879627182,
+            "rmsMm": 0.4350042132967558
+          },
+          {
+            "axis": "x",
+            "positionMm": 120,
+            "offsetMm": 0.4220830871539931,
+            "slope": 0.00026649991107889864,
+            "rmsMm": 0.10668341964100286
+          },
+          {
+            "axis": "x",
+            "positionMm": 150,
+            "offsetMm": -0.9853686845626441,
+            "slope": 0.0006587453410369341,
+            "rmsMm": 0.19175746162787105
+          },
+          {
+            "axis": "x",
+            "positionMm": 180,
+            "offsetMm": -2.1643488994185986,
+            "slope": 0.0010721134728875175,
+            "rmsMm": 0.49476047282944546
+          },
+          {
+            "axis": "y",
+            "positionMm": 48.5,
+            "offsetMm": 4.0006263426250825,
+            "slope": 0.00009696222567663551,
+            "rmsMm": 0.4545606690426822
+          },
+          {
+            "axis": "y",
+            "positionMm": 88.5,
+            "offsetMm": 3.787974467268299,
+            "slope": -0.0004702584499686784,
+            "rmsMm": 0.3004480658465727
+          },
+          {
+            "axis": "y",
+            "positionMm": 128.5,
+            "offsetMm": 1.8557945205578505,
+            "slope": 0.0036918932116681456,
+            "rmsMm": 0.5691812897676748
+          },
+          {
+            "axis": "y",
+            "positionMm": 168.5,
+            "offsetMm": -0.3064213492772012,
+            "slope": -0.0007427522383506206,
+            "rmsMm": 0.2586838317575018
+          },
+          {
+            "axis": "y",
+            "positionMm": 208.5,
+            "offsetMm": -2.461450299938946,
+            "slope": 0.0017732172737914148,
+            "rmsMm": 0.18767253725168467
+          },
+          {
+            "axis": "y",
+            "positionMm": 248.5,
+            "offsetMm": -3.265287172124914,
+            "slope": 0.0009373950186170715,
+            "rmsMm": 0.3180375506991526
+          }
+        ],
+        "maxCurvatureMm": 1.084196068664633,
+        "maxOffsetMm": 4.241071027074632,
+        "centerSharpness": 13.436567164179104,
+        "edgeSharpness": 10.572304697391745,
+        "edgeToCenter": 0.7868307855876111,
+        "lensCorrection": false
+      },
+      "automaticMetrics": {
+        "lines": [
+          {
+            "axis": "x",
+            "positionMm": 30,
+            "offsetMm": 4.428169632654445,
+            "slope": -0.0007237435324394514,
+            "rmsMm": 1.0782817290198594
+          },
+          {
+            "axis": "x",
+            "positionMm": 60,
+            "offsetMm": 3.584048154056795,
+            "slope": -0.000391505299170695,
+            "rmsMm": 0.7756643870474027
+          },
+          {
+            "axis": "x",
+            "positionMm": 90,
+            "offsetMm": 2.107082076720232,
+            "slope": -0.00004775478451705391,
+            "rmsMm": 0.4357053195818741
+          },
+          {
+            "axis": "x",
+            "positionMm": 120,
+            "offsetMm": 0.6071406197408891,
+            "slope": 0.00030322780247959074,
+            "rmsMm": 0.10969354926706532
+          },
+          {
+            "axis": "x",
+            "positionMm": 150,
+            "offsetMm": -0.8053865214719735,
+            "slope": 0.0007435398217726653,
+            "rmsMm": 0.19193471088876893
+          },
+          {
+            "axis": "x",
+            "positionMm": 180,
+            "offsetMm": -1.9971898513031476,
+            "slope": 0.0010487628482617906,
+            "rmsMm": 0.4949142942610218
+          },
+          {
+            "axis": "y",
+            "positionMm": 48.5,
+            "offsetMm": 4.428089614884634,
+            "slope": 0.00019816675852336497,
+            "rmsMm": 0.4509637743440469
+          },
+          {
+            "axis": "y",
+            "positionMm": 88.5,
+            "offsetMm": 4.064409234478106,
+            "slope": 0.002275438184483092,
+            "rmsMm": 0.5001855965973223
+          },
+          {
+            "axis": "y",
+            "positionMm": 128.5,
+            "offsetMm": 2.2330479092732958,
+            "slope": 0.0013853249165111804,
+            "rmsMm": 0.3019933259965803
+          },
+          {
+            "axis": "y",
+            "positionMm": 168.5,
+            "offsetMm": 0.010640934542465175,
+            "slope": 0.001025794058153765,
+            "rmsMm": 0.1551647555739439
+          },
+          {
+            "axis": "y",
+            "positionMm": 208.5,
+            "offsetMm": -2.085606673271684,
+            "slope": 0.00010389322794524414,
+            "rmsMm": 0.21067190857553852
+          },
+          {
+            "axis": "y",
+            "positionMm": 248.5,
+            "offsetMm": -2.9978047308066778,
+            "slope": 0.0006649912670180251,
+            "rmsMm": 0.3160859714984742
+          }
+        ],
+        "maxCurvatureMm": 1.0782817290198594,
+        "maxOffsetMm": 4.428169632654445,
+        "centerSharpness": 7.122289838308145,
+        "edgeSharpness": 5.55386055795723,
+        "edgeToCenter": 0.7797858110301945,
+        "lensCorrection": false
+      },
+      "source": [
+        900,
+        1000
+      ],
+      "normalized": [
+        630,
+        891
+      ]
+    }
+  ],
+  "quality": [
+    {
+      "version": "v1",
+      "count": 10,
+      "ok": true,
+      "message": "Folha estável e legível.",
+      "area": 0.8727061495457722,
+      "brightness": 255,
+      "contrast": 148,
+      "sharpness": 168.09731833910035,
+      "motion": 0,
+      "glare": false,
+      "normalizedAnswer": "C"
+    },
+    {
+      "version": "v1",
+      "count": 20,
+      "ok": true,
+      "message": "Folha estável e legível.",
+      "area": 0.8727061495457722,
+      "brightness": 255,
+      "contrast": 156,
+      "sharpness": 167.9091514143095,
+      "motion": 0,
+      "glare": false,
+      "normalizedAnswer": "C"
+    },
+    {
+      "version": "v1",
+      "count": 50,
+      "ok": true,
+      "message": "Folha estável e legível.",
+      "area": 0.8727061495457722,
+      "brightness": 255,
+      "contrast": 185,
+      "sharpness": 153.395735044348,
+      "motion": 0,
+      "glare": false,
+      "normalizedAnswer": "C"
+    },
+    {
+      "version": "v1",
+      "count": 100,
+      "ok": true,
+      "message": "Folha estável e legível.",
+      "area": 0.8727061495457722,
+      "brightness": 255,
+      "contrast": 191,
+      "sharpness": 159.77116120799658,
+      "motion": 0,
+      "glare": false,
+      "normalizedAnswer": "C"
+    },
+    {
+      "version": "v1",
+      "count": 150,
+      "ok": true,
+      "message": "Folha estável e legível.",
+      "area": 0.8727061495457722,
+      "brightness": 255,
+      "contrast": 194,
+      "sharpness": 158.47336229057709,
+      "motion": 0,
+      "glare": false,
+      "normalizedAnswer": "C"
+    },
+    {
+      "version": "v2",
+      "count": 10,
+      "ok": true,
+      "message": "Folha estável e legível.",
+      "area": 0.8727061495457722,
+      "brightness": 255,
+      "contrast": 169,
+      "sharpness": 171.55028815765013,
+      "motion": 0,
+      "glare": false,
+      "normalizedAnswer": "C"
+    },
+    {
+      "version": "v2",
+      "count": 20,
+      "ok": true,
+      "message": "Folha estável e legível.",
+      "area": 0.8727061495457722,
+      "brightness": 255,
+      "contrast": 170,
+      "sharpness": 162.1847115244877,
+      "motion": 0,
+      "glare": false,
+      "normalizedAnswer": "C"
+    },
+    {
+      "version": "v2",
+      "count": 50,
+      "ok": true,
+      "message": "Folha estável e legível.",
+      "area": 0.8727061495457722,
+      "brightness": 255,
+      "contrast": 185,
+      "sharpness": 159.4439736346516,
+      "motion": 0,
+      "glare": false,
+      "normalizedAnswer": "C"
+    },
+    {
+      "version": "v2",
+      "count": 100,
+      "ok": true,
+      "message": "Folha estável e legível.",
+      "area": 0.8727061495457722,
+      "brightness": 255,
+      "contrast": 193,
+      "sharpness": 167.37185416541533,
+      "motion": 0,
+      "glare": false,
+      "normalizedAnswer": "C"
+    },
+    {
+      "version": "v2",
+      "count": 150,
+      "ok": true,
+      "message": "Folha estável e legível.",
+      "area": 0.8727061495457722,
+      "brightness": 255,
+      "contrast": 194,
+      "sharpness": 174.77686361376067,
+      "motion": 0,
+      "glare": false,
+      "normalizedAnswer": "C"
+    }
+  ]
+}
