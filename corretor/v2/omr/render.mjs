@@ -17,12 +17,12 @@ function sectionVisualFrame(f,questions){
  const width=Math.min(f.width,Math.max(right-left,labelWidth)+6);
  return {...f,x:f.x+(f.width-width)/2,width};
 }
-export function createCardManifest(template,header=null){
+export function createCardManifest(template,header=null,options={}){
  if(template.layoutVersion==='v1'||template.version==='salta-omr-a4-v7')return legacyManifest(template,header||LEGACY_HEADER);
  if(header===DEFAULT_CARD_HEADER)header=null;
  const h={...DEFAULT_CARD_HEADER,...template.metadata,institution:template.schoolName,title:template.title,...(header||{}),visible:{...DEFAULT_CARD_HEADER.visible,...template.metadata?.visibleFields,...header?.visible}};
  const mode=template.identity.mode==='none'?'none':h.showStudentCode===false&&template.identity.mode==='seven-digit-code'?'manual':template.identity.mode;
- const source={...template,title:h.title||template.title,schoolName:h.institution||'',metadata:{...template.metadata,...h},identity:{...template.identity,mode,showName:mode!=='none'&&(h.visible?.studentName??template.identity.showName)}};
+ const source={...template,sectionFrameStyle:options.sectionFrameStyle,title:h.title||template.title,schoolName:h.institution||'',metadata:{...template.metadata,...h},identity:{...template.identity,mode,showName:mode!=='none'&&(h.visible?.studentName??template.identity.showName)}};
  return createLayoutManifest(source);
 }
 function drawQuestion(q){
@@ -51,7 +51,7 @@ export function renderTemplateSvg(template,{page=1,header=null,manifest:supplied
  for(const l of hp.rules)parts.push(`<line x1="${l.x1}" y1="${l.y1}" x2="${l.x2}" y2="${l.y2}" stroke="#000" stroke-width="0.2"/>`);parts.push('</g>');
  if(m.panels.name){const f=m.panels.name;parts.push(frame(f,'omr-name-frame'),text(f.x+3,f.y+7,'NOME:',3,700));const value=student?.name;if(value){const ls=wrapText(value,f.width-22,3);if(ls.length>2)throw new RangeError('O nome nominal não cabe em duas linhas. Confira o cadastro antes de imprimir.');ls.forEach((line,i)=>parts.push(text(f.x+18,f.y+4.5+i*3.9,line,3)));}else parts.push(`<line x1="${f.x+18}" y1="${f.y+8}" x2="${f.x+f.width-3}" y2="${f.y+8}" stroke="#000" stroke-width="0.2"/>`);}
  if(m.panels.instructions){const f=m.panels.instructions;parts.push(frame(f,'omr-instructions-frame'));f.lines.forEach((line,i)=>parts.push(text(f.x+3,f.y+3.5+i*3.25,line,2.5)));}
- for(const f of m.sections){parts.push(`<g class="omr-section-frame" data-section-id="${esc(f.sectionId)}">`,frame(sectionVisualFrame(f,m.questions),'omr-section-border'));f.titleLines.forEach((line,i)=>parts.push(text(f.x+f.width/2,f.y+3.6+i*3.38,line,2.6,700,'middle')));parts.push('</g>');}
+ for(const f of m.sections){parts.push(`<g class="omr-section-frame" data-section-id="${esc(f.sectionId)}">`,frame(m.sectionFrameStyle==='content'?sectionVisualFrame(f,m.questions):f,'omr-section-border'));f.titleLines.forEach((line,i)=>parts.push(text(f.x+f.width/2,f.y+3.6+i*3.38,line,2.6,700,'middle')));parts.push('</g>');}
  for(const q of m.questions)parts.push(`<g class="omr-question" data-question-id="${esc(q.questionId)}" data-question="${q.number}" data-type="${q.type}">${drawQuestion(q)}</g>`);
  if(m.panels.code){const f=m.panels.code;parts.push(frame(f,'omr-code-frame'),text(f.x+f.width/2,f.y+4,'CÓDIGO DO ALUNO',2.2,700,'middle'));for(const c of m.identityCode.columns)parts.push(`<rect x="${c.box.x}" y="${c.box.y}" width="4.2" height="4.2" rx="1" ry="1" fill="#fff" stroke="#000" stroke-width="0.25"/>`,text(c.centerX,c.box.y+3.1,c.printedDigit,2.8,600,'middle'));for(const bubble of m.identityBubbles){parts.push(`<circle class="omr-identity-bubble" data-column="${bubble.column}" data-digit="${bubble.digit}" cx="${bubble.x}" cy="${bubble.y}" r="2.25" fill="${bubble.filled?'#000':'#fff'}" stroke="#000" stroke-width="0.25"/>`);if(!bubble.filled)parts.push(text(bubble.x,bubble.y+.65,String(bubble.digit),1.85,500,'middle'));}}
  for(const f of m.technicalRegions.fiducials)parts.push(`<rect class="omr-fiducial" data-marker="${f.markerId}" x="${f.x-f.sizeMm/2}" y="${f.y-f.sizeMm/2}" width="${f.sizeMm}" height="${f.sizeMm}" fill="#000"/>`);
