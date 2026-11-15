@@ -1,9 +1,22 @@
-// Remote homologation trusts the Access runtime, never client-supplied identity headers.
+import {jwtVerify,createRemoteJWKSet} from 'jose';
+// Trust runtime-verified identity or a cryptographically verified Access assertion.
+const keySets=new Map();
+export async function verifiedIdentity(request,env,ctx,keysForTest){
+ if(!env.ACCESS_AUD)throw Error('Audience required');
+ if(ctx?.access){
+  if(ctx.access.aud!==env.ACCESS_AUD)throw Error('Audience mismatch');
+  return ctx.access.getIdentity();
+ }
+ const issuer=env.ACCESS_ISSUER,token=request?.headers.get('Cf-Access-Jwt-Assertion');
+ if(!/^https:\/\/[a-z0-9-]+\.cloudflareaccess\.com$/.test(issuer||'')||!token||token.length>8192)throw Error('Verified identity required');
+ if(!keySets.has(issuer))keySets.set(issuer,createRemoteJWKSet(new URL(issuer+'/cdn-cgi/access/certs'),{timeoutDuration:5000,cacheMaxAge:300000}));
+ const {payload}=await jwtVerify(token,keysForTest||keySets.get(issuer),{issuer,audience:env.ACCESS_AUD,algorithms:['RS256'],requiredClaims:['sub','email','exp','iat'],clockTolerance:5,maxTokenAge:'35m'});
+ return {email:payload.email};
+}
 export const protectedMode=env=>env.SALTA_ASSESSMENTS_MODE==='protected-synthetic';
-export async function accessPrincipal(env,ctx,db){
+export async function accessPrincipal(env,ctx,db,request){
  const denied=()=>{throw Object.assign(new Error('Sessão protegida ou autorização indisponível.'),{accessStatus:403})};
- if(!env.ACCESS_AUD||ctx?.access?.aud!==env.ACCESS_AUD)denied();
- const identity=await ctx.access.getIdentity();
+ let identity;try{identity=await verifiedIdentity(request,env,ctx)}catch{denied()}
  if(typeof identity?.email!=='string'||!identity.email.includes('@'))denied();
  const digest=await crypto.subtle.digest('SHA-256',new TextEncoder().encode(identity.email.trim().toLowerCase()));
  const subject='access:'+Array.from(new Uint8Array(digest),b=>b.toString(16).padStart(2,'0')).join('');

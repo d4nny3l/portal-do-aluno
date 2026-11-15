@@ -9,5 +9,10 @@
     "seed:local": "wrangler d1 execute ASSESSMENTS_DB --local --persist-to .wrangler/state --file fixtures/seed.sql",
     "dev": "wrangler dev --local --ip 127.0.0.1 --port 8791 --persist-to .wrangler/state"
   },
-  "devDependencies": {"wrangler": "4.158.0"}
+  "devDependencies": {
+    "wrangler": "4.158.0"
+  },
+  "dependencies": {
+    "jose": "6.2.17"
+  }
 }

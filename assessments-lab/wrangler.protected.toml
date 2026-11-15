@@ -7,6 +7,7 @@ workers_dev = true
 preview_urls = false
 
 [vars]
+ACCESS_ISSUER = "https://plain-brook-54b1.cloudflareaccess.com"
 SALTA_ASSESSMENTS_MODE = "protected-synthetic"
 PUBLIC_ORIGIN = "https://salta-assessments-homologacao.dannyel-moises.workers.dev"
 ACCESS_AUD = "ab5333f00d091742d671b86dbf7878f7f2a8a53d1cd256f24b53b67445d9c587"

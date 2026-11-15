@@ -9,9 +9,21 @@ import {cryptoContext,makeBundle} from '../../corretor/v2/assessments/domain.mjs
 import {AssessmentRepository} from '../../corretor/v2/assessments/repository.mjs';
 import {createTemplate} from '../../corretor/v2/omr/template.mjs';
 import {createCardManifest} from '../../corretor/v2/omr/render.mjs';
+import {SignJWT,generateKeyPair,exportJWK,createLocalJWKSet} from 'jose';
+import {verifiedIdentity} from '../protected-auth.mjs';
 const origin='https://salta-assessments-homologacao.dannyel-moises.workers.dev';
 const password='SOMENTE TESTE SINTETICO de recuperacao 2026';
 const ctx={access:{aud:'synthetic-audience',getIdentity:async()=>({email:'synthetic@example.invalid'})}};
+test('Access JWT requires trusted RSA signature, exact issuer/audience, required claims and expiry; identity headers alone are rejected',async()=>{
+ const issuer='https://synthetic.cloudflareaccess.com',env={ACCESS_ISSUER:issuer,ACCESS_AUD:'synthetic-audience'};
+ const {privateKey,publicKey}=await generateKeyPair('RS256'),jwk=await exportJWK(publicKey),keys=createLocalJWKSet({keys:[{...jwk,kid:'synthetic'}]});
+ const token=async({iss=issuer,aud=env.ACCESS_AUD,expiry='20m',key=privateKey}={})=>new SignJWT({email:'synthetic@example.invalid'}).setProtectedHeader({alg:'RS256',kid:'synthetic'}).setSubject('synthetic-identity').setIssuer(iss).setAudience(aud).setIssuedAt().setExpirationTime(expiry).sign(key);
+ const request=value=>new Request('https://example.invalid',{headers:{'Cf-Access-Jwt-Assertion':value,'Cf-Access-Authenticated-User-Email':'ignored@example.invalid'}});
+ assert.equal((await verifiedIdentity(request(await token()),env,{},keys)).email,'synthetic@example.invalid');
+ for(const options of [{iss:'https://other.cloudflareaccess.com'},{aud:'another-app'},{expiry:'-1h'},{key:(await generateKeyPair('RS256')).privateKey}])await assert.rejects(verifiedIdentity(request(await token(options)),env,{},keys));
+ await assert.rejects(verifiedIdentity(request('forged'),env,{},keys));
+ await assert.rejects(verifiedIdentity(new Request('https://example.invalid',{headers:{'Cf-Access-Authenticated-User-Email':'synthetic@example.invalid'}}),env,{},keys));
+});
 async function setup(t){
  const h=harness();t.after(()=>h.db.close());
  const digest=Array.from(new Uint8Array(await crypto.subtle.digest('SHA-256',new TextEncoder().encode('synthetic@example.invalid'))),b=>b.toString(16).padStart(2,'0')).join('');

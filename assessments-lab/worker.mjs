@@ -76,7 +76,7 @@ async function route(request,env,url,ctx){
   await db.prepare('INSERT INTO assessment_lab_sessions VALUES(?,?,?)').bind(await hash(token),actor.id,Date.now()+4*3600_000).run();
   return json({ok:true},200,{'Set-Cookie':`salta_assessment_lab=${token}; Path=/; HttpOnly; SameSite=Strict; Max-Age=14400`});
  }
- const actor=protectedMode(env)?await accessPrincipal(env,ctx,db):await principal(request,db);
+ const actor=protectedMode(env)?await accessPrincipal(env,ctx,db,request):await principal(request,db);
  if(protectedMode(env)&&url.pathname==='/api/key-vault'){
   if(request.method==='GET'){const row=await db.prepare('SELECT encrypted_json FROM assessment_key_vaults WHERE principal_id=?').bind(actor.id).first();return json({vault:row?JSON.parse(row.encrypted_json):null})}
   if(request.method==='PUT'){
@@ -112,7 +112,7 @@ export default {async fetch(request,env,ctx){
  if(!(env.SALTA_ASSESSMENTS_MODE==='local-only'&&LOOPBACK.has(url.hostname))&&!(protectedMode(env)&&url.origin===env.PUBLIC_ORIGIN&&url.protocol==='https:'))return json({error:'Laboratório bloqueado fora de localhost; autenticação e chaves reais ainda não homologadas.'},403);
  try{
   if(url.pathname.startsWith('/api/')||url.pathname.startsWith('/__lab/'))return await route(request,env,url,ctx);
-  if(protectedMode(env))await accessPrincipal(env,ctx,env.ASSESSMENTS_DB);
+  if(protectedMode(env))await accessPrincipal(env,ctx,env.ASSESSMENTS_DB,request);
   if(env.ASSETS){const response=await env.ASSETS.fetch(request),headers=new Headers(response.headers);headers.set('Cache-Control','no-store');headers.set('Referrer-Policy','no-referrer');headers.set('X-Content-Type-Options','nosniff');headers.set('Content-Security-Policy',"default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; connect-src 'self'; media-src 'self' blob:; object-src 'none'; base-uri 'none'; frame-ancestors 'none'");return new Response(response.body,{status:response.status,headers})}
   return json({error:'Recursos locais indisponíveis.'},404);
  }catch(error){if(error?.accessStatus)return json({error:'Acesso protegido indisponível ou revogado.'},error.accessStatus);return json({error:error instanceof LabError?error.message:'A operação de homologação falhou. Nenhuma confirmação de salvamento foi recebida.'},error instanceof LabError?error.status:503)}
