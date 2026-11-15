@@ -1,3 +1,4 @@
+import {unlockProtectedRepository} from './unlock.mjs';
 import {createScopeKeyMaterial} from '../../../assessments-lab/crypto/key-generation.js';
 import {encryptJson} from '../../../assessments-lab/crypto/encryption.js';
 import {decryptJson} from '../../../assessments-lab/crypto/decryption.js';
@@ -8,11 +9,13 @@ export class AssessmentRepository {
  constructor({fetchApi=globalThis.fetch.bind(globalThis),keyStore=new DeviceKeyStore()}={}){this.fetchApi=fetchApi;this.keyStore=keyStore;this.pending=null}
  async request(path,{method='GET',data}={}){
   let r;try{r=await this.fetchApi(path,{method,credentials:'include',cache:'no-store',headers:data?{'Content-Type':'application/json'}:{},...(data?{body:JSON.stringify(data)}:{})})}catch{throw Object.assign(new Error('Falha de rede. Nenhum salvamento foi confirmado. Tente reenviar a mesma operação.'),{code:'network'})}
-  const result=await r.json().catch(()=>({}));if(!r.ok)throw Object.assign(new Error(result.error||'O servidor não confirmou a operação.'),{code:r.status});return result;
+  const result=await r.json().catch(()=>({}));if(!r.ok&&[401,403].includes(r.status))this.lock();if(!r.ok)throw Object.assign(new Error(result.error||'O servidor não confirmou a operação.'),{code:r.status});return result;
  }
  async initialize(){
-  this.session=await this.request('/api/session');if(this.session.mode!=='synthetic-only')throw Error('Este adaptador exige homologação sintética isolada.');
-  this.classes=(await this.request('/api/classes')).classes;const rows=await this.list();
+  this.session=await this.request('/api/session');if(!['synthetic-only','protected-synthetic'].includes(this.session.mode))throw Error('Este adaptador exige homologação sintética isolada.');
+  this.classes=(await this.request('/api/classes')).classes;
+  if(this.session.mode==='protected-synthetic'){await unlockProtectedRepository(this);return this}
+  const rows=await this.list();
   this.key=await this.keyStore.getKey(this.session.principalId,'scope-hkdf');
   if(!this.key){
    if(rows.length)throw Error('Chave local ausente. Este dispositivo não pode abrir as avaliações existentes; recuperação e outros dispositivos ainda não estão homologados.');
@@ -20,8 +23,16 @@ export class AssessmentRepository {
   }
   return this;
  }
+ lock(){this.key=null;this.pending=null;clearTimeout(this.expiryTimer);clearInterval(this.sessionTimer)}
+ async guard(){
+  if(this.session?.mode!=='protected-synthetic')return;
+  if(!this.key||Date.now()>=this.unlockedUntil){this.lock();throw Error('O cofre expirou. Desbloqueie novamente.')}
+  const current=await this.request('/api/session');
+  if(current.principalId!==this.session.principalId||current.epoch!==this.session.epoch){this.lock();throw Error('A sessão ou autorização mudou. Reabra o banco.')}
+ }
  async list(){return (await this.request('/api/assessments')).assessments}
  async load(id,revision=null){
+  await this.guard();
   if(!/^[a-f0-9-]{36}$/i.test(id)||revision!==null&&(!Number.isSafeInteger(revision)||revision<1))throw Error('Selecione avaliação e revisão válidas.');
   const {record}=await this.request('/api/assessments/'+id+(revision?'/revisions/'+revision:''));
   if(record.id!==id||revision&&record.revision!==revision||record.ownerId!==this.session.principalId)throw Error('Recibo de avaliação incompatível.');
@@ -29,6 +40,7 @@ export class AssessmentRepository {
   return validateBundle(bundle,record);
  }
  async save(bundle){
+  await this.guard();
   const stable=structuredClone(bundle);delete stable.answerKey.updatedAt;
   const fingerprint=canonicalJson(stable);
   if(this.pending?.fingerprint!==fingerprint){

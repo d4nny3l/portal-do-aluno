@@ -1,0 +1,20 @@
+// Explicit synthetic grants only. Does not read or grant access to academic databases.
+import {execFileSync} from 'node:child_process';
+import {readFileSync} from 'node:fs';
+import {fileURLToPath} from 'node:url';
+import {createHash,randomUUID} from 'node:crypto';
+const cli=fileURLToPath(new URL('node_modules/wrangler/bin/wrangler.js',import.meta.url));
+const config=fileURLToPath(new URL('wrangler.protected.toml',import.meta.url));
+const text=readFileSync(config,'utf8');
+if(!text.includes('fb74f058-06f8-40a5-8327-445bded453e3')||!/^ACCESS_AUD = "[a-f0-9]{64}"$/m.test(text))throw Error('Confirme D1 isolado e aplicação Access antes do provisionamento.');
+const run=args=>execFileSync(process.execPath,[cli,...args],{encoding:'utf8',stdio:['ignore','pipe','pipe'],env:{...process.env,CI:'true',WRANGLER_SEND_METRICS:'false'}});
+const {email}=JSON.parse(run(['whoami','--json']));
+if(typeof email!=='string'||!email.includes('@'))throw Error('Responsável da conta não confirmado.');
+const subject='access:'+createHash('sha256').update(email.trim().toLowerCase()).digest('hex');
+const id=randomUUID(),expiry=Date.now()+30*24*3600_000;
+const sql=`INSERT INTO assessment_principals(id,auth_subject,label) VALUES('${id}','${subject}','Responsável · homologação sintética') ON CONFLICT(auth_subject) DO NOTHING;
+INSERT INTO assessment_grants(principal_id,class_id,period_id,label) SELECT id,'c1111111-1111-4111-8111-111111111111','p2026-4','Turma sintética A · 4º bimestre' FROM assessment_principals WHERE auth_subject='${subject}' ON CONFLICT DO NOTHING;
+INSERT INTO assessment_access_control(principal_id,enabled,epoch,expires_at) SELECT id,1,1,${expiry} FROM assessment_principals WHERE auth_subject='${subject}' ON CONFLICT DO NOTHING;`;
+run(['d1','execute','ASSESSMENTS_DB','--remote','--config',config,'--command',sql,'--json']);
+const result=JSON.parse(run(['d1','execute','ASSESSMENTS_DB','--remote','--config',config,'--command',`SELECT p.id,c.enabled,c.epoch,c.expires_at FROM assessment_principals p JOIN assessment_access_control c ON c.principal_id=p.id WHERE p.auth_subject='${subject}'`,'--json']));
+console.log(JSON.stringify({syntheticOnly:true,principal:result[0].results[0]}));

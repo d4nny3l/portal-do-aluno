@@ -1,0 +1,23 @@
+# Remote synthetic homologation only. Access policy + runtime verification are mandatory.
+name = "salta-assessments-homologacao"
+account_id = "e9a635c670c3569507b539397be60a77"
+main = "worker.mjs"
+compatibility_date = "2026-11-15"
+workers_dev = true
+preview_urls = false
+
+[vars]
+SALTA_ASSESSMENTS_MODE = "protected-synthetic"
+PUBLIC_ORIGIN = "https://salta-assessments-homologacao.dannyel-moises.workers.dev"
+ACCESS_AUD = "ab5333f00d091742d671b86dbf7878f7f2a8a53d1cd256f24b53b67445d9c587"
+
+[[d1_databases]]
+binding = "ASSESSMENTS_DB"
+database_name = "salta-assessments-homologacao-20261115"
+database_id = "fb74f058-06f8-40a5-8327-445bded453e3"
+migrations_dir = "migrations"
+
+[assets]
+directory = "./public"
+binding = "ASSETS"
+run_worker_first = true

@@ -1,13 +1,20 @@
 import {mkdir,copyFile,readFile,writeFile,readdir} from 'node:fs/promises';
 import {fileURLToPath} from 'node:url';
 import path from 'node:path';
+import {execFileSync} from 'node:child_process';
 const here=fileURLToPath(new URL('.',import.meta.url)),root=path.resolve(here,'..'),out=path.join(here,'public');
 async function copy(relative){const target=path.join(out,relative);await mkdir(path.dirname(target),{recursive:true});await copyFile(path.join(root,relative),target)}
+const protectedBuild=process.argv.includes('--protected');
 for(const file of ['salta-theme.css','favicon.svg','plataforma/professor-theme.css','plataforma/corretor-v2.css','plataforma/admin-shell.mjs'])await copy(file);
 for(const dir of ['corretor/v2/omr','corretor/v2/assessments','assessments-lab/crypto'])for(const name of await readdir(path.join(root,dir)))if(/\.(mjs|js)$/.test(name))await copy(dir+'/'+name);
 let html=await readFile(path.join(root,'plataforma/corretor-v2.html'),'utf8');
 html=html.replaceAll('https://salta-stats.dannyel-moises.workers.dev/auth/session','/api/session').replaceAll("location.replace('./professor.html')","location.replace('/index.html')");
+if(protectedBuild)html=html.replace(/<p id="bankTestEntry"[\s\S]*?<\/p>/,'').replace('<head>','<head><meta name="salta-deploy-commit" content="'+execFileSync('git',['rev-parse','HEAD'],{cwd:root,encoding:'utf8'}).trim()+'">').replace('A chave fica neste navegador; recuperação não homologada.','Acesso protegido. Chave recuperável pela sua frase, com bloqueio automático em 15 minutos.');
 await writeFile(path.join(out,'plataforma/corretor-v2.html'),html);
 await writeFile(path.join(out,'index.html'),`<!doctype html><html lang="pt-BR"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>SALTA · laboratório de avaliações</title><link rel="stylesheet" href="/salta-theme.css"><main style="max-width:680px;margin:50px auto;padding:24px"><h1>Homologação local de avaliações</h1><p>Somente dados sintéticos. Estas identidades são fixtures de teste, sem acesso a alunos, turmas ou bancos acadêmicos. Não é o login de produção.</p><button id="teacher-one">Professor sintético A</button><button id="teacher-two">Professor sintético B</button><p id="labStatus" role="status"></p></main><script type="module" src="/lab-login.mjs"></script></html>`);
 await writeFile(path.join(out,'lab-login.mjs'),`for(const fixture of ['teacher-one','teacher-two'])document.getElementById(fixture).onclick=async()=>{try{const r=await fetch('/__lab/login',{method:'POST',credentials:'include',headers:{'Content-Type':'application/json'},body:JSON.stringify({fixture})});const data=await r.json();if(!r.ok)throw Error(data.error);location.assign('/plataforma/corretor-v2.html')}catch(error){document.getElementById('labStatus').textContent=error.message}};`);
-console.log('Allowlisted frontend assets built for loopback-only laboratory. Production auth source unchanged.');
+console.log('Allowlisted assets built for '+(protectedBuild?'Access-protected synthetic homologation':'loopback-only laboratory')+'. Production auth source unchanged.');
+
+if(protectedBuild){await writeFile(path.join(out,'index.html'),'<!doctype html><html lang="pt-BR"><meta charset="utf-8"><meta http-equiv="refresh" content="0;url=/plataforma/corretor-v2.html"><title>SALTA · homologação protegida</title><a href="/plataforma/corretor-v2.html">Abrir Banco de Avaliações · somente dados sintéticos</a></html>');await writeFile(path.join(out,'lab-login.mjs'),'// Fixture login unavailable in remote builds.');}
+
+if(protectedBuild){let shell=await readFile(path.join(out,'plataforma/admin-shell.mjs'),'utf8');shell=shell.replace('const ROOT = "./";', 'const ROOT = "https://d4nny3l.github.io/portal-do-aluno/plataforma/";');shell=shell.replace('`${PREFIX}corretor-v2.html?v=20261115assess2`','"/plataforma/corretor-v2.html?v=20261115assess2"');await writeFile(path.join(out,'plataforma/admin-shell.mjs'),shell);}

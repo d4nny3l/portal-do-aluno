@@ -1,6 +1,6 @@
 # Banco de avaliações — laboratório isolado
 
-**Somente dados sintéticos em localhost. Não usar avaliações reais.** O Worker recusa hosts externos e não está publicado. O D1 remoto separado contém apenas o esquema vazio; o fluxo funcional usa D1 local.
+**Somente dados sintéticos. Não usar avaliações reais.** A configuração padrão permanece em localhost. A configuração remota separada exige Access, origem/audiência exatas, identidade verificada e grants sintéticos no D1 isolado. Ver [publicação protegida](../docs/SALTA_PR36_PUBLICACAO_PROTEGIDA.md); não expor o servidor local por túnel.
 
 ## Executar
 
@@ -44,3 +44,9 @@ Scripts npm de execução/migração/seed usam `--local` explicitamente. Nenhum 
 ## Bloqueio de uso real
 
 A sessão atual da SALTA e o Crypto Core experimental não fornecem ainda vínculo autenticado de chave/dispositivo, recuperação institucional e autorização produtiva por docente/turma/período para esta API. Não substituir essa lacuna por um ID do navegador, uma chave mestra no Worker ou um header de teste. Ver [relatório técnico](../docs/SALTA_AVALIACOES_GABARITOS_FASE1.md).
+
+## Homologação protegida
+
+`wrangler.protected.toml` é independente da configuração local. O build `node assessments-lab/build.mjs --protected` usa sessão da mesma origem e cofre recuperável por frase, sem alterar autenticação do portal. O cadastro remoto não migra chaves IndexedDB do laboratório original. A origem protegida é informada no relatório. Acesso Access e grant no D1 são ambos obrigatórios.
+
+O responsável guarda sua frase fora da SALTA. Perdê-la não permite redefinir uma chave que abra dados antigos. Cofre cifrado e revisões devem ser preservados nos backups do banco isolado. Expiração de 15 minutos bloqueia a chave em memória; concessão sintética de 30 dias exige renovação administrativa explícita. Revogar por `POST /api/access/revoke` bloqueia novas operações sem apagar os dados. Reativação requer responsável administrativo, não um parâmetro do navegador. Revogação não apaga cópias previamente obtidas.

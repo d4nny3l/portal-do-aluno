@@ -1,5 +1,7 @@
 # SALTA — avaliações e gabaritos, Fase 1
 
+> Registro da primeira entrega em `c36b8ed`. Para a continuação autorizada de publicação sintética protegida, consultar [PR36 — publicação protegida](SALTA_PR36_PUBLICACAO_PROTEGIDA.md). Os estados “não publicado” abaixo descrevem essa primeira entrega.
+
 Data: 15/11/2026. Base inicial: PR #34 / `d47bcc3`.
 
 ## Resultado e limites de publicação

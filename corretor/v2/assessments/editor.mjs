@@ -2,7 +2,8 @@ import {AssessmentRepository} from './repository.mjs';
 import {makeBundle,bundleKeyText} from './domain.mjs';
 import {QUESTION_TYPES} from '../omr/assessment.mjs';
 export async function installAssessmentBank(adapter){
- if(!['localhost','127.0.0.1','[::1]'].includes(location.hostname))return null;
+ const protectedHost=location.origin==='https://salta-assessments-homologacao.dannyel-moises.workers.dev';
+ if(!['localhost','127.0.0.1','[::1]'].includes(location.hostname)&&!protectedHost)return null;
  const $=id=>document.getElementById(id),repo=new AssessmentRepository(),keyById=new Map();
  let saved=null,reading=null,draftId=crypto.randomUUID(),busy=false,loading=false,pendingSelection=false,readingBlocked=false;
  const status=(message,state)=>{$('bankStatus').textContent=message;$('bankStatus').dataset.state=state};

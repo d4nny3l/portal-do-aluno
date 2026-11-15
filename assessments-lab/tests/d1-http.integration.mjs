@@ -48,6 +48,7 @@ test('real workerd/D1 HTTP: authenticated encrypted revisions, isolation, retry,
   const opened=await decryptJson(key,cryptoContext(record),record.encrypted);assert.equal(opened.answerKey.questions.length,20);assert.equal(record.revision,1);
   assert.equal((await request(route,{method:'PUT',cookie:alice,data:p,extra:{Origin:'https://evil.invalid'}})).status,403);
   await stop();
+  run(['d1','execute','ASSESSMENTS_DB','--local','--file',path.join(lab,'migrations/down/0002_protected_access.sql')]);
   run(['d1','execute','ASSESSMENTS_DB','--local','--file',path.join(lab,'migrations/down/0001_assessments.sql')]);
   run(['d1','migrations','apply','ASSESSMENTS_DB','--local']);
   const result=run(['d1','execute','ASSESSMENTS_DB','--local','--command','SELECT COUNT(*) AS roots FROM assessment_roots','--json']);

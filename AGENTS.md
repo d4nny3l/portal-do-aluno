@@ -69,3 +69,7 @@ Este arquivo é a memória operacional permanente do projeto. Antes de mudanças
 - Testar ao menos `node --test corretor/v2/tests/*.test.mjs stats-worker/tests/*.test.mjs plataforma/tests/*.test.mjs`, os testes de sintaxe pertinentes e `git diff --check`.
 - Verificar desktop e celular, fluxo autenticado quando viável, mensagens de erro, teclado, navegação e PDF renderizado. Testes unitários verdes não equivalem a homologação real.
 - Em cada PR informar arquivos, comportamento antes/depois, testes, riscos residuais, dados e infraestrutura não tocados e estratégia de reversão. Dizer claramente o que não foi testado.
+
+## Continuação do PR #36 — publicação protegida autorizada
+
+Pedido atual autoriza merge/CI/deploy e, enquanto a integração institucional produtiva não estiver homologada, publicação somente sintética em ambiente isolado e protegido. Ver `docs/SALTA_PR36_PUBLICACAO_PROTEGIDA.md`. Reutilizar domínio/crypto/revisões do PR. Não promover fixtures para a internet. Worker remoto exige contexto Access verificado do runtime, audiência/origem exatas e grants explícitos; não confiar em headers de identidade. Cofre remoto usa frase e raiz aleatória, sem persistir chave desbloqueada no navegador, com expiração/revogação e preservação de ciphertext. O localhost e seus dados/chaves originais continuam separados. Não modificar Auth/Stats/Diário oficiais ou D1 acadêmicos. Relatórios da entrega inicial em c36b8ed são históricos; o estado final deve ser confirmado por CI, deploy e ciclo remoto, sem declarar uso real homologado.

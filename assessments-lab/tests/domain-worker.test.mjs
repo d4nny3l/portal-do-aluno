@@ -70,6 +70,7 @@ test('revocation during a transaction rolls back; infrastructure failure never a
  h.db.beforeBatch=null;h.db.db.prepare('UPDATE assessment_grants SET active=1').run();
  h.db.batch=async()=>{throw Error('database unavailable')};
  const failed=await h.request('/api/assessments/'+b.id,{method:'PUT',cookie,data:p});assert.equal(failed.status,503);assert.ok(!(await failed.json()).ok);
+ h.db.db.exec(readFileSync(new URL('../migrations/down/0002_protected_access.sql',import.meta.url),'utf8'));
  h.db.db.exec(readFileSync(new URL('../migrations/down/0001_assessments.sql',import.meta.url),'utf8'));
  assert.equal(h.db.db.prepare("SELECT COUNT(*) AS n FROM sqlite_master WHERE type='table' AND name LIKE 'assessment_%'").get().n,0);
 });
