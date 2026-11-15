@@ -22,8 +22,8 @@ test('visual flow: two independent native disclosures, all header controls inlin
   assert.ok(html.includes(`${opening}<summary>${title}</summary>`));
  }
  assert.ok(html.indexOf('id="headerSettings"')>html.indexOf('id="identitySettings"'));
- for(const id of ['headerPreview','headerLogo','headerLogo2','logoWidth','logoWidth2','customFields','addCustomField'])assert.ok(html.includes(`id="${id}"`));
- for(const id of ['headerDialog','openHeader','closeHeader','layoutVersion','scanLayoutVersion','headerLayout','cduPosition','layoutHistory','saveLayoutVersion','downloadLayoutVersion','recompose'])assert.ok(!html.includes(`id="${id}"`),id);
+ for(const id of ['headerPreview','headerLogo','headerLogo2','logoWidth','logoWidth2'])assert.ok(html.includes(`id="${id}"`));
+ for(const id of ['headerDialog','openHeader','closeHeader','layoutVersion','scanLayoutVersion','headerLayout','cduPosition','layoutHistory','saveLayoutVersion','downloadLayoutVersion','recompose','addCustomField','customFields','header-tab-title','header-tab-fields'])assert.ok(!html.includes(`id="${id}"`),id);
  assert.doesNotMatch(html,/<dialog|showModal\(|\.close\(\)|QR nominal — indisponível|Histórico provisório/);
  assert.match(html,/<p class="status" id="cameraGuideStatus"[^>]*><\/p>/);
  assert.ok(html.indexOf('id="buildStatus"')<html.indexOf('id="criar"'));
@@ -64,14 +64,14 @@ test('printing: batch sorting/page selection works; single card ignores unrelate
  printOne();assert.equal(calls.at(-1),'one');
 });
 
-test('header tabs: arrows/Home/End update selection, panel and keyboard focus',()=>{
- const tabs=['title','fields'].map(key=>Object.assign(new Element('button'),{dataset:{headerTab:key}}));
- const panels=['title','fields'].map(key=>Object.assign(new Element('section'),{dataset:{headerPanel:key}}));
- const code=script.slice(script.indexOf('function selectHeaderTab('),script.indexOf("$('scanType').onchange="));
- const actual=new Function('document',`${code};return headerTabs`)({querySelectorAll:selector=>selector==='[data-header-tab]'?tabs:panels});
- let prevented=0;actual[0].onkeydown({key:'ArrowRight',preventDefault:()=>prevented++});
- assert.equal(tabs[1].attrs['aria-selected'],'true');assert.equal(tabs[1].tabIndex,0);assert.equal(panels[1].hidden,false);assert.equal(panels[0].hidden,true);assert.equal(tabs[1].focused,true);
- actual[1].onkeydown({key:'Home',preventDefault:()=>prevented++});assert.equal(tabs[0].attrs['aria-selected'],'true');assert.equal(prevented,2);
+test('header title: both editors share a single value and rebuild the same header',()=>{
+ const code=script.match(/function setAssessmentTitle\(value\)[^\n]+/)[0];
+ const fields={assessmentTitle:{value:''},title:{value:''}};let builds=0;
+ const actual=new Function('$','document','build','assessmentTitleValue','layoutRevision',`${code};return {set:setAssessmentTitle,get:()=>assessmentTitleValue}`)(id=>fields[id],{querySelector:()=>fields.title},()=>builds++,'',8);
+ actual.set('Matemática');assert.equal(actual.get(),'Matemática');assert.equal(fields.assessmentTitle.value,'Matemática');assert.equal(fields.title.value,'Matemática');
+ actual.set('Geometria');assert.equal(fields.assessmentTitle.value,'Geometria');actual.set('Geometria');assert.equal(builds,2);
+ assert.doesNotMatch(html,/role="tablist"|data-header-tab|data-header-panel|Todos os campos administrativos visíveis compartilham uma faixa/);
+ assert.match(script,/customFields:headerState.customFields/);
 });
 
 test('scan defaults: editing a default resets only its model/review; exact imported/generated models remain protected',()=>{

@@ -68,15 +68,12 @@
 .module-nav button{min-height:42px}
 @media(max-width:760px){.omr-group{padding:13px}.omr-form-grid{grid-template-columns:1fr}.omr-actions>button{flex:1 1 auto}.export-options{flex:1 1 100%}.export-options-content{min-width:0}.omr-create-actions>button{flex:1 1 100%}}
 
-[data-header-panel="title"]>label{display:flex;flex-direction:column;gap:6px;margin-top:12px}[data-header-panel] textarea{width:100%;min-height:110px;resize:vertical}[data-header-tab][aria-selected="false"]{background:#f1effb;color:#4d4590}
 
 #headerSettings [hidden]{display:none!important}
 
 .omr-header-grid{align-items:start}.omr-header-grid>div{min-width:0}
 .omr-advanced>summary:focus-visible{outline:3px solid rgba(91,91,214,.22);outline-offset:3px;border-radius:5px}
 .omr-header-settings input[type=file]{width:100%;max-width:100%}
-.omr-header-settings [data-header-panel="title"]>label{color:#555b78;font-size:12px;font-weight:650}
-.omr-header-settings [data-header-panel] textarea{box-sizing:border-box;padding:9px 11px;border:1px solid #dfe1ec;border-radius:9px;background:#fff;color:#353956;font:inherit;font-size:14px}
 
 .corretor-operation-status:empty{margin:0}
 .corretor-content button:disabled,.corretor-content select:disabled{opacity:.5;cursor:not-allowed}
@@ -86,3 +83,5 @@
 .scan-canvas[hidden],.scan-template-controls [hidden]{display:none!important}
 #scanModelStatus{overflow-wrap:anywhere}
 @media print{.corretor-operation-status{display:none!important}}
+
+.omr-institution-field{grid-column:1/-1}
