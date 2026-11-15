@@ -92,3 +92,17 @@ test('vault enrollment rechecks revocation atomically and distinguishes database
  h.db.prepare=sql=>{if(sql.startsWith('INSERT INTO assessment_key_vaults'))throw Error('Storage offline');return prepare(sql)};
  const result=await h.request('/api/key-vault',{method:'PUT',data:vault});assert.equal(result.status,503);assert.equal((await result.json()).ok,undefined);
 });
+test('catalog retry keeps only an unexpired key for the same verified principal/epoch; an Access redirect locks it',async()=>{
+ let principal=ALICE,epoch=1,unlocks=0,offline=true,redirect=false;
+ const {key}=await createRecoveryVault(password,ALICE);
+ const repo=new AssessmentRepository({keyStore:{},unlock:async r=>{unlocks++;r.key=key;r.unlockedUntil=Date.now()+60000},fetchApi:async path=>{
+  if(redirect)return {type:'opaqueredirect'};
+  if(path==='/api/session')return Response.json({mode:'protected-synthetic',principalId:principal,epoch});
+  if(path==='/api/classes')return Response.json({classes:[]});
+  if(offline)throw Error('Temporary outage');return Response.json({assessments:[]});
+ }});
+ await repo.initialize();await assert.rejects(repo.list(),/rede/);assert.equal(unlocks,1);
+ offline=false;await repo.initialize();assert.deepEqual(await repo.list(),[]);assert.equal(unlocks,1);
+ epoch=2;await repo.initialize();assert.equal(unlocks,2);
+ redirect=true;await assert.rejects(repo.request('/api/session'),/expirou/);assert.equal(repo.key,null);
+});

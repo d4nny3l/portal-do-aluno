@@ -56,9 +56,15 @@ export async function installAssessmentBank(adapter){
   }catch(error){status(error.message,error.code===409?'conflict':'error');adapter.lockExports()}finally{busy=false;$('saveAssessment').disabled=saved?.state==='archived'||pendingSelection}
  };
  $('assessmentBank').hidden=false;$('assessmentReaderBank').hidden=false;adapter.lockExports();for(const id of ['saveAssessment','loadAssessment','newAssessment','correctAssessment','generate'])$(id).disabled=true;
- try{
-  await repo.initialize();$('bankClass').replaceChildren(...repo.classes.map(c=>new Option(c.label,c.classId)));await catalog();for(const id of ['saveAssessment','loadAssessment','newAssessment','correctAssessment','generate'])$(id).disabled=false;status(`${protectedHost?'Homologação protegida':'Homologação local'} · somente dados sintéticos. Rascunho ainda não salvo.`,'draft');
- }catch(error){status(error.message,'error');$('saveAssessment').disabled=true;let manual=false;$('generate').disabled=false;return {refreshQuestions,canGenerate:()=>false,canExport:()=>false,generated(){throw Error('Banco indisponível.')},clearReading(){manual=true;$('answerKey').readOnly=false;$('scanMaxScore').readOnly=false},assertCurrentModel(){if(!manual)throw Error('Banco indisponível. Importe um modelo histórico para leitura manual.')}}}
+ let initialized=false;
+ while(!initialized){try{
+  await repo.initialize();$('bankClass').replaceChildren(...repo.classes.map(c=>new Option(c.label,c.classId)));await catalog();for(const id of ['saveAssessment','loadAssessment','newAssessment','correctAssessment','generate'])$(id).disabled=false;status(`${protectedHost?'Homologação protegida':'Homologação local'} · somente dados sintéticos. Rascunho ainda não salvo.`,'draft');initialized=true;
+ }catch(error){
+  status(error.message,'error');
+  const retry=document.createElement('button');retry.type='button';retry.textContent='Tentar novamente';$('bankStatus').after(retry);
+  const renew=document.createElement('a');renew.textContent='Renovar sessão protegida';renew.href='/';renew.target='_blank';renew.rel='noopener';if(protectedHost)retry.after(renew);
+  await new Promise(resolve=>{retry.onclick=resolve});retry.remove();renew.remove();status('Retomando a conexão…','loading');
+ }}
  $('saveAssessment').onclick=save;$('loadAssessment').onclick=()=>open($('bankCatalog').value,$('bankRevision').value?Number($('bankRevision').value):null);
  $('bankCatalog').onchange=()=>{$('bankRevision').value='';pendingSelection=true;$('saveAssessment').disabled=true;adapter.lockExports();status('Seleção alterada. Reabra a avaliação para recuperar seu conteúdo.','loading')};
  $('readingAssessment').onchange=async()=>{if($('readingAssessment').value)await open($('readingAssessment').value)};

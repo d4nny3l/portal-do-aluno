@@ -6,15 +6,19 @@ import {canonicalJson} from '../../../assessments-lab/crypto/crypto-format.js';
 import {DeviceKeyStore} from '../../../assessments-lab/crypto/device-key-store.js';
 import {cryptoContext,validateBundle} from './domain.mjs';
 export class AssessmentRepository {
- constructor({fetchApi=globalThis.fetch.bind(globalThis),keyStore=new DeviceKeyStore()}={}){this.fetchApi=fetchApi;this.keyStore=keyStore;this.pending=null}
+ constructor({fetchApi=globalThis.fetch.bind(globalThis),keyStore=new DeviceKeyStore(),unlock=unlockProtectedRepository}={}){this.fetchApi=fetchApi;this.keyStore=keyStore;this.unlockProtected=unlock;this.pending=null}
  async request(path,{method='GET',data}={}){
-  let r;try{r=await this.fetchApi(path,{method,credentials:'include',cache:'no-store',headers:data?{'Content-Type':'application/json'}:{},...(data?{body:JSON.stringify(data)}:{})})}catch{throw Object.assign(new Error('Falha de rede. Nenhum salvamento foi confirmado. Tente reenviar a mesma operação.'),{code:'network'})}
+  let r;try{r=await this.fetchApi(path,{method,credentials:'include',cache:'no-store',redirect:'manual',headers:data?{'Content-Type':'application/json'}:{},...(data?{body:JSON.stringify(data)}:{})})}catch{throw Object.assign(new Error('Falha de rede. Nenhum salvamento foi confirmado. Tente reenviar a mesma operação.'),{code:'network'})}
+  if(r.type==='opaqueredirect'){this.lock();throw Object.assign(new Error('A sessão protegida expirou. Renove a sessão e tente novamente.'),{code:401})}
   const result=await r.json().catch(()=>({}));if(!r.ok&&[401,403].includes(r.status))this.lock();if(!r.ok)throw Object.assign(new Error(result.error||'O servidor não confirmou a operação.'),{code:r.status});return result;
  }
  async initialize(){
-  this.session=await this.request('/api/session');if(!['synthetic-only','protected-synthetic'].includes(this.session.mode))throw Error('Este adaptador exige homologação sintética isolada.');
+  const previous=this.session;this.session=await this.request('/api/session');if(!['synthetic-only','protected-synthetic'].includes(this.session.mode))throw Error('Este adaptador exige homologação sintética isolada.');
   this.classes=(await this.request('/api/classes')).classes;
-  if(this.session.mode==='protected-synthetic'){await unlockProtectedRepository(this);return this}
+  if(this.session.mode==='protected-synthetic'){
+   if(this.key&&previous?.principalId===this.session.principalId&&previous?.epoch===this.session.epoch&&Date.now()<this.unlockedUntil)return this;
+   this.lock();await this.unlockProtected(this);return this;
+  }
   const rows=await this.list();
   this.key=await this.keyStore.getKey(this.session.principalId,'scope-hkdf');
   if(!this.key){
