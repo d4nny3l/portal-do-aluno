@@ -46,6 +46,8 @@ Este arquivo é a memória operacional permanente do projeto. Antes de mudanças
 
 - Fase 1 posterior: `docs/SALTA_CABECALHO_DIRETO_FASE1.md`. Cabeçalho sem abas internas, com título da avaliação sincronizado ao formulário principal por uma única fonte. Não reintroduzir criação de campos personalizados; conservar sua interpretação nos manifestos históricos e erros reais de capacidade. O pedido atual permite corrigir A-03 em commit separado para o banco de avaliações, com regressão específica e sem alterar geometria/fórmulas pedagógicas.
 
+- Banco Fase 1: `docs/SALTA_AVALIACOES_GABARITOS_FASE1.md` e `assessments-lab/README.md`. Fluxo funcional somente em localhost com D1 local, fixtures e Crypto Core experimental; D1 remoto próprio possui só esquema vazio, sem Worker publicado. Não promover login/header de fixture a autenticação produtiva nem reutilizar `DB`/`DIARIO_DB`. Identidade/grants reais, enrollment/recuperação de chaves e identificação física da avaliação/revisão bloqueiam uso real. A-03 nesta branch usa IDs estáveis em commit separado, preservando geometria/manifestos/fórmula; não confundir implementação de homologação com publicação na main.
+
 ## Cartão-resposta SALTA — decisões visuais aprovadas em 14/11/2026
 - **Documento principal:** `docs/SALTA_CARTAO_RESPOSTA_DESIGN_SPEC.md`. **Roteiro de execução:** `docs/SALTA_CODEX_CARTAO_RESPOSTA_EXECUCAO.md`.
 - Não imprimir metadados `MODELO ... · REV ... · hash` no rodapé: preservar a identificação de layout somente em manifesto/JSON e mecanismo técnico confiável, sem texto visível.

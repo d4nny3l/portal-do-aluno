@@ -42,8 +42,8 @@ test('ordering: section/question moves and restore preserve numbers and independ
  const host=new Element('div');let builds=0;
  const draw=script.slice(script.indexOf('function drawSections()'),script.indexOf("$('add').onclick="));
  const $=id=>{assert.equal(id,'sectionManager');return host};
- const init=new Function('sections','$','document','build','syncConditionalFields','layoutRevision',`${draw};return drawSections`);
- const drawSections=init(sections,$,{createElement:tag=>new Element(tag)},()=>{builds++},()=>{},8);drawSections();
+ const init=new Function('sections','$','document','build','syncConditionalFields','layoutRevision','assessmentBank',`${draw};return drawSections`);
+ const drawSections=init(sections,$,{createElement:tag=>new Element(tag)},()=>{builds++},()=>{},8,null);drawSections();
  const click=label=>{const button=descendants(host).find(n=>n.attrs['aria-label']===label);assert.ok(button,label);button.onclick()};
  click('Mover seção 1 para baixo');assert.deepEqual(sections.map(s=>s.label),['Beta','Alpha']);
  click('Mover seção 2 para cima');assert.deepEqual(sections.map(s=>s.label),['Alpha','Beta']);
