@@ -4,7 +4,7 @@ export async function unlockProtectedRepository(repo){
  const section=document.createElement('section');section.className='corretor-card';section.setAttribute('aria-label','Cofre de gabaritos');
  section.innerHTML='<h2>Cofre de gabaritos · homologação</h2><p>Somente avaliações sintéticas. A frase abre sua chave neste navegador e não é enviada ao servidor. Guarde-a fora da SALTA: sem ela não há recuperação. O desbloqueio dura até 15 minutos.</p><form class="omr-form-grid"><label>Frase de recuperação<input id="vaultPhrase" type="password" autocomplete="off" minlength="16" maxlength="1024" required></label><label id="vaultConfirmLabel">Repita a frase<input id="vaultConfirm" type="password" autocomplete="off" minlength="16" maxlength="1024"></label><button type="submit">Desbloquear cofre</button><p role="status" aria-live="polite"></p></form>';
  const form=section.querySelector('form'),phrase=section.querySelector('#vaultPhrase'),confirm=section.querySelector('#vaultConfirm'),status=section.querySelector('[role=status]'),button=section.querySelector('button');
- section.querySelector('#vaultConfirmLabel').hidden=!!vault;confirm.required=!vault;
+ section.querySelector('#vaultConfirmLabel').hidden=!!vault;section.querySelector('#vaultConfirmLabel').style.display=vault?'none':'';confirm.required=!vault;
  button.textContent=vault?'Desbloquear cofre':'Criar cofre de teste';
  document.querySelector('.corretor-content').prepend(section);
  await new Promise(resolve=>{form.onsubmit=async event=>{
