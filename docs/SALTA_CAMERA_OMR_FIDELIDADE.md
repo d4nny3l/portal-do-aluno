@@ -25,7 +25,7 @@ Não foi demonstrado esticamento no `drawImage` antigo: ele já desenhava o quad
 - Troca, fechamento, cancelamento durante permissão, reinício, saída de página e término da track liberam os dispositivos. Respostas assíncronas antigas não encerram uma câmera mais nova.
 - Prévia sem espelhamento ou recorte; canvas recebe o quadro inteiro na proporção intrínseca. Rotação reinicia a estabilidade. Guias são reprojetadas ao redimensionar a janela/vídeo.
 - Captura automática exige enquadramento, área útil, iluminação, detalhe e estabilidade temporal, além dos marcadores. Reflexo é uma suspeita de região saturada em papel simultaneamente escuro, não a simples existência de papel branco. Mensagens curtas orientam o usuário. São heurísticas leves de pré-captura, não certificação de qualidade ou alteração da leitura de respostas.
-- A fotografia manual permanece disponível; o ajuste dos quatro cantos continua acessível mesmo após uma normalização automática aparentemente bem-sucedida.
+- A fotografia manual permanece disponível; uma ordem manual refletida é recusada com mensagem e o ajuste dos quatro cantos continua acessível mesmo após uma normalização automática aparentemente bem-sucedida.
 - `Ajustes da câmera` reúne seleção, recursos suportados e diagnóstico. Comparação mostra quadro original inteiro em cinza, reduzido a até 1800 px, e normalização A4 existente. Os pixels ficam na memória deste navegador. Nenhuma função nova envia imagens, telemetria ou dados de cartão.
 
 ## Diagnóstico óptico e comparações
@@ -40,7 +40,7 @@ Projeções sintéticas: perspectiva pura resultou em RMS máximo de **0,066 mm*
 
 ## Testes e cobertura
 
-- Suíte integrada: **107/107** testes; sintaxe dos módulos OMR e scripts inline válida; `git diff --check` limpo.
+- Suíte integrada: **108/108** testes; sintaxe dos módulos OMR e scripts inline válida; `git diff --check` limpo.
 - Oito resoluções retrato/paisagem; arredondamento proporcional; conversão inteira vídeo/canvas; projeção das guias; mesmos pontos entre detecção/captura; rotação intermediária recusada.
 - Permissão negada/API ausente; capacidades/controles não suportados; falha de negociação; preferência de câmera; stop, reinício e cancelamento de pedido tardio sem vazamento de tracks.
 - Qualidade: papel válido, pouca luz, imagem sem detalhe, possível reflexo, movimento, folha distante e marcador junto à borda. Vinte poses estáveis e recusa de quadrilátero côncavo.

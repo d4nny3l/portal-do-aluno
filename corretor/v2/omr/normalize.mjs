@@ -244,6 +244,9 @@ export function warpFromFiducials(gray, width, height, corners, { outputWidth = 
     const next = corners[(index + 1) % 4], after = corners[(index + 2) % 4];
     return (next.x - point.x) * (after.y - next.y) - (next.y - point.y) * (after.x - next.x);
   });
+  if (signedTurns.every(turn => turn < 0)) {
+    throw new Error("Os marcadores estão em ordem invertida. Use superior esquerdo, superior direito, inferior direito e inferior esquerdo.");
+  }
   if (edgeLengths.some(length => length < Math.min(width, height) * 0.08) || signedTurns.some(turn => Math.abs(turn) < width * height * 0.0002) || !signedTurns.every(turn => Math.sign(turn) === Math.sign(signedTurns[0]))) {
     throw new Error("Os quatro pontos não formam um enquadramento válido. Marque os centros dos marcadores na ordem indicada.");
   }

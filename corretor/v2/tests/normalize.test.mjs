@@ -123,3 +123,9 @@ test('três marcadores externos e um ponto interno não formam uma folha convexa
  const width=900,height=1000,points=[{x:120,y:100},{x:700,y:100},{x:700,y:890},{x:460,y:430}];
  assert.equal(detectFiducials(markerRaster(width,height,points),width,height).found,false);
 });
+
+
+test('o ajuste manual recusa ordem refletida em vez de espelhar a folha',()=>{
+ const width=500,height=700,points=[{x:50,y:50},{x:450,y:50},{x:450,y:650},{x:50,y:650}];
+ assert.throws(()=>warpFromFiducials(markerRaster(width,height,points),width,height,[points[0],points[3],points[2],points[1]],{outputWidth:300}),/ordem invertida/);
+});
