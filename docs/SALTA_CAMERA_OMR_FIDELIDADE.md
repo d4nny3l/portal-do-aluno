@@ -47,6 +47,7 @@ Projeções sintéticas: perspectiva pura resultou em RMS máximo de **0,066 mm*
 - Dez cartões de 10/20/50/100/150 questões em V1/V2, projetados em perspectiva, capturados a 1620 × 1800 e normalizados pelos pontos da prévia 810 × 900: C corretamente lido na primeira questão, restantes em branco.
 - Regressão raster existente: 15 cartões a 300 DPI, PNG/JPG, 18 combinações de identificação/instituição/instruções, código sintético, marca dupla/fraca, logos em diversas proporções e transparência. Compatibilidade histórica e digests de geometria preservados.
 - Chrome conectado no macOS: harness isolado com os mesmos controladores/DOM/CSS de câmera e `canvas.captureStream` sintético de 900 × 1000, resizeMode `none`. Abertura, captura automática/manual, análise, comparação e stop/restart exercitados. Viewports 1470 px e 390 px; versão móvel final sem overflow, largura do documento 390 px. Não equivale a câmera física nem Safari.
+- O teste de contrato do laboratório recebeu apenas o double da limpeza da comparação de câmera, mantendo suas verificações de isolamento e acrescentando a confirmação dessa limpeza. Nenhuma implementação do banco foi alterada.
 - CI executa o ensaio raster novo e anexa evidências, junto às regressões anteriores. Nenhuma fixture pessoal ou acadêmica é necessária.
 
 Comandos:
