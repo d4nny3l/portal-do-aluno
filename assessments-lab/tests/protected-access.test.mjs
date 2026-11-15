@@ -80,3 +80,15 @@ test('revocation during remote write rolls back atomically; unlocked client expi
  repo.session={mode:'protected-synthetic',principalId:ALICE,epoch:1};repo.key=key;repo.unlockedUntil=0;
  await assert.rejects(repo.guard(),/expirou/);assert.equal(repo.key,null);
 });
+test('vault enrollment rechecks revocation atomically and distinguishes database failure from duplicate enrollment',async t=>{
+ const h=await setup(t),{vault}=await createRecoveryVault(password,ALICE),prepare=h.db.prepare.bind(h.db);
+ h.db.prepare=sql=>{
+  const statement=prepare(sql);if(!sql.startsWith('INSERT INTO assessment_key_vaults'))return statement;
+  return {...statement,async run(){h.db.db.prepare('UPDATE assessment_access_control SET enabled=0').run();return statement.run.call(this)}};
+ };
+ assert.equal((await h.request('/api/key-vault',{method:'PUT',data:vault})).status,403);
+ assert.equal(h.db.db.prepare('SELECT COUNT(*) AS n FROM assessment_key_vaults').get().n,0);
+ h.db.db.prepare('UPDATE assessment_access_control SET enabled=1').run();
+ h.db.prepare=sql=>{if(sql.startsWith('INSERT INTO assessment_key_vaults'))throw Error('Storage offline');return prepare(sql)};
+ const result=await h.request('/api/key-vault',{method:'PUT',data:vault});assert.equal(result.status,503);assert.equal((await result.json()).ok,undefined);
+});

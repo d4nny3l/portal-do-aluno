@@ -45,7 +45,7 @@ node assessments-lab/node_modules/wrangler/bin/wrangler.js deploy --config asses
 
 ## Validação e limites
 
-Suíte de 106 testes, mais integração HTTP Workerd/D1. Os quatro testes novos cobrem identidade/audiência/header forjado/expiração/revogação, recuperação em novo dispositivo com adulteração e troca de principal, preservação de revisões, revogação durante transação e descarte da chave expirada. A assinatura JWT é exercitada com chaves RSA sintéticas, tokens válidos, expirados, adulterados e de outro emissor/audiência. Regressões OMR anteriores continuam obrigatórias na CI; os módulos geométricos não mudaram nesta etapa.
+Suíte de 107 testes, mais integração HTTP Workerd/D1. Os cinco testes novos cobrem identidade/audiência/header forjado/expiração/revogação, recuperação em novo dispositivo com adulteração e troca de principal, preservação de revisões, revogação durante transação e descarte da chave expirada. Cadastro de cofre revalida revogação atomicamente e distingue duplicidade de falha de banco. A assinatura JWT é exercitada com chaves RSA sintéticas, tokens válidos, expirados, adulterados e de outro emissor/audiência. Regressões OMR anteriores continuam obrigatórias na CI; os módulos geométricos não mudaram nesta etapa.
 
 Evidências finais de CI, SHA, deploy e ciclo autenticado são registradas na conversa do [PR #36](https://github.com/d4nny3l/portal-do-aluno/pull/36) e no relatório local `outputs/pr36-publicacao/`. A mera configuração do Access ou upload não comprova que o ciclo remoto funciona.
 

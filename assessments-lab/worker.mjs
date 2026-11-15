@@ -82,7 +82,7 @@ async function route(request,env,url,ctx){
   if(request.method==='PUT'){
    const payload=validateVault(await body(request));
    if(await db.prepare('SELECT 1 AS ok FROM assessment_roots WHERE owner_id=? LIMIT 1').bind(actor.id).first())reject(409,'Há avaliações existentes. Recupere o cofre; não crie outra chave.');
-   try{await db.prepare('INSERT INTO assessment_key_vaults(principal_id,encrypted_json,created_at) VALUES(?,?,?)').bind(actor.id,JSON.stringify(payload),new Date().toISOString()).run()}catch{reject(409,'Cofre já existente. Recupere a chave previamente cadastrada.')}
+   try{const result=await db.prepare('INSERT INTO assessment_key_vaults(principal_id,encrypted_json,created_at) SELECT ?,?,? FROM assessment_access_control WHERE principal_id=? AND enabled=1 AND epoch=? AND expires_at>?').bind(actor.id,JSON.stringify(payload),new Date().toISOString(),actor.id,actor.epoch,Date.now()).run();if(result.meta.changes!==1)reject(403,'A concessão foi revogada antes da criação do cofre.')}catch(error){if(error instanceof LabError)throw error;if(/constraint|unique/i.test(String(error?.message)))reject(409,'Cofre já existente. Recupere a chave previamente cadastrada.');reject(503,'A criação do cofre não foi confirmada. Reabra a página antes de tentar novamente.')}
    return json({ok:true},201);
   }
  }
