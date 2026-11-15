@@ -22,7 +22,7 @@ test("Corretor: retira mensagens decorativas sem apagar status operacional", () 
   ]) assert.equal(html.includes(copy), false, `Texto desnecessário ainda visível: ${copy}`);
 
   assert.match(html, /id="previewModeLabel" hidden/);
-  assert.match(html, /id="buildStatus" class="status" role="status"/);
+  assert.match(html, /id="buildStatus" class="status corretor-operation-status" role="status" aria-live="polite"/);
   assert.match(html, /id="preview"/);
   assert.match(html, /id="read"/);
   assert.match(html, /id="printCard"/);
