@@ -1,4 +1,4 @@
-import { layoutTemplate } from "./template.mjs?v=20261114v2final";
+import { layoutTemplate } from "./template.mjs?v=20261115assess1";
 
 export const READER_VERSION = "salta-omr-reader-v5";
 
@@ -37,7 +37,7 @@ export function readRaster(template, pixels, width, height, { darkThreshold = 10
     const double = marked && next.score >= 255 - darkThreshold;
     const state = double ? "double" : !marked ? "blank" : selected.score - next.score < ambiguityGap ? "review" : "read";
     samples.push(Object.freeze({
-      questionId: `q${cell.number}`,
+      questionId: cell.questionId,
       number: cell.number,
       page,
       marks: Object.freeze(scores.filter(score => score.score >= 255 - darkThreshold).map(score => score.choice)),

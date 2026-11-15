@@ -113,12 +113,12 @@ test('photo import: downscaling draws the whole photograph instead of cropping i
  }
 });
 
-test('A-03 known limitation: sparse numbering remains explicitly unsupported and disclosed without renumbering',()=>{
+test('A-03: sparse numbering is accepted without changing or renumbering the manifest',()=>{
  const template=createTemplate([{type:'A-E',items:[{number:2,type:'A-E'},{number:7,type:'A-E'}]}]);
  const manifest=createCardManifest(template);
  const source=script.match(/function scanModelNotice\(model\)[^\n]+/)[0];
  const notice=new Function(`${source};return scanModelNotice`)();
- assert.match(notice(manifest),/A-03.*use sequência 1–N/);
- assert.throws(()=>layoutTemplate(template,{width:840,height:1188,manifest}),/numeração de 1 até o total/);
+ assert.equal(notice(manifest),'');
+ assert.deepEqual(layoutTemplate(template,{width:840,height:1188,manifest}).cells.map(q=>q.number),[2,7]);
  assert.deepEqual(manifest.questions.map(q=>q.number),[2,7]);
 });
