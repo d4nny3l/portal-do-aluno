@@ -42,8 +42,8 @@ test('ordering: section/question moves and restore preserve numbers and independ
  const host=new Element('div');let builds=0;
  const draw=script.slice(script.indexOf('function drawSections()'),script.indexOf("$('add').onclick="));
  const $=id=>{assert.equal(id,'sectionManager');return host};
- const init=new Function('sections','$','document','build','syncConditionalFields','layoutRevision',`${draw};return drawSections`);
- const drawSections=init(sections,$,{createElement:tag=>new Element(tag)},()=>{builds++},()=>{},8);drawSections();
+ const init=new Function('sections','$','document','build','syncConditionalFields','layoutRevision','assessmentBank',`${draw};return drawSections`);
+ const drawSections=init(sections,$,{createElement:tag=>new Element(tag)},()=>{builds++},()=>{},8,null);drawSections();
  const click=label=>{const button=descendants(host).find(n=>n.attrs['aria-label']===label);assert.ok(button,label);button.onclick()};
  click('Mover seção 1 para baixo');assert.deepEqual(sections.map(s=>s.label),['Beta','Alpha']);
  click('Mover seção 2 para cima');assert.deepEqual(sections.map(s=>s.label),['Alpha','Beta']);
@@ -113,12 +113,12 @@ test('photo import: downscaling draws the whole photograph instead of cropping i
  }
 });
 
-test('A-03 known limitation: sparse numbering remains explicitly unsupported and disclosed without renumbering',()=>{
+test('A-03: sparse numbering is accepted without changing or renumbering the manifest',()=>{
  const template=createTemplate([{type:'A-E',items:[{number:2,type:'A-E'},{number:7,type:'A-E'}]}]);
  const manifest=createCardManifest(template);
  const source=script.match(/function scanModelNotice\(model\)[^\n]+/)[0];
  const notice=new Function(`${source};return scanModelNotice`)();
- assert.match(notice(manifest),/A-03.*use sequência 1–N/);
- assert.throws(()=>layoutTemplate(template,{width:840,height:1188,manifest}),/numeração de 1 até o total/);
+ assert.equal(notice(manifest),'');
+ assert.deepEqual(layoutTemplate(template,{width:840,height:1188,manifest}).cells.map(q=>q.number),[2,7]);
  assert.deepEqual(manifest.questions.map(q=>q.number),[2,7]);
 });

@@ -46,6 +46,8 @@ Este arquivo é a memória operacional permanente do projeto. Antes de mudanças
 
 - Fase 1 posterior: `docs/SALTA_CABECALHO_DIRETO_FASE1.md`. Cabeçalho sem abas internas, com título da avaliação sincronizado ao formulário principal por uma única fonte. Não reintroduzir criação de campos personalizados; conservar sua interpretação nos manifestos históricos e erros reais de capacidade. O pedido atual permite corrigir A-03 em commit separado para o banco de avaliações, com regressão específica e sem alterar geometria/fórmulas pedagógicas.
 
+- Banco Fase 1: `docs/SALTA_AVALIACOES_GABARITOS_FASE1.md` e `assessments-lab/README.md`. Fluxo funcional somente em localhost com D1 local, fixtures e Crypto Core experimental; D1 remoto próprio possui só esquema vazio, sem Worker publicado. Não promover login/header de fixture a autenticação produtiva nem reutilizar `DB`/`DIARIO_DB`. Identidade/grants reais, enrollment/recuperação de chaves e identificação física da avaliação/revisão bloqueiam uso real. A-03 nesta branch usa IDs estáveis em commit separado, preservando geometria/manifestos/fórmula; não confundir implementação de homologação com publicação na main.
+
 ## Cartão-resposta SALTA — decisões visuais aprovadas em 14/11/2026
 - **Documento principal:** `docs/SALTA_CARTAO_RESPOSTA_DESIGN_SPEC.md`. **Roteiro de execução:** `docs/SALTA_CODEX_CARTAO_RESPOSTA_EXECUCAO.md`.
 - Não imprimir metadados `MODELO ... · REV ... · hash` no rodapé: preservar a identificação de layout somente em manifesto/JSON e mecanismo técnico confiável, sem texto visível.
@@ -67,3 +69,7 @@ Este arquivo é a memória operacional permanente do projeto. Antes de mudanças
 - Testar ao menos `node --test corretor/v2/tests/*.test.mjs stats-worker/tests/*.test.mjs plataforma/tests/*.test.mjs`, os testes de sintaxe pertinentes e `git diff --check`.
 - Verificar desktop e celular, fluxo autenticado quando viável, mensagens de erro, teclado, navegação e PDF renderizado. Testes unitários verdes não equivalem a homologação real.
 - Em cada PR informar arquivos, comportamento antes/depois, testes, riscos residuais, dados e infraestrutura não tocados e estratégia de reversão. Dizer claramente o que não foi testado.
+
+## Continuação do PR #36 — publicação protegida autorizada
+
+Pedido atual autoriza merge/CI/deploy e, enquanto a integração institucional produtiva não estiver homologada, publicação somente sintética em ambiente isolado e protegido. Ver `docs/SALTA_PR36_PUBLICACAO_PROTEGIDA.md`. Reutilizar domínio/crypto/revisões do PR. Não promover fixtures para a internet. Worker remoto exige contexto Access verificado do runtime, audiência/origem exatas e grants explícitos; não confiar em headers de identidade. Cofre remoto usa frase e raiz aleatória, sem persistir chave desbloqueada no navegador, com expiração/revogação e preservação de ciphertext. O localhost e seus dados/chaves originais continuam separados. Não modificar Auth/Stats/Diário oficiais ou D1 acadêmicos. Relatórios da entrega inicial em c36b8ed são históricos; o estado final deve ser confirmado por CI, deploy e ciclo remoto, sem declarar uso real homologado.

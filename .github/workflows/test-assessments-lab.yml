@@ -1,0 +1,33 @@
+name: SALTA assessments isolated laboratory
+on:
+  pull_request:
+    paths:
+      - "assessments-lab/**"
+      - "corretor/v2/assessments/**"
+      - "corretor/v2/omr/**"
+      - "corretor/v2/tests/**"
+      - "plataforma/corretor-v2.html"
+      - "plataforma/corretor-v2.css"
+      - ".github/workflows/test-assessments-lab.yml"
+permissions:
+  contents: read
+jobs:
+  assessment-lab:
+    runs-on: ubuntu-latest
+    env:
+      WRANGLER_SEND_METRICS: "false"
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+      - run: npm ci --prefix assessments-lab --ignore-scripts --no-audit --no-fund
+      - run: node assessments-lab/build.mjs
+      - run: node --test assessments-lab/tests/*.test.mjs
+      - run: node --test assessments-lab/tests/d1-http.integration.mjs
+      - name: Check domain, crypto and Worker syntax
+        run: |
+          for file in assessments-lab/*.mjs assessments-lab/crypto/*.js assessments-lab/crypto/*.mjs corretor/v2/assessments/*.mjs; do node --check "$file"; done
+      - run: git diff --check HEAD^ HEAD

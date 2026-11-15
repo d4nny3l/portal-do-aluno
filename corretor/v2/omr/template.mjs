@@ -60,10 +60,6 @@ export function layoutTemplate(template, { width, height, page = 1, showCode = t
   if (template.questions.some(question => question.type === "CDU")) {
     throw new TypeError("O leitor atual não interpreta respostas C-D-U. O cartão pode ser gerado, mas essa leitura exige uma etapa futura do leitor.");
   }
-  const orderedNumbers = [...template.questions].map(question => question.number).sort((a, b) => a - b);
-  if (orderedNumbers.some((number, index) => number !== index + 1)) {
-    throw new TypeError("O leitor atual exige numeração de 1 até o total de questões. A disposição visual pode mudar, mas os números devem permanecer contínuos.");
-  }
   let source = template;
   if (!showCode && template.identity?.mode === "seven-digit-code") {
     source = {
