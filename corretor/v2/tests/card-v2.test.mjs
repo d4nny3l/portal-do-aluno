@@ -82,7 +82,7 @@ test('V2: geometry validator rejects moved marks, overlays and altered fiducials
 
 test('V2: rendered block borders wrap questions without altering page/OMR geometry in 1-5 columns',()=>{
  for(const cols of [1,2,3,4,5]){
-  const t=create(20,'A-E',{identityMode:'none',columnCount:cols}),m=createCardManifest(t),before=structuredClone(m);
+  const t=create(20,'A-E',{identityMode:'none',columnCount:cols}),m=createCardManifest(t,null,{sectionFrameStyle:'content'}),before=structuredClone(m);
   const svg=renderTemplateSvg(t,{manifest:m});
   const boxes=[...svg.matchAll(/<rect class="omr-section-border" x="([^"]+)" y="([^"]+)" width="([^"]+)" height="([^"]+)"/g)];
   assert.equal(boxes.length,m.sections.length,'section count in '+cols+' columns');
