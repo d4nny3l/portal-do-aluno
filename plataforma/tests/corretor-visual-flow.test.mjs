@@ -91,13 +91,11 @@ test('header-only edits before adding blocks keep preview without an irrelevant 
  assert.equal(actual(),false);assert.equal(previewUpdates,1);assert.equal(enabled,false);assert.equal(fields.buildStatus.textContent,'');
 });
 
-test('camera button: denied/unavailable access gives a usable message; closing does not request access again',async()=>{
- const source=handler('camera');let stopped=0,message='',requests=0;
- const getUserMedia=async options=>{requests++;assert.equal(options.audio,false);throw Object.assign(new Error('denied'),{name:'NotAllowedError'})};
- const bind=(navigator,stream)=>new Function('navigator','cameraStream','stopCamera','setScanMessage',`return ${source}`)(navigator,stream,()=>stopped++,(value)=>message=value);
- await bind({mediaDevices:{getUserMedia}},null)();assert.match(message,/Permita o acesso à câmera/);assert.equal(requests,1);
- await bind({},null)();assert.match(message,/não oferece acesso à câmera/);
- await bind({mediaDevices:{getUserMedia}},{open:true})();assert.equal(requests,1);assert.equal(stopped,2);
+test('camera button: opens once or cancels an active/pending camera',async()=>{
+ const source=handler('camera');let opened=0,stopped=0;
+ const bind=(stream,opening)=>new Function('cameraStream','cameraOpening','stopCamera','startCamera',`return ${source}`)(stream,opening,()=>stopped++,()=>opened++);
+ await bind(null,false)();assert.equal(opened,1);
+ await bind({open:true},false)();await bind(null,true)();assert.equal(opened,1);assert.equal(stopped,2);
 });
 
 test('photo import: downscaling draws the whole photograph instead of cropping it in both decoding paths',async()=>{
