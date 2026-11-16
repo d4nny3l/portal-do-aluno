@@ -69,3 +69,5 @@ Para cada caso elegível ao leitor (C-D-U e modo incorporado não estão homolog
 | Decisão final do proprietário | Pendente |
 
 **Status inicial:** testes físicos não realizados. Não declarar a SALTA Scanner Pro homologada com base em raster sintético.
+
+Relatório de testes automatizados: [PR complementar #39](https://github.com/d4nny3l/portal-do-aluno/pull/39), dependente do PR #38. A homologação física continua pendente.
