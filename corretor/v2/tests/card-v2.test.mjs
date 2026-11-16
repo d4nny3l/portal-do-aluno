@@ -78,3 +78,27 @@ test('V2: geometry validator rejects moved marks, overlays and altered fiducials
   const m=structuredClone(createCardManifest(create()));change(m);assert.equal(validateLayoutManifest(m).valid,false);
  }
 });
+
+
+test('V2: rendered block borders wrap questions without altering page/OMR geometry in 1-5 columns',()=>{
+ for(const cols of [1,2,3,4,5]){
+  const t=create(20,'A-E',{identityMode:'none',columnCount:cols}),m=createCardManifest(t,null,{sectionFrameStyle:'content'}),before=structuredClone(m);
+  const svg=renderTemplateSvg(t,{manifest:m});
+  const boxes=[...svg.matchAll(/<rect class="omr-section-border" x="([^"]+)" y="([^"]+)" width="([^"]+)" height="([^"]+)"/g)];
+  assert.equal(boxes.length,m.sections.length,'section count in '+cols+' columns');
+  for(const [index,frame] of m.sections.entries()){
+   const [,xs,ys,ws,hs]=boxes[index],x=Number(xs),y=Number(ys),width=Number(ws),height=Number(hs);
+   const rows=m.questions.filter(q=>q.sectionId===frame.sectionId&&q.columnIndex===frame.columnIndex&&q.y>=frame.y&&q.y<frame.y+frame.height);
+   assert.ok(rows.length>0);assert.ok(width<=frame.width+1e-8);
+   assert.ok(Math.abs(y-frame.y)<1e-8&&Math.abs(height-frame.height)<1e-8);
+   assert.ok(Math.abs((x+width/2)-(frame.x+frame.width/2))<1e-8);
+   for(const q of rows){assert.ok(q.x>=x-1e-8);assert.ok(q.x+q.width<=x+width+1e-8)}
+   const lastRowBottom=Math.max(...rows.map(q=>q.y+q.height));
+   assert.ok(Math.abs(y+height-lastRowBottom-1.5)<1e-6,'frame ends after final question');
+  }
+  if(cols===1)assert.ok(Number(boxes[0][3])<m.sections[0].width*.5,'one-column block must not span the page');
+  assert.match(svg,/<rect class="omr-card-border" x="12" y="12" width="186" height="273"/);
+  assert.equal((svg.match(/class="omr-fiducial"/g)||[]).length,4);
+  assert.deepEqual(m,before,'SVG-only adjustment leaves immutable optical manifest untouched');
+ }
+});

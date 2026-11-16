@@ -120,3 +120,34 @@ test('A-03: sparse numbering is accepted without changing or renumbering the man
  assert.deepEqual(layoutTemplate(template,{width:840,height:1188,manifest}).cells.map(q=>q.number),[2,7]);
  assert.deepEqual(manifest.questions.map(q=>q.number),[2,7]);
 });
+
+
+test('editor: deleting blocks renumbers questions without reusing stable IDs or losing keyed answers',()=>{
+ const sectionSource=script.slice(script.indexOf('function drawSections()'),script.indexOf("$('add').onclick="));
+ const renumberSource=script.match(/function renumberEditableQuestions\(\)[^\n]+/)[0];
+ const addSource=handler('add');
+ const make=()=>{
+  const sections=[],host=new Element('div');
+  const fields={sectionManager:host,count:{value:'20'},type:{value:'A-E'},sectionLabel:{value:''},buildStatus:{textContent:''}};
+  const $=id=>fields[id];
+  const factory=new Function('sections','$','document','build','syncConditionalFields','layoutRevision','assessmentBank','nextQuestionNumber','nextSectionOrder',renumberSource+';'+sectionSource+';return {drawSections,add:'+addSource+',next:()=>nextQuestionNumber}');
+  const editor=factory(sections,$,{createElement:tag=>new Element(tag)},()=>{},()=>{},8,null,1,0);
+  const remove=index=>{const button=descendants(host).find(n=>n.attrs['aria-label']==='Remover seção '+index);assert.ok(button);button.onclick()};
+  return {...editor,sections,remove};
+ };
+ const numbers=e=>e.sections.flatMap(s=>s.items.map(q=>q.number));
+ const ids=e=>e.sections.flatMap(s=>s.items.map(q=>q.questionId));
+ const first=make();for(let i=0;i<3;i++)first.add();
+ const originalIds=ids(first),answers=new Map(originalIds.map(id=>[id,'C']));
+ first.remove(1);assert.deepEqual(numbers(first),Array.from({length:40},(_,i)=>i+1));assert.deepEqual(ids(first),originalIds.slice(20));assert.ok(ids(first).every(id=>answers.get(id)==='C'));
+ const middle=make();for(let i=0;i<3;i++)middle.add();
+ const middleIds=ids(middle);middle.remove(2);assert.deepEqual(numbers(middle),Array.from({length:40},(_,i)=>i+1));assert.deepEqual(ids(middle),[...middleIds.slice(0,20),...middleIds.slice(40)]);
+ const all=make();all.add();all.add();const previousIds=new Set(ids(all));
+ all.remove(1);all.remove(1);assert.deepEqual(numbers(all),[]);
+ all.add();assert.deepEqual(numbers(all),Array.from({length:20},(_,i)=>i+1));assert.ok(ids(all).every(id=>!previousIds.has(id)));
+ const added=make();added.add();added.add();const removedIds=new Set(ids(added).slice(0,20));
+ added.remove(1);added.add();assert.deepEqual(numbers(added),Array.from({length:40},(_,i)=>i+1));assert.ok(ids(added).every(id=>!removedIds.has(id)));
+ const reordered=make();for(let i=0;i<3;i++)reordered.add();
+ [reordered.sections[0],reordered.sections[1]]=[reordered.sections[1],reordered.sections[0]];
+ reordered.drawSections();reordered.remove(3);assert.deepEqual(numbers(reordered),Array.from({length:40},(_,i)=>i+1));
+});
