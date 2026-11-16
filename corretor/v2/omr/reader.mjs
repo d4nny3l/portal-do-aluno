@@ -98,12 +98,17 @@ function analyzeQuestion(cell, pixels, width, height, darkThreshold, ambiguityGa
   const strongLimit = 255 - darkThreshold;
   // Use the best competing bubble as a local reference. This rejects uniform
   // shadows, printed letters and paper darkening, which affect all options.
+  // Compare to the strongest competitor, not the emptiest alternative.
+  // Absolute evidence and two independent relative margins must all hold.
+  // Partial evidence only requests review; it never auto-confirms an answer.
+  const strongestOther = (item, metric) =>
+    Math.max(...scores.filter(other => other !== item).map(other => other[metric]));
   const candidate = (item) => item.score < strongLimit
     && item.shifted >= Math.max(94, strongLimit * .63)
     && item.extended >= 97
     && item.coverage >= .18
-    && item.shifted - Math.min(...scores.filter(other => other !== item).map(other => other.shifted)) >= 27
-    && item.extended - Math.min(...scores.filter(other => other !== item).map(other => other.extended)) >= 20;
+    && item.shifted - strongestOther(item, 'shifted') >= 27
+    && item.extended - strongestOther(item, 'extended') >= 20;
   const strong = scores.filter(item => item.score >= strongLimit);
   const partial = scores.filter(candidate);
   // Both options on a two-choice card may have substantial partial coverage,
