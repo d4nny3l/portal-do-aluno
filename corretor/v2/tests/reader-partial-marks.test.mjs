@@ -81,11 +81,11 @@ test('physical-like cases: preserve strong marks and blanks; partial marks reque
   assert.equal(question.answer,c.after==='read'?c.choice:null,'automatic answer: '+c.n);
   assert.ok(question.marks.includes(c.choice),'candidate bubble visible for human review: '+c.n);
   assert.equal(result.identity.code,'0001123','seven digits preserved');
-  assert.equal(result.readerVersion,'salta-omr-reader-v6','technical provenance remains internal');
+  assert.equal(result.readerVersion,'salta-omr-reader-v5','legacy reader metadata remains compatible');
   const diag=diagnoseRaster(template,pixels,width,height,{manifest}).find(item=>item.number===c.n);
   assert.equal(diag.state,c.after);
   assert.equal(diag.choiceScores.length,c.n<=20?4:c.n<=40?5:2);
-  assert.ok(diag.choiceScores.every(s=>Number.isFinite(s.core)&&Number.isFinite(s.extended)&&s.coverage>=0&&s.coverage<=1));
+  assert.ok(diag.choiceScores.every(s=>Number.isFinite(s.core)&&Number.isFinite(s.shifted)&&Number.isFinite(s.extended)&&s.coverage>=0&&s.coverage<=1));
  }
  const blank=renderComparison();
  const result=readRaster(template,blank,width,height,{manifest});
