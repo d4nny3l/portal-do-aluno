@@ -1,0 +1,43 @@
+[
+  {
+    "results": [
+      {
+        "total": 30,
+        "presentes": 27,
+        "faltas": 3
+      }
+    ],
+    "success": true,
+    "meta": {
+      "duration": 0
+    }
+  },
+  {
+    "results": [
+      {
+        "student_id": 4
+      },
+      {
+        "student_id": 12
+      },
+      {
+        "student_id": 27
+      }
+    ],
+    "success": true,
+    "meta": {
+      "duration": 0
+    }
+  },
+  {
+    "results": [
+      {
+        "receipts": 1
+      }
+    ],
+    "success": true,
+    "meta": {
+      "duration": 0
+    }
+  }
+]

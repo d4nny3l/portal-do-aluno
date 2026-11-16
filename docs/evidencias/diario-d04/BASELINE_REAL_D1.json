@@ -1,0 +1,18 @@
+{
+  "synthetic": true,
+  "engine": "workerd/D1 --local",
+  "remote": false,
+  "students": 30,
+  "intendedAbsences": [
+    4,
+    12,
+    27
+  ],
+  "requestHadConfirmedRoster": false,
+  "responseStatus": 201,
+  "actual": {
+    "total": 30,
+    "presentes": 30,
+    "faltas": 0
+  }
+}

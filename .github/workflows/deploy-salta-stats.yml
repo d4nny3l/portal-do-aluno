@@ -1,11 +1,8 @@
 name: Deploy SALTA Stats Worker
 
 on:
-  push:
-    branches:
-      - main
-    paths:
-      - "stats-worker/**"
+  # D-04 requires explicit migration/context homologation before any official deploy.
+  # Main publication must not silently deploy the Worker or initialize remote D1.
   workflow_dispatch:
 
 permissions:

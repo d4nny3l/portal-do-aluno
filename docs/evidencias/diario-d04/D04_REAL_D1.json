@@ -1,0 +1,25 @@
+{
+  "synthetic": true,
+  "engine": "workerd/D1 --local",
+  "remote": false,
+  "students": 30,
+  "firstConfirmation": {
+    "presentes": 27,
+    "faltas": 3
+  },
+  "oldPostStatus": 428,
+  "readOnlyDraft": true,
+  "durableReplayAfterEdit": true,
+  "competingConfirmationStatuses": [
+    201,
+    409
+  ],
+  "transactionRollback": true,
+  "concurrentSameRequest": true,
+  "foreignInstitutionStatus": 403,
+  "final": {
+    "sessions": 3,
+    "records": 90,
+    "receipts": 4
+  }
+}

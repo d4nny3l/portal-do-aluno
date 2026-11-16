@@ -73,3 +73,9 @@ Este arquivo é a memória operacional permanente do projeto. Antes de mudanças
 ## Continuação do PR #36 — publicação protegida autorizada
 
 Pedido atual autoriza merge/CI/deploy e, enquanto a integração institucional produtiva não estiver homologada, publicação somente sintética em ambiente isolado e protegido. Ver `docs/SALTA_PR36_PUBLICACAO_PROTEGIDA.md`. Reutilizar domínio/crypto/revisões do PR. Não promover fixtures para a internet. Worker remoto exige contexto Access verificado do runtime, audiência/origem exatas e grants explícitos; não confiar em headers de identidade. Cofre remoto usa frase e raiz aleatória, sem persistir chave desbloqueada no navegador, com expiração/revogação e preservação de ciphertext. O localhost e seus dados/chaves originais continuam separados. Não modificar Auth/Stats/Diário oficiais ou D1 acadêmicos. Relatórios da entrega inicial em c36b8ed são históricos; o estado final deve ser confirmado por CI, deploy e ciclo remoto, sem declarar uso real homologado.
+
+## Diário D-04 — contrato de confirmação
+
+- Implementação e limites em `docs/SALTA_DIARIO_D04_IMPLEMENTACAO.md`. Abrir/cancelar rascunho nunca envia POST/PUT. Somente confirmação explícita envia lote completo, request id e versão/snapshot. Não reintroduzir semeadura automática de presenças.
+- POST/PUT legados sem precondições são recusados; recibos e registros são atômicos. Preservar tabela de recibos no rollback. Mapa institucional de servidor atende a conta docente única; não equivale a RBAC multiusuário.
+- Publicação na main foi autorizada nesta missão; Worker oficial, migração remota e configuração real não foram autorizados. Deploy de Stats é manual. Não acionar como consequência de um merge. Não confundir Pages novo com backend corrigido em produção. D-01/02/03/05 continuam fora deste escopo.

@@ -1,0 +1,14 @@
+{
+  "date": "2026-11-16",
+  "worker": "salta-stats",
+  "activeVersionPrefix": "a6fb47fd",
+  "trafficPercent": 100,
+  "inspection": "Cloudflare dashboard active deployment and Quick Edit search, without source edits or deploy",
+  "sourceMatches": [
+    "if ((activeStudents.results || []).length) await db.batch(activeStudents.results.map((student) => db.prepare(\"INSERT INTO salta_diario_lesson_records (session_id,student_id,present) VALUES (?,?,1)\").bind(id, Number(student.id))));"
+  ],
+  "vulnerableSeedObserved": true,
+  "deployButtonDisabled": true,
+  "academicEndpointsQueried": false,
+  "captureMethod": "Statement transcribed from the visible Quick Edit accessibility search result; screenshot PRODUCTION_SOURCE_READ_ONLY.jpg. This is not a whole-source byte comparison."
+}
