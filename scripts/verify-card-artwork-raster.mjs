@@ -84,3 +84,72 @@ for(const [variant,color,expected]of [['double','#000','double'],['weak','#b4b4b
 }
 await writeFile(`${output}/coverage-v2.json`,JSON.stringify(coverage,null,2));
 console.log('18 identity/institution/instructions combinations + nominal code 0001200 + double/weak review OK.');
+
+
+// PR38: rasterize the frame style actually used by the editor. The legacy
+// suite above deliberately remains intact so historical baselines are tested.
+const pr38Cases=[
+ {name:'col-1',sections:[{type:'A-E',count:20,label:'Objetivas'}],columnCount:1},
+ {name:'col-2',sections:[{type:'A-E',count:20,label:'Objetivas'}],columnCount:2},
+ {name:'col-3',sections:[{type:'A-E',count:20,label:'Objetivas'}],columnCount:3},
+ {name:'col-4',sections:[{type:'A-E',count:20,label:'Objetivas'}],columnCount:4},
+ {name:'col-5',sections:[{type:'A-E',count:20,label:'Objetivas'}],columnCount:5},
+ {name:'count-10',sections:[{type:'A-D',count:10,label:'Curta'}]},
+ {name:'count-50',sections:[{type:'A-E',count:50,label:'Média'}]},
+ {name:'count-100',sections:[{type:'A-E',count:100,label:'Longa'}]},
+ {name:'count-150',sections:[{type:'C-E',count:150,label:'Certo ou errado'}]},
+ {name:'mixed-29',sections:[{type:'A-D',count:7,label:'Álgebra'},{type:'C-E',count:3,label:'Lógica'},{type:'A-E',count:19,label:'Geometria'}]}
+];
+const visualCases=new Set(['col-1','col-5','count-100','mixed-29']);
+const detailDir=output+'/pr38';
+await mkdir(detailDir,{recursive:true});
+const pr38Results=[];
+const mark=(svg,id,answers,color)=>svg.replace(/<circle class="omr-answer-bubble"[^>]+>/g,tag=>
+ tag.includes('data-question-id="'+id+'"')&&answers.some(choice=>tag.includes('data-choice="'+choice+'"'))
+  ?tag.replace('fill="#fff"','fill="'+color+'"'):tag);
+for(const entry of pr38Cases){
+ const t=createTemplate(entry.sections,{identityMode:'none',columnCount:entry.columnCount});
+ const prior=createCardManifest(t,header);
+ const current=createCardManifest(t,header,{sectionFrameStyle:'content'});
+ assert.equal(current.sectionFrameStyle,'content');
+ const oldSvg=renderTemplateSvg(t,{header,manifest:prior});
+ const newSvg=renderTemplateSvg(t,{header,manifest:current});
+ const first=current.questions[0],chosen=first.choices.includes('C')?'C':first.choices[0];
+ const alternate=first.choices.find(c=>c!==chosen);
+ const samples=[
+  {name:'blank',svg:newSvg,expected:'blank'},
+  {name:'filled',svg:mark(newSvg,first.questionId,[chosen],'#000'),expected:'read'},
+  {name:'double',svg:mark(newSvg,first.questionId,[chosen,alternate],'#000'),expected:'double'},
+  {name:'weak',svg:mark(newSvg,first.questionId,[chosen],'#b4b4b4'),expected:'blank'}
+ ];
+ const beforePixels=await raster(oldSvg).greyscale().raw().toBuffer();
+ const afterPixels=await raster(newSvg).greyscale().raw().toBuffer();
+ assert.equal(detectFiducials(beforePixels,width,height).found,true,entry.name+' old fiducials');
+ assert.equal(detectFiducials(afterPixels,width,height).found,true,entry.name+' new fiducials');
+ assert.ok(readRaster(t,beforePixels,width,height,{manifest:prior}).observations.every(q=>q.state==='blank'),entry.name+' old false marks');
+ assert.ok(readRaster(t,afterPixels,width,height,{manifest:current}).observations.every(q=>q.state==='blank'),entry.name+' new false marks');
+ for(const sample of samples.slice(1)){
+  assert.notEqual(sample.svg,newSvg,entry.name+' '+sample.name+' marking applied');
+  const pixels=await raster(sample.svg).greyscale().raw().toBuffer();
+  const read=readRaster(t,pixels,width,height,{manifest:current});
+  assert.equal(read.observations[0].state,sample.expected,entry.name+' '+sample.name+' state');
+  assert.equal(read.observations[0].answer,sample.name==='filled'?chosen:null,entry.name+' '+sample.name+' answer');
+  assert.ok(read.observations.slice(1).every(q=>q.state==='blank'),entry.name+' '+sample.name+' no unrelated marks');
+  if(sample.name==='double'||sample.name==='weak')assert.equal(read.needsReview,true,entry.name+' requires review');
+ }
+ if(visualCases.has(entry.name)){
+  const prefix=detailDir+'/'+entry.name;
+  await writeFile(prefix+'-before.svg',oldSvg);
+  await writeFile(prefix+'-content.svg',newSvg);
+  await writeFile(prefix+'-manifest.json',JSON.stringify(current,null,2));
+  await raster(oldSvg).png().withMetadata({density:300}).toFile(prefix+'-before.png');
+  await raster(newSvg).png().withMetadata({density:300}).toFile(prefix+'-content.png');
+  if(entry.name==='col-1'){
+   for(const sample of samples.slice(1))await raster(sample.svg).png().withMetadata({density:300}).toFile(prefix+'-'+sample.name+'.png');
+  }
+ }
+ pr38Results.push({name:entry.name,questions:current.questionCount,columns:entry.columnCount||'auto',style:current.sectionFrameStyle,hashOld:prior.contentHash,hashNew:current.contentHash,fiducials:true,blank:'blank',marked:'read',double:'double',weak:'blank/review'});
+}
+await writeFile(detailDir+'/results.json',JSON.stringify(pr38Results,null,2));
+await writeFile(detailDir+'/comparison.html','<!doctype html><html lang="pt-BR"><meta charset="utf-8"><title>SALTA PR38 - evidências sintéticas</title><style>body{font:16px system-ui;margin:24px}section{display:grid;grid-template-columns:1fr 1fr;gap:16px}img{width:100%;height:auto;border:1px solid #999}@media(max-width:650px){section{display:block}}</style><h1>Cartão V2 — comparação A/B sintética</h1><p>Estilo anterior à esquerda; moldura proporcional à direita. Não constitui impressão ou fotografia física.</p>'+[...visualCases].map(name=>'<h2>'+name+'</h2><section><figure><figcaption>Antes</figcaption><img src="'+name+'-before.png"></figure><figure><figcaption>Content</figcaption><img src="'+name+'-content.png"></figure></section>').join('')+'</html>');
+console.log('PR38: '+pr38Results.length+' A/B raster cases, 1–5 columns, mixed and 10–150; blank/filled/double/weak/fiducials OK.');
