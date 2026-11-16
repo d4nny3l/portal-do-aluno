@@ -15,35 +15,15 @@ export function readRaster(template, pixels, width, height, { darkThreshold = 10
   const layout = layoutTemplate(template, { width, height, page, showCode, manifest });
   const samples = [];
   for (const cell of layout.cells) {
-    const scores = cell.bubbles.map(bubble => {
-      let ink = 0;
-      let n = 0;
-      const radius = Math.max(1, Math.round(cell.bubbleRadius * 0.42));
-      for (let y = -radius; y <= radius; y++) {
-        for (let x = -radius; x <= radius; x++) {
-          const px = Math.round(bubble.x) + x;
-          const py = Math.round(bubble.y) + y;
-          if (px >= 0 && py >= 0 && px < width && py < height) {
-            ink += 255 - pixels[py * width + px];
-            n++;
-          }
-        }
-      }
-      return { choice: bubble.choice, score: ink / Math.max(1, n) };
-    }).sort((a, b) => b.score - a.score);
-    const selected = scores[0];
-    const next = scores[1];
-    const marked = selected.score >= 255 - darkThreshold;
-    const double = marked && next.score >= 255 - darkThreshold;
-    const state = double ? "double" : !marked ? "blank" : selected.score - next.score < ambiguityGap ? "review" : "read";
+    const analysis = analyzeQuestion(cell, pixels, width, height, darkThreshold, ambiguityGap);
     samples.push(Object.freeze({
       questionId: cell.questionId,
       number: cell.number,
       page,
-      marks: Object.freeze(scores.filter(score => score.score >= 255 - darkThreshold).map(score => score.choice)),
-      answer: state === "read" ? selected.choice : null,
-      confidence: Math.max(0, Math.min(1, (selected.score - (next?.score || 0)) / 255)),
-      state,
+      marks: Object.freeze(analysis.marks),
+      answer: analysis.state === 'read' ? analysis.winner : null,
+      confidence: analysis.confidence,
+      state: analysis.state,
     }));
   }
   const identity = readIdentity(layout, pixels, width, height, darkThreshold);
@@ -60,6 +40,92 @@ export function readRaster(template, pixels, width, height, { darkThreshold = 10
     observations: Object.freeze(samples),
     needsReview: identity.state === "review" || samples.some(observation => observation.state !== "read"),
   });
+}
+
+// The old core score is retained as the only route to an automatic answer.
+// A displaced or irregular fill can only request human review; it cannot
+// silently become an answer or override an existing double mark.
+function inkAt(pixels, width, height, x, y) {
+  if (x < 0 || y < 0 || x >= width || y >= height) return null;
+  return 255 - pixels[y * width + x];
+}
+
+function measureBubble(bubble, bubbleRadius, pixels, width, height, darkThreshold) {
+  const cx = Math.round(bubble.x), cy = Math.round(bubble.y);
+  const radius = Math.max(1, Math.round(bubbleRadius * .42));
+  let coreSum = 0, coreCount = 0;
+  for (let y = -radius; y <= radius; y++) for (let x = -radius; x <= radius; x++) {
+    const ink = inkAt(pixels, width, height, cx + x, cy + y);
+    if (ink !== null) { coreSum += ink; coreCount++; }
+  }
+  const core = coreSum / Math.max(1, coreCount);
+  const extendedRadius = Math.max(radius + 1, Math.round(bubbleRadius * .77));
+  const darkLimit = Math.max(100, 255 - darkThreshold - 35);
+  let regionSum = 0, regionCount = 0, darkCount = 0;
+  for (let y = -extendedRadius; y <= extendedRadius; y++) for (let x = -extendedRadius; x <= extendedRadius; x++) {
+    if (x * x + y * y > extendedRadius * extendedRadius) continue;
+    const ink = inkAt(pixels, width, height, cx + x, cy + y);
+    if (ink === null) continue;
+    regionSum += ink;
+    regionCount++;
+    if (ink >= darkLimit) darkCount++;
+  }
+  return {
+    choice: bubble.choice,
+    score: core,
+    extended: regionSum / Math.max(1, regionCount),
+    coverage: darkCount / Math.max(1, regionCount),
+  };
+}
+
+function analyzeQuestion(cell, pixels, width, height, darkThreshold, ambiguityGap) {
+  const scores = cell.bubbles.map(b => measureBubble(b, cell.bubbleRadius, pixels, width, height, darkThreshold))
+    .sort((a, b) => b.score - a.score);
+  const [first, second] = scores;
+  const strongLimit = 255 - darkThreshold;
+  // Use the best competing bubble as a local reference. This rejects uniform
+  // shadows, printed letters and paper darkening, which affect all options.
+  const candidate = (item) => item.score < strongLimit
+    && item.score >= Math.max(94, strongLimit * .63)
+    && item.extended >= 103
+    && item.coverage >= .18
+    && item.score - Math.min(...scores.filter(other => other !== item).map(other => other.score)) >= 27
+    && item.extended - Math.min(...scores.filter(other => other !== item).map(other => other.extended)) >= 24;
+  const strong = scores.filter(item => item.score >= strongLimit);
+  const partial = scores.filter(candidate);
+  const marks = [...new Set([...strong, ...partial].map(item => item.choice))];
+  let state;
+  if (strong.length > 1) state = 'double';
+  else if (strong.length === 1 && partial.some(item => item !== strong[0])) state = 'review';
+  else if (strong.length === 1) state = first.score - second.score < ambiguityGap ? 'review' : 'read';
+  else if (partial.length > 0) state = partial.length > 1 ? 'double' : 'review';
+  else state = 'blank';
+  return { scores, marks, state, winner: first.choice,
+    confidence: Math.max(0, Math.min(1, (first.score - (second?.score || 0)) / 255)) };
+}
+
+/**
+ * Diagnostic only: choice-level scores without name, code, school or answers.
+ * Invoke solely with the exact user-selected manifest and aligned grayscale.
+ * No diagnostic telemetry is stored or sent to the backend.
+ */
+export function diagnoseRaster(template, pixels, width, height, options = {}) {
+  const { darkThreshold = 100, ambiguityGap = 18, page = 1, showCode = true, manifest = null } = options;
+  // Preserve all public reader input/manifest validations.
+  readRaster(template, pixels, width, height, options);
+  const layout = layoutTemplate(template, { width, height, page, showCode, manifest });
+  return Object.freeze(layout.cells.map(cell => {
+    const result = analyzeQuestion(cell, pixels, width, height, darkThreshold, ambiguityGap);
+    return Object.freeze({
+      number: cell.number, questionId: cell.questionId, state: result.state,
+      candidateMarks: Object.freeze([...result.marks]),
+      choiceScores: Object.freeze(result.scores.map(score => Object.freeze({
+        choice: score.choice, core: Math.round(score.score * 10) / 10,
+        extended: Math.round(score.extended * 10) / 10,
+        coverage: Math.round(score.coverage * 1000) / 1000,
+      }))),
+    });
+  }));
 }
 
 function readIdentity(layout, pixels, width, height, threshold) {
