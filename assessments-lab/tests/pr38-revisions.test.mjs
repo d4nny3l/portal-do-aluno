@@ -13,7 +13,7 @@ import {parseAnswerKey} from '../../corretor/v2/omr/answer-key.mjs';
 
 const html=readFileSync(new URL('../../plataforma/corretor-v2.html',import.meta.url),'utf8');
 const script=html.match(/<script type="module">([\s\S]*?)<\/script>/)[1];
-const handler=id=>script.split('\n').find(line=>line.startsWith(`$('\${id}').onclick=`)).slice(`$('\${id}').onclick=`.length).replace(/;$/,'');
+const handler=id=>script.split('\n').find(line=>line.startsWith(`$('${id}').onclick=`)).slice(`$('${id}').onclick=`.length).replace(/;$/,'');
 class Element {
  constructor(tag){this.tag=tag;this.children=[];this.attrs={};this.dataset={}}
  append(...items){this.children.push(...items)}
