@@ -15,7 +15,7 @@ const opticalWithoutArtwork = manifest => {
 };
 const withoutVisualFrame = svg => svg
  .replace(/data-layout-hash="[0-9a-f]+"/, 'data-layout-hash="HASH"')
- .replace(/<rect class="omr-section-border"[^>]*\/>/g, '<rect class="omr-section-border"/>');
+ .replace(/<g class="omr-section-frame"[^>]*>[\s\S]*?<\/g>/g, '<g class="omr-section-frame"/>');
 
 test('PR38: A/B preserves optical geometry and explicit presentation hashes',()=>{
  const cases=[
