@@ -1,6 +1,6 @@
 import { layoutTemplate } from "./template.mjs?v=20261115assess1";
 
-export const READER_VERSION = "salta-omr-reader-v5";
+export const READER_VERSION = "salta-omr-reader-v6";
 
 // Reads a normalized, aligned grayscale raster (0=black, 255=white).
 // The explicitly selected manifest supplies coordinates; uncertain marks need review.
@@ -93,12 +93,18 @@ function analyzeQuestion(cell, pixels, width, height, darkThreshold, ambiguityGa
     && item.extended - Math.min(...scores.filter(other => other !== item).map(other => other.extended)) >= 24;
   const strong = scores.filter(item => item.score >= strongLimit);
   const partial = scores.filter(candidate);
-  const marks = [...new Set([...strong, ...partial].map(item => item.choice))];
+  // Both options on a two-choice card may have substantial partial coverage,
+  // leaving no unmarked peer for relative comparison. Never silently call that
+  // an empty or single-choice answer; request review without assigning a mark.
+  const multipleWeak = scores.filter(item => item.score < strongLimit
+    && item.score >= 110 && item.extended >= 126 && item.coverage >= .4);
+  const marks = [...new Set([...strong, ...partial, ...(multipleWeak.length > 1 ? multipleWeak : [])].map(item => item.choice))];
   let state;
   if (strong.length > 1) state = 'double';
   else if (strong.length === 1 && partial.some(item => item !== strong[0])) state = 'review';
   else if (strong.length === 1) state = first.score - second.score < ambiguityGap ? 'review' : 'read';
   else if (partial.length > 0) state = partial.length > 1 ? 'double' : 'review';
+  else if (multipleWeak.length > 1) state = 'review';
   else state = 'blank';
   return { scores, marks, state, winner: first.choice,
     confidence: Math.max(0, Math.min(1, (first.score - (second?.score || 0)) / 255)) };
