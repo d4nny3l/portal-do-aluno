@@ -23,7 +23,7 @@ export async function installAssessmentBank(adapter){
   }
   $('officialAnswerKey').replaceChildren(fragment);
  };
- const useForReading=bundle=>{reading=bundle;adapter.clearReview();adapter.applyModel(bundle);$('answerKey').value=bundleKeyText(bundle);$('answerKey').readOnly=true;$('scanMaxScore').value=bundle.maxScore;$('scanMaxScore').readOnly=true;$('assessmentReadingStatus').textContent=`${bundle.title} · revisão ${bundle.revision} · gabarito vinculado ao modelo ${bundle.optical.contentHash}`};
+ const useForReading=bundle=>{reading=bundle;adapter.clearReview();adapter.applyModel(bundle);$('answerKey').value=bundleKeyText(bundle);$('answerKey').readOnly=true;$('scanMaxScore').value=bundle.maxScore;$('scanMaxScore').readOnly=true;$('assessmentReadingStatus').textContent=`${bundle.title} · revisão ${bundle.revision} · gabarito vinculado ao cartão salvo`};
  const catalog=async(selectedId=null)=>{
   const rows=await repo.list(),opened=await Promise.all(rows.map(row=>repo.load(row.id,row.revision)));
   for(const id of ['bankCatalog','readingAssessment']){
