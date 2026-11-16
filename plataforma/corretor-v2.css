@@ -101,3 +101,5 @@
 @media(max-width:760px){.camera-comparison>div{grid-template-columns:1fr}}
 .camera-settings .status{overflow-wrap:anywhere}.camera-settings .omr-row>*{min-width:0;max-width:100%}
 .camera-settings label.camera-check{display:flex;align-items:center;gap:8px}.camera-settings input[type=checkbox]{min-height:0;width:18px;height:18px;padding:0;flex:0 0 18px}.camera-settings input[type=range]{padding:0}
+
+.omr-mark-hint{margin:0;color:#5a4d21;font-size:12px;line-height:1.4}
