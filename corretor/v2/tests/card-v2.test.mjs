@@ -6,6 +6,7 @@ import{validateLayoutManifest}from'../omr/layout.mjs';
 import{readRaster}from'../omr/reader.mjs';
 import{importCardManifest}from'../omr/manifest.mjs';
 import{buildManifestJson,buildPrintDocument}from'../omr/export.mjs';
+import{textWidth}from'../omr/artwork.mjs';
 const create=(n=20,type='A-E',opts={})=>createTemplate([{type,count:n,label:'Matemática'}],opts);
 const overlap=(a,b)=>a.x<b.x+b.width-1e-6&&a.x+a.width>b.x+1e-6&&a.y<b.y+b.height-1e-6&&a.y+a.height>b.y+1e-6;
 
@@ -105,4 +106,45 @@ test('V2: rendered block borders wrap questions without altering page/OMR geomet
   assert.equal((svg.match(/class="omr-fiducial"/g)||[]).length,4);
   assert.deepEqual(m,before,'SVG-only adjustment leaves immutable optical manifest untouched');
  }
+});
+
+
+test('V2: compact frame fits actual number/bubbles and wrapped titles in their existing heading',()=>{
+ const cases=[
+  {sections:[{type:'A-E',count:10,label:'CURTO'}],columnCount:1},
+  {sections:[{type:'A-D',count:20,label:'RACIOCÍNIO LÓGICO E REPRESENTAÇÕES MATEMÁTICAS'}],columnCount:2},
+  {sections:[{type:'A-D',count:17,label:'Álgebra'},{type:'A-E',count:23,label:'GEOMETRIA E GRANDEZAS DAS FIGURAS PLANAS'},{type:'C-E',count:10,label:'Proposições'}]},
+  {sections:[{type:'A-E',count:20,label:'Objetivas'}],columnCount:3},
+  {sections:[{type:'A-E',count:20,label:'Objetivas'}],columnCount:4},
+  {sections:[{type:'C-E',count:150,label:'Certo ou errado'}],columnCount:5}
+ ];
+ let wrapped=false;
+ for(const item of cases){
+  const t=createTemplate(item.sections,{identityMode:'none',columnCount:item.columnCount});
+  const m=createCardManifest(t,null,{sectionFrameStyle:'content'}),svg=renderTemplateSvg(t,{manifest:m});
+  const groups=[...svg.matchAll(/<g class="omr-section-frame" data-section-id="[^"]+">([\s\S]*?)<\/g>/g)];
+  assert.equal(groups.length,m.sections.length);
+  for(const [index,g] of groups.entries()){
+   const f=m.sections[index],rect=g[1].match(/<rect class="omr-section-border" x="([^"]+)" y="([^"]+)" width="([^"]+)" height="([^"]+)"/);
+   assert.ok(rect);
+   const x=Number(rect[1]),y=Number(rect[2]),w=Number(rect[3]),h=Number(rect[4]);
+   assert.ok(x>=f.x-.001&&x+w<=f.x+f.width+.001);
+   const rows=m.questions.filter(q=>q.sectionId===f.sectionId&&q.columnIndex===f.columnIndex&&q.y>=f.y&&q.y<f.y+f.height);
+   const firstRow=Math.min(...rows.map(q=>q.y));
+   for(const [,tx,ty,size,display]of g[1].matchAll(/<text x="([^"]+)" y="([^"]+)" text-anchor="middle" font-family="Arial,sans-serif" font-size="([^"]+)" font-weight="700" fill="#000">([^<]*)<\/text>/g)){
+    const center=Number(tx),baseline=Number(ty),span=textWidth(display,Number(size));
+    assert.ok(center-span/2>=x+.8&&center+span/2<=x+w-.8,'title inside proportional outline');
+    assert.ok(baseline<firstRow-.7&&baseline>y,'title stays inside reserved heading');
+    if(Number(size)<2.6)wrapped=true;
+   }
+   for(const q of rows){
+    const numberLeft=q.x+5.8-textWidth(String(q.number).padStart(2,'0'),2.6);
+    assert.ok(numberLeft>=x-.02,'left question number inside border');
+    for(const b of q.bubbles)assert.ok(b.x-b.radiusMm>=x-.02&&b.x+b.radiusMm<=x+w+.02,'optical bubbles inside border');
+   }
+   assert.ok(y+h<=m.paper.heightMm);
+  }
+  assert.equal((svg.match(/class="omr-fiducial"/g)||[]).length,4);
+ }
+ assert.equal(wrapped,true,'a longer title fits with smaller wrapped text in the same heading');
 });
