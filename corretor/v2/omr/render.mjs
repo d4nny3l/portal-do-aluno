@@ -8,14 +8,38 @@ export const DEFAULT_CARD_HEADER=Object.freeze({...LEGACY_HEADER,visible:Object.
 const esc=value=>String(value??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&apos;'}[c]));
 const text=(x,y,value,size=3,weight=400,anchor='start')=>value?`<text x="${x}" y="${y}" text-anchor="${anchor}" font-family="Arial,sans-serif" font-size="${size}" font-weight="${weight}" fill="#000">${esc(value)}</text>`:'';
 const frame=(f,cls)=>`<rect class="${cls}" x="${f.x}" y="${f.y}" width="${f.width}" height="${f.height}" rx="1" ry="1" fill="none" stroke="#000" stroke-width="0.25"/>`;
-// Visual frame only: keep reserved column width and all optical coordinates in the manifest.
+// Presentation only: the manifest retains every reserved section, bubble and fiducial coordinate.
 function sectionVisualFrame(f,questions){
  const rows=questions.filter(q=>q.sectionId===f.sectionId&&q.columnIndex===f.columnIndex&&q.y>=f.y&&q.y<f.y+f.height);
- if(!rows.length)return f;
- const left=Math.min(...rows.map(q=>q.x)),right=Math.max(...rows.map(q=>q.x+q.width));
- const labelWidth=Math.max(0,...f.titleLines.map(line=>textWidth(line,2.6)));
- const width=Math.min(f.width,Math.max(right-left,labelWidth)+6);
- return {...f,x:f.x+(f.width-width)/2,width};
+ if(!rows.length)return {...f,titleFont:2.6};
+ let left=Infinity,right=-Infinity;
+ for(const q of rows){
+  const numberRight=q.x+5.8;
+  left=Math.min(left,numberRight-textWidth(String(q.number).padStart(2,'0'),2.6));
+  right=Math.max(right,numberRight);
+  for(const b of q.bubbles){left=Math.min(left,b.x-b.radiusMm);right=Math.max(right,b.x+b.radiusMm);}
+ }
+ const padding=2.1,minimumWidth=right-left+padding*2,maxLines=f.titleLines.length+1;
+ let width=Math.min(f.width,minimumWidth),titleLines=f.titleLines,titleFont=2.6;
+ // Use the existing title space. Compact titles may wrap; do not push optical rows down.
+ for(let candidate=width;candidate<=f.width+0.001;candidate=Math.min(f.width,candidate+0.5)){
+  let fit=null;
+  for(const [size,limit] of [[2.6,f.titleLines.length],[2.25,maxLines]]){
+   try{const lines=wrapText(f.label,candidate-padding*2,size);if(lines.length<=limit){fit={lines,size};break;}}catch{}
+  }
+  if(fit){width=candidate;titleLines=fit.lines;titleFont=fit.size;break;}
+  if(candidate===f.width){width=f.width;break;}
+  if(candidate+0.5>f.width)candidate=f.width-0.5;
+ }
+ // A title too long for the compact treatment keeps the original safe line layout.
+ if(!titleLines.every(line=>textWidth(line,titleFont)<=width-padding*2+0.001)){
+  width=f.width;titleLines=f.titleLines;titleFont=2.6;
+ }
+ const leftLimit=Math.max(f.x,right+padding-width);
+ const rightLimit=Math.min(f.x+f.width-width,left-padding);
+ const preferred=(left+right-width)/2;
+ const x=leftLimit<=rightLimit?Math.max(leftLimit,Math.min(rightLimit,preferred)):Math.max(f.x,Math.min(f.x+f.width-width,preferred));
+ return {...f,x,width,titleLines,titleFont};
 }
 export function createCardManifest(template,header=null,options={}){
  if(template.layoutVersion==='v1'||template.version==='salta-omr-a4-v7')return legacyManifest(template,header||LEGACY_HEADER);
@@ -51,7 +75,14 @@ export function renderTemplateSvg(template,{page=1,header=null,manifest:supplied
  for(const l of hp.rules)parts.push(`<line x1="${l.x1}" y1="${l.y1}" x2="${l.x2}" y2="${l.y2}" stroke="#000" stroke-width="0.2"/>`);parts.push('</g>');
  if(m.panels.name){const f=m.panels.name;parts.push(frame(f,'omr-name-frame'),text(f.x+3,f.y+7,'NOME:',3,700));const value=student?.name;if(value){const ls=wrapText(value,f.width-22,3);if(ls.length>2)throw new RangeError('O nome nominal não cabe em duas linhas. Confira o cadastro antes de imprimir.');ls.forEach((line,i)=>parts.push(text(f.x+18,f.y+4.5+i*3.9,line,3)));}else parts.push(`<line x1="${f.x+18}" y1="${f.y+8}" x2="${f.x+f.width-3}" y2="${f.y+8}" stroke="#000" stroke-width="0.2"/>`);}
  if(m.panels.instructions){const f=m.panels.instructions;parts.push(frame(f,'omr-instructions-frame'));f.lines.forEach((line,i)=>parts.push(text(f.x+3,f.y+3.5+i*3.25,line,2.5)));}
- for(const f of m.sections){parts.push(`<g class="omr-section-frame" data-section-id="${esc(f.sectionId)}">`,frame(m.sectionFrameStyle==='content'?sectionVisualFrame(f,m.questions):f,'omr-section-border'));f.titleLines.forEach((line,i)=>parts.push(text(f.x+f.width/2,f.y+3.6+i*3.38,line,2.6,700,'middle')));parts.push('</g>');}
+ for(const f of m.sections){
+  const visual=m.sectionFrameStyle==='content'?sectionVisualFrame(f,m.questions):{...f,titleFont:2.6};
+  parts.push(`<g class="omr-section-frame" data-section-id="${esc(f.sectionId)}">`,frame(visual,'omr-section-border'));
+  const pitch=visual.titleFont===2.6?3.38:2.35,heading=f.titleLines.length*3.38+3;
+  const first=visual.titleFont===2.6?3.6:Math.max(2.5,(heading-pitch*(visual.titleLines.length-1))/2+.55);
+  visual.titleLines.forEach((line,i)=>parts.push(text(visual.x+visual.width/2,f.y+first+i*pitch,line,visual.titleFont,700,'middle')));
+  parts.push('</g>');
+ }
  for(const q of m.questions)parts.push(`<g class="omr-question" data-question-id="${esc(q.questionId)}" data-question="${q.number}" data-type="${q.type}">${drawQuestion(q)}</g>`);
  if(m.panels.code){const f=m.panels.code;parts.push(frame(f,'omr-code-frame'),text(f.x+f.width/2,f.y+4,'CÓDIGO DO ALUNO',2.2,700,'middle'));for(const c of m.identityCode.columns)parts.push(`<rect x="${c.box.x}" y="${c.box.y}" width="4.2" height="4.2" rx="1" ry="1" fill="#fff" stroke="#000" stroke-width="0.25"/>`,text(c.centerX,c.box.y+3.1,c.printedDigit,2.8,600,'middle'));for(const bubble of m.identityBubbles){parts.push(`<circle class="omr-identity-bubble" data-column="${bubble.column}" data-digit="${bubble.digit}" cx="${bubble.x}" cy="${bubble.y}" r="2.25" fill="${bubble.filled?'#000':'#fff'}" stroke="#000" stroke-width="0.25"/>`);if(!bubble.filled)parts.push(text(bubble.x,bubble.y+.65,String(bubble.digit),1.85,500,'middle'));}}
  for(const f of m.technicalRegions.fiducials)parts.push(`<rect class="omr-fiducial" data-marker="${f.markerId}" x="${f.x-f.sizeMm/2}" y="${f.y-f.sizeMm/2}" width="${f.sizeMm}" height="${f.sizeMm}" fill="#000"/>`);

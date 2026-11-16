@@ -26,12 +26,13 @@ function editorFixture(){
  const sections=[],host=new Element('div');
  const fields={sectionManager:host,count:{value:'20'},type:{value:'A-E'},sectionLabel:{value:''},buildStatus:{textContent:''}};
  const $=id=>fields[id];
- const renumber=script.match(/function renumberEditableQuestions\(\)[^\n]+/)[0];
+ const original=script.match(/function originalQuestionOrder\(question\)[^\n]+/)[0],renumber=script.match(/function renumberEditableQuestions\(\)[^\n]+/)[0];
  const draw=script.slice(script.indexOf('function drawSections()'),script.indexOf("$('add').onclick="));
- const init=new Function('sections','$','document','build','syncConditionalFields','layoutRevision','assessmentBank','nextQuestionNumber','nextSectionOrder',renumber+';'+draw+';return {drawSections,add:'+handler('add')+',next:()=>nextQuestionNumber}');
+ const init=new Function('sections','$','document','build','syncConditionalFields','layoutRevision','assessmentBank','nextQuestionNumber','nextSectionOrder',original+';'+renumber+';'+draw+';return {drawSections,add:'+handler('add')+',next:()=>nextQuestionNumber}');
  const editor=init(sections,$,{createElement:tag=>new Element(tag)},()=>{},()=>{},8,null,1,0);
- const remove=index=>{const button=descendants(host).find(e=>e.attrs['aria-label']==='Remover seção '+index);assert.ok(button,'remove section '+index);button.onclick()};
- return {...editor,sections,fields,remove};
+ const click=label=>{const button=descendants(host).find(e=>e.attrs['aria-label']===label);assert.ok(button,label);assert.notEqual(button.disabled,true);button.onclick()};
+ const remove=index=>click('Remover seção '+index);
+ return {...editor,sections,fields,remove,click};
 }
 
 function provisionalScore(bundle){
@@ -86,11 +87,19 @@ test('PR38: save, remove, renumber, append, save another revision and reopen bot
  assert.deepEqual(surviving,initial.slice(20).map(q=>q.questionId));
  editor.fields.count.value='10';
  editor.add();
- const all=editor.sections.flatMap(s=>s.items);
+ let all=editor.sections.flatMap(s=>s.items);
  assert.deepEqual(all.map(q=>q.number),Array.from({length:30},(_,i)=>i+1));
  const newItems=all.slice(20);
  assert.ok(newItems.every(q=>!initial.some(old=>old.questionId===q.questionId)),'never reuse removed IDs');
  newItems.forEach((q,index)=>answerById.set(q.questionId,['E','D','C','B','A'][index%5]));
+ const beforeMoveIds=all.map(q=>q.questionId);
+ editor.click('Mover questão 1 para baixo');
+ editor.click('Mover seção 1 para baixo');
+ editor.click('Mover seção 2 para cima');
+ all=editor.sections.flatMap(s=>s.items);
+ assert.deepEqual(all.map(q=>q.number),Array.from({length:30},(_,i)=>i+1));
+ assert.equal(all[0].questionId,beforeMoveIds[1],'question reorder moves IDs, not answers');
+ assert.deepEqual(new Set(all.map(q=>q.questionId)),new Set(beforeMoveIds));
  const second=await repo.save(capture(2));
  assert.equal(second.revision,2);
  assert.notEqual(first.optical.contentHash,second.optical.contentHash);

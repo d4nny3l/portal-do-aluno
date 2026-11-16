@@ -94,13 +94,15 @@ const pr38Cases=[
  {name:'col-3',sections:[{type:'A-E',count:20,label:'Objetivas'}],columnCount:3},
  {name:'col-4',sections:[{type:'A-E',count:20,label:'Objetivas'}],columnCount:4},
  {name:'col-5',sections:[{type:'A-E',count:20,label:'Objetivas'}],columnCount:5},
- {name:'count-10',sections:[{type:'A-D',count:10,label:'Curta'}]},
+ {name:'count-10',sections:[{type:'A-D',count:10,label:'Curta'}],columnCount:1},
+ {name:'title-long-20',sections:[{type:'A-E',count:20,label:'RACIOCÍNIO LÓGICO E REPRESENTAÇÕES MATEMÁTICAS'}],columnCount:2},
+ {name:'multi-50',sections:[{type:'A-D',count:17,label:'Números'},{type:'A-E',count:23,label:'FIGURAS GEOMÉTRICAS E GRANDEZAS'},{type:'C-E',count:10,label:'Proposições'}]},
  {name:'count-50',sections:[{type:'A-E',count:50,label:'Média'}]},
  {name:'count-100',sections:[{type:'A-E',count:100,label:'Longa'}]},
  {name:'count-150',sections:[{type:'C-E',count:150,label:'Certo ou errado'}]},
  {name:'mixed-29',sections:[{type:'A-D',count:7,label:'Álgebra'},{type:'C-E',count:3,label:'Lógica'},{type:'A-E',count:19,label:'Geometria'}]}
 ];
-const visualCases=new Set(['col-1','col-5','count-100','mixed-29']);
+const visualCases=new Set(['count-10','title-long-20','multi-50','mixed-29','col-5','count-100']);
 const detailDir=output+'/pr38';
 await mkdir(detailDir,{recursive:true});
 const pr38Results=[];

@@ -37,22 +37,23 @@ test('visual flow: literal DOM references exist, V2 generation fixed, history wr
  assert.match(script,/buildManifestJson\(template,\{header:headerState,manifest:activeManifest\}\)/);
 });
 
-test('ordering: section/question moves and restore preserve numbers and independent options',()=>{
- const sections=[{order:0,label:'Alpha',items:[{number:1,type:'A-E'},{number:2,type:'A-E'}]},{order:1,label:'Beta',items:[{number:3,type:'A-D'}]}];
+test('ordering: moves renumber continuously and restore original order',()=>{
+ const sections=[{order:0,label:'Alpha',items:[{questionId:'question-1',number:1,type:'A-E'},{questionId:'question-2',number:2,type:'A-E'}]},{order:1,label:'Beta',items:[{questionId:'question-3',number:3,type:'A-D'}]}];
  const host=new Element('div');let builds=0;
  const draw=script.slice(script.indexOf('function drawSections()'),script.indexOf("$('add').onclick="));
+ const original=script.match(/function originalQuestionOrder\(question\)[^\n]+/)[0],renumber=script.match(/function renumberEditableQuestions\(\)[^\n]+/)[0];
  const $=id=>{assert.equal(id,'sectionManager');return host};
- const init=new Function('sections','$','document','build','syncConditionalFields','layoutRevision','assessmentBank',`${draw};return drawSections`);
- const drawSections=init(sections,$,{createElement:tag=>new Element(tag)},()=>{builds++},()=>{},8,null);drawSections();
+ const init=new Function('sections','$','document','build','syncConditionalFields','layoutRevision','assessmentBank',`${original};${renumber};${draw};return {drawSections,originalQuestionOrder}`);
+ const editor=init(sections,$,{createElement:tag=>new Element(tag)},()=>{builds++},()=>{},8,null),drawSections=editor.drawSections;drawSections();
  const click=label=>{const button=descendants(host).find(n=>n.attrs['aria-label']===label);assert.ok(button,label);button.onclick()};
- click('Mover seção 1 para baixo');assert.deepEqual(sections.map(s=>s.label),['Beta','Alpha']);
+ click('Mover seção 1 para baixo');assert.deepEqual(sections.map(s=>s.label),['Beta','Alpha']);assert.deepEqual(sections.flatMap(s=>s.items.map(q=>q.number)),[1,2,3]);
  click('Mover seção 2 para cima');assert.deepEqual(sections.map(s=>s.label),['Alpha','Beta']);
- click('Mover questão 1 para baixo');assert.deepEqual(sections[0].items.map(q=>q.number),[2,1]);
- click('Mover questão 1 para cima');assert.deepEqual(sections[0].items.map(q=>q.number),[1,2]);
- click('Mover questão 2 para cima');assert.deepEqual(sections[0].items.map(q=>q.number),[2,1]);
+ click('Mover questão 1 para baixo');assert.deepEqual(sections[0].items.map(q=>q.questionId),['question-2','question-1']);assert.deepEqual(sections[0].items.map(q=>q.number),[1,2]);
+ click('Mover questão 2 para cima');assert.deepEqual(sections[0].items.map(q=>q.questionId),['question-1','question-2']);
+ click('Mover questão 1 para baixo');assert.deepEqual(sections[0].items.map(q=>q.questionId),['question-2','question-1']);
  const restore=handler('restoreArrangement').split(";$('generate')")[0];
- const run=new Function('sections','$','drawSections','build','layoutRevision',`return ${restore}`)(sections,()=>{throw Error('Restore touched unrelated control')},drawSections,()=>{builds++},8);
- run();assert.deepEqual(sections.map(s=>s.label),['Alpha','Beta']);assert.deepEqual(sections[0].items.map(q=>q.number),[1,2]);assert.equal(builds,6);
+ const run=new Function('sections','$','drawSections','build','layoutRevision','originalQuestionOrder',`return ${restore}`)(sections,()=>{throw Error('Restore touched unrelated control')},drawSections,()=>{builds++},8,editor.originalQuestionOrder);
+ run();assert.deepEqual(sections.map(s=>s.label),['Alpha','Beta']);assert.deepEqual(sections[0].items.map(q=>q.questionId),['question-1','question-2']);assert.deepEqual(sections[0].items.map(q=>q.number),[1,2]);assert.equal(builds,6);
 });
 
 test('printing: batch sorting/page selection works; single card ignores unrelated batch settings',()=>{
@@ -124,14 +125,15 @@ test('A-03: sparse numbering is accepted without changing or renumbering the man
 
 test('editor: deleting blocks renumbers questions without reusing stable IDs or losing keyed answers',()=>{
  const sectionSource=script.slice(script.indexOf('function drawSections()'),script.indexOf("$('add').onclick="));
+ const originalSource=script.match(/function originalQuestionOrder\(question\)[^\n]+/)[0];
  const renumberSource=script.match(/function renumberEditableQuestions\(\)[^\n]+/)[0];
  const addSource=handler('add');
- const make=()=>{
-  const sections=[],host=new Element('div');
+ const make=(saved=null)=>{
+  const sections=saved?structuredClone(saved.sections):[],host=new Element('div');
   const fields={sectionManager:host,count:{value:'20'},type:{value:'A-E'},sectionLabel:{value:''},buildStatus:{textContent:''}};
   const $=id=>fields[id];
-  const factory=new Function('sections','$','document','build','syncConditionalFields','layoutRevision','assessmentBank','nextQuestionNumber','nextSectionOrder',renumberSource+';'+sectionSource+';return {drawSections,add:'+addSource+',next:()=>nextQuestionNumber}');
-  const editor=factory(sections,$,{createElement:tag=>new Element(tag)},()=>{},()=>{},8,null,1,0);
+  const factory=new Function('sections','$','document','build','syncConditionalFields','layoutRevision','assessmentBank','nextQuestionNumber','nextSectionOrder',originalSource+';'+renumberSource+';'+sectionSource+';return {drawSections,add:'+addSource+',next:()=>nextQuestionNumber}');
+  const editor=factory(sections,$,{createElement:tag=>new Element(tag)},()=>{},()=>{},8,null,saved?.nextQuestionNumber??1,saved?.nextSectionOrder??0);
   const remove=index=>{const button=descendants(host).find(n=>n.attrs['aria-label']==='Remover seção '+index);assert.ok(button);button.onclick()};
   return {...editor,sections,remove};
  };
@@ -150,4 +152,11 @@ test('editor: deleting blocks renumbers questions without reusing stable IDs or 
  const reordered=make();for(let i=0;i<3;i++)reordered.add();
  [reordered.sections[0],reordered.sections[1]]=[reordered.sections[1],reordered.sections[0]];
  reordered.drawSections();reordered.remove(3);assert.deepEqual(numbers(reordered),Array.from({length:40},(_,i)=>i+1));
+ const snapshot={sections:structuredClone(added.sections),nextQuestionNumber:added.next(),nextSectionOrder:Math.max(...added.sections.map(s=>s.order))+1};
+ const opened=make(snapshot);opened.drawSections();assert.deepEqual(numbers(opened),Array.from({length:40},(_,i)=>i+1));
+ const openedIds=ids(opened),keyed=new Map(openedIds.map((id,index)=>[id,['A','B','C','D','E'][index%5]]));
+ opened.remove(1);opened.add();assert.deepEqual(numbers(opened),Array.from({length:40},(_,i)=>i+1));
+ assert.deepEqual(ids(opened).slice(0,20),openedIds.slice(20));
+ assert.ok(ids(opened).slice(0,20).every(id=>keyed.has(id)),'answers remain tied to surviving IDs');
+ assert.ok(ids(opened).slice(20).every(id=>!openedIds.includes(id)),'new IDs not recycled after reopen');
 });
