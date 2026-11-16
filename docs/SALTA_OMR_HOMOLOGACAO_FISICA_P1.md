@@ -50,3 +50,26 @@ O leitor original `reader.mjs` baseava a leitura de cada opção numa única **m
 - Testes sintéticos controlados em `corretor/v2/tests/reader-partial-marks.test.mjs`: histórico V1/V2, hashes, código, duplas, parcial, sombras, fraco, controles, atribuições por número.
 - A regressão raster existente continua verificando 1–5 colunas, 10–150 questões, ambiguidades e fiduciais. **É preciso confirmar a CI no HEAD definitivo da branch**.
 - **Pendências:** comparação exata dos seis casos com o raster original, teste físico com fotos equivalentes, revisão técnica independente e autorização do proprietário para merge/deploy. A aprovação anterior da aparência do cartão não autoriza publicar automaticamente esta alteração do leitor.
+
+## Complemento — atendimento da auditoria A-01/A-02/A-03
+
+**A-01 — comparação correta de alternativas.** Na branch auditada anteriormente, as duas margens de contraste eram medidas contra a alternativa **mais vazia** (`Math.min`), o que permitia considerar suspeita uma segunda bolha moderada mesmo diante de uma primeira claramente forte. A correção exige evidência absoluta independente (média central/deslocada, média circular e cobertura) e contraste com a **concorrente mais forte** em cada métrica. A margem deslocada continua ≥27 e a circular ≥20; os limiares absolutos, a proteção de dupla parcial, a leitura automática conservadora e o código óptico não foram afrouxados. Nos dois cenários adversariais rotulados como uma resposta forte + artefato moderado, a classificação de revisão indevida voltou à alternativa forte original. As duplas parciais C/E, A–D e A–E permanecem com `answer:null` e ambas as escolhas suspeitas acessíveis para revisão.
+
+**A-02 — interface de revisão.** `renderAnswers()` agora apresenta uma nota visível e programaticamente associada ao seletor de cada questão ambígua, usando exclusivamente as alternativas válidas recebidas em `observation.marks`. Exemplos: “Possível marcação: E. Confira na imagem.” e “Possíveis marcações: B e D. Confira na imagem.”. Não há sugestão de correção nem pré-seleção: enquanto a revisão está pendente, `answer:null` e o seletor permanece vazio. O professor pode escolher qualquer alternativa válida ou confirmar em branco. A nota provisória só é calculada quando todas as pendências foram conferidas. Um teste executa as **funções e eventos reais da interface** em harness DOM (`plataforma/tests/corretor-review-suggestions.test.mjs`); não constitui ensaio de navegador remoto.
+
+**A-03 — avaliação independente, exclusivamente sintética.** Os 23 casos de `reader-auditor-adversarial.test.mjs` definem primeiro a verdade dos sinais desenhados, sem inferir acertos do classificador. Incluem alternativas C/E, A–D e A–E, branco limpo, contornos impressos, pequenos ruídos, papel sombreado, resposta forte, artefato moderado, tinta azul acinzentada, deslocamento, marcas parciais, duplas fortes, duplas parciais e uma tinta muito fraca. O comparativo toma os **mesmos pixels** e aplica a regra da branch auditada (`Math.min`) versus a regra corrigida (`Math.max`), mantendo as demais condições.
+
+| Categoria rotulada | PR #45 auditado | PR #45 corrigido |
+| --- | ---: | ---: |
+| Respostas únicas corretamente aceitas como definitivas | 3 | 5 |
+| Respostas únicas encaminhadas à revisão | 7 | 5 |
+| Respostas marcadas ainda ignoradas por tinta muito fraca | 1 | 1 |
+| Questões realmente vazias sinalizadas indevidamente | 0 | 0 |
+| Respostas incorretamente aceitas como definitivas | 0 | 0 |
+| Questões com duas marcas (controle separado) | 6 sem resposta definitiva | 6 sem resposta definitiva |
+
+Essas contagens **não são taxas de erro populacionais nem medições do cartão físico**. Nos dois cenários de artefato moderado, foi reduzida a revisão desnecessária; os cinco exemplos de marcação parcial única permaneceram em revisão humana. A única marca tão pálida que não atingiu critérios mínimos continuou em branco — limitação conservadora declarada.
+
+A observação anterior “12 das 15 questões antes vazias passaram para revisão” provém de **estimativa na fotografia**, não de 15 casos com rotulagem independente. Não é possível confirmar se essas 12 revisões foram úteis ou excessivas sem os pixels do **raster normalizado original** e o manifesto JSON exato. Portanto, não se declara a homologação física das seis falhas ou a ausência de falsos positivos reais.
+
+**Diagnóstico offline aprimorado.** `scripts/diagnose-omr-raster.mjs` continua sem enviar dados e informa, por questão, os escores de todas as alternativas, as margens perante a concorrente mais forte, a classificação do leitor original, a da regra auditada e a da correção. A classificação histórica reproduzida a partir de escores de diagnóstico **arredondados** é identificada como *aproximada*; para uma comparação física definitiva, executar os dois SHAs sobre o mesmo raster de 8 bits e manifesto, sem alterar enquadramento ou data.
