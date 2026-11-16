@@ -1,6 +1,6 @@
 import { layoutTemplate } from "./template.mjs?v=20261115assess1";
 
-export const READER_VERSION = "salta-omr-reader-v6";
+export const READER_VERSION = "salta-omr-reader-v5";
 
 // Reads a normalized, aligned grayscale raster (0=black, 255=white).
 // The explicitly selected manifest supplies coordinates; uncertain marks need review.
@@ -59,6 +59,18 @@ function measureBubble(bubble, bubbleRadius, pixels, width, height, darkThreshol
     if (ink !== null) { coreSum += ink; coreCount++; }
   }
   const core = coreSum / Math.max(1, coreCount);
+  // Offset windows are evidence for review only, never a stronger automatic
+  // answer. They cover small residual alignment error and off-center strokes.
+  const offset = Math.max(1, Math.round(bubbleRadius * .22));
+  let shiftedCore = core;
+  for (const [dx,dy] of [[-offset,0],[offset,0],[0,-offset],[0,offset]]) {
+    let total=0,n=0;
+    for (let y=-radius;y<=radius;y++)for(let x=-radius;x<=radius;x++){
+      const ink=inkAt(pixels,width,height,cx+x+dx,cy+y+dy);
+      if(ink!==null){total+=ink;n++;}
+    }
+    shiftedCore=Math.max(shiftedCore,total/Math.max(1,n));
+  }
   const extendedRadius = Math.max(radius + 1, Math.round(bubbleRadius * .77));
   const darkLimit = Math.max(100, 255 - darkThreshold - 35);
   let regionSum = 0, regionCount = 0, darkCount = 0;
@@ -73,6 +85,7 @@ function measureBubble(bubble, bubbleRadius, pixels, width, height, darkThreshol
   return {
     choice: bubble.choice,
     score: core,
+    shifted: shiftedCore,
     extended: regionSum / Math.max(1, regionCount),
     coverage: darkCount / Math.max(1, regionCount),
   };
@@ -86,11 +99,11 @@ function analyzeQuestion(cell, pixels, width, height, darkThreshold, ambiguityGa
   // Use the best competing bubble as a local reference. This rejects uniform
   // shadows, printed letters and paper darkening, which affect all options.
   const candidate = (item) => item.score < strongLimit
-    && item.score >= Math.max(94, strongLimit * .63)
-    && item.extended >= 103
+    && item.shifted >= Math.max(94, strongLimit * .63)
+    && item.extended >= 97
     && item.coverage >= .18
-    && item.score - Math.min(...scores.filter(other => other !== item).map(other => other.score)) >= 27
-    && item.extended - Math.min(...scores.filter(other => other !== item).map(other => other.extended)) >= 24;
+    && item.shifted - Math.min(...scores.filter(other => other !== item).map(other => other.shifted)) >= 27
+    && item.extended - Math.min(...scores.filter(other => other !== item).map(other => other.extended)) >= 20;
   const strong = scores.filter(item => item.score >= strongLimit);
   const partial = scores.filter(candidate);
   // Both options on a two-choice card may have substantial partial coverage,
@@ -127,6 +140,7 @@ export function diagnoseRaster(template, pixels, width, height, options = {}) {
       candidateMarks: Object.freeze([...result.marks]),
       choiceScores: Object.freeze(result.scores.map(score => Object.freeze({
         choice: score.choice, core: Math.round(score.score * 10) / 10,
+        shifted: Math.round(score.shifted * 10) / 10,
         extended: Math.round(score.extended * 10) / 10,
         coverage: Math.round(score.coverage * 1000) / 1000,
       }))),
