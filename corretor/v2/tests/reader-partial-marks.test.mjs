@@ -81,6 +81,7 @@ test('physical-like cases: preserve strong marks and blanks; partial marks reque
   assert.equal(question.answer,c.after==='read'?c.choice:null,'automatic answer: '+c.n);
   assert.ok(question.marks.includes(c.choice),'candidate bubble visible for human review: '+c.n);
   assert.equal(result.identity.code,'0001123','seven digits preserved');
+  assert.equal(result.readerVersion,'salta-omr-reader-v6','technical provenance remains internal');
   const diag=diagnoseRaster(template,pixels,width,height,{manifest}).find(item=>item.number===c.n);
   assert.equal(diag.state,c.after);
   assert.equal(diag.choiceScores.length,c.n<=20?4:c.n<=40?5:2);
@@ -100,7 +101,8 @@ test('guard rails: double marks never auto-selected; pale/blank/shadowed bubbles
   const partial=renderComparison({mark:{n,choice:kind,ink:115,r:7},second:{n,choice:other,ink:115,r:7}});
   const observation=get(readRaster(template,partial,width,height,{manifest}),n);
   assert.equal(observation.answer,null,'two weak marks cannot yield a single answer');
-  assert.notEqual(observation.state,'read');
+  assert.ok(['double','review'].includes(observation.state),'weak doubles need explicit review');
+  assert.notEqual(observation.state,'blank','two partial markings cannot silently become blank');
  }
  for(const paper of [255,235,195,165]){
   const pixels=renderComparison({paper});
@@ -111,6 +113,17 @@ test('guard rails: double marks never auto-selected; pale/blank/shadowed bubbles
  const pale=renderComparison({mark:{n:24,choice:'B',ink:186,r:7}});
  const result=readRaster(template,pale,width,height,{manifest});
  assert.equal(get(result,24).answer,null,'pale mark is not promoted automatically');
+ const blue=renderComparison({mark:{n:34,choice:'C',ink:130,r:7,dx:2,dy:-1}});
+ const blueRead=get(readRaster(template,blue,width,height,{manifest}),34);
+ assert.equal(initialModel(blue,34),'blank','offset blue-gray fill missed by original');
+ assert.equal(blueRead.state,'review','offset blue-gray fill requires human confirmation');
+ assert.equal(blueRead.answer,null);
+ const shadow=renderComparison({paper:195,mark:{n:49,choice:'E',ink:115,r:7,dx:2}});
+ const shadowRead=get(readRaster(template,shadow,width,height,{manifest}),49);
+ assert.ok(['review','read'].includes(shadowRead.state),'local contrast survives light shadow');
+ if(shadowRead.state==='review')assert.equal(shadowRead.answer,null);
+ const overpaint=renderComparison({mark:{n:51,choice:'C',ink:0,r:9}});
+ assert.equal(get(readRaster(template,overpaint,width,height,{manifest}),51).answer,'C','overpainted known answer survives');
 });
 
 test('exact V1/V2 manifests, hashes and historical models continue to import',()=>{
