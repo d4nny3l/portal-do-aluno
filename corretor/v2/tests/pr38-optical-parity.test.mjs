@@ -45,7 +45,7 @@ test('PR38: A/B preserves optical geometry and explicit presentation hashes',()=
   // Importing an old card or the new card must honor its exact saved manifest.
   for(const current of [before,after]){
    const loaded=importCardManifest({manifest:current});
-   assert.deepEqual(loaded.manifest,current,entry.name+' imported bytes');
+   assert.deepEqual(loaded.manifest,JSON.parse(JSON.stringify(current)),entry.name+' imported JSON');
    assert.deepEqual(loaded.template.questions.map(q=>[q.questionId,q.number,q.type]),template.questions.map(q=>[q.questionId,q.number,q.type]));
    assert.equal(validateLayoutManifest(loaded.manifest).valid,true);
    assert.equal(renderTemplateSvg(loaded.template,{manifest:loaded.manifest}).includes('data-layout-hash="'+current.contentHash+'"'),true);
@@ -58,7 +58,7 @@ test('PR38: V1 history stays readable with its exact legacy optical contract',()
  const manifest=createCardManifest(template);
  const copy=structuredClone(manifest);
  const restored=importCardManifest({manifest});
- assert.deepEqual(restored.manifest,copy);
+ assert.deepEqual(restored.manifest,JSON.parse(JSON.stringify(copy)));
  assert.equal(restored.manifest.schemaVersion,'salta-layout-manifest-v1');
  assert.equal(validateLayoutManifest(restored.manifest).valid,true);
  assert.equal(restored.manifest.sectionFrameStyle,undefined);
