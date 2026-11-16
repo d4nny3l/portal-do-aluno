@@ -1,0 +1,15 @@
+[
+  {
+    "results": [
+      {
+        "sessions": 0,
+        "records": 0,
+        "receipts": 0
+      }
+    ],
+    "success": true,
+    "meta": {
+      "duration": 0
+    }
+  }
+]

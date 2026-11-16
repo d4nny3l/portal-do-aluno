@@ -3,13 +3,19 @@ on:
   pull_request:
     paths:
       - "plataforma/diario-teste.html"
-      - "stats-worker/tests/diario-periods.test.mjs"
+      - "stats-worker/**"
+      - "plataforma/diario-attendance.mjs"
+      - "plataforma/tests/diario-attendance.test.mjs"
+      - ".github/workflows/deploy-salta-stats.yml"
       - ".github/workflows/test-diario-integrity.yml"
   push:
     branches: [main]
     paths:
       - "plataforma/diario-teste.html"
-      - "stats-worker/tests/diario-periods.test.mjs"
+      - "stats-worker/**"
+      - "plataforma/diario-attendance.mjs"
+      - "plataforma/tests/diario-attendance.test.mjs"
+      - ".github/workflows/deploy-salta-stats.yml"
       - ".github/workflows/test-diario-integrity.yml"
 permissions:
   contents: read
@@ -18,6 +24,8 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
       - uses: actions/setup-node@v4
         with:
           node-version: 24
@@ -36,4 +44,21 @@ jobs:
           console.log("Diário UTF-8 e estrutura HTML: OK");
           NODE
       - name: Run Diário period and frontend API tests
-        run: node --test stats-worker/tests/diario-periods.test.mjs
+        run: node --test stats-worker/tests/*.test.mjs plataforma/tests/diario-attendance.test.mjs
+      - name: Check scoped Worker and frontend syntax
+        run: |
+          node --check stats-worker/worker.js
+          node --check plataforma/diario-attendance.mjs
+      - name: Install existing pinned local D1 runtime
+        run: npm ci --prefix assessments-lab --ignore-scripts --no-audit --no-fund
+      - name: Real isolated workerd and D1 integration
+        env:
+          WRANGLER_SEND_METRICS: 'false'
+          SALTA_WRANGLER_PATH: ${{ github.workspace }}/assessments-lab/node_modules/wrangler/bin/wrangler.js
+          SALTA_D04_EVIDENCE: ${{ runner.temp }}/d04-real-d1.json
+        run: node --test stats-worker/tests/diario-d04.integration.mjs
+      - uses: actions/upload-artifact@v4
+        with:
+          name: diario-d04-synthetic-evidence
+          path: ${{ runner.temp }}/d04-real-d1.json
+      - run: git diff --check HEAD^ HEAD

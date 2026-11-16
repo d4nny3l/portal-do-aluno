@@ -1,0 +1,12 @@
+name = "salta-diario-d04-synthetic-local-only"
+main = "worker.mjs"
+compatibility_date = "2026-09-30"
+workers_dev = false
+preview_urls = false
+[[d1_databases]]
+binding = "DIARIO_DB"
+database_name = "d04-synthetic-only"
+database_id = "00000000-0000-4000-8000-000000000004"
+[vars]
+DIARIO_ATTENDANCE_ENABLED = "true"
+DIARIO_ATTENDANCE_INSTITUTIONS = '{"1":"synthetic-a","2":"synthetic-b","3":"synthetic-a"}'

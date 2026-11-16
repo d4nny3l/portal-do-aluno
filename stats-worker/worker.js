@@ -2174,8 +2174,159 @@ async function diarioJson(request) {
   return request.json().catch(() => null);
 }
 
+// D-04: no schema initialization or academic writes when opening a draft.
+const D04_CONTRACT = "d04-v1";
+function d04ValidDate(value) { const parsed=new Date(value+"T00:00:00Z");return /^\d{4}-\d{2}-\d{2}$/.test(value)&&Number.isFinite(parsed.getTime())&&parsed.toISOString().slice(0,10)===value; }
+function d04Today() {const parts=new Intl.DateTimeFormat("en",{timeZone:"America/Sao_Paulo",year:"numeric",month:"2-digit",day:"2-digit"}).formatToParts(new Date());const part=t=>parts.find(p=>p.type===t)?.value;return part("year")+"-"+part("month")+"-"+part("day");}
+function d04Failure(message, code = 400) { const error = new Error(message); error.status = code; return error; }
+function d04Institution(env, classId) {
+  let map; try { map = typeof env.DIARIO_ATTENDANCE_INSTITUTIONS === "string" ? JSON.parse(env.DIARIO_ATTENDANCE_INSTITUTIONS) : env.DIARIO_ATTENDANCE_INSTITUTIONS; } catch {}
+  const institution = map && Object.prototype.hasOwnProperty.call(map, String(classId)) ? map[String(classId)] : null;
+  if (env.DIARIO_ATTENDANCE_ENABLED !== "true" || typeof institution !== "string" || !/^[a-zA-Z0-9_-]{1,80}$/.test(institution)) {
+    throw d04Failure("A confirmação segura da chamada ainda não foi habilitada para esta turma. Nenhuma presença foi gravada.", 503);
+  }
+  return institution;
+}
+async function d04Hash(value) {
+  const bytes = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(JSON.stringify(value)));
+  return [...new Uint8Array(bytes)].map(b => b.toString(16).padStart(2,"0")).join("");
+}
+function d04Context(input, kind, env) {
+  const positive = value => Number.isSafeInteger(value) && value > 0;
+  const classId = Number(input.class_id), period = Number(input.period), date = String(input.attendance_date || "");
+  if (!positive(classId) || !Number.isInteger(period) || period < 1 || period > 4 || !d04ValidDate(date)) throw d04Failure("Informe turma, período e data válidos.");
+  const context = { institution_id:d04Institution(env,classId),kind,class_id:classId,period,attendance_date:date };
+  if (input.institution_id !== undefined && input.institution_id !== context.institution_id) throw d04Failure("A instituição não corresponde à turma selecionada.",403);
+  if (kind === "lesson") {
+    context.shift_id=Number(input.shift_id);context.weekday=Number(input.weekday);context.lesson_number=Number(input.lesson_number);
+    if(!positive(context.shift_id)||!Number.isInteger(context.weekday)||context.weekday<1||context.weekday>7||!positive(context.lesson_number)||context.lesson_number>16)throw d04Failure("Informe a aula e o turno corretos.");
+  }
+  context.scope_key=JSON.stringify([context.institution_id,kind,classId,period,date,context.shift_id||0,context.weekday||0,context.lesson_number||0]);
+  return context;
+}
+function d04Tables(kind) { return kind === "lesson" ? {sessions:"salta_diario_lesson_sessions",records:"salta_diario_lesson_records"} : {sessions:"salta_diario_attendance_sessions",records:"salta_diario_attendance_records"}; }
+function d04Key(context) {
+  return context.kind === "lesson"
+    ? {sql:"shift_id=? AND weekday=? AND lesson_number=? AND attendance_date=?",params:[context.shift_id,context.weekday,context.lesson_number,context.attendance_date]}
+    : {sql:"class_id=? AND period=? AND attendance_date=?",params:[context.class_id,context.period,context.attendance_date]};
+}
+async function d04Snapshot(db, context) {
+  const {sessions,records}=d04Tables(context.kind), key=d04Key(context);
+  const cls=await db.prepare("SELECT id,evaluation_system,segment,period_count FROM salta_diario_classes WHERE id=?").bind(context.class_id).first();
+  if(!cls||context.period>cls.period_count)throw d04Failure("Turma ou período inválido.",404);
+  const session=await db.prepare(`SELECT * FROM ${sessions} WHERE ${key.sql}`).bind(...key.params).first();
+  if(session&&(Number(session.class_id)!==context.class_id||Number(session.period)!==context.period))throw d04Failure("Esta aula já pertence a outro contexto. Recarregue o horário sem sobrescrever o histórico.",409);
+  if(session){const previous=await db.prepare("SELECT institution_id FROM salta_diario_attendance_commits WHERE kind=? AND session_id=? AND institution_id<>? LIMIT 1").bind(context.kind,session.id,context.institution_id).first();if(previous)throw d04Failure("O vínculo institucional desta chamada precisa ser conferido antes de editar.",409);}
+  const active=(await db.prepare("SELECT id FROM salta_diario_students WHERE class_id=? AND active=1 ORDER BY id").bind(context.class_id).all()).results||[];
+  const rows=session?(await db.prepare(`SELECT student_id,present,updated_at FROM ${records} WHERE session_id=? ORDER BY student_id`).bind(session.id).all()).results||[]:[];
+  const version=Number((await db.prepare("SELECT COALESCE(MAX(version),0) AS version FROM salta_diario_attendance_commits WHERE scope_key=?").bind(context.scope_key).first())?.version||0);
+  const ids=[...new Set([...active.map(s=>Number(s.id)),...rows.map(r=>Number(r.student_id))])].sort((a,b)=>a-b);
+  const snapshot=await d04Hash({context,session_id:session?Number(session.id):null,rows,active:active.map(s=>Number(s.id))});
+  return {context,cls,session,rows,active,ids,version,snapshot};
+}
+async function d04ValidateDate(db,context,cls,session) {
+  const term=await db.prepare("SELECT start_date,end_date FROM salta_diario_periods WHERE evaluation_system=? AND segment=? AND period=?").bind(cls.evaluation_system,cls.segment,context.period).first();
+  if(!term)throw d04Failure("Configure as datas deste período antes de confirmar a chamada.",409);
+  if(context.attendance_date<term.start_date||context.attendance_date>term.end_date||context.attendance_date>d04Today())throw d04Failure("A frequência deve estar no período cadastrado e não pode ter data futura.",409);
+  let slot=null,start_time=session?.start_time,end_time=session?.end_time;
+  if(context.kind==="lesson"){
+    if((new Date(context.attendance_date+"T00:00:00Z").getUTCDay()||7)!==context.weekday)throw d04Failure("A data não corresponde ao dia da semana da aula.");
+    // Existing sessions keep their recorded timetable; a changed schedule must not recreate them.
+    if(!session){
+      slot=await db.prepare("SELECT s.class_id,t.start_time,t.lesson_minutes,t.lesson_count,COALESCE((SELECT SUM(b.duration_minutes) FROM salta_diario_teacher_shift_breaks b WHERE b.shift_id=s.shift_id AND b.after_lesson<s.lesson_number),0) AS break_offset FROM salta_diario_teacher_schedule_slots s INNER JOIN salta_diario_teacher_shifts t ON t.id=s.shift_id WHERE s.shift_id=? AND s.weekday=? AND s.lesson_number=?").bind(context.shift_id,context.weekday,context.lesson_number).first();
+      if(!slot||Number(slot.class_id)!==context.class_id||context.lesson_number>slot.lesson_count)throw d04Failure("A aula não corresponde ao horário desta turma.",409);
+      const start=Number(slot.start_time.slice(0,2))*60+Number(slot.start_time.slice(3))+(context.lesson_number-1)*slot.lesson_minutes+Number(slot.break_offset);
+      const clock=n=>String(Math.floor(n/60)%24).padStart(2,"0")+":"+String(n%60).padStart(2,"0");start_time=clock(start);end_time=clock(start+slot.lesson_minutes);
+    }
+  }
+  return {term,slot,start_time,end_time};
+}
+function d04Guard(snapshot, timing) {
+  const {context:c,session,rows,active,cls}=snapshot,{sessions,records}=d04Tables(c.kind),key=d04Key(c);
+  const clauses=["COALESCE((SELECT MAX(version) FROM salta_diario_attendance_commits WHERE scope_key=?),0)=?"],params=[c.scope_key,snapshot.version];
+  if(session){
+    clauses.push(`EXISTS(SELECT 1 FROM ${sessions} WHERE id=? AND class_id=? AND period=? AND ${key.sql})`);params.push(session.id,c.class_id,c.period,...key.params);
+    clauses.push(`(SELECT COUNT(*) FROM ${records} WHERE session_id=?)=?`);params.push(session.id,rows.length);
+    clauses.push(`NOT EXISTS(SELECT 1 FROM ${records} r LEFT JOIN json_each(?) e ON r.student_id=json_extract(e.value,'$.student_id') WHERE r.session_id=? AND (e.value IS NULL OR r.present<>json_extract(e.value,'$.present') OR r.updated_at<>json_extract(e.value,'$.updated_at')))`);params.push(JSON.stringify(rows),session.id);
+  }else{clauses.push(`NOT EXISTS(SELECT 1 FROM ${sessions} WHERE ${key.sql})`);params.push(...key.params);}
+  clauses.push("(SELECT COUNT(*) FROM salta_diario_students WHERE class_id=? AND active=1)=?");params.push(c.class_id,active.length);
+  clauses.push("NOT EXISTS(SELECT 1 FROM salta_diario_students s LEFT JOIN json_each(?) e ON s.id=e.value WHERE s.class_id=? AND s.active=1 AND e.value IS NULL)");params.push(JSON.stringify(active.map(s=>Number(s.id))),c.class_id);
+  clauses.push("EXISTS(SELECT 1 FROM salta_diario_classes WHERE id=? AND evaluation_system=? AND segment=? AND period_count=?)");params.push(c.class_id,cls.evaluation_system,cls.segment,cls.period_count);
+  clauses.push("EXISTS(SELECT 1 FROM salta_diario_periods WHERE evaluation_system=? AND segment=? AND period=? AND start_date=? AND end_date=?)");params.push(cls.evaluation_system,cls.segment,c.period,timing.term.start_date,timing.term.end_date);
+  if(timing.slot){clauses.push("EXISTS(SELECT 1 FROM salta_diario_teacher_schedule_slots s INNER JOIN salta_diario_teacher_shifts t ON t.id=s.shift_id WHERE s.shift_id=? AND s.weekday=? AND s.lesson_number=? AND s.class_id=? AND t.start_time=? AND t.lesson_minutes=? AND t.lesson_count=? AND COALESCE((SELECT SUM(b.duration_minutes) FROM salta_diario_teacher_shift_breaks b WHERE b.shift_id=s.shift_id AND b.after_lesson<s.lesson_number),0)=?)");params.push(c.shift_id,c.weekday,c.lesson_number,c.class_id,timing.slot.start_time,timing.slot.lesson_minutes,timing.slot.lesson_count,timing.slot.break_offset);}
+  return {sql:clauses.join(" AND "),params};
+}
+async function d04Commit(request,env,context,body) {
+  const db=env.DIARIO_DB,{sessions,records}=d04Tables(context.kind),key=d04Key(context);
+  if(!/^[a-f0-9-]{36}$/i.test(body.request_id||"")||!Number.isSafeInteger(body.expected_version)||body.expected_version<0||!/^[a-f0-9]{64}$/.test(body.expected_snapshot||""))throw d04Failure("Reabra a chamada e confirme a versão revisada.",428);
+  if(!Array.isArray(body.registros)||!body.registros.length||body.registros.length>1000||body.registros.some(r=>!Number.isSafeInteger(r?.student_id)||r.student_id<1||typeof r.present!=="boolean"))throw d04Failure("Confirme a lista completa com presença ou falta para cada estudante.");
+  const rows=body.registros.map(r=>({student_id:r.student_id,present:r.present})).sort((a,b)=>a.student_id-b.student_id);
+  if(new Set(rows.map(r=>r.student_id)).size!==rows.length)throw d04Failure("Há estudantes repetidos na chamada.");
+  const payloadHash=await d04Hash({context,method:request.method,session_id:body.session_id||null,expected_version:body.expected_version,expected_snapshot:body.expected_snapshot,registros:rows});
+  const replay=await db.prepare("SELECT payload_hash,receipt FROM salta_diario_attendance_commits WHERE institution_id=? AND request_id=?").bind(context.institution_id,body.request_id).first();
+  if(replay){if(replay.payload_hash!==payloadHash)throw d04Failure("Esta confirmação já foi usada com outras escolhas.",409);if(!replay.receipt)throw d04Failure("Confirmação sem recibo. Nenhuma nova escrita foi realizada.",503);return json(JSON.parse(replay.receipt),request);}
+  const snapshot=await d04Snapshot(db,context);
+  if(snapshot.version!==body.expected_version||snapshot.snapshot!==body.expected_snapshot)throw d04Failure("A chamada ou a lista mudou em outra janela. Reabra e confira antes de confirmar.",409);
+  if(request.method==="POST"&&snapshot.session)throw d04Failure("Esta chamada já existe. Abra a chamada confirmada para editar.",409);
+  if(request.method==="PUT"&&(!snapshot.session||Number(body.session_id)!==Number(snapshot.session.id)))throw d04Failure("A chamada não corresponde à turma, aula e período selecionados.",409);
+  if(rows.length!==snapshot.ids.length||rows.some((r,i)=>r.student_id!==snapshot.ids[i]))throw d04Failure("A lista completa deve corresponder à turma e preservar os registros históricos.");
+  const timing=await d04ValidateDate(db,context,snapshot.cls,snapshot.session),guard=d04Guard(snapshot,timing);
+  const pending="EXISTS(SELECT 1 FROM salta_diario_attendance_commits WHERE institution_id=? AND request_id=? AND payload_hash=? AND receipt IS NULL)";
+  const pendingParams=[context.institution_id,body.request_id,payloadHash];
+  const sessionWhere=`${key.sql} AND class_id=? AND period=?`,sessionParams=[...key.params,context.class_id,context.period];
+  const receipt={ok:true,id:null,existente:Boolean(snapshot.session),version:snapshot.version+1,request_id:body.request_id,institution_id:context.institution_id,total:rows.length,presentes:rows.filter(r=>r.present).length,faltas:rows.filter(r=>!r.present).length};
+  const statements=[db.prepare(`INSERT INTO salta_diario_attendance_commits(institution_id,request_id,scope_key,version,kind,payload_hash,snapshot_before) SELECT ?,?,?,?,?,?,? WHERE ${guard.sql} ON CONFLICT(institution_id,request_id) DO NOTHING`).bind(context.institution_id,body.request_id,context.scope_key,snapshot.version+1,context.kind,payloadHash,snapshot.snapshot,...guard.params)];
+  if(!snapshot.session){
+    statements.push(context.kind==="lesson"
+      ?db.prepare(`INSERT INTO ${sessions}(shift_id,weekday,lesson_number,class_id,period,attendance_date,start_time,end_time) SELECT ?,?,?,?,?,?,?,? WHERE ${pending}`).bind(context.shift_id,context.weekday,context.lesson_number,context.class_id,context.period,context.attendance_date,timing.start_time,timing.end_time,...pendingParams)
+      :db.prepare(`INSERT INTO ${sessions}(class_id,period,attendance_date) SELECT ?,?,? WHERE ${pending}`).bind(context.class_id,context.period,context.attendance_date,...pendingParams));
+  }
+  statements.push(db.prepare(`INSERT INTO ${records}(session_id,student_id,present,updated_at) SELECT (SELECT id FROM ${sessions} WHERE ${sessionWhere}),json_extract(e.value,'$.student_id'),json_extract(e.value,'$.present'),CURRENT_TIMESTAMP FROM json_each(?) e WHERE ${pending} ON CONFLICT(session_id,student_id) DO UPDATE SET present=excluded.present,updated_at=excluded.updated_at WHERE present<>excluded.present`).bind(...sessionParams,JSON.stringify(rows),...pendingParams));
+  statements.push(db.prepare(`UPDATE salta_diario_attendance_commits SET session_id=(SELECT id FROM ${sessions} WHERE ${sessionWhere}),receipt=json_set(?,'$.id',(SELECT id FROM ${sessions} WHERE ${sessionWhere})) WHERE institution_id=? AND request_id=? AND payload_hash=? AND receipt IS NULL`).bind(...sessionParams,JSON.stringify(receipt),...sessionParams,...pendingParams));
+  // If finalization ever fails silently, violate the ledger CHECK and roll back
+  // the ENTIRE batch, including sessions and records. No partial receipt survives.
+  statements.push(db.prepare("UPDATE salta_diario_attendance_commits SET version=0 WHERE institution_id=? AND request_id=? AND (receipt IS NULL OR session_id IS NULL)").bind(context.institution_id,body.request_id));
+  statements.push(db.prepare("SELECT payload_hash,receipt FROM salta_diario_attendance_commits WHERE institution_id=? AND request_id=?").bind(context.institution_id,body.request_id));
+  let results;
+  try{results=await db.batch(statements);}catch(error){
+    if(/unique constraint/i.test(String(error?.message||"")))throw d04Failure("Outra confirmação venceu esta operação. Reabra a chamada para conferir.",409);
+    throw error;
+  }
+  const saved=results.at(-1)?.results?.[0];
+  if(!saved)throw d04Failure("A chamada, turma ou horário mudou durante a confirmação. Nenhuma alteração deste lote foi gravada.",409);
+  if(saved.payload_hash!==payloadHash)throw d04Failure("Esta confirmação já foi usada com outras escolhas.",409);
+  if(!saved.receipt)throw d04Failure("O servidor não confirmou a transação. Reenvie a mesma confirmação.",503);
+  return json(JSON.parse(saved.receipt),request,snapshot.session?200:201);
+}
+async function handleD04(request,env,url) {
+  const path=url.pathname.replace(/\/+$/,"");
+  try{
+    if(request.method!=="GET"){
+      const body=await diarioJson(request);
+      if(body?.confirm!==true)throw d04Failure("Esta versão exige revisão da lista e confirmação explícita. Atualize o Diário; nenhuma presença foi gravada.",428);
+      const kind=path==="/diario/frequencia/ocorrencias"?"lesson":"daily",context=d04Context(body,kind,env);
+      return await d04Commit(request,env,context,body);
+    }
+    const input=Object.fromEntries(url.searchParams),classId=Number(input.class_id);
+    if(path==="/diario/frequencia/contrato"){
+      let institution;try{institution=d04Institution(env,classId)}catch{return json({version:D04_CONTRACT,enabled:false,reason:"Confirmação segura ainda não habilitada para esta turma."},request)}
+      const ready=await env.DIARIO_DB.prepare("SELECT 1 AS ready FROM sqlite_master WHERE type='table' AND name='salta_diario_attendance_commits'").first();
+      return json({version:D04_CONTRACT,enabled:Boolean(ready),institution_id:institution,reason:ready?null:"A migração de recibos ainda não foi homologada."},request);
+    }
+    const kind=path==="/diario/frequencia/ocorrencias/rascunho"?"lesson":"daily",context=d04Context(input,kind,env),snapshot=await d04Snapshot(env.DIARIO_DB,context);
+    await d04ValidateDate(env.DIARIO_DB,context,snapshot.cls,snapshot.session);
+    const records=new Map(snapshot.rows.map(r=>[Number(r.student_id),Boolean(r.present)]));
+    const historicalIds=snapshot.rows.map(r=>Number(r.student_id)).filter(id=>!snapshot.active.some(s=>Number(s.id)===id));
+    const historicalStudents=historicalIds.length?(await env.DIARIO_DB.prepare("SELECT id,name FROM salta_diario_students WHERE id IN (SELECT value FROM json_each(?)) ORDER BY id").bind(JSON.stringify(historicalIds)).all()).results||[]:[];
+    return json({contract:D04_CONTRACT,institution_id:context.institution_id,historical_students:historicalStudents,session_id:snapshot.session?Number(snapshot.session.id):null,version:snapshot.version,snapshot:snapshot.snapshot,registros:snapshot.ids.map(id=>({student_id:id,present:records.has(id)?records.get(id):null})),historical_ids:snapshot.rows.map(r=>Number(r.student_id))},request);
+  }catch(error){return error.status?diarioError(error.message,request,error.status):diaryFailure(error,request,503);}
+}
+
 async function handleDiarioRequest(request, env, url) {
   if (!(await authenticated(request, env))) return diarioError("Acesso restrito. Entre novamente na Área Administrativa.", request, 401);
+  const attendancePath=url.pathname.replace(/\/+$/, "");
+  if ((["POST","PUT"].includes(request.method) && ["/diario/frequencia","/diario/frequencia/ocorrencias"].includes(attendancePath)) ||
+      (request.method==="GET" && ["/diario/frequencia/contrato","/diario/frequencia/rascunho","/diario/frequencia/ocorrencias/rascunho"].includes(attendancePath))) return handleD04(request,env,url);
   try { await ensureDiarioSchema(env); }
   catch (error) { return diaryFailure(error, request, 503); }
 
@@ -2402,48 +2553,6 @@ async function handleDiarioRequest(request, env, url) {
     return json({configurado:true,periodo,turma:{id:Number(turma.id),nome:turma.name},ocorrencias},request);
   }
 
-  if (method === "POST" && path === "/diario/frequencia/ocorrencias") {
-    const body=await diarioJson(request);
-    const shiftIdValue=Number(body?.shift_id),weekday=Number(body?.weekday),lessonNumber=Number(body?.lesson_number),classId=Number(body?.class_id),period=Number(body?.period),date=String(body?.attendance_date||"");
-    const today=brazilToday();
-    const turma = await db.prepare("SELECT id,evaluation_system,segment,period_count FROM salta_diario_classes WHERE id=?").bind(classId).first();
-    if (!turma || period>Number(turma.period_count)) return diarioError("Turma ou bimestre inválido.",request,404);
-    const term = await db.prepare("SELECT start_date,end_date FROM salta_diario_periods WHERE evaluation_system=? AND segment=? AND period=?").bind(turma.evaluation_system,turma.segment,period).first();
-    if (!term) return diarioError("Configure as datas deste bimestre na Gestão acadêmica.",request,409);
-    if(!Number.isSafeInteger(shiftIdValue)||!Number.isInteger(weekday)||weekday<1||weekday>7||!Number.isInteger(lessonNumber)||lessonNumber<1||!Number.isSafeInteger(classId)||!Number.isInteger(period)||period<1||period>Number(turma.period_count)||!validIsoDate(date)||date<term.start_date||date>term.end_date||date>today)return diarioError("A frequência só pode ser lançada em uma data cadastrada do bimestre e até hoje.",request);
-    const slot=await db.prepare("SELECT s.class_id,t.lesson_count,c.period_count,t.start_time,t.lesson_minutes,COALESCE((SELECT SUM(b.duration_minutes) FROM salta_diario_teacher_shift_breaks b WHERE b.shift_id=s.shift_id AND b.after_lesson<s.lesson_number),0) AS break_offset FROM salta_diario_teacher_schedule_slots s INNER JOIN salta_diario_teacher_shifts t ON t.id=s.shift_id INNER JOIN salta_diario_classes c ON c.id=s.class_id WHERE s.shift_id=? AND s.weekday=? AND s.lesson_number=?").bind(shiftIdValue,weekday,lessonNumber).first();
-    if(!slot||Number(slot.class_id)!==classId||period>Number(slot.period_count)||lessonNumber>Number(slot.lesson_count))return diarioError("A aula não corresponde ao horário cadastrado para esta turma.",request,409);
-    const jsWeekday=new Date(date+"T00:00:00Z").getUTCDay()||7;
-    if(jsWeekday!==weekday)return diarioError("A data não corresponde ao dia da semana deste horário.",request);
-    let session=await db.prepare("SELECT id FROM salta_diario_lesson_sessions WHERE shift_id=? AND weekday=? AND lesson_number=? AND attendance_date=?").bind(shiftIdValue,weekday,lessonNumber,date).first();
-    let existing=Boolean(session);
-    if(!session){
-      const startMinutes=Number(slot.start_time.slice(0,2))*60+Number(slot.start_time.slice(3))+(lessonNumber-1)*Number(slot.lesson_minutes)+Number(slot.break_offset||0);
-      const clock=minute=>String(Math.floor(minute/60)%24).padStart(2,"0")+":"+String(minute%60).padStart(2,"0");
-      const startClock=clock(startMinutes),endClock=clock(startMinutes+Number(slot.lesson_minutes));
-      const result=await db.prepare("INSERT INTO salta_diario_lesson_sessions (shift_id,weekday,lesson_number,class_id,period,attendance_date,start_time,end_time) VALUES (?,?,?,?,?,?,?,?)").bind(shiftIdValue,weekday,lessonNumber,classId,period,date,startClock,endClock).run();
-      const id=Number(result.meta?.last_row_id);
-      const activeStudents=await db.prepare("SELECT id FROM salta_diario_students WHERE class_id=? AND active=1").bind(classId).all();
-      if((activeStudents.results||[]).length)await db.batch(activeStudents.results.map(student=>db.prepare("INSERT INTO salta_diario_lesson_records (session_id,student_id,present) VALUES (?,?,1)").bind(id,Number(student.id))));
-      session={id};existing=false;
-    }
-    return json({ok:true,id:Number(session.id),existente:existing},request,existing?200:201);
-  }
-
-  if(method==="PUT"&&path==="/diario/frequencia/ocorrencias"){
-    const body=await diarioJson(request),sessionId=Number(body?.session_id),rows=Array.isArray(body?.registros)?body.registros:[];
-    if(!Number.isSafeInteger(sessionId)||rows.length>1000)return diarioError("Lote de frequência inválido.",request);
-    const session=await db.prepare("SELECT id,class_id,attendance_date FROM salta_diario_lesson_sessions WHERE id=?").bind(sessionId).first();
-    if(!session)return diarioError("Aula não encontrada.",request,404);
-    if(session.attendance_date>brazilToday())return diarioError("A frequência não pode ser lançada em datas futuras.",request,409);
-    const ids=[...new Set(rows.map(row=>Number(row?.student_id)))];
-    if(ids.some(id=>!Number.isSafeInteger(id)||id<1))return diarioError("Há um aluno inválido no lote.",request);
-    if(ids.length){const marks=ids.map(()=>"?").join(",");const found=await db.prepare("SELECT id FROM salta_diario_students WHERE class_id=? AND active=1 AND id IN ("+marks+")").bind(session.class_id,...ids).all();if((found.results||[]).length!==ids.length)return diarioError("Uma ou mais pessoas não pertencem a esta turma.",request,400);}
-    const statements=rows.map(row=>db.prepare("INSERT INTO salta_diario_lesson_records (session_id,student_id,present,updated_at) VALUES (?,?,?,CURRENT_TIMESTAMP) ON CONFLICT(session_id,student_id) DO UPDATE SET present=excluded.present,updated_at=CURRENT_TIMESTAMP").bind(sessionId,Number(row.student_id),row.present===false||row.present===0?0:1));
-    if(statements.length)await db.batch(statements);
-    return json({ok:true,saved:statements.length},request);
-  }
-
   if (method === "GET" && path === "/diario/frequencia") {
     const classId = Number(url.searchParams.get("turma"));
     const period = Number(url.searchParams.get("bimestre"));
@@ -2467,42 +2576,6 @@ async function handleDiarioRequest(request, env, url) {
       registros: alunos.map(student => ({ student_id: Number(student.id), present: (recordsBySession.get(Number(session.id)) || new Map()).get(Number(student.id)) ?? true }))
     }));
     return json({ alunos, aulas }, request);
-  }
-
-  if (method === "POST" && path === "/diario/frequencia") {
-    const body = await diarioJson(request);
-    const classId = Number(body?.class_id);
-    const period = Number(body?.period);
-    const date = String(body?.attendance_date || "").trim();
-    const turma = await db.prepare("SELECT period_count FROM salta_diario_classes WHERE id=?").bind(classId).first();
-    if (!turma) return diarioError("Turma não encontrada.", request, 404);
-    if (!Number.isInteger(period) || period < 1 || period > turma.period_count || !/^\d{4}-\d{2}-\d{2}$/.test(date)) return diarioError("Informe um bimestre e uma data válidos.", request);
-    const existing = await db.prepare("SELECT id FROM salta_diario_attendance_sessions WHERE class_id=? AND period=? AND attendance_date=?").bind(classId,period,date).first();
-    if (existing) return json({ ok: true, id: existing.id, existente: true }, request);
-    const result = await db.prepare("INSERT INTO salta_diario_attendance_sessions (class_id,period,attendance_date) VALUES (?,?,?)").bind(classId,period,date).run();
-    const sessionId = Number(result.meta?.last_row_id);
-    const students = await db.prepare("SELECT id FROM salta_diario_students WHERE class_id=? AND active=1").bind(classId).all();
-    if ((students.results || []).length) await db.batch(students.results.map(student => db.prepare("INSERT INTO salta_diario_attendance_records (session_id,student_id,present) VALUES (?,?,1)").bind(sessionId,Number(student.id))));
-    return json({ ok: true, id: sessionId, existente: false }, request, 201);
-  }
-
-  if (method === "PUT" && path === "/diario/frequencia") {
-    const body = await diarioJson(request);
-    const sessionId = Number(body?.session_id);
-    const rows = Array.isArray(body?.registros) ? body.registros : [];
-    if (!Number.isSafeInteger(sessionId) || rows.length > 1000) return diarioError("Lote de frequência inválido.", request);
-    const session = await db.prepare("SELECT id,class_id FROM salta_diario_attendance_sessions WHERE id=?").bind(sessionId).first();
-    if (!session) return diarioError("Aula não encontrada.", request, 404);
-    const studentIds = [...new Set(rows.map(row => Number(row?.student_id)))];
-    if (studentIds.some(id => !Number.isSafeInteger(id) || id < 1)) return diarioError("Há um aluno inválido no lote.", request);
-    if (studentIds.length) {
-      const marks = studentIds.map(() => "?").join(",");
-      const found = await db.prepare("SELECT id FROM salta_diario_students WHERE class_id=? AND active=1 AND id IN (" + marks + ")").bind(session.class_id,...studentIds).all();
-      if ((found.results || []).length !== studentIds.length) return diarioError("Uma ou mais pessoas não pertencem a esta turma.", request, 400);
-    }
-    const statements = rows.map(row => db.prepare("INSERT INTO salta_diario_attendance_records (session_id,student_id,present,updated_at) VALUES (?,?,?,CURRENT_TIMESTAMP) ON CONFLICT(session_id,student_id) DO UPDATE SET present=excluded.present,updated_at=CURRENT_TIMESTAMP").bind(sessionId,Number(row.student_id),row.present === false || row.present === 0 ? 0 : 1));
-    if (statements.length) await db.batch(statements);
-    return json({ ok: true, saved: statements.length }, request);
   }
 
   if (method === "POST" && path === "/diario/configuracoes/avaliacoes/aplicar") {
