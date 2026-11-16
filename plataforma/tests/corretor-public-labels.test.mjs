@@ -16,8 +16,8 @@ test('Corretor de Avaliações has a consistent name in heading, title and main 
   assert.match(redirect, /<title>Corretor de Avaliações · SALTA<\/title>/);
   assert.match(redirect, />Abrir Corretor de Avaliações<\/a>/);
   assert.match(shell, /label: "Corretor de Avaliações"/);
-  assert.match(professor, />Corretor de Avaliações<\/); 
-  assert.match(diario, />Corretor de Avaliações<\/);
+  assert.ok(professor.includes('>Corretor de Avaliações<'));
+  assert.ok(diario.includes('>Corretor de Avaliações<'));
   assert.match(html, /<label>Formato das questões<select id="scanType">/);
   assert.doesNotMatch(html, /Formato padrão V2|Composição padrão V2/);
 });
