@@ -5,6 +5,8 @@ import { readFileSync } from 'node:fs';
 const read = path => readFileSync(new URL(path, import.meta.url), 'utf8');
 const html = read('../corretor-v2.html');
 const shell = read('../admin-shell.mjs');
+const professor = read('../professor.html');
+const diario = read('../diario-teste.html');
 const redirect = read('../../corretor/index.html');
 const bank = read('../../corretor/v2/assessments/editor.mjs');
 
@@ -14,6 +16,8 @@ test('Corretor de Avaliações has a consistent name in heading, title and main 
   assert.match(redirect, /<title>Corretor de Avaliações · SALTA<\/title>/);
   assert.match(redirect, />Abrir Corretor de Avaliações<\/a>/);
   assert.match(shell, /label: "Corretor de Avaliações"/);
+  assert.match(professor, />Corretor de Avaliações<\/); 
+  assert.match(diario, />Corretor de Avaliações<\/);
   assert.match(html, /<label>Formato das questões<select id="scanType">/);
   assert.doesNotMatch(html, /Formato padrão V2|Composição padrão V2/);
 });
