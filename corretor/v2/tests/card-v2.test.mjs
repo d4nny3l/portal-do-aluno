@@ -91,8 +91,12 @@ test('V2: rendered block borders wrap questions without altering page/OMR geomet
    const rows=m.questions.filter(q=>q.sectionId===frame.sectionId&&q.columnIndex===frame.columnIndex&&q.y>=frame.y&&q.y<frame.y+frame.height);
    assert.ok(rows.length>0);assert.ok(width<=frame.width+1e-8);
    assert.ok(Math.abs(y-frame.y)<1e-8&&Math.abs(height-frame.height)<1e-8);
-   assert.ok(Math.abs((x+width/2)-(frame.x+frame.width/2))<1e-8);
-   for(const q of rows){assert.ok(q.x>=x-1e-8);assert.ok(q.x+q.width<=x+width+1e-8)}
+   assert.ok(x>=frame.x-1e-8&&x+width<=frame.x+frame.width+1e-8,'visual frame remains in reserved column');
+   for(const q of rows){
+    const numberLeft=q.x+5.8-[...String(q.number).padStart(2,'0')].reduce((sum,char)=>sum+(/[0-9]/.test(char)?0.79:0.66),0)*2.6;
+    assert.ok(numberLeft>=x-0.02,'number inside compact frame');
+    for(const bubble of q.bubbles)assert.ok(bubble.x-bubble.radiusMm>=x-0.02&&bubble.x+bubble.radiusMm<=x+width+0.02,'bubble inside compact frame');
+   }
    const lastRowBottom=Math.max(...rows.map(q=>q.y+q.height));
    assert.ok(Math.abs(y+height-lastRowBottom-1.5)<1e-6,'frame ends after final question');
   }
