@@ -37,13 +37,24 @@ test('visual flow: literal DOM references exist, V2 generation fixed, history wr
  assert.match(script,/buildManifestJson\(template,\{header:headerState,manifest:activeManifest\}\)/);
 });
 
-test('ordering: every move renumbers 1-N, IDs persist and restore uses original order',()=>{
+test('ordering: moves renumber continuously and restore original order',()=>{
  const sections=[{order:0,label:'Alpha',items:[{questionId:'question-1',number:1,type:'A-E'},{questionId:'question-2',number:2,type:'A-E'}]},{order:1,label:'Beta',items:[{questionId:'question-3',number:3,type:'A-D'}]}];
  const host=new Element('div');let builds=0;
  const draw=script.slice(script.indexOf('function drawSections()'),script.indexOf("$('add').onclick="));
- const original=script.match(/function originalQuestionOrder\\(question\\)[^\\n]+/)[0],renumber=script.match(/function renumberEditableQuestions\\(\\)[^\\n]+/)[0];
+ const original=script.match(/function originalQuestionOrder\(question\)[^\n]+/)[0],renumber=script.match(/function renumberEditableQuestions\(\)[^\n]+/)[0];
  const $=id=>{assert.equal(id,'sectionManager');return host};
- const init=new Function('sections','
+ const init=new Function('sections','$','document','build','syncConditionalFields','layoutRevision','assessmentBank',`${original};${renumber};${draw};return {drawSections,originalQuestionOrder}`);
+ const editor=init(sections,$,{createElement:tag=>new Element(tag)},()=>{builds++},()=>{},8,null),drawSections=editor.drawSections;drawSections();
+ const click=label=>{const button=descendants(host).find(n=>n.attrs['aria-label']===label);assert.ok(button,label);button.onclick()};
+ click('Mover seção 1 para baixo');assert.deepEqual(sections.map(s=>s.label),['Beta','Alpha']);assert.deepEqual(sections.flatMap(s=>s.items.map(q=>q.number)),[1,2,3]);
+ click('Mover seção 2 para cima');assert.deepEqual(sections.map(s=>s.label),['Alpha','Beta']);
+ click('Mover questão 1 para baixo');assert.deepEqual(sections[0].items.map(q=>q.questionId),['question-2','question-1']);assert.deepEqual(sections[0].items.map(q=>q.number),[1,2]);
+ click('Mover questão 2 para cima');assert.deepEqual(sections[0].items.map(q=>q.questionId),['question-1','question-2']);
+ click('Mover questão 1 para baixo');assert.deepEqual(sections[0].items.map(q=>q.questionId),['question-2','question-1']);
+ const restore=handler('restoreArrangement').split(";$('generate')")[0];
+ const run=new Function('sections','$','drawSections','build','layoutRevision','originalQuestionOrder',`return ${restore}`)(sections,()=>{throw Error('Restore touched unrelated control')},drawSections,()=>{builds++},8,editor.originalQuestionOrder);
+ run();assert.deepEqual(sections.map(s=>s.label),['Alpha','Beta']);assert.deepEqual(sections[0].items.map(q=>q.questionId),['question-1','question-2']);assert.deepEqual(sections[0].items.map(q=>q.number),[1,2]);assert.equal(builds,6);
+});
 
 test('printing: batch sorting/page selection works; single card ignores unrelated batch settings',()=>{
  const fields={studentCodeBatch:{value:'Pessoa Z; A; 0000003\nPessoa A; A; 0000001\nPessoa M; A; 0000002'},batchOrder:{value:'name-asc'},batchPages:{value:'2'},buildStatus:{textContent:''}};
@@ -122,216 +133,6 @@ test('editor: deleting blocks renumbers questions without reusing stable IDs or 
   const fields={sectionManager:host,count:{value:'20'},type:{value:'A-E'},sectionLabel:{value:''},buildStatus:{textContent:''}};
   const $=id=>fields[id];
   const factory=new Function('sections','$','document','build','syncConditionalFields','layoutRevision','assessmentBank','nextQuestionNumber','nextSectionOrder',originalSource+';'+renumberSource+';'+sectionSource+';return {drawSections,add:'+addSource+',next:()=>nextQuestionNumber}');
-  const editor=factory(sections,$,{createElement:tag=>new Element(tag)},()=>{},()=>{},8,null,1,0);
-  const remove=index=>{const button=descendants(host).find(n=>n.attrs['aria-label']==='Remover seção '+index);assert.ok(button);button.onclick()};
-  return {...editor,sections,remove};
- };
- const numbers=e=>e.sections.flatMap(s=>s.items.map(q=>q.number));
- const ids=e=>e.sections.flatMap(s=>s.items.map(q=>q.questionId));
- const first=make();for(let i=0;i<3;i++)first.add();
- const originalIds=ids(first),answers=new Map(originalIds.map(id=>[id,'C']));
- first.remove(1);assert.deepEqual(numbers(first),Array.from({length:40},(_,i)=>i+1));assert.deepEqual(ids(first),originalIds.slice(20));assert.ok(ids(first).every(id=>answers.get(id)==='C'));
- const middle=make();for(let i=0;i<3;i++)middle.add();
- const middleIds=ids(middle);middle.remove(2);assert.deepEqual(numbers(middle),Array.from({length:40},(_,i)=>i+1));assert.deepEqual(ids(middle),[...middleIds.slice(0,20),...middleIds.slice(40)]);
- const all=make();all.add();all.add();const previousIds=new Set(ids(all));
- all.remove(1);all.remove(1);assert.deepEqual(numbers(all),[]);
- all.add();assert.deepEqual(numbers(all),Array.from({length:20},(_,i)=>i+1));assert.ok(ids(all).every(id=>!previousIds.has(id)));
- const added=make();added.add();added.add();const removedIds=new Set(ids(added).slice(0,20));
- added.remove(1);added.add();assert.deepEqual(numbers(added),Array.from({length:40},(_,i)=>i+1));assert.ok(ids(added).every(id=>!removedIds.has(id)));
- const reordered=make();for(let i=0;i<3;i++)reordered.add();
- [reordered.sections[0],reordered.sections[1]]=[reordered.sections[1],reordered.sections[0]];
- reordered.drawSections();reordered.remove(3);assert.deepEqual(numbers(reordered),Array.from({length:40},(_,i)=>i+1));
-});
-,'document','build','syncConditionalFields','layoutRevision','assessmentBank',original+';'+renumber+';'+draw+';return {drawSections,originalQuestionOrder}');
- const editor=init(sections,$,{createElement:tag=>new Element(tag)},()=>{builds++},()=>{},8,null),drawSections=editor.drawSections;
- const numbers=()=>sections.flatMap(s=>s.items.map(q=>q.number)),ids=()=>sections.flatMap(s=>s.items.map(q=>q.questionId));
- const contiguous=()=>assert.deepEqual(numbers(),[1,2,3]);
- drawSections();
- const click=label=>{const button=descendants(host).find(n=>n.attrs['aria-label']===label);assert.ok(button,label);assert.notEqual(button.disabled,true,label+' disabled');button.onclick();contiguous()};
- click('Mover seção 1 para baixo');assert.deepEqual(ids(),['question-3','question-1','question-2']);
- click('Mover seção 2 para cima');assert.deepEqual(ids(),['question-1','question-2','question-3']);
- click('Mover questão 1 para baixo');assert.deepEqual(ids(),['question-2','question-1','question-3']);
- click('Mover questão 2 para cima');assert.deepEqual(ids(),['question-1','question-2','question-3']);
- click('Mover questão 1 para baixo');assert.deepEqual(ids(),['question-2','question-1','question-3']);
- const restore=handler('restoreArrangement').split(";$('generate')")[0];
- const run=new Function('sections','
-
-test('printing: batch sorting/page selection works; single card ignores unrelated batch settings',()=>{
- const fields={studentCodeBatch:{value:'Pessoa Z; A; 0000003\nPessoa A; A; 0000001\nPessoa M; A; 0000002'},batchOrder:{value:'name-asc'},batchPages:{value:'2'},buildStatus:{textContent:''}};
- const calls=[];const printBatch=new Function('$','template','activeManifest','openPrintDocument','sortStudentRoster','selectStudentPages',`return ${handler('printBatch')}`)(id=>fields[id],{identity:{mode:'seven-digit-code'}},{},rows=>calls.push(rows),sortStudentRoster,selectStudentPages);
- printBatch();assert.equal(fields.buildStatus.textContent,'');assert.deepEqual(calls[0].map(s=>s.code),['0000002']);
- fields.batchPages.value='99';printBatch();assert.equal(calls.length,1);assert.match(fields.buildStatus.textContent,/seleção precisa estar/);
- const printOne=new Function('$','openPrintDocument',`return ${handler('printCard')}`)(()=>{throw Error('Single print accessed batch option')},()=>calls.push('one'));
- printOne();assert.equal(calls.at(-1),'one');
-});
-
-test('header title: both editors share a single value and rebuild the same header',()=>{
- const code=script.match(/function setAssessmentTitle\(value\)[^\n]+/)[0];
- const fields={assessmentTitle:{value:''},title:{value:''}};let builds=0;
- const actual=new Function('$','document','build','assessmentTitleValue','layoutRevision',`${code};return {set:setAssessmentTitle,get:()=>assessmentTitleValue}`)(id=>fields[id],{querySelector:()=>fields.title},()=>builds++,'',8);
- actual.set('Matemática');assert.equal(actual.get(),'Matemática');assert.equal(fields.assessmentTitle.value,'Matemática');assert.equal(fields.title.value,'Matemática');
- actual.set('Geometria');assert.equal(fields.assessmentTitle.value,'Geometria');actual.set('Geometria');assert.equal(builds,2);
- assert.doesNotMatch(html,/role="tablist"|data-header-tab|data-header-panel|Todos os campos administrativos visíveis compartilham uma faixa/);
- assert.match(script,/customFields:headerState.customFields/);
-});
-
-test('scan defaults: editing a default resets only its model/review; exact imported/generated models remain protected',()=>{
- const code=script.match(/function resetScanDefault\(\)[^\n]+/)[0];
- for(const exact of [false,true]){
-  const fields={answers:new Element('div'),scanScore:{hidden:false},scanModelStatus:{textContent:''}};
-  const actual=new Function('$','exactScanModel','template','activeManifest','activeObservations','activeHistoryEntry',`${code};return{run:resetScanDefault,state:()=>({template,activeManifest,activeObservations,activeHistoryEntry})}`)(id=>fields[id],exact,{old:true},{hash:'old'},[1],{old:true});
-  actual.run();assert.equal(fields.scanScore.hidden,!exact);
-  assert.equal(actual.state().template===null,!exact);assert.equal(actual.state().activeObservations.length,exact?1:0);
- }
-});
-
-test('header-only edits before adding blocks keep preview without an irrelevant missing-section error',()=>{
- const code=script.match(/function build\(\)[^\n]+/)[0];const fields={preview:new Element('div'),sectionText:{textContent:'old'},buildStatus:{textContent:'old'}};
- let previewUpdates=0,enabled;
- const actual=new Function('$','sections','updateHeaderPreview','setExportAvailability','syncScanInputs','renderPreviews','template','activeManifest','activeSvg','exactScanModel',`${code};return build`)(id=>fields[id],[],()=>previewUpdates++,value=>enabled=value,()=>{},()=>{throw Error('Unexpected generation without blocks')},null,null,'',true);
- assert.equal(actual(),false);assert.equal(previewUpdates,1);assert.equal(enabled,false);assert.equal(fields.buildStatus.textContent,'');
-});
-
-test('camera button: opens once or cancels an active/pending camera',async()=>{
- const source=handler('camera');let opened=0,stopped=0;
- const bind=(stream,opening)=>new Function('cameraStream','cameraOpening','stopCamera','startCamera',`return ${source}`)(stream,opening,()=>stopped++,()=>opened++);
- await bind(null,false)();assert.equal(opened,1);
- await bind({open:true},false)();await bind(null,true)();assert.equal(opened,1);assert.equal(stopped,2);
-});
-
-test('photo import: downscaling draws the whole photograph instead of cropping it in both decoding paths',async()=>{
- const source=script.match(/async function loadPhoto\(file\)[^\n]+/)[0];
- for(const useBitmap of [true,false]){
-  let drawn,prepared,closed=0;const status={textContent:''};
-  const bitmap={width:2480,height:3508,close(){closed++}};
-  const canvas={width:0,height:0,getContext(){return {canvas:this,drawImage(...args){drawn=args},getImageData(){return {data:new Uint8ClampedArray(4)}}}}};
-  class Image {naturalWidth=2480;naturalHeight=3508;decode(){return Promise.resolve()}}
-  const actual=new Function('createImageBitmap','document','grayFromRgba','prepareImage','setScanMessage','$','Image','URL',`${source};return loadPhoto`)(useBitmap?async()=>bitmap:undefined,{createElement:()=>canvas},()=>new Uint8Array(1),(...args)=>prepared=args,()=>{},()=>status,Image,{createObjectURL:()=>'/synthetic',revokeObjectURL:()=>{}});
-  await actual({type:'image/png',size:1024});assert.equal(status.textContent,'');
-  assert.deepEqual(drawn.slice(1),[0,0,1273,1800]);assert.deepEqual(prepared.slice(1),[1273,1800]);assert.equal(canvas.width,1273);assert.equal(canvas.height,1800);assert.equal(closed,useBitmap?1:0);
- }
-});
-
-test('A-03: sparse numbering is accepted without changing or renumbering the manifest',()=>{
- const template=createTemplate([{type:'A-E',items:[{number:2,type:'A-E'},{number:7,type:'A-E'}]}]);
- const manifest=createCardManifest(template);
- const source=script.match(/function scanModelNotice\(model\)[^\n]+/)[0];
- const notice=new Function(`${source};return scanModelNotice`)();
- assert.equal(notice(manifest),'');
- assert.deepEqual(layoutTemplate(template,{width:840,height:1188,manifest}).cells.map(q=>q.number),[2,7]);
- assert.deepEqual(manifest.questions.map(q=>q.number),[2,7]);
-});
-
-
-test('editor: deleting blocks renumbers questions without reusing stable IDs or losing keyed answers',()=>{
- const sectionSource=script.slice(script.indexOf('function drawSections()'),script.indexOf("$('add').onclick="));
- const renumberSource=script.match(/function renumberEditableQuestions\(\)[^\n]+/)[0];
- const addSource=handler('add');
- const make=()=>{
-  const sections=[],host=new Element('div');
-  const fields={sectionManager:host,count:{value:'20'},type:{value:'A-E'},sectionLabel:{value:''},buildStatus:{textContent:''}};
-  const $=id=>fields[id];
-  const factory=new Function('sections','$','document','build','syncConditionalFields','layoutRevision','assessmentBank','nextQuestionNumber','nextSectionOrder',renumberSource+';'+sectionSource+';return {drawSections,add:'+addSource+',next:()=>nextQuestionNumber}');
-  const editor=factory(sections,$,{createElement:tag=>new Element(tag)},()=>{},()=>{},8,null,1,0);
-  const remove=index=>{const button=descendants(host).find(n=>n.attrs['aria-label']==='Remover seção '+index);assert.ok(button);button.onclick()};
-  return {...editor,sections,remove};
- };
- const numbers=e=>e.sections.flatMap(s=>s.items.map(q=>q.number));
- const ids=e=>e.sections.flatMap(s=>s.items.map(q=>q.questionId));
- const first=make();for(let i=0;i<3;i++)first.add();
- const originalIds=ids(first),answers=new Map(originalIds.map(id=>[id,'C']));
- first.remove(1);assert.deepEqual(numbers(first),Array.from({length:40},(_,i)=>i+1));assert.deepEqual(ids(first),originalIds.slice(20));assert.ok(ids(first).every(id=>answers.get(id)==='C'));
- const middle=make();for(let i=0;i<3;i++)middle.add();
- const middleIds=ids(middle);middle.remove(2);assert.deepEqual(numbers(middle),Array.from({length:40},(_,i)=>i+1));assert.deepEqual(ids(middle),[...middleIds.slice(0,20),...middleIds.slice(40)]);
- const all=make();all.add();all.add();const previousIds=new Set(ids(all));
- all.remove(1);all.remove(1);assert.deepEqual(numbers(all),[]);
- all.add();assert.deepEqual(numbers(all),Array.from({length:20},(_,i)=>i+1));assert.ok(ids(all).every(id=>!previousIds.has(id)));
- const added=make();added.add();added.add();const removedIds=new Set(ids(added).slice(0,20));
- added.remove(1);added.add();assert.deepEqual(numbers(added),Array.from({length:40},(_,i)=>i+1));assert.ok(ids(added).every(id=>!removedIds.has(id)));
- const reordered=make();for(let i=0;i<3;i++)reordered.add();
- [reordered.sections[0],reordered.sections[1]]=[reordered.sections[1],reordered.sections[0]];
- reordered.drawSections();reordered.remove(3);assert.deepEqual(numbers(reordered),Array.from({length:40},(_,i)=>i+1));
-});
-,'drawSections','build','layoutRevision','originalQuestionOrder',`return ${restore}`)(sections,()=>{throw Error('Restore touched unrelated control')},drawSections,()=>{builds++},8,editor.originalQuestionOrder);
- run();assert.deepEqual(sections.map(s=>s.label),['Alpha','Beta']);assert.deepEqual(ids(),['question-1','question-2','question-3']);contiguous();assert.equal(builds,6);
-});
-
-test('printing: batch sorting/page selection works; single card ignores unrelated batch settings',()=>{
- const fields={studentCodeBatch:{value:'Pessoa Z; A; 0000003\nPessoa A; A; 0000001\nPessoa M; A; 0000002'},batchOrder:{value:'name-asc'},batchPages:{value:'2'},buildStatus:{textContent:''}};
- const calls=[];const printBatch=new Function('$','template','activeManifest','openPrintDocument','sortStudentRoster','selectStudentPages',`return ${handler('printBatch')}`)(id=>fields[id],{identity:{mode:'seven-digit-code'}},{},rows=>calls.push(rows),sortStudentRoster,selectStudentPages);
- printBatch();assert.equal(fields.buildStatus.textContent,'');assert.deepEqual(calls[0].map(s=>s.code),['0000002']);
- fields.batchPages.value='99';printBatch();assert.equal(calls.length,1);assert.match(fields.buildStatus.textContent,/seleção precisa estar/);
- const printOne=new Function('$','openPrintDocument',`return ${handler('printCard')}`)(()=>{throw Error('Single print accessed batch option')},()=>calls.push('one'));
- printOne();assert.equal(calls.at(-1),'one');
-});
-
-test('header title: both editors share a single value and rebuild the same header',()=>{
- const code=script.match(/function setAssessmentTitle\(value\)[^\n]+/)[0];
- const fields={assessmentTitle:{value:''},title:{value:''}};let builds=0;
- const actual=new Function('$','document','build','assessmentTitleValue','layoutRevision',`${code};return {set:setAssessmentTitle,get:()=>assessmentTitleValue}`)(id=>fields[id],{querySelector:()=>fields.title},()=>builds++,'',8);
- actual.set('Matemática');assert.equal(actual.get(),'Matemática');assert.equal(fields.assessmentTitle.value,'Matemática');assert.equal(fields.title.value,'Matemática');
- actual.set('Geometria');assert.equal(fields.assessmentTitle.value,'Geometria');actual.set('Geometria');assert.equal(builds,2);
- assert.doesNotMatch(html,/role="tablist"|data-header-tab|data-header-panel|Todos os campos administrativos visíveis compartilham uma faixa/);
- assert.match(script,/customFields:headerState.customFields/);
-});
-
-test('scan defaults: editing a default resets only its model/review; exact imported/generated models remain protected',()=>{
- const code=script.match(/function resetScanDefault\(\)[^\n]+/)[0];
- for(const exact of [false,true]){
-  const fields={answers:new Element('div'),scanScore:{hidden:false},scanModelStatus:{textContent:''}};
-  const actual=new Function('$','exactScanModel','template','activeManifest','activeObservations','activeHistoryEntry',`${code};return{run:resetScanDefault,state:()=>({template,activeManifest,activeObservations,activeHistoryEntry})}`)(id=>fields[id],exact,{old:true},{hash:'old'},[1],{old:true});
-  actual.run();assert.equal(fields.scanScore.hidden,!exact);
-  assert.equal(actual.state().template===null,!exact);assert.equal(actual.state().activeObservations.length,exact?1:0);
- }
-});
-
-test('header-only edits before adding blocks keep preview without an irrelevant missing-section error',()=>{
- const code=script.match(/function build\(\)[^\n]+/)[0];const fields={preview:new Element('div'),sectionText:{textContent:'old'},buildStatus:{textContent:'old'}};
- let previewUpdates=0,enabled;
- const actual=new Function('$','sections','updateHeaderPreview','setExportAvailability','syncScanInputs','renderPreviews','template','activeManifest','activeSvg','exactScanModel',`${code};return build`)(id=>fields[id],[],()=>previewUpdates++,value=>enabled=value,()=>{},()=>{throw Error('Unexpected generation without blocks')},null,null,'',true);
- assert.equal(actual(),false);assert.equal(previewUpdates,1);assert.equal(enabled,false);assert.equal(fields.buildStatus.textContent,'');
-});
-
-test('camera button: opens once or cancels an active/pending camera',async()=>{
- const source=handler('camera');let opened=0,stopped=0;
- const bind=(stream,opening)=>new Function('cameraStream','cameraOpening','stopCamera','startCamera',`return ${source}`)(stream,opening,()=>stopped++,()=>opened++);
- await bind(null,false)();assert.equal(opened,1);
- await bind({open:true},false)();await bind(null,true)();assert.equal(opened,1);assert.equal(stopped,2);
-});
-
-test('photo import: downscaling draws the whole photograph instead of cropping it in both decoding paths',async()=>{
- const source=script.match(/async function loadPhoto\(file\)[^\n]+/)[0];
- for(const useBitmap of [true,false]){
-  let drawn,prepared,closed=0;const status={textContent:''};
-  const bitmap={width:2480,height:3508,close(){closed++}};
-  const canvas={width:0,height:0,getContext(){return {canvas:this,drawImage(...args){drawn=args},getImageData(){return {data:new Uint8ClampedArray(4)}}}}};
-  class Image {naturalWidth=2480;naturalHeight=3508;decode(){return Promise.resolve()}}
-  const actual=new Function('createImageBitmap','document','grayFromRgba','prepareImage','setScanMessage','$','Image','URL',`${source};return loadPhoto`)(useBitmap?async()=>bitmap:undefined,{createElement:()=>canvas},()=>new Uint8Array(1),(...args)=>prepared=args,()=>{},()=>status,Image,{createObjectURL:()=>'/synthetic',revokeObjectURL:()=>{}});
-  await actual({type:'image/png',size:1024});assert.equal(status.textContent,'');
-  assert.deepEqual(drawn.slice(1),[0,0,1273,1800]);assert.deepEqual(prepared.slice(1),[1273,1800]);assert.equal(canvas.width,1273);assert.equal(canvas.height,1800);assert.equal(closed,useBitmap?1:0);
- }
-});
-
-test('A-03: sparse numbering is accepted without changing or renumbering the manifest',()=>{
- const template=createTemplate([{type:'A-E',items:[{number:2,type:'A-E'},{number:7,type:'A-E'}]}]);
- const manifest=createCardManifest(template);
- const source=script.match(/function scanModelNotice\(model\)[^\n]+/)[0];
- const notice=new Function(`${source};return scanModelNotice`)();
- assert.equal(notice(manifest),'');
- assert.deepEqual(layoutTemplate(template,{width:840,height:1188,manifest}).cells.map(q=>q.number),[2,7]);
- assert.deepEqual(manifest.questions.map(q=>q.number),[2,7]);
-});
-
-
-test('editor: deleting blocks renumbers questions without reusing stable IDs or losing keyed answers',()=>{
- const sectionSource=script.slice(script.indexOf('function drawSections()'),script.indexOf("$('add').onclick="));
- const renumberSource=script.match(/function renumberEditableQuestions\(\)[^\n]+/)[0];
- const addSource=handler('add');
- const make=()=>{
-  const sections=[],host=new Element('div');
-  const fields={sectionManager:host,count:{value:'20'},type:{value:'A-E'},sectionLabel:{value:''},buildStatus:{textContent:''}};
-  const $=id=>fields[id];
-  const factory=new Function('sections','$','document','build','syncConditionalFields','layoutRevision','assessmentBank','nextQuestionNumber','nextSectionOrder',renumberSource+';'+sectionSource+';return {drawSections,add:'+addSource+',next:()=>nextQuestionNumber}');
   const editor=factory(sections,$,{createElement:tag=>new Element(tag)},()=>{},()=>{},8,null,1,0);
   const remove=index=>{const button=descendants(host).find(n=>n.attrs['aria-label']==='Remover seção '+index);assert.ok(button);button.onclick()};
   return {...editor,sections,remove};
