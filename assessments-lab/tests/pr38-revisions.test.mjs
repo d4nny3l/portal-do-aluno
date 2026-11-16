@@ -26,9 +26,9 @@ function editorFixture(){
  const sections=[],host=new Element('div');
  const fields={sectionManager:host,count:{value:'20'},type:{value:'A-E'},sectionLabel:{value:''},buildStatus:{textContent:''}};
  const $=id=>fields[id];
- const renumber=script.match(/function renumberEditableQuestions\(\)[^\n]+/)[0];
+ const original=script.match(/function originalQuestionOrder\(question\)[^\n]+/)[0],renumber=script.match(/function renumberEditableQuestions\(\)[^\n]+/)[0];
  const draw=script.slice(script.indexOf('function drawSections()'),script.indexOf("$('add').onclick="));
- const init=new Function('sections','$','document','build','syncConditionalFields','layoutRevision','assessmentBank','nextQuestionNumber','nextSectionOrder',renumber+';'+draw+';return {drawSections,add:'+handler('add')+',next:()=>nextQuestionNumber}');
+ const init=new Function('sections','$','document','build','syncConditionalFields','layoutRevision','assessmentBank','nextQuestionNumber','nextSectionOrder',original+';'+renumber+';'+draw+';return {drawSections,add:'+handler('add')+',next:()=>nextQuestionNumber}');
  const editor=init(sections,$,{createElement:tag=>new Element(tag)},()=>{},()=>{},8,null,1,0);
  const remove=index=>{const button=descendants(host).find(e=>e.attrs['aria-label']==='Remover seção '+index);assert.ok(button,'remove section '+index);button.onclick()};
  return {...editor,sections,fields,remove};
