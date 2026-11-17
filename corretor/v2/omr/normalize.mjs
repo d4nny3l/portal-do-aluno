@@ -41,7 +41,7 @@ function downsample(gray, width, height, maxDimension = 1100) {
       histogram[value]++;
     }
   }
-  return { data, width: sampleWidth, height: sampleHeight, scale, threshold: otsuThreshold(histogram, data.length) };
+  return { data, width: sampleWidth, height: sampleHeight, scale, threshold: otsuThreshold(histogram, data.length), histogram };
 }
 
 function components(image) {
@@ -189,8 +189,35 @@ export function detectFiducials(gray, width, height) {
     throw new TypeError("Imagem inválida para localizar os marcadores.");
   }
   const sample = downsample(gray, width, height);
-  const found = components(sample);
-  const quad = chooseQuad(found, width, height);
+  let found = components(sample);
+  let quad = chooseQuad(found, width, height);
+  let lightingFallback = false;
+  // Only retry marker DISCOVERY after the existing geometric search fails.
+  // The legacy Otsu threshold has a floor of 65; this can classify a dark
+  // gray sheet as ink and merge all four markers into the background.
+  // This retry is intentionally limited to very dark images and does not
+  // modify pixels used for normalization, bubble reading or student codes.
+  if ((!quad || quad.confidence < 0.62) && sample.threshold >= 65) {
+    let seen = 0, paper = 255;
+    const target = Math.ceil(sample.data.length * .9);
+    for (let value = 0; value < 256; value++) {
+      seen += sample.histogram[value];
+      if (seen >= target) { paper = value; break; }
+    }
+    if (paper <= 110) {
+      const threshold = Math.max(12, Math.min(sample.threshold - 9, Math.floor(paper * .7)));
+      if (threshold < sample.threshold - 8) {
+        const retryFound = components({ ...sample, threshold });
+        const retryQuad = chooseQuad(retryFound, width, height);
+        // A weaker segmentation must pass a stronger geometric gate.
+        if (retryQuad && retryQuad.confidence >= .75) {
+          quad = retryQuad;
+          found = retryFound;
+          lightingFallback = true;
+        }
+      }
+    }
+  }
   if (!quad || quad.confidence < 0.62) return Object.freeze({ found: false, confidence: quad?.confidence || 0, corners: [], candidateCount: found.length });
   return Object.freeze({
     found: true,
@@ -198,6 +225,7 @@ export function detectFiducials(gray, width, height) {
     areaRatio: quad.areaRatio,
     corners: Object.freeze(quad.corners.map(point => Object.freeze({ x: point.x, y: point.y }))),
     candidateCount: found.length,
+    lightingFallback,
   });
 }
 
