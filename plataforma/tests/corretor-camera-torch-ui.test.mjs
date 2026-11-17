@@ -47,7 +47,7 @@ test('no unprotected bank-test link or visible alignment/settings; real lamp con
  assert.match(html,/<details class="camera-settings" hidden inert aria-hidden="true">/);
  assert.match(css,/\.scan-actions \[data-internal-control\],\.camera-settings\[hidden\]\{display:none!important\}/);
  assert.match(html,/<button id="cameraTorchButton"[^>]*hidden disabled aria-pressed="false" aria-label="Ligar iluminação da câmera"/);
- assert.match(html,/id="cameraTorchButton"[^>]*<span aria-hidden="true">💡<\/span> Luz/);
+ assert.match(html,/id="cameraTorchButton"[^>]*>\s*<span aria-hidden="true">💡<\/span> Luz/);
  assert.match(html,/syncTorchButton\(Boolean\(controls\.torch\),Boolean\(settings\.torch\)\)/);
  assert.match(html,/cameraSession\.open\(deviceId\)/);
  assert.match(html,/function toPageRaster\(/);
