@@ -108,7 +108,7 @@ test('photo import: downscaling draws the whole photograph instead of cropping i
   class Image {naturalWidth=2480;naturalHeight=3508;decode(){return Promise.resolve()}}
   const actual=new Function('createImageBitmap','document','grayFromRgba','prepareImage','setScanMessage','$','Image','URL',`${source};return loadPhoto`)(useBitmap?async()=>bitmap:undefined,{createElement:()=>canvas},()=>new Uint8Array(1),(...args)=>prepared=args,()=>{},()=>status,Image,{createObjectURL:()=>'/synthetic',revokeObjectURL:()=>{}});
   await actual({type:'image/png',size:1024});assert.equal(status.textContent,'');
-  assert.deepEqual(drawn.slice(1),[0,0,1273,1800]);assert.deepEqual(prepared.slice(1),[1273,1800]);assert.equal(canvas.width,1273);assert.equal(canvas.height,1800);assert.equal(closed,useBitmap?1:0);
+  assert.deepEqual(drawn.slice(1),[0,0,1273,1800]);assert.deepEqual(prepared.slice(1),[1273,1800,{source:'import'}]);assert.equal(canvas.width,1273);assert.equal(canvas.height,1800);assert.equal(closed,useBitmap?1:0);
  }
 });
 
