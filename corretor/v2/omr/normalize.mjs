@@ -41,7 +41,7 @@ function downsample(gray, width, height, maxDimension = 1100) {
       histogram[value]++;
     }
   }
-  return { data, width: sampleWidth, height: sampleHeight, scale, threshold: otsuThreshold(histogram, data.length) };
+  return { data, width: sampleWidth, height: sampleHeight, scale, threshold: otsuThreshold(histogram, data.length), histogram };
 }
 
 function components(image) {
@@ -178,8 +178,33 @@ function chooseQuad(candidates, width, height) {
       }, 0) / 4;
       const geometricScore = markerQuality - order.ratioError * 0.28 - order.oppositeError * 0.12 + Math.min(areaRatio, 0.72) * 0.08;
       const score = geometricScore - sizeError * 0.3;
-      if (!best || score > best.score) best = { corners: order.ordered, score, confidence: Math.max(0, Math.min(1, geometricScore)), areaRatio };
+      if (!best || score > best.score) best = { corners: order.ordered, score, confidence: Math.max(0, Math.min(1, geometricScore)), areaRatio, sizeError };
     }
+  }
+  // Evaluate physical consistency ONCE for the winning quadruple, rather than
+  // adding work to every combination in the O(n^4) search. Only the low-light
+  // retry uses this result; the original detector's behavior is unchanged.
+  if (best) {
+    const deviations = best.corners.map((p, i) => {
+      const previous = best.corners[(i + 3) % 4], next = best.corners[(i + 1) % 4];
+      const localArea = Math.abs((previous.x-p.x)*(next.y-p.y)-(previous.y-p.y)*(next.x-p.x));
+      const expectedArea = localArea * 5.5 ** 2 / (194 * 281);
+      const size = Math.abs(Math.log(p.area / expectedArea));
+      // Marker dimensions are 5.5 mm in BOTH axes. At even corners the
+      // next edge is horizontal; at odd corners it is vertical.
+      const horizontal = distance(p, i % 2 ? previous : next) / 194;
+      const vertical = distance(p, i % 2 ? next : previous) / 281;
+      const shape = Math.abs(Math.log(p.aspect / (horizontal / vertical)));
+      return { size, shape };
+    });
+    const shapeError = deviations.reduce((sum, part) => sum + part.shape, 0) / 4;
+    // 1.4x mean area ≈ 18% linear scaling; permit one local marker to vary
+    // up to 1.7x area and generous perspective-induced aspect deformation.
+    // These bounds are exercised against scaled/perspective synthetic cards.
+    best.physicalFit = best.sizeError <= Math.log(1.4)
+      && deviations.every(part => part.size <= Math.log(1.7))
+      && shapeError <= Math.log(1.45)
+      && deviations.every(part => part.shape <= Math.log(1.8));
   }
   return best;
 }
@@ -189,8 +214,35 @@ export function detectFiducials(gray, width, height) {
     throw new TypeError("Imagem inválida para localizar os marcadores.");
   }
   const sample = downsample(gray, width, height);
-  const found = components(sample);
-  const quad = chooseQuad(found, width, height);
+  let found = components(sample);
+  let quad = chooseQuad(found, width, height);
+  let lightingFallback = false;
+  // Only retry marker DISCOVERY after the existing geometric search fails.
+  // The legacy Otsu threshold has a floor of 65; this can classify a dark
+  // gray sheet as ink and merge all four markers into the background.
+  // This retry is intentionally limited to very dark images and does not
+  // modify pixels used for normalization, bubble reading or student codes.
+  if ((!quad || quad.confidence < 0.62) && sample.threshold >= 65) {
+    let seen = 0, paper = 255;
+    const target = Math.ceil(sample.data.length * .9);
+    for (let value = 0; value < 256; value++) {
+      seen += sample.histogram[value];
+      if (seen >= target) { paper = value; break; }
+    }
+    if (paper <= 110) {
+      const threshold = Math.max(12, Math.min(sample.threshold - 9, Math.floor(paper * .7)));
+      if (threshold < sample.threshold - 8) {
+        const retryFound = components({ ...sample, threshold });
+        const retryQuad = chooseQuad(retryFound, width, height);
+        // A weaker segmentation must pass a stronger geometric gate.
+        if (retryQuad && retryQuad.confidence >= .75 && retryQuad.physicalFit) {
+          quad = retryQuad;
+          found = retryFound;
+          lightingFallback = true;
+        }
+      }
+    }
+  }
   if (!quad || quad.confidence < 0.62) return Object.freeze({ found: false, confidence: quad?.confidence || 0, corners: [], candidateCount: found.length });
   return Object.freeze({
     found: true,
@@ -198,6 +250,7 @@ export function detectFiducials(gray, width, height) {
     areaRatio: quad.areaRatio,
     corners: Object.freeze(quad.corners.map(point => Object.freeze({ x: point.x, y: point.y }))),
     candidateCount: found.length,
+    lightingFallback,
   });
 }
 
