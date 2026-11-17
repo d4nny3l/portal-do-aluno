@@ -165,7 +165,7 @@ function uiHarness({available=[{kind:'videoinput',deviceId:'main',label:'Back Ca
   productionLine("$('cameraTorchButton').onclick="),productionLine("$('cameraDevice').onchange=")].join('\n'),state,{timeout:2000});
  return {state,el,tracks,requested,messages};
 }
-const cameraModules=await import('../corretor/v2/omr/camera.mjs');
+const cameraModules=await import('../../corretor/v2/omr/camera.mjs');
 
 test('A-01 single camera: picker hidden, disabled, automatic rear selected',async()=>{
  const h=uiHarness();
