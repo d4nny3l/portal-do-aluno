@@ -248,7 +248,7 @@ function preparationHarness({fail=false}={}){
   cameraStream:{},waitingForRemoval:false,captureFrameGray(){return {gray:new Uint8Array(20).fill(245),width:4,height:5}},
   createImageBitmap:async()=>({width:4,height:5,close(){}}),
   document:{createElement(){return {width:0,height:0,getContext(){return {
-   drawImage(){},getImageData(){return {data:new Uint8Array(4*5*4).fill(245)}}}}}}},
+   canvas:this,drawImage(){},getImageData(){return {data:new Uint8Array(4*5*4).fill(245)}}}}}}},
  };
  vm.createContext(state);
  vm.runInContext([productionLine('function prepareImage('),productionLine('async function loadPhoto('),
