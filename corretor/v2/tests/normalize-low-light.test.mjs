@@ -60,7 +60,7 @@ test('bright and moderate captures preserve first pass, geometry and pixels',()=
   assert.deepEqual(det.corners,before.corners,'original first pass must be bit-identical');
   const result=normalizeCard(pixels,width,height,{outputWidth:420});
   assert.equal(result.width,420);assert.equal(result.height,594);
-  const manual=warpFromFiducials(pixels,width,height,markerPoints,{outputWidth:420});
+  const manual=warpFromFiducials(pixels,width,height,before.corners,{outputWidth:420});
   assert.deepEqual(result.pixels,manual.pixels,'no optical-pixel changes');
  }
 });
