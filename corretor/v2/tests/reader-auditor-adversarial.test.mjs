@@ -184,7 +184,7 @@ test('P1 exact published-vs-candidate reader: identical 23 rasters/manifests, no
   if(entry.truth.length>1){assert.notEqual(next.state,'read',entry.id);assert.equal(next.answer,null,entry.id)}
  }
  assert.deepEqual(counts.before,{read:5,review:8,blank:7,double:3});
- assert.deepEqual(counts.after,{read:10,review:5,blank:7,double:1});
+ assert.deepEqual(counts.after,{read:10,review:3,blank:7,double:3});
  assert.equal(counts.reviewToRead,5,'all five unique partial candidates recognized');
  assert.equal(counts.blankToRead,0);
  assert.equal(counts.doubleToRead,0);
