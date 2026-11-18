@@ -60,6 +60,25 @@ test('exact adapter: v1 local plan to v2 private definition, IDs, rational weigh
  const wrong=structuredClone(plan);wrong.blocks[0].valueUnits='6.0';
  assert.throws(()=>definitionFromLocalPlan(wrong,manifest),/escala/);
 });
+test('receipt and recovered revision attest each contract field before displaying saved',async t=>{
+ const h=await harness();t.after(h.close);const c=bridge(h),source=editor();
+ const op=c.prepareSave({...source,scope,status:'draft'});
+ const reply=await c.request(op.method,op.path,op.payload);
+ assert.equal(reply.httpStatus,201);
+ assert.equal(reply.data.ok,true);
+ const retrieved=await c.request('GET','/assessments/'+reply.data.id+'/revisions/'+reply.data.revision);
+ assert.equal(retrieved.httpStatus,200);
+ const record=retrieved.data.record;
+ assert.equal(record.id,reply.data.id);
+ assert.equal(record.revision,reply.data.revision);
+ assert.equal(record.manifestHash,reply.data.manifestHash);
+ assert.equal(record.status,op.payload.status);
+ for(const field of ['institutionId','classId','periodId'])assert.equal(record[field],op.payload[field],field+' scope mismatch');
+ assert.deepEqual(record.definition,op.payload.definition,'exact definition mismatch (not logged)');
+ assert.equal(record.totalUnits,source.plan.totalUnits);
+ assert.equal(record.scoreScale,10000);
+});
+
 test('real Auth + local D1: create draft, verify receipt+GET, issue, pin selection, preserve historical score',async t=>{
  const h=await harness();t.after(h.close);const evidence=[],client=bridge(h,{records:evidence}),data=editor();
  let current=data,selected=null;
