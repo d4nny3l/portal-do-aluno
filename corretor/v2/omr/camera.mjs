@@ -132,10 +132,10 @@ export class CameraSession {
     this.stop(); const generation = this.generation;
     const media = this.mediaDevices;
     if (!media?.getUserMedia) throw new Error('Este navegador não oferece acesso à câmera. Importe uma fotografia para continuar.');
-    const acquire = async id => {
+    const acquire = async (id,activate=true) => {
       const stream = await media.getUserMedia({audio:false,video:id?{deviceId:{exact:id}}:{facingMode:{exact:'environment'}}});
       if (generation !== this.generation) {stream.getTracks().forEach(t=>t.stop());throw new Error('Abertura da câmera cancelada.');}
-      this.stream = stream;return stream;
+      if (activate) this.stream = stream;return stream;
     };
     const negotiate = async stream => {
       const track = stream.getVideoTracks()[0];
@@ -172,19 +172,34 @@ export class CameraSession {
       let selected=await negotiate(stream);
       const wider=!deviceId?widerRearCandidate(devices,selected.track):null;
       if (wider) {
+        const originalStream=stream;
         const originalId=selected.track.getSettings?.().deviceId||'';
         const originalZoom=selected.zoom.after;
-        stream.getTracks().forEach(t=>t.stop());this.stream=null;
+        let optionalStream=null;
         try {
-          stream=await acquire(wider.deviceId);
-          const candidate=await negotiate(stream);
+          // Keep the proven main-camera stream alive while probing an optional lens.
+          // Cancellation still stops the main stream; a late candidate is stopped by acquire().
+          optionalStream=await acquire(wider.deviceId,false);
+          const candidate=await negotiate(optionalStream);
           if (!adequateWideStream(candidate.track,wider.deviceId,originalZoom)) throw new Error('Lente mais aberta não confirmou resolução/qualidade nativa suficiente.');
-          selected=candidate;
+          if (generation!==this.generation) throw new Error('Abertura da câmera cancelada.');
+          originalStream.getTracks().forEach(t=>t.stop());
+          stream=optionalStream;this.stream=optionalStream;selected=candidate;
         } catch(error) {
-          if (generation!==this.generation||error.name==='NotAllowedError') throw error;
-          this.stream?.getTracks().forEach(t=>t.stop());this.stream=null;
-          stream=await acquire(originalId);
-          selected=await negotiate(stream);
+          optionalStream?.getTracks().forEach(t=>t.stop());
+          if (generation!==this.generation) throw error;
+          // A denied OPTIONAL device is not proof that the selected main camera failed.
+          // If browser permission was revoked and the main track has ended, try only
+          // to restore the previously verified original device; never use a frontal fallback.
+          const mainIsLive=originalStream.active!==false &&
+            originalStream.getVideoTracks().some(t=>t.readyState!=='ended');
+          if (!mainIsLive) {
+            originalStream.getTracks().forEach(t=>t.stop());this.stream=null;
+            stream=await acquire(originalId);
+            selected=await negotiate(stream);
+          } else {
+            stream=originalStream;this.stream=originalStream;
+          }
         }
       }
       return {stream,devices,...selected};
