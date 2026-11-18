@@ -142,13 +142,13 @@ function stopCamera(){cameraUiGeneration++;typeof setCameraProgress==='function'
 async function startCamera(deviceId=''){
  stopCamera();const request=cameraUiGeneration;cameraOpening=true;$('camera').textContent='Cancelar abertura';
  try{
-  const {stream,track,devices,capabilities}=await cameraSession.open(deviceId);if(request!==cameraUiGeneration||cameraSession.stream!==stream)return;cameraStream=stream;
+  const {stream,track,devices,capabilities,zoom}=await cameraSession.open(deviceId);if(request!==cameraUiGeneration||cameraSession.stream!==stream)return;cameraStream=stream;
   const video=$('video');video.srcObject=stream;$('cameraStage').hidden=false;await video.play();if(request!==cameraUiGeneration||cameraSession.stream!==stream)return;
   cameraOpening=false;$('camera').textContent='Fechar câmera';cameraScratch=document.createElement('canvas');
   const controls=cameraControls(capabilities),settings=track.getSettings?.()||{};
   for(const [name,id] of [['zoom','Zoom'],['exposureCompensation','Exposure']]){const range=controls[name],input=$('camera'+id);$('camera'+id+'Label').hidden=!range;if(range){input.min=range.min;input.max=range.max;input.step=range.step||.1;input.value=settings[name]??range.min;}}
   $('cameraFocusLabel').hidden=!controls.focusMode;$('cameraTorchLabel').hidden=!controls.torch;$('cameraTorch').checked=Boolean(settings.torch);syncTorchButton(Boolean(controls.torch),Boolean(settings.torch));
-  positionGuides(null,false);updateCameraInfo();setScanMessage('Centralize o cartão. Mantenha a folha inteira e estável.');cameraTimer=setInterval(scanCameraFrame,450);
+  positionGuides(null,false);updateCameraInfo();setScanMessage('Centralize o cartão. Mantenha a folha inteira e estável.'+(!zoom?.before?.supported?' Este navegador não informa zoom nativo; se a folha não couber, importe uma fotografia.':''));cameraTimer=setInterval(scanCameraFrame,450);
   track.addEventListener?.('ended',()=>{if(cameraStream===stream)stopCamera()},{once:true});
  }catch(error){if(request!==cameraUiGeneration)return;stopCamera();setScanMessage(error.name==='NotAllowedError'?'Permita o acesso à câmera nas configurações do navegador ou importe uma fotografia.':error.message||'Não foi possível abrir a câmera. Importe uma fotografia para continuar.')}
 }
