@@ -59,6 +59,9 @@ export function createPrivateLibraryController({
   secure();
   if(more&&back)throw new Error('Escolha somente uma direção de navegação.');
   if(more&&!s.nextCursor||back&&s.pageIndex===0)return s.rows;
+  if(s.pending)throw new Error('Conclua ou esclareça a operação pendente antes de mudar de página.');
+  // Changing pages must not preserve a writable record from a different page.
+  if(more||back)invalidateOpenedRecord();
   // Keep a bounded page in memory; preserve cursor history only, not prior answers.
   const g=s.generation,requestId=++s.catalogRequest;
   const target=more?s.pageIndex+1:back?s.pageIndex-1:s.pageIndex;
