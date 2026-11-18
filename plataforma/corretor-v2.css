@@ -103,3 +103,14 @@
 .camera-settings label.camera-check{display:flex;align-items:center;gap:8px}.camera-settings input[type=checkbox]{min-height:0;width:18px;height:18px;padding:0;flex:0 0 18px}.camera-settings input[type=range]{padding:0}
 
 .omr-mark-hint{margin:0;color:#5a4d21;font-size:12px;line-height:1.4}
+
+/* Keep legacy optical/calibration DOM handlers available without cluttering correction. */
+.scan-actions [data-internal-control],.camera-settings[hidden]{display:none!important}
+.corretor-content button.camera-torch-button:not([hidden]){display:inline-flex;align-items:center;justify-content:center;gap:6px}
+.corretor-content button.camera-torch-button[aria-pressed="true"]{border-color:#d2a245;background:#fff4d3;color:#61471a}
+.corretor-content button.camera-torch-button:disabled{opacity:.65;cursor:default}
+
+/* Only expose a usable camera picker; hidden must override .scan-actions label display:grid. */
+.scan-actions .camera-device-picker{flex:0 1 250px;min-width:min(100%,180px)}
+.scan-actions .camera-device-picker[hidden]{display:none!important}
+.scan-actions .camera-device-picker select{max-width:100%;width:100%}
