@@ -11,7 +11,9 @@ const fail=(message,code='invalid_contract')=>{throw new PrivateAssessmentError(
 const state=error=>error?.status===401?'session':error?.status===403?'forbidden':
  error?.status===404?'missing':error?.status===409?'conflict':error?.status===503?'unavailable':
  error?.code==='disabled'?'unavailable':'failed';
-const same=(a,b)=>JSON.stringify(a)===JSON.stringify(b);
+const canonical=value=>Array.isArray(value)?value.map(canonical):value&&typeof value==='object'?
+ Object.fromEntries(Object.keys(value).sort().map(k=>[k,canonical(value[k])])):value;
+const same=(a,b)=>JSON.stringify(canonical(a))===JSON.stringify(canonical(b));
 const scopeFields=['institutionId','classId','periodId'];
 const scopeEquals=(a,b)=>scopeFields.every(field=>a?.[field]===b?.[field]);
 const scopeOkay=scope=>scopeFields.every(field=>typeof scope?.[field]==='string'&&/^[A-Za-z0-9][A-Za-z0-9._-]{1,63}$/.test(scope[field]));
@@ -70,8 +72,10 @@ export function createPrivateAssessmentClient({enabled=false,baseUrl=null,fetchF
   const opened=await read('/assessments/'+receipt.id+'/revisions/'+receipt.revision);
   const record=opened?.record;
   if(record?.id!==receipt.id||record.revision!==receipt.revision||record.manifestHash!==receipt.manifestHash||
-    record.status!==op.payload.status||!scopeEquals(record,op.payload)||!same(record.definition,op.payload.definition))
-    fail('Recibo e revisão recuperada divergentes. Não declarar salvo.');
+    record.status!==op.payload.status||!scopeEquals(record,op.payload))
+    fail('Identidade, escopo ou hash do recibo e revisão recuperada divergentes. Não declarar salvo.');
+  if(!same(record.definition,op.payload.definition))
+    fail('Definição da revisão recuperada difere da operação. Não declarar salvo.');
   planFromPrivateRecord(record);
   return Object.freeze({receipt,record});
  }
