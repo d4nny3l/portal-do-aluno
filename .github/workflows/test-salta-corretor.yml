@@ -1,0 +1,37 @@
+name: SALTA Corretor v2 contracts
+
+on:
+  pull_request:
+    paths:
+      - "corretor/v2/**"
+      - ".github/workflows/test-salta-corretor.yml"
+  push:
+    branches:
+      - codex/salta-corretor-v2-fase1
+    paths:
+      - "corretor/v2/**"
+      - ".github/workflows/test-salta-corretor.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  contracts:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+      - name: Check module syntax
+        run: |
+          node --check corretor/v2/domain/identity.mjs
+          node --check corretor/v2/domain/assessment.mjs
+          node --check corretor/v2/domain/scoring.mjs
+          node --check corretor/v2/domain/occurrence.mjs
+          node --check corretor/v2/contracts/crypto-envelope.mjs
+          node --check corretor/v2/contracts/diary-sync.mjs
+      - name: Run synthetic contracts
+        run: node --test corretor/v2/tests/*.test.mjs
+      - name: Check patch formatting
+        run: git diff --check
