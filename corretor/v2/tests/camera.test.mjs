@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {mapFramePoints,frameSize,drawVideoFrame,containMapping,guidePoints,CameraSession,cameraRank,cameraControls,applyCameraControl,captureQuality,motionBetween,cameraZoomSnapshot,reduceUnwantedCameraZoom} from '../omr/camera.mjs';
+import {mapFramePoints,frameSize,drawVideoFrame,containMapping,guidePoints,CameraSession,cameraRank,cameraControls,applyCameraControl,captureQuality,motionBetween,cameraZoomSnapshot,reduceUnwantedCameraZoom,widerRearCandidate} from '../omr/camera.mjs';
 
 const resolutions=[[1920,1080],[1080,1920],[4032,3024],[3024,4032],[640,480],[480,640],[1280,720],[720,1280]];
 test('whole-video conversion uses intrinsic orientation and a longest-edge cap, never CSS or crop',()=>{
@@ -136,5 +136,67 @@ test('camera preference: main rear zoom calibration is independent of drawVideoF
  assert.equal(result.zoom.applied,true);
  assert.equal(zoom,1.2);
  assert.equal(ultra.stopped,1);
+ session.stop();
+});
+
+test('P1 narrow native main camera selects a verified adequate rear ultrawide, never a frontal',async()=>{
+ const main=fakeTrack('Back Camera',{deviceId:'main',facingMode:'environment',zoom:1.6,width:1920,height:1440},
+  {zoom:{min:1.4,max:4},width:{max:1920},height:{max:1440}});
+ const ultra=fakeTrack('Back Ultra Wide Camera',{deviceId:'ultra',facingMode:'environment',zoom:1,width:1920,height:1280},
+  {zoom:{min:.5,max:2},width:{max:1920},height:{max:1280}});
+ const devices=[{kind:'videoinput',deviceId:'main',label:main.label},{kind:'videoinput',deviceId:'ultra',label:ultra.label},{kind:'videoinput',deviceId:'front',label:'Front Camera'}];
+ assert.equal(widerRearCandidate(devices,main).deviceId,'ultra');
+ let requested=[];
+ const session=new CameraSession({
+  async getUserMedia(opt){requested.push(opt.video);return streamFor(opt.video.deviceId?.exact==='ultra'?ultra:main)},
+  async enumerateDevices(){return devices}
+ });
+ const opened=await session.open();
+ assert.equal(opened.track,ultra);
+ assert.equal(main.stopped,1);
+ assert.ok(requested.some(v=>v.deviceId?.exact==='ultra'));
+ assert.equal(opened.track.getSettings().facingMode,'environment');
+ session.stop();assert.equal(ultra.stopped,1);
+});
+
+test('P1 adequate resolution is mandatory: unsharp low-resolution ultrawide reverts to rear main',async()=>{
+ const main=fakeTrack('Back Camera',{deviceId:'main',facingMode:'environment',zoom:1.5,width:1920,height:1440},
+  {zoom:{min:1.3,max:3},width:{max:1920},height:{max:1440}});
+ const ultra=fakeTrack('Back Ultra Wide Camera',{deviceId:'ultra',facingMode:'environment',width:640,height:480},
+  {width:{max:640},height:{max:480}});
+ let originalOpens=0;
+ const session=new CameraSession({
+  async getUserMedia(opt){if(opt.video.deviceId?.exact==='ultra')return streamFor(ultra);originalOpens++;return streamFor(main)},
+  async enumerateDevices(){return [{kind:'videoinput',deviceId:'main',label:main.label},{kind:'videoinput',deviceId:'ultra',label:ultra.label}]}
+ });
+ const result=await session.open();
+ assert.equal(result.track,main);
+ assert.equal(ultra.stopped,1);
+ assert.equal(originalOpens,2);
+ session.stop();
+});
+
+test('P1 without native evidence, keep reliable rear camera; virtual crop can trigger adequate rear alternative',async()=>{
+ const main=fakeTrack('Back Camera',{deviceId:'main',facingMode:'environment',zoom:1,width:1920,height:1440,resizeMode:'none'},
+  {zoom:{min:1,max:3}});
+ const devices=[{kind:'videoinput',deviceId:'main',label:'Back Camera'},{kind:'videoinput',deviceId:'ultra',label:'Back Ultra Wide Camera'}];
+ assert.equal(widerRearCandidate(devices,main),null);
+ const virtual=fakeTrack('Back Dual Virtual Camera',{deviceId:'virtual',facingMode:'environment',width:1920,height:1440,resizeMode:'crop-and-scale'});
+ assert.equal(widerRearCandidate(devices,virtual)?.deviceId,'ultra');
+ const noSupport=fakeTrack('Back Camera',{deviceId:'main'});delete noSupport.getCapabilities;
+ assert.equal(widerRearCandidate(devices,noSupport),null);
+});
+
+test('P1 front camera reported as a wider lens is rejected and rear fallback remains usable',async()=>{
+ const main=fakeTrack('Back Camera',{deviceId:'main',facingMode:'environment',zoom:1.5,width:1920,height:1440},
+  {zoom:{min:1.3,max:3}});
+ const front=fakeTrack('Front Camera',{deviceId:'ultra',facingMode:'user',width:1920,height:1440});
+ const session=new CameraSession({
+  async getUserMedia(opt){return streamFor(opt.video.deviceId?.exact==='ultra'?front:main)},
+  async enumerateDevices(){return [{kind:'videoinput',deviceId:'main',label:'Back Camera'},{kind:'videoinput',deviceId:'ultra',label:'Back Ultra Wide Camera'}]}
+ });
+ const opened=await session.open();
+ assert.equal(opened.track,main);
+ assert.equal(front.stopped,1);
  session.stop();
 });
