@@ -110,7 +110,3 @@
 .corretor-content button.camera-torch-button[aria-pressed="true"]{border-color:#d2a245;background:#fff4d3;color:#61471a}
 .corretor-content button.camera-torch-button:disabled{opacity:.65;cursor:default}
 
-/* Only expose a usable camera picker; hidden must override .scan-actions label display:grid. */
-.scan-actions .camera-device-picker{flex:0 1 250px;min-width:min(100%,180px)}
-.scan-actions .camera-device-picker[hidden]{display:none!important}
-.scan-actions .camera-device-picker select{max-width:100%;width:100%}
