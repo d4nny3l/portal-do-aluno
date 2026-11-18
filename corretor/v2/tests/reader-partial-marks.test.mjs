@@ -159,6 +159,8 @@ test('P1 invalid mandatory 7-digit identity keeps partial evidence in review',()
  assert.equal(partial.answer,null);
  assert.ok(partial.marks.includes('E'));
  assert.equal(partial.recognition,null);
+ const diagnostic=diagnoseRaster(template,pixels,width,height,{manifest}).find(item=>item.number===41);
+ assert.equal(diagnostic.state,'review','diagnostics must match the identity-gated reader result');
  assert.equal(get(result,15).state,'read','strong mark contract remains unchanged');
  assert.equal(result.needsReview,true);
 });
