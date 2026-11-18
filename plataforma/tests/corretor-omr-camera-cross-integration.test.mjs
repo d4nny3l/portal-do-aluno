@@ -25,13 +25,13 @@ class Element{
  removeAttribute(k){delete this.attrs[k]}
  getContext(){
   const canvas=this;
-  return {drawImage(){},getImageData(){return {data:new Uint8Array(canvas.width*canvas.height*4).fill(220)}}};
+  return {canvas,drawImage(){},getImageData(){return {data:new Uint8Array(canvas.width*canvas.height*4).fill(220)}}};
  }
 }
 const script=[
  production('function calculateScore('),production('function renderHistory('),
  production('function renderAnswers('),production('function readNormalized('),
- production('async function loadPhoto('),production(" $('file').onchange=")
+ production('async function loadPhoto('),production("$('file').onchange=")
 ].join('\n');
 
 test('P1 integration: audited reader + camera code, imports, hidden bank gate, no old capture controls',()=>{
