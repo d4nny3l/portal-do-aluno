@@ -70,7 +70,12 @@ export function createPrivateLibraryController({
  }
  function newDraft(){secure();resetContext();signal('draft','Rascunho não salvo. Confirme o contexto antes de registrar.')}
  async function runPending(operation,verify,onSuccess){
-  const g=s.generation;s.pending={operation,verify,onSuccess};
+  const g=s.generation;
+  const old=s.pending;
+  const context=old?.operation===operation?old.context:{scope:{...s.scope},principalId:s.session?.principalId,epoch:s.session?.epoch};
+  if(!scopeEquals(context.scope,s.scope)||context.principalId!==s.session?.principalId||context.epoch!==s.session?.epoch)
+   throw new Error('Operação pendente pertence a outra sessão ou turma. Reabra a avaliação original.');
+  s.pending={operation,verify,onSuccess,context};
   signal('saving','Enviando operação; aguardando recibo e consulta de confirmação…');
   try{
    const result=await verify(operation);
@@ -94,7 +99,9 @@ export function createPrivateLibraryController({
  }
  async function retry(){
   if(!s.pending)throw new Error('Não há operação pendente a reenviar.');
-  const {operation,verify,onSuccess}=s.pending;
+  const {operation,verify,onSuccess,context}=s.pending;
+  if(!scopeEquals(context.scope,s.scope)||context.principalId!==s.session?.principalId||context.epoch!==s.session?.epoch)
+   throw new Error('Não reenvie operação de outra sessão ou turma. Reabra o contexto de origem.');
   // The original requestId, complete body, scope and CAS are preserved exactly.
   return runPending(operation,verify,onSuccess);
  }
