@@ -24,6 +24,7 @@ export function readRaster(template, pixels, width, height, { darkThreshold = 10
       answer: analysis.state === 'read' ? analysis.winner : null,
       confidence: analysis.confidence,
       state: analysis.state,
+      recognition: analysis.state === 'read' ? analysis.recognition : null,
     }));
   }
   const identity = readIdentity(layout, pixels, width, height, darkThreshold);
@@ -42,9 +43,9 @@ export function readRaster(template, pixels, width, height, { darkThreshold = 10
   });
 }
 
-// The old core score is retained as the only route to an automatic answer.
-// A displaced or irregular fill can only request human review; it cannot
-// silently become an answer or override an existing double mark.
+// Core scores still select definitive strong marks; displaced/partial marks
+// may become recognized only after exclusive optical evidence and veto checks.
+// Neither the answer key nor student identity is consulted to classify ink.
 function inkAt(pixels, width, height, x, y) {
   if (x < 0 || y < 0 || x >= width || y >= height) return null;
   return 255 - pixels[y * width + x];
@@ -100,7 +101,7 @@ function analyzeQuestion(cell, pixels, width, height, darkThreshold, ambiguityGa
   // shadows, printed letters and paper darkening, which affect all options.
   // Compare to the strongest competitor, not the emptiest alternative.
   // Absolute evidence and two independent relative margins must all hold.
-  // Partial evidence only requests review; it never auto-confirms an answer.
+  // Partial evidence can be recognized only if the best alternative is exclusive.
   const strongestOther = (item, metric) =>
     Math.max(...scores.filter(other => other !== item).map(other => other[metric]));
   const candidate = (item) => item.score < strongLimit
@@ -121,10 +122,22 @@ function analyzeQuestion(cell, pixels, width, height, darkThreshold, ambiguityGa
   if (strong.length > 1) state = 'double';
   else if (strong.length === 1 && partial.some(item => item !== strong[0])) state = 'review';
   else if (strong.length === 1) state = first.score - second.score < ambiguityGap ? 'review' : 'read';
-  else if (partial.length > 0) state = partial.length > 1 ? 'double' : 'review';
+  else if (partial.length > 0) {
+    // An imperfect single mark is actionable when the EXISTING partial
+    // detector supplies relative shifted/extended margins and no rival mark
+    // shows meaningful independent evidence. Competing/erased/dual marks
+    // remain reviewable and cannot affect the provisional grade.
+    const item = partial.length === 1 ? partial[0] : null;
+    const conflict = item && scores.some(other => other !== item &&
+      other.shifted >= 95 && other.extended >= 92 && other.coverage >= .16);
+    const safeSingle = Boolean(item && !conflict && multipleWeak.length <= 1);
+    state = partial.length > 1 ? 'double' : safeSingle ? 'read' : 'review';
+  }
   else if (multipleWeak.length > 1) state = 'review';
   else state = 'blank';
-  return { scores, marks, state, winner: first.choice,
+  const recognizedPartial = state === 'read' && strong.length === 0 && partial.length === 1;
+  return { scores, marks, state, winner: recognizedPartial ? partial[0].choice : first.choice,
+    recognition: state === 'read' ? (recognizedPartial ? 'partial' : 'strong') : null,
     confidence: Math.max(0, Math.min(1, (first.score - (second?.score || 0)) / 255)) };
 }
 
