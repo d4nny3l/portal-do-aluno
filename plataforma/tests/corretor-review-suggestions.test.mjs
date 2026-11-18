@@ -81,3 +81,30 @@ test('A-02: teacher can override hint or confirm blank; unresolved answers block
  assert.equal(fields.scanScore.dataset.review,'true');
  assert.equal(editor.state()[1].answer,null);
 });
+
+
+test('P1 recognized partial enters provisional grade immediately and teacher can override it',()=>{
+ const {fields,editor,row}=setup();
+ const recognized=[
+  {number:15,questionId:'q1',state:'read',answer:'A',marks:['A'],recognition:'partial'},
+  {number:26,questionId:'q2',state:'read',answer:'C',marks:['C'],recognition:'strong'},
+  {number:29,questionId:'q3',state:'read',answer:'D',marks:['D'],recognition:'strong'},
+  {number:41,questionId:'q4',state:'read',answer:'E',marks:['E'],recognition:'partial'},
+  {number:50,questionId:'q5',state:'read',answer:'B',marks:['B'],recognition:'strong'},
+ ];
+ editor.render({observations:recognized});
+ assert.ok(editor.state().every(o=>o.reviewed),'read observations never need mandatory confirmation');
+ assert.equal(row(0).select.value,'A');
+ assert.match(row(0).label.textContent,/15 · A reconhecida · marcação parcial/);
+ assert.match(row(0).hint.textContent,/Marcação parcial reconhecida automaticamente/);
+ assert.equal(row(3).select.value,'E');
+ assert.match(row(3).label.textContent,/41 · E reconhecida · marcação parcial/);
+ assert.equal(fields.scanScore.dataset.review,'false');
+ assert.match(fields.scanScore.innerHTML,/Nota provisória 10,00 \/ 10,00/);
+ row(0).select.value='B';row(0).select.onchange();
+ assert.equal(editor.state()[0].answer,'B','teacher override remains possible');
+ assert.equal(row(0).hint.hidden,true);
+ assert.equal(fields.scanScore.dataset.review,'false');
+ assert.match(fields.scanScore.innerHTML,/Nota provisória 8,00 \/ 10,00/);
+ assert.match(fields.status.textContent,/não foi registrada no Diário/);
+});
