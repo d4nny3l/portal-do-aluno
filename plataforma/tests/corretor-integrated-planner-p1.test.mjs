@@ -2,6 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
 import {installIntegratedDraftPlanner} from '../../corretor/v2/assessments/draft-planner.mjs';
+import {scoreIntegratedPlan} from '../../corretor/v2/assessments/block-scoring.mjs';
 
 const html=readFileSync(new URL('../corretor-v2.html',import.meta.url),'utf8');
 const css=readFileSync(new URL('../corretor-v2.css',import.meta.url),'utf8');
@@ -67,12 +68,13 @@ test('visual inputs and quick paste share the same key state; invalid paste stay
 test('single explicit selection binds model and scoring; changing key invalidates active selection',()=>{
  const h=fixture(),f=h.fields;
  f.integratedUse.onclick();
- assert.match(f.integratedStatus.textContent,/valor positivo/);
+ assert.match(f.integratedStatus.textContent,/Rascunho não registrado/);
  const vals=f.integratedBlockValues.children;
  vals[0].children[1].value='4';vals[0].children[1].oninput();
  vals[1].children[1].value='2';vals[1].children[1].oninput();
  f.integratedPaste.value='A C E';f.integratedPasteApply.onclick();
- f.integratedUse.onclick();
+ f.integratedUse.onclick();assert.match(f.integratedStatus.textContent,/Rascunho não registrado/);
+ f.integratedRemember.onclick();f.integratedUse.onclick();
  assert.equal(h.opened(),1);assert.equal(h.selected()?.blocks.length,2);
  assert.match(f.integratedReadingStatus.textContent,/A câmera não identifica automaticamente/);
  const visual=f.integratedVisualKey.children;
@@ -117,7 +119,7 @@ test('changing optical manifest hash invalidates a previously selected local pla
   const input=f.integratedBlockValues.children[i].children[1];input.value=v;input.oninput();
  }
  f.integratedPaste.value='A C E';f.integratedPasteApply.onclick();
- f.integratedUse.onclick();assert.ok(h.selected());
+ f.integratedRemember.onclick();f.integratedUse.onclick();assert.ok(h.selected());
  h.setModelHash('modified-geometry-or-header-hash');
  assert.equal(h.selected(),null);
  assert.equal(h.deactivated(),1);
@@ -127,4 +129,117 @@ test('initial empty editor presents an actionable draft rather than a false erro
  const h=fixture();h.setSections([]);
  assert.match(h.fields.integratedStatus.textContent,/Adicione um bloco/);
  assert.equal(h.fields.integratedStatus.dataset.state,'draft');
+});
+
+function readyPlanner(){
+ const h=fixture(),f=h.fields;
+ for(const [i,value]of ['4','2'].entries()){
+  const field=f.integratedBlockValues.children[i].children[1];field.value=value;field.oninput();
+ }
+ f.integratedPaste.value='A A C';f.integratedPasteApply.onclick();
+ return h;
+}
+function studentAnswers(){
+ return [
+  {questionId:'s1',number:1,state:'read',answer:'A'},
+  {questionId:'s2',number:2,state:'read',answer:'A'},
+  {questionId:'s3',number:3,state:'read',answer:'C'}
+ ];
+}
+function grade(plan){
+ return scoreIntegratedPlan(plan,studentAnswers(),{
+  manifest:{templateId:'omr-a4',revision:8,contentHash:'unique-layout-hash'},
+  template:{questionCount:3},identityState:'read',identityMode:'seven-digit-code'
+ });
+}
+test('P1-01: opening registered revision 1 preserves its exact plan/answer A when revision 2 with B exists',()=>{
+ const h=readyPlanner(),f=h.fields;
+ f.integratedRemember.onclick();
+ assert.deepEqual(h.planner.sessionRecords().map(r=>r.revision),[1]);
+ const key=f.integratedVisualKey.children[0].children[1];
+ key.value='B';key.onchange();
+ f.integratedRemember.onclick();
+ assert.deepEqual(h.planner.sessionRecords().map(r=>r.revision),[1,2]);
+ f.integratedLocalLibrary.value='aba-1@1';f.integratedOpen.onclick();
+ assert.equal(f.integratedVisualKey.children[0].children[1].value,'A','historical key restored');
+ f.integratedUse.onclick();
+ const original=h.selected(),active=h.planner.activeRecord();
+ assert.equal(original.revision,1);
+ assert.equal(original.blocks[0].questions[0].correct,'A');
+ assert.equal(active.id,'aba-1');
+ assert.equal(active.revision,1);
+ assert.strictEqual(active.plan,original,'the selected grade uses the immutable registered plan');
+ assert.equal(grade(original).total,'6,00');
+ assert.match(f.integratedReadingStatus.textContent,/revisão local 1/);
+ assert.doesNotMatch(f.integratedReadingStatus.textContent,/revisão local 3/);
+ assert.deepEqual(h.planner.sessionRecords().map(r=>r.revision),[1,2],'selection never registers revision 3');
+});
+test('P1-01: editing historical revision blocks correction until registration creates revision 3',()=>{
+ const h=readyPlanner(),f=h.fields;
+ f.integratedRemember.onclick();
+ let key=f.integratedVisualKey.children[0].children[1];key.value='B';key.onchange();
+ f.integratedRemember.onclick();
+ f.integratedLocalLibrary.value='aba-1@1';f.integratedOpen.onclick();
+ key=f.integratedVisualKey.children[0].children[1];key.value='B';key.onchange();
+ f.integratedUse.onclick();
+ assert.equal(h.selected(),null);
+ assert.match(f.integratedStatus.textContent,/Rascunho não registrado/);
+ assert.deepEqual(h.planner.sessionRecords().map(r=>r.revision),[1,2]);
+ assert.doesNotMatch(f.integratedReadingStatus.textContent,/revisão local 3/);
+ f.integratedRemember.onclick();
+ assert.deepEqual(h.planner.sessionRecords().map(r=>r.revision),[1,2,3]);
+ f.integratedUse.onclick();
+ const active=h.planner.activeRecord(),selected=h.selected();
+ assert.equal(active.id,'aba-1');assert.equal(active.revision,3);
+ assert.equal(selected.revision,3);
+ assert.strictEqual(selected,active.plan);
+ assert.equal(selected.blocks[0].questions[0].correct,'B');
+ assert.equal(grade(selected).total,'4,00','score must use registered changed answer');
+ assert.match(f.integratedReadingStatus.textContent,/revisão local 3/);
+ const oldPlan=selected;
+ const after=f.integratedVisualKey.children[0].children[1];
+ after.value='A';after.onchange();
+ assert.equal(h.selected(),null,'later editing invalidates selection and previous scan context');
+ assert.equal(h.planner.activeRecord(),null);
+ assert.equal(oldPlan.revision,3,'old snapshot revision stays unchanged');
+ assert.equal(oldPlan.blocks[0].questions[0].correct,'B','old score plan stays immutable');
+ assert.equal(grade(oldPlan).total,'4,00','old grade remains tied to historical key');
+ f.integratedUse.onclick();assert.match(f.integratedStatus.textContent,/Rascunho não registrado/);
+});
+test('P1-01: duplicate cannot inherit the source ID/revision; original revision 2 stays selectable',()=>{
+ const h=readyPlanner(),f=h.fields;
+ f.integratedRemember.onclick();
+ const first=f.integratedVisualKey.children[0].children[1];first.value='B';first.onchange();
+ f.integratedRemember.onclick();
+ f.integratedLocalLibrary.value='aba-1@1';f.integratedDuplicate.onclick();
+ assert.equal(f.integratedVisualKey.children[0].children[1].value,'A');
+ f.integratedUse.onclick();assert.equal(h.selected(),null);
+ assert.match(f.integratedStatus.textContent,/Rascunho não registrado/);
+ f.integratedRemember.onclick();
+ assert.deepEqual(h.planner.sessionRecords().map(r=>[r.id,r.revision]),[
+  ['aba-1',1],['aba-1',2],['aba-2',1]
+ ]);
+ f.integratedUse.onclick();
+ assert.equal(h.planner.activeRecord().id,'aba-2');
+ assert.equal(h.selected().revision,1);
+ assert.equal(h.selected().blocks[0].questions[0].correct,'A');
+ f.integratedLocalLibrary.value='aba-1@2';f.integratedOpen.onclick();
+ f.integratedUse.onclick();
+ assert.equal(h.planner.activeRecord().id,'aba-1');
+ assert.equal(h.planner.activeRecord().revision,2);
+ assert.equal(h.selected().revision,2);
+ assert.equal(h.selected().blocks[0].questions[0].correct,'B');
+ assert.equal(grade(h.selected()).total,'4,00');
+ assert.deepEqual(h.planner.sessionRecords().map(r=>[r.id,r.revision]),[
+  ['aba-1',1],['aba-1',2],['aba-2',1]
+ ]);
+});
+test('P1-01: protected bank refuses registered local revision and does not select or persist it',()=>{
+ const h=fixture({bank:true}),f=h.fields;
+ f.integratedUse.onclick();
+ assert.equal(h.selected(),null);
+ assert.match(f.integratedStatus.textContent,/Banco autenticado/);
+ f.integratedRemember.onclick();
+ assert.equal(h.planner.sessionRecords().length,0);
+ assert.equal(h.planner.activeRecord(),null);
 });
