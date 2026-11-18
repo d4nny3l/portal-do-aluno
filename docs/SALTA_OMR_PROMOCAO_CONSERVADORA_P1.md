@@ -1,40 +1,41 @@
-# SALTA — estudo P1 de reconhecimento automático de marcas fracas
+# SALTA OMR — reconhecimento automático de marcações parciais (PR #51)
 
-**Tipo:** estudo experimental separado da interface e do leitor publicado. Não contém alteração de `reader.mjs`; nenhuma resposta é promovida em produção.
+**Estado:** implementação funcional em branch de PR, **não publicada**. Sincronizada à `main` `af467942706f3b715c258b23ee9090ba26adaa7d` preservando histórico da pesquisa. O parecer de auditoria independente e a autorização de publicação ainda são necessários.
 
-## Evidência disponível
-O proprietário observou, em testes físicos recentes, que as sugestões de marcação para preenchimentos imperfeitos e a lápis coincidiram com as marcações pretendidas nos casos conferidos. Essas observações **não incluem ainda as matrizes normalizadas originais, os manifestos exatos, o total de amostras verificadas ou a taxa de erro de todos os negativos**. Logo, são indício favorável para pesquisar autonomia, não base suficiente para uma alteração automática de nota.
+## Requisitos do proprietário
+Nos mais de 20 ensaios físicos relatados pelo proprietário, as sugestões únicas de marcação provável conferidas estavam corretas. Essa experiência justifica testar autonomia, mas não é uma estimativa estatística de precisão sobre todos os cartões. Não há fotografias reais com dados pessoais armazenadas no repositório.
 
-O PR #45, já integrado, só aceita automaticamente uma bolha central forte. Uma marca parcial pode receber estado `review` com `answer:null` e lista de alternativas candidatas. Essa proteção é intencional. O teste sintético rotulado existente tem 23 cenários com 5 respostas únicas corretamente definidas, 5 respostas únicas pendentes de revisão e 1 marca fraca ignorada; nenhum falso definitivo nesse conjunto.
+## Mudança funcional
+No `corretor/v2/omr/reader.mjs`, após a classificação atual:
+- Resposta **forte única** continua com `state:'read'`, `answer` e `recognition:'strong'`.
+- Quando **não há marca forte**, a rotina `candidate()` anterior já verificou deslocamento, tinta interna, cobertura e margens relativas das bolhas. Se existir **exatamente uma** marca parcial, e **não houver outro candidato com sinais de tinta independentes** (limites mínimos de shifted 95, extended 92, cobertura 0,16), e **não houver múltiplas marcas fracas significativas** (`multipleWeak.length <= 1`), retorna `state:'read'`, `answer:partial[0].choice`, `recognition:'partial'`.
+- A resposta selecionada é a **candidata óptica**, não necessariamente a maior intensidade central (importante para tinta deslocada). O gabarito oficial não participa dessa decisão.
+- Duas marcas, uma marca forte com concorrência, sombras uniformes, ausência de marcas, limite insuficiente e casos conflituosos continuam `double`, `review` ou `blank` com `answer:null`.
+- `readerVersion` e contratos dos cartões/manifestos, geometria, identificação de 7 dígitos e validação permanecem inalterados.
 
-## Hipótese pesquisada (não aplicada)
-`reader-auditor-adversarial.test.mjs` inclui agora um *dry-run* apenas com dados sintéticos, reproduzindo os mesmos pixels e manifestos. Só calcula promoção hipotética quando a classificação corrente é `review`, há exatamente **uma** alternativa suspeita e não há resposta já atribuída.
+Na interface, `renderAnswers` já considera `state:'read'` como `reviewed:true`, portanto a marcação parcial é imediatamente **incluída no cálculo de nota provisória**. A questão mostra a origem óptica, com seleção editável pelo professor. A correção do professor substitui o resultado automático sem exigir confirmação anterior. A nota provisória não é registrada no Diário automaticamente.
 
-Limiar exploratório (escore de tinta 0–255, **não aprovado para produção**):
+## Evidência A/B
+O teste `reader-auditor-adversarial.test.mjs` contém 23 cartões sintéticos rotulados. Comparação exata com o **leitor anteriormente publicado** do blob Git `545ef8fcd03ed255382394d8dd834e0bff607b69` (cópia congelada em `tests/fixtures/reader-before-pr51.mjs`, modificando exclusivamente o caminho do import ESM): mesmo manifesto, mesmos pixels, mesma geometria.
 
-| Evidência | Limite exploratório |
-| --- | ---: |
-| Média central | ≥118 |
-| Melhor centro deslocado | ≥128 |
-| Média circular interna | ≥105 |
-| Cobertura escura interna | ≥30% |
-| Margem central vs. concorrente mais forte | ≥42 |
-| Margem deslocada vs. concorrente mais forte | ≥55 |
-| Margem circular vs. concorrente mais forte | ≥35 |
+| Indicador (23 cenários sintéticos) | Antes do PR | Candidato |
+| --- | ---: | ---: |
+| Respostas definitivas | 5 | 10 |
+| Marcas para revisão | 8 | 3 |
+| Questões em branco | 7 | 7 |
+| Respostas duplas | 3 | 3 |
+| Promoções de `review` para `read` | — | 5 |
+| Novas respostas definitivas incorretas | 0 | 0 |
+| Brancos ou duplas promovidos | — | 0 |
 
-Todos os limites devem ser satisfeitos simultaneamente. Duas alternativas, branco real, ausência de candidato e estados `double` continuam fora da hipótese. **Não alterar o limiar do leitor atual, número da questão, gabarito ou código de sete dígitos.** A hipótese produz apenas contagem em teste local; o professor ainda confirma toda marca parcial no módulo publicado.
+Esse quadro é uma hipótese a ser confirmada pela CI no HEAD final. O conjunto cobre marcas fortes, preenchimento irregular, grafite/azul deslocado, sombras, impressões/ruído, brancos, duplas e rasuras sintéticas. Os 60 itens físicos de referência no teste `reader-partial-marks.test.mjs` verificam 15-A, 26-D, 29-B, 41-E, 50-E, 58-C; 51-C forte; 11 e 54 brancos; código sintético de sete dígitos `0001123`. O segundo teste UI do PR prova que uma resposta parcial reconhecida aparece como nota provisória sem confirmação e que o professor consegue substituí-la.
 
-## Risco fundamental
-Uma marca em grafite e uma mancha localizada podem produzir pixels idênticos. O segundo teste cria duas etiquetas opostas sobre um **mesmo raster** para demonstrar que nenhum limiar de tons de cinza sozinho prova a intenção do aluno. Sombras, rasuras e marcas apagadas exigem rótulos físicos independentes e uma taxa documentada de falso positivo. Isso limita a generalização dos 23 sintéticos.
+## Riscos e critérios de publicação
+- Uma mancha parecida e uma marca a lápis podem gerar o mesmo raster: nenhum limiar elimina essa ambiguidade abstrata. Zero falsas automações neste conjunto não significa risco estatístico zero.
+- Precisa de auditoria independente do HEAD completo com revisão da competição de marcas e tratamento de rasuras. Nenhuma alteração automática em gabaritos oficiais.
+- Depois do parecer, o proprietário deve repetir a homologação no Safari com cartões reais **sem enviar dados acadêmicos ou fotos ao repositório**, incluindo sombras, marcas fracas, rasuras e duplas. A nota permanece provisória, com correção manual.
+- Se a validação detectar falsa resposta automática, **não publicar** até corrigir o caso e fixá-lo como regressão.
+- A câmera tem PR e CI distintos. Sem alteração de código de captura/normalização nesta entrega.
 
-## Portões para uma futura alteração do leitor
-1. Obter um conjunto físico consentido e **anonimizado**, com manifestos exatos e as mesmas imagens normalizadas em antes/depois; nenhum upload a servidores, sem códigos reais ou nomes. Registrar pelo menos 200 marcações únicas (lápis forte, médio e fraco, caneta e preenchimento parcial), 100 questões brancas, 100 duplas/rasuradas, sob luz adequada, moderada, fraca e sombras.
-2. Definir verdade de terreno por conferência independente da imagem e papel impresso, antes de testar o algoritmo; separar exemplares de treino/proposta e validação sem reusar imagens. Registrar confusão por alternativa, estado, intensidade, revisão e dispositivo.
-3. **Zero** respostas definitivas incorretas no conjunto físico de validação, nenhuma resposta dupla ou branco confirmado promovidos, nenhuma regressão de respostas fortes e identificação de sete dígitos; se falhar, não promover. Documentar explicitamente limites estatísticos dessa amostra — zero erros não significa risco zero.
-4. Reduzir revisões apenas quando não aumentar notas incorretas; não usar o gabarito para orientar a interpretação das bolhas. Preservar a substituição manual do professor.
-5. Auditoria independente do PR que vier a modificar `reader.mjs`, regressões V1/V2, QR, manifestos/hashes, fotografia em iPhone/Android e autorização específica para merge/deploy.
-
-## Separação de missões
-O PR de interface/lâmpada não tem alterações no motor OMR. O problema de iluminação tem duas etapas distintas: captura/segmentação fiducial e evidência de tinta. Não combinar a pesquisa de promoção automática com melhorias de captura antes de poder isolar seus efeitos.
-
-**Conclusão provisória:** a autonomia pode ser estudada; não deve ainda substituir a revisão humana com base apenas nas sugestões corretas observadas.
+## Histórico
+O PR #51 começou como pesquisa com um envelope de promoção restritivo, que somente recuperava uma sugestão dentre as marcações parciais de interesse. O ensaio anterior foi preservado como investigação; a versão funcional utiliza o detector parcial existente com vetos explícitos de concorrência, e não abaixa indiscriminadamente os limiares nem usa uma regra cega de `marks.length===1`.
