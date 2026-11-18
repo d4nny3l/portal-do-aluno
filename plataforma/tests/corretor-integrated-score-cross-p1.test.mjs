@@ -100,3 +100,25 @@ test('failed attempt keeps prior integrated score provenance even after recalcul
  assert.match(h.$('scanScore').innerHTML,/Nota da última leitura 5,00/);
  assert.doesNotMatch(h.$('scanScore').innerHTML,/Nota final/);
 });
+
+test('private issued selection provenance is fixed on a successful in-memory correction and mismatched context is blocked',()=>{
+ const h=harness();
+ h.state.sessionAssessmentSelection=Object.freeze({
+  selectionId:'123e4567-e89b-42d3-a456-426614174000',
+  assessmentId:'123e4567-e89b-42d3-a456-426614174001',
+  revision:7,manifestHash:model.contentHash,plan:h.plan
+ });
+ const result=h.state.readNormalized({automatic:true});
+ assert.equal(result?.observations.length,3);
+ assert.equal(h.state.scanHistory.length,1);
+ const entry=h.state.scanHistory[0];
+ assert.equal(entry.selectionId,h.state.sessionAssessmentSelection.selectionId);
+ assert.equal(entry.assessmentId,h.state.sessionAssessmentSelection.assessmentId);
+ assert.equal(entry.revision,7);
+ assert.equal(entry.manifestHash,model.contentHash);
+ assert.match(h.$('scanScore').innerHTML,/Nota final 5,00/);
+ h.state.activeManifest={...model,contentHash:'foreign-model'};
+ assert.equal(h.state.readNormalized({automatic:true}),null);
+ assert.equal(h.state.scanHistory.length,1,'mismatch cannot append a correction under a stale selection');
+ assert.equal(entry.revision,7,'previous correction provenance cannot be rewritten');
+});
