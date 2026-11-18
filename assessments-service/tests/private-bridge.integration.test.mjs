@@ -222,3 +222,142 @@ test('slow catalog response from previous school context never replaces a newer 
  assert.deepEqual(ctl.view().rows,[]);
  assert.deepEqual(ctl.view().scope,b);
 });
+
+
+const deferred=()=>{let resolve,reject;const promise=new Promise((yes,no)=>{resolve=yes;reject=no});return {promise,resolve,reject}};
+const scopeA={institutionId:'school-a',classId:'class-a',periodId:'2026'};
+const scopeB={institutionId:'school-b',classId:'class-b',periodId:'2026'};
+const fakeRecord=(id,scope,status='issued')=>({id,revision:4,status,archived:false,manifestHash:'geom-hash-'+id,
+ definition:{title:'Prova '+id},...scope});
+const fakeSelection=(id,scope)=>({selectionId:'selection-'+id,assessmentId:id,revision:4,manifestHash:'geom-hash-'+id,scope,plan:{revision:4}});
+const fakeError=status=>Object.assign(new Error('Erro atrasado '+(status||'network')),{status});
+const classify=e=>e.status===401?'session':e.status===403?'forbidden':e.status===404?'missing':e.status===503?'unavailable':'failed';
+
+test('P1-01: failed opening of another assessment blocks old-record writes, issue, duplicate, archive and select (404/503/network)',async()=>{
+ for(const code of [404,503,0]){
+  const calls={prepareSave:0,prepareDuplicate:0,prepareArchive:0,prepareSelection:0};
+  const client={enabled:true,classifyError:classify,
+   session:async()=>({authenticated:true,principalId:'teacher-a',epoch:1}),grants:async()=>[scopeA],
+   open:async id=>id==='assessment-A'?fakeRecord(id,scopeA):Promise.reject(fakeError(code)),
+   prepareSave:()=>{calls.prepareSave++;throw Error('must not prepare old A')},
+   prepareDuplicate:()=>{calls.prepareDuplicate++;throw Error('must not duplicate old A')},
+   prepareArchive:()=>{calls.prepareArchive++;throw Error('must not archive old A')},
+   prepareSelection:()=>{calls.prepareSelection++;throw Error('must not select old A')}
+  };
+  const ctl=createPrivateLibraryController({client,getDraft:()=>editor(),confirmBatch:()=>true});
+  await ctl.initialize();ctl.useScope(scopeA);
+  await ctl.open('assessment-A');
+  assert.equal(ctl.view().record.id,'assessment-A');
+  await assert.rejects(ctl.open('assessment-B'),e=>e.status===code);
+  assert.equal(ctl.view().record,null,'failed opening must clear previous writable record');
+  assert.equal(ctl.view().editorMode,'blocked');
+  for(const action of [()=>ctl.save('draft'),()=>ctl.save('issued'),()=>ctl.duplicate(),()=>ctl.archive(),()=>ctl.selectIssued()])
+   await assert.rejects(action(),/Abra|Nenhuma avaliação ativa/);
+  assert.deepEqual(calls,{prepareSave:0,prepareDuplicate:0,prepareArchive:0,prepareSelection:0});
+  ctl.newDraft();assert.equal(ctl.view().editorMode,'new','new evaluation requires explicit action');
+ }
+});
+test('P1-02: late teacher confirmation from class A cannot prepare or select A after switching to B',async()=>{
+ const confirm=deferred(),events=[],calls=[];
+ const client={enabled:true,classifyError:classify,
+  session:async()=>({authenticated:true,principalId:'teacher-a',epoch:1}),grants:async()=>[scopeA,scopeB],
+  open:async id=>fakeRecord(id,id==='assessment-A'?scopeA:scopeB),
+  prepareSelection:(id,revision)=>{calls.push({id,revision});return {payload:{selectionId:'selection-A'}}},
+  selectAndVerify:async()=>{throw Error('No old network call allowed')}
+ };
+ const ctl=createPrivateLibraryController({client,getDraft:()=>editor(),
+  onSelection:value=>events.push(value),confirmBatch:()=>confirm.promise});
+ await ctl.initialize();ctl.useScope(scopeA);await ctl.open('assessment-A');
+ const pending=ctl.selectIssued();
+ ctl.useScope(scopeB);await ctl.open('assessment-B');
+ const stateBefore=ctl.view(),eventCount=events.length;
+ confirm.resolve(true);
+ assert.equal(await pending,null);
+ assert.deepEqual(calls,[],'old selection must not even prepare a POST after confirmation');
+ assert.equal(ctl.view().scope.classId,scopeB.classId);
+ assert.strictEqual(ctl.view().record,stateBefore.record);
+ assert.equal(events.length,eventCount,'late confirmation cannot trigger onSelection');
+});
+test('P1-02: selection server GET after switching to B cannot overwrite B or emit old callback',async()=>{
+ const wait=deferred(),calls=[],events=[];
+ const client={enabled:true,classifyError:classify,
+  session:async()=>({authenticated:true,principalId:'teacher-a',epoch:1}),grants:async()=>[scopeA,scopeB],
+  open:async id=>fakeRecord(id,id==='assessment-A'?scopeA:scopeB),
+  prepareSelection:(id,revision)=>({payload:{selectionId:'selection-'+id},id,revision}),
+  selectAndVerify:op=>{calls.push(op);return wait.promise}
+ };
+ const ctl=createPrivateLibraryController({client,getDraft:()=>editor(),
+  onSelection:value=>events.push(value),confirmBatch:()=>true});
+ await ctl.initialize();ctl.useScope(scopeA);await ctl.open('assessment-A');
+ const pending=ctl.selectIssued();
+ await Promise.resolve();await Promise.resolve();
+ assert.equal(calls.length,1);
+ ctl.useScope(scopeB);await ctl.open('assessment-B');
+ const before=ctl.view(),count=events.length;
+ wait.resolve({selection:fakeSelection('assessment-A',scopeA)});
+ assert.equal(await pending,null);
+ assert.equal(ctl.view().record.id,'assessment-B');
+ assert.equal(ctl.view().scope.classId,scopeB.classId);
+ assert.equal(ctl.view().phase,before.phase);
+ assert.equal(events.length,count);
+});
+test('P1-02: mismatched server selection scope, revision or manifest is rejected even with unchanged context',async()=>{
+ for(const mutate of [
+  x=>x.scope=scopeB,
+  x=>x.revision=5,
+  x=>x.manifestHash='other-hash',
+  x=>x.assessmentId='other-evaluation'
+ ]){
+  let selected=0;
+  const client={enabled:true,classifyError:classify,
+   session:async()=>({authenticated:true,principalId:'teacher-a',epoch:1}),grants:async()=>[scopeA],
+   open:async id=>fakeRecord(id,scopeA),
+   prepareSelection:()=>({payload:{selectionId:'selection-assessment-A'}}),
+   selectAndVerify:async()=>{const x=fakeSelection('assessment-A',scopeA);mutate(x);return {selection:x}}
+  };
+  const ctl=createPrivateLibraryController({client,getDraft:()=>editor(),confirmBatch:()=>true,
+   onSelection:selection=>{if(selection)selected++}});
+  await ctl.initialize();ctl.useScope(scopeA);await ctl.open('assessment-A');
+  await assert.rejects(ctl.selectIssued(),/não corresponde/);
+  assert.equal(ctl.view().selection,null);assert.equal(selected,0);
+ }
+});
+test('P1-03: 401,403,404,503/network errors from old class cannot corrupt new class (list/open/history/resume)',async()=>{
+ for(const operation of ['list','open','history','resumeSelection']){
+  for(const code of [401,403,404,503,0]){
+   const old=deferred(),notices=[],selections=[];
+   const client={
+    enabled:true,classifyError:classify,
+    session:async()=>({authenticated:true,principalId:'teacher-a',epoch:1}),grants:async()=>[scopeA,scopeB],
+    list:async()=>old.promise,
+    open:async id=>id==='assessment-A'&&operation==='open'?old.promise:fakeRecord(id,id==='assessment-A'?scopeA:scopeB),
+    history:async()=>old.promise,
+    resumeSelection:async id=>id==='selection-A'&&operation==='resumeSelection'?old.promise:fakeSelection('assessment-B',scopeB)
+   };
+   const ctl=createPrivateLibraryController({client,getDraft:()=>editor(),
+    onSelection:value=>selections.push(value),onStatus:status=>notices.push(status)});
+   await ctl.initialize();ctl.useScope(scopeA);
+   if(operation==='history')await ctl.open('assessment-A');
+   const pending=operation==='list'?ctl.list():operation==='open'?ctl.open('assessment-A'):
+    operation==='history'?ctl.history('assessment-A'):ctl.resumeSelection('selection-A');
+   ctl.useScope(scopeB);
+   if(operation==='list'){
+    // Make the B request independent of the A deferred promise.
+    client.list=async()=>({assessments:[{id:'assessment-B',...scopeB,title:'Turma B'}],nextCursor:null});
+    await ctl.list();
+   }else await ctl.open('assessment-B');
+   if(operation!=='list')await ctl.resumeSelection('selection-B');
+   const state=ctl.view(),count=selections.length,noticesCount=notices.length;
+   old.reject(fakeError(code));
+   assert.equal(await pending,null,operation+' '+code+' stale error ignored');
+   assert.equal(ctl.view().scope.classId,scopeB.classId);
+   assert.deepEqual(ctl.view().rows,state.rows);
+   assert.deepEqual(ctl.view().record,state.record);
+   assert.deepEqual(ctl.view().selection,state.selection);
+   assert.equal(ctl.view().phase,state.phase);
+   assert.equal(ctl.view().message,state.message);
+   assert.equal(selections.length,count,'old error cannot call onSelection');
+   assert.equal(notices.length,noticesCount,'old error cannot emit status');
+  }
+ }
+});
