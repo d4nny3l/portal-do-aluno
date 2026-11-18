@@ -145,3 +145,20 @@ test('exact V1/V2 manifests, hashes and historical models continue to import',()
  assert.ok(a.observations.every(q=>q.state==='blank'));
  assert.ok(b.observations.every(q=>q.state==='blank'));
 });
+
+
+test('P1 invalid mandatory 7-digit identity keeps partial evidence in review',()=>{
+ const pixels=sample();
+ circle(pixels,bubble(41,'E'),{ink:120,r:7,kind:'irregular'});
+ circle(pixels,bubble(15,'A'),{ink:0,r:8});
+ const result=readRaster(template,pixels,width,height,{manifest});
+ assert.equal(result.identity.state,'review');
+ assert.equal(result.identity.code,null);
+ const partial=get(result,41);
+ assert.equal(partial.state,'review');
+ assert.equal(partial.answer,null);
+ assert.ok(partial.marks.includes('E'));
+ assert.equal(partial.recognition,null);
+ assert.equal(get(result,15).state,'read','strong mark contract remains unchanged');
+ assert.equal(result.needsReview,true);
+});
