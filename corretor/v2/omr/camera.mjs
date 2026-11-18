@@ -61,6 +61,45 @@ export async function applyCameraControl(track, name, value) {
   try { await track.applyConstraints({ advanced: [{ [name]: value }] }); return true; } catch { return false; }
 }
 
+
+export function cameraZoomSnapshot(track) {
+  const capabilities = safeCapabilities(track);
+  let settings = {}, constraints = {};
+  try { settings = track?.getSettings?.() || {}; } catch { /* browser-specific */ }
+  try { constraints = track?.getConstraints?.() || {}; } catch { /* browser-specific */ }
+  const range = capabilities.zoom;
+  const supported = Number.isFinite(range?.min) && Number.isFinite(range?.max) && range.max > range.min;
+  return {
+    supported,
+    min: supported ? range.min : null,
+    max: supported ? range.max : null,
+    current: Number.isFinite(settings.zoom) ? settings.zoom : null,
+    constraint: typeof constraints.zoom === 'number' ? constraints.zoom : null,
+    resizeMode: settings.resizeMode || null,
+    facingMode: settings.facingMode || null,
+  };
+}
+
+// Request a native supported lower zoom only when the browser actually reports
+// that zoom is above its range minimum. No image rescaling or magic 1x value.
+export async function reduceUnwantedCameraZoom(track) {
+  const before = cameraZoomSnapshot(track);
+  if (!before.supported || before.current === null || before.current <= before.min + .001) {
+    return { attempted: false, applied: false, before, after: before };
+  }
+  let requested = false;
+  try {
+    await track.applyConstraints({ advanced: [{ zoom: before.min }] });
+    requested = true;
+  } catch { /* unsupported or conflicting native camera constraint */ }
+  const after = cameraZoomSnapshot(track);
+  return {
+    attempted: true,
+    applied: requested && after.current !== null && after.current < before.current - .001,
+    before, after,
+  };
+}
+
 export class CameraSession {
   constructor(mediaDevices) { this.mediaDevices = mediaDevices; this.generation = 0; this.stream = null; }
   stop() { this.generation++; this.stream?.getTracks().forEach(track => track.stop()); this.stream = null; }
@@ -69,7 +108,7 @@ export class CameraSession {
     const media = this.mediaDevices;
     if (!media?.getUserMedia) throw new Error('Este navegador não oferece acesso à câmera. Importe uma fotografia para continuar.');
     const acquire = async id => {
-      const stream = await media.getUserMedia({ audio: false, video: id ? { deviceId: { exact: id } } : { facingMode: { ideal: 'environment' } } });
+      const stream = await media.getUserMedia({ audio: false, video: id ? { deviceId: { exact: id } } : { facingMode: { exact: 'environment' } } });
       if (generation !== this.generation) { stream.getTracks().forEach(t => t.stop()); throw new Error('Abertura da câmera cancelada.'); }
       this.stream = stream; return stream;
     };
@@ -88,6 +127,10 @@ export class CameraSession {
         }
       }
       const track = stream.getVideoTracks()[0], caps = safeCapabilities(track);
+      const facing = track.getSettings?.().facingMode;
+      if (facing === 'user' || cameraRank(track.label) < 0) {
+        throw new Error('A câmera traseira não está disponível neste navegador. Importe uma fotografia para continuar.');
+      }
       // Request native frames where supported. Independent ideal bounds do not force 16:9.
       const constraints = {};
       for (const dimension of ['width','height']) if (caps[dimension]?.max) constraints[dimension] = { ideal: Math.min(2560, caps[dimension].max) };
@@ -96,7 +139,9 @@ export class CameraSession {
         try { await track.applyConstraints(constraints); } catch { /* original native/default stream remains usable */ }
       }
       if (generation !== this.generation) throw new Error('Abertura da câmera cancelada.');
-      return { stream, track, devices, capabilities: safeCapabilities(track) };
+      const zoom = await reduceUnwantedCameraZoom(track);
+      if (generation !== this.generation) throw new Error('Abertura da câmera cancelada.');
+      return { stream, track, devices, capabilities: safeCapabilities(track), zoom };
     } catch (error) {
       // An old request must never stop a newer camera.
       if (generation === this.generation) this.stop();
