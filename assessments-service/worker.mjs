@@ -131,10 +131,10 @@ async function route(request,env) {
  if (path==='/assessments/v1/grants'&&request.method==='GET') return json({grants:(await db.prepare('SELECT institution_id AS institutionId,class_id AS classId,period_id AS periodId FROM av_grants WHERE principal_id=? AND enabled=1 AND expires_at>? ORDER BY institution_id,class_id,period_id').bind(actor.id,Date.now()).all()).results});
  if (path==='/assessments/v1/assessments'&&request.method==='GET') {
   const after=url.searchParams.get('after')||''; if (after&&!uuid(after)) throw new TypeError('Cursor inválido.');
-  const rows=(await db.prepare(`SELECT a.* FROM av_assessments a JOIN av_grants g ON g.principal_id=a.owner_id AND g.institution_id=a.institution_id AND g.class_id=a.class_id AND g.period_id=a.period_id WHERE a.owner_id=? AND a.id>? AND g.enabled=1 AND g.expires_at>? ORDER BY a.id LIMIT 21`).bind(actor.id,after,Date.now()).all()).results;
+  const rows=(await db.prepare(`SELECT a.* FROM av_assessments a JOIN av_grants g ON g.principal_id=a.owner_id AND g.institution_id=a.institution_id AND g.class_id=a.class_id AND g.period_id=a.period_id WHERE a.owner_id=? AND a.id>? AND g.enabled=1 AND g.expires_at>? ORDER BY a.id LIMIT 11`).bind(actor.id,after,Date.now()).all()).results;
   const assessments=[];
-  for (const a of rows.slice(0,20)) { const record=await load(db,actor,ring,a.id,a.current_revision); assessments.push({id:a.id,...rowScope(a),revision:a.current_revision,state:a.state,title:record.definition.title,totalUnits:record.totalUnits,scoreScale:record.scoreScale}); }
-  return json({assessments,nextCursor:rows.length>20?rows[19].id:null});
+  for (const a of rows.slice(0,10)) { const record=await load(db,actor,ring,a.id,a.current_revision); assessments.push({id:a.id,...rowScope(a),revision:a.current_revision,state:a.state,title:record.definition.title,totalUnits:record.totalUnits,scoreScale:record.scoreScale}); }
+  return json({assessments,nextCursor:rows.length>10?rows[9].id:null});
  }
  if (path==='/assessments/v1/selections'&&request.method==='POST') return select(db,actor,ring,await body(request));
  const selection=path.match(/^\/assessments\/v1\/selections\/([0-9a-f-]{36})$/i);
