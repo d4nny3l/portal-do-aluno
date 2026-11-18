@@ -53,7 +53,7 @@ function provisionalScore(bundle){
  fn();
  assert.equal(fields.scanScore.hidden,false);
  assert.equal(fields.scanScore.dataset.review,'false');
- assert.match(fields.scanScore.innerHTML,/Nota provisória 5,00 \/ 10,00/);
+ assert.match(fields.scanScore.innerHTML,/Nota final 5,00 \/ 10,00/);
  assert.match(fields.scanScore.innerHTML,new RegExp('\\b'+(observations.length/2)+' acerto\\(s\\) em '+observations.length+' questão'));
  return fields.scanScore.innerHTML;
 }
