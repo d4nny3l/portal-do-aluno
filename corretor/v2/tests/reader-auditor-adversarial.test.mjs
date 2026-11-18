@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
 import {createTemplate,layoutTemplate} from '../omr/template.mjs';
 import {createCardManifest} from '../omr/render.mjs';
 import {readRaster,diagnoseRaster} from '../omr/reader.mjs';
+import {readRaster as readRasterBefore} from './fixtures/reader-before-pr51.mjs';
 
 // Explicit synthetic ground truth is assigned before executing either reader.
 // Moderate competing marks in the two "artifact" cases represent non-answer
@@ -93,15 +94,100 @@ test('A-01/A-03: 23 independently labelled raster scenarios comparing audited PR
  assert.equal(after.incorrectDefinitive,0);
  assert.equal(after.blankReview,0);
  assert.equal(after.markedIgnored,1,'faint mark intentionally remains unrecognized');
- assert.equal(after.correctDefinitive,5);
- assert.equal(after.recoveredReview,5);
+ assert.equal(after.correctDefinitive,10,'five exclusive partial marks join five strong correct marks');
+ assert.equal(after.recoveredReview,0,'five unique partial marks no longer mandatory review');
  assert.ok(after.correctDefinitive>before.correctDefinitive);
  for(const id of ['strong-artifact-4','strong-artifact-5']){
   const row=rows.find(x=>x.id===id);assert.equal(row.before,'review');assert.equal(row.after,'read');assert.equal(row.answer,'A');assert.deepEqual(row.marks,['A']);
  }
  for(const id of ['partial-2','partial-4','partial-5','blue-offset-5','partial-shadow-2']){
-  const row=rows.find(x=>x.id===id);assert.equal(row.after,'review');assert.equal(row.answer,null);
+  const row=rows.find(x=>x.id===id);assert.equal(row.after,'read');assert.equal(row.answer,row.truth);
  }
  console.log('A-03 synthetic labelled comparison:',JSON.stringify({before,after}));
  console.log('A-03 per-case states:',JSON.stringify(rows));
+});
+
+
+// P1 research: dry-run only. This never changes the production classifier.
+// The proposed envelope is deliberately stricter than the 'review' heuristic.
+function provisionalPromotion(observation,scores){
+ if(observation.state!=='review'||observation.marks.length!==1||observation.answer!==null)return null;
+ const choice=observation.marks[0],s=scores.find(x=>x.choice===choice);
+ if(!s)return null;
+ const peers=scores.filter(x=>x.choice!==choice);
+ const margin=field=>s[field]-Math.max(...peers.map(x=>x[field]));
+ if(s.core<118||s.shifted<128||s.extended<105||s.coverage<.3)return null;
+ if(margin('core')<42||margin('shifted')<55||margin('extended')<35)return null;
+ // A provisional result does not represent an official answer or a correction.
+ return choice;
+}
+
+test('P1 dry run: proposed pencil/partial promotion measured on the same 23 labelled rasters',()=>{
+ const totals={cases:cases.length,readBefore:0,reviewBefore:0,blankBefore:0,doubleBefore:0,
+  promoted:0,correctPromoted:0,wrongPromoted:0,falseBlankPromoted:0,doublePromoted:0};
+ const details=[];
+ for(const entry of cases){
+  const {template,manifest,pixels}=rasterFor(entry);
+  const result=readRaster(template,pixels,width,height,{manifest}).observations[0];
+  const scores=diagnoseRaster(template,pixels,width,height,{manifest})[0].choiceScores;
+  const legacyState=auditedBefore(scores);
+  totals[legacyState+'Before']++;
+  const suggested=provisionalPromotion({state:legacyState,marks:result.marks,answer:null},scores);
+  if(suggested){
+   totals.promoted++;
+   if(entry.truth.length===1&&entry.truth[0]===suggested)totals.correctPromoted++;
+   else totals.wrongPromoted++;
+   if(entry.truth.length===0)totals.falseBlankPromoted++;
+   if(entry.truth.length>1)totals.doublePromoted++;
+  }
+  details.push({fixture:entry.id,before:legacyState,actual:result.state,proposal:suggested??'review unchanged'});
+ }
+ // Synthetic guardrails; a real-field acceptance requires a separate dataset.
+ assert.equal(totals.wrongPromoted,0);
+ assert.equal(totals.falseBlankPromoted,0);
+ assert.equal(totals.doublePromoted,0);
+ console.log('SALTA P1 PROBE, SYNTHETIC ONLY:',JSON.stringify({totals,details}));
+});
+
+test('P1 observability limit: same pencil-like grayscale cannot prove marking intent',()=>{
+ const pencil={id:'graphite-mark',type:'A-E',truth:['B'],ink:[{choice:'B',shade:130,dx:2,dy:-1}]};
+ const artifact={...pencil,id:'graphite-shaped-smudge',truth:[]};
+ const a=rasterFor(pencil),b=rasterFor(artifact);
+ assert.deepEqual(a.pixels,b.pixels,'identical pixels must be interpreted the same');
+ const reading=readRaster(a.template,a.pixels,width,height,{manifest:a.manifest}).observations[0];
+ const scores=diagnoseRaster(a.template,a.pixels,width,height,{manifest:a.manifest})[0].choiceScores;
+ const proposed=provisionalPromotion(reading,scores);
+ // No classifier, including this probe, can distinguish two labels with
+ // identical pixels. Therefore field negatives and review safeguards are needed.
+ console.log('SALTA P1 IDENTIFIABILITY CHECK:',JSON.stringify({samePixels:true,readerState:reading.state,proposed,labels:['mark','smudge']}));
+});
+
+
+test('P1 exact published-vs-candidate reader: identical 23 rasters/manifests, no false answers',()=>{
+ const counts={before:{read:0,review:0,blank:0,double:0},after:{read:0,review:0,blank:0,double:0},
+  reviewToRead:0,newIncorrect:0,blankToRead:0,doubleToRead:0};
+ const changes=[];
+ for(const entry of cases){
+  const {template,manifest,pixels}=rasterFor(entry);
+  const before=readRasterBefore(template,pixels,width,height,{manifest});
+  const after=readRaster(template,pixels,width,height,{manifest});
+  assert.equal(before.contentHash,after.contentHash,entry.id+' manifest');
+  assert.equal(before.layoutVersion,after.layoutVersion,entry.id+' layout');
+  const first=before.observations[0],next=after.observations[0];
+  counts.before[first.state]++;counts.after[next.state]++;
+  if(first.state==='review'&&next.state==='read')counts.reviewToRead++;
+  if(first.state==='blank'&&next.state==='read')counts.blankToRead++;
+  if(first.state==='double'&&next.state==='read')counts.doubleToRead++;
+  if(next.state==='read'&&(entry.truth.length!==1||next.answer!==entry.truth[0]))counts.newIncorrect++;
+  if(first.state!==next.state)changes.push({fixture:entry.id,from:first.state,to:next.state,answer:next.answer});
+  if(entry.truth.length===0)assert.equal(next.state,'blank',entry.id);
+  if(entry.truth.length>1){assert.notEqual(next.state,'read',entry.id);assert.equal(next.answer,null,entry.id)}
+ }
+ assert.deepEqual(counts.before,{read:5,review:8,blank:7,double:3});
+ assert.deepEqual(counts.after,{read:10,review:3,blank:7,double:3});
+ assert.equal(counts.reviewToRead,5,'all five unique partial candidates recognized');
+ assert.equal(counts.blankToRead,0);
+ assert.equal(counts.doubleToRead,0);
+ assert.equal(counts.newIncorrect,0);
+ console.log('P1 EXACT READER COMPARISON:',JSON.stringify({counts,changes}));
 });

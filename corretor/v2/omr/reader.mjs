@@ -13,20 +13,24 @@ export function readRaster(template, pixels, width, height, { darkThreshold = 10
   }
   if (template?.mode === "embedded") throw new TypeError("A leitura de quadros incorporados exige enquadramento próprio e ainda não está disponível. Use um cartão A4 independente para corrigir.");
   const layout = layoutTemplate(template, { width, height, page, showCode, manifest });
+  const identity = readIdentity(layout, pixels, width, height, darkThreshold);
   const samples = [];
   for (const cell of layout.cells) {
     const analysis = analyzeQuestion(cell, pixels, width, height, darkThreshold, ambiguityGap);
+    // Never promote weak/partial evidence while the required 7-digit identity
+    // is unreadable. Strong marks remain governed by their existing contract.
+    const state = identity.state === 'review' && analysis.recognition === 'partial' ? 'review' : analysis.state;
     samples.push(Object.freeze({
       questionId: cell.questionId,
       number: cell.number,
       page,
       marks: Object.freeze(analysis.marks),
-      answer: analysis.state === 'read' ? analysis.winner : null,
+      answer: state === 'read' ? analysis.winner : null,
       confidence: analysis.confidence,
-      state: analysis.state,
+      state,
+      recognition: state === 'read' ? analysis.recognition : null,
     }));
   }
-  const identity = readIdentity(layout, pixels, width, height, darkThreshold);
   return Object.freeze({
     readerVersion: READER_VERSION,
     templateId: template.templateId,
@@ -42,9 +46,9 @@ export function readRaster(template, pixels, width, height, { darkThreshold = 10
   });
 }
 
-// The old core score is retained as the only route to an automatic answer.
-// A displaced or irregular fill can only request human review; it cannot
-// silently become an answer or override an existing double mark.
+// Core scores still select definitive strong marks; displaced/partial marks
+// may become recognized only after exclusive optical evidence and veto checks.
+// Neither the answer key nor student identity is consulted to classify ink.
 function inkAt(pixels, width, height, x, y) {
   if (x < 0 || y < 0 || x >= width || y >= height) return null;
   return 255 - pixels[y * width + x];
@@ -100,7 +104,7 @@ function analyzeQuestion(cell, pixels, width, height, darkThreshold, ambiguityGa
   // shadows, printed letters and paper darkening, which affect all options.
   // Compare to the strongest competitor, not the emptiest alternative.
   // Absolute evidence and two independent relative margins must all hold.
-  // Partial evidence only requests review; it never auto-confirms an answer.
+  // Partial evidence can be recognized only if the best alternative is exclusive.
   const strongestOther = (item, metric) =>
     Math.max(...scores.filter(other => other !== item).map(other => other[metric]));
   const candidate = (item) => item.score < strongLimit
@@ -121,10 +125,22 @@ function analyzeQuestion(cell, pixels, width, height, darkThreshold, ambiguityGa
   if (strong.length > 1) state = 'double';
   else if (strong.length === 1 && partial.some(item => item !== strong[0])) state = 'review';
   else if (strong.length === 1) state = first.score - second.score < ambiguityGap ? 'review' : 'read';
-  else if (partial.length > 0) state = partial.length > 1 ? 'double' : 'review';
+  else if (partial.length > 0) {
+    // An imperfect single mark is actionable when the EXISTING partial
+    // detector supplies relative shifted/extended margins and no rival mark
+    // shows meaningful independent evidence. Competing/erased/dual marks
+    // remain reviewable and cannot affect the provisional grade.
+    const item = partial.length === 1 ? partial[0] : null;
+    const conflict = item && scores.some(other => other !== item &&
+      other.shifted >= 95 && other.extended >= 92 && other.coverage >= .16);
+    const safeSingle = Boolean(item && !conflict && multipleWeak.length <= 1);
+    state = partial.length > 1 ? 'double' : safeSingle ? 'read' : 'review';
+  }
   else if (multipleWeak.length > 1) state = 'review';
   else state = 'blank';
-  return { scores, marks, state, winner: first.choice,
+  const recognizedPartial = state === 'read' && strong.length === 0 && partial.length === 1;
+  return { scores, marks, state, winner: recognizedPartial ? partial[0].choice : first.choice,
+    recognition: state === 'read' ? (recognizedPartial ? 'partial' : 'strong') : null,
     confidence: Math.max(0, Math.min(1, (first.score - (second?.score || 0)) / 255)) };
 }
 
@@ -135,13 +151,15 @@ function analyzeQuestion(cell, pixels, width, height, darkThreshold, ambiguityGa
  */
 export function diagnoseRaster(template, pixels, width, height, options = {}) {
   const { darkThreshold = 100, ambiguityGap = 18, page = 1, showCode = true, manifest = null } = options;
-  // Preserve all public reader input/manifest validations.
-  readRaster(template, pixels, width, height, options);
+  // Keep diagnostic states aligned with the public result, including an
+  // unreadable mandatory identity which vetoes partial auto-recognition.
+  const reading = readRaster(template, pixels, width, height, options);
+  const stateById = new Map(reading.observations.map(item => [item.questionId, item.state]));
   const layout = layoutTemplate(template, { width, height, page, showCode, manifest });
   return Object.freeze(layout.cells.map(cell => {
     const result = analyzeQuestion(cell, pixels, width, height, darkThreshold, ambiguityGap);
     return Object.freeze({
-      number: cell.number, questionId: cell.questionId, state: result.state,
+      number: cell.number, questionId: cell.questionId, state: stateById.get(cell.questionId) ?? result.state,
       candidateMarks: Object.freeze([...result.marks]),
       choiceScores: Object.freeze(result.scores.map(score => Object.freeze({
         choice: score.choice, core: Math.round(score.score * 10) / 10,

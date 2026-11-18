@@ -62,14 +62,14 @@ function renderComparison({paper=245,mark=null,weakChoice=null,second=null}={}){
  return pixels;
 }
 
-test('physical-like cases: preserve strong marks and blanks; partial marks request review',()=>{
+test('physical-like cases: preserve strong marks and blanks; unique partial marks become recognized',()=>{
  const cases=[
   {n:15,choice:'A',settings:{ink:20,r:7},before:'read',after:'read'},
   {n:26,choice:'D',settings:{ink:20,r:7},before:'read',after:'read'},
   {n:29,choice:'B',settings:{ink:30,r:7},before:'read',after:'read'},
-  {n:41,choice:'E',settings:{ink:120,r:7,kind:'irregular'},before:'blank',after:'review'},
+  {n:41,choice:'E',settings:{ink:120,r:7,kind:'irregular'},before:'blank',after:'read',origin:'partial'},
   {n:50,choice:'E',settings:{ink:20,r:7},before:'read',after:'read'},
-  {n:58,choice:'C',settings:{ink:115,r:7,kind:'irregular'},before:'blank',after:'review'},
+  {n:58,choice:'C',settings:{ink:115,r:7,kind:'irregular'},before:'blank',after:'read',origin:'partial'},
   {n:51,choice:'C',settings:{ink:0,r:8},before:'read',after:'read'},
  ];
  for(const c of cases){
@@ -79,7 +79,8 @@ test('physical-like cases: preserve strong marks and blanks; partial marks reque
   const question=get(result,c.n);
   assert.equal(question.state,c.after,'candidate: '+c.n);
   assert.equal(question.answer,c.after==='read'?c.choice:null,'automatic answer: '+c.n);
-  assert.ok(question.marks.includes(c.choice),'candidate bubble visible for human review: '+c.n);
+  if(c.origin)assert.equal(question.recognition,c.origin,'traceable partial evidence: '+c.n);
+  assert.ok(question.marks.includes(c.choice),'candidate mark retained: '+c.n);
   assert.equal(result.identity.code,'0001123','seven digits preserved');
   assert.equal(result.readerVersion,'salta-omr-reader-v5','legacy reader metadata remains compatible');
   const diag=diagnoseRaster(template,pixels,width,height,{manifest}).find(item=>item.number===c.n);
@@ -116,8 +117,9 @@ test('guard rails: double marks never auto-selected; pale/blank/shadowed bubbles
  const blue=renderComparison({mark:{n:34,choice:'C',ink:130,r:7,dx:2,dy:-1}});
  const blueRead=get(readRaster(template,blue,width,height,{manifest}),34);
  assert.equal(initialModel(blue,34),'blank','offset blue-gray fill missed by original');
- assert.equal(blueRead.state,'review','offset blue-gray fill requires human confirmation');
- assert.equal(blueRead.answer,null);
+ assert.equal(blueRead.state,'read','exclusive offset blue-gray fill is recognized');
+ assert.equal(blueRead.answer,'C');
+ assert.equal(blueRead.recognition,'partial');
  const shadow=renderComparison({paper:195,mark:{n:49,choice:'E',ink:115,r:7,dx:2}});
  const shadowRead=get(readRaster(template,shadow,width,height,{manifest}),49);
  assert.ok(['review','read'].includes(shadowRead.state),'local contrast survives light shadow');
@@ -142,4 +144,23 @@ test('exact V1/V2 manifests, hashes and historical models continue to import',()
  assert.equal(b.contentHash,manifest.contentHash);
  assert.ok(a.observations.every(q=>q.state==='blank'));
  assert.ok(b.observations.every(q=>q.state==='blank'));
+});
+
+
+test('P1 invalid mandatory 7-digit identity keeps partial evidence in review',()=>{
+ const pixels=sample();
+ circle(pixels,bubble(41,'E'),{ink:120,r:7,kind:'irregular'});
+ circle(pixels,bubble(15,'A'),{ink:0,r:8});
+ const result=readRaster(template,pixels,width,height,{manifest});
+ assert.equal(result.identity.state,'review');
+ assert.equal(result.identity.code,null);
+ const partial=get(result,41);
+ assert.equal(partial.state,'review');
+ assert.equal(partial.answer,null);
+ assert.ok(partial.marks.includes('E'));
+ assert.equal(partial.recognition,null);
+ const diagnostic=diagnoseRaster(template,pixels,width,height,{manifest}).find(item=>item.number===41);
+ assert.equal(diagnostic.state,'review','diagnostics must match the identity-gated reader result');
+ assert.equal(get(result,15).state,'read','strong mark contract remains unchanged');
+ assert.equal(result.needsReview,true);
 });
