@@ -21,6 +21,8 @@ test('disabled public HTML hides private library and hardcodes no gateway, keys 
  assert.match(html,/if\(ENABLE_PRIVATE_ASSESSMENTS_UI&&AUTHORIZED_PRIVATE_GATEWAY\)/);
  assert.doesNotMatch(html,/id="privateSaveAssessment"|data-private-save/);
  assert.doesNotMatch(html,/fetch\(['"]https:\/\/salta-stats.*\/assessments\/v1/);
+ assert.match(html,/function restoreEditorForLocalPlan\(editor,\{skipBuild=false\}=\{\}\)/);
+ assert.match(html,/if\(!skipBuild\)build\(\)/);
  const {document,host}=uiDoc();let calls=0;
  const result=installPrivateAssessmentUI({document,client:{enabled:false,session:()=>{calls++}}});
  assert.equal(result.enabled,false);assert.equal(calls,0);assert.equal(host.hidden,true);
