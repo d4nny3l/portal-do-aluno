@@ -12,7 +12,7 @@ Base verificada: `main 12c47b8fcb47b56a624a22eb90b79c273e659ed1`. Nenhum merge/d
 Três rótulos no palco de visualização, sem botões/painéis: **Folha estável** quando captura com 3 quadros válidos; **Captura consolidada** apenas após captura e normalização com retorno válido; **Cartão reconhecido** apenas quando leitura terminou e nota está classificada sem pendências. Espera de retirada da folha, reset na próxima e em falhas, zoom e iluminação preservados. Captura totalmente automática mantida. Sem novo temporizador de UI.
 
 ## 3. Lente traseira mais aberta e zoom nativo
-- O ranking original preserva a câmera traseira principal como padrão. A ultra-angular deixa de ser proibida em todas as situações: `widerRearCandidate` só recomenda **sondar** câmera traseira ampla se houver **zoom mínimo nativo elevado (>1,1)** ou recorte `crop-and-scale` reportado.
+- O ranking original preserva a câmera traseira principal como padrão. A ultra-angular deixa de ser proibida em todas as situações: `widerRearCandidate` só recomenda **sondar** câmera traseira ampla se houver **zoom mínimo nativo elevado (>1,25)** ou recorte `crop-and-scale` reportado.
 - Sondagem aceita a alternativa apenas se ela não for frontal, reportar tamanho nativo utilizável (lado menor ≥960, maior ≥1280), não elevar zoom mínimo e não contradizer o ID solicitado. Caso contrário reabre a traseira anterior. Controles `torch`, streams e geração assíncrona mantidos.
 - Nada é redimensionado via CSS/crop para simular ângulo. Identidade de lente, distorção, campo de visão e nitidez **não** são verificáveis conclusivamente em mocks. Se o navegador ocultar zoom/lentes, permanece a câmera original e recomenda-se fotografar/importar. Não foi realizada homologação física de iPhone.
 
