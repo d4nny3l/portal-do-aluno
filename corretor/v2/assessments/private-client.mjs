@@ -9,7 +9,7 @@ export class PrivateAssessmentError extends Error {
 }
 const fail=(message,code='invalid_contract')=>{throw new PrivateAssessmentError(message,{code})};
 const state=error=>error?.status===401?'session':error?.status===403?'forbidden':
- error?.status===404?'missing':error?.status===409?'conflict':error?.status===503?'unavailable':
+ error?.status===404?'missing':error?.status===409?'conflict':error?.status===429?'rate_limited':error?.status===503?'unavailable':
  error?.code==='disabled'?'unavailable':'failed';
 const canonical=value=>Array.isArray(value)?value.map(canonical):value&&typeof value==='object'?
  Object.fromEntries(Object.keys(value).sort().map(k=>[k,canonical(value[k])])):value;
@@ -52,10 +52,11 @@ export function createPrivateAssessmentClient({enabled=false,baseUrl=null,fetchF
    response.status===403?'Acesso ou concessão revogada. Não altere o cofre.':
    response.status===404?'Avaliação, revisão ou seleção indisponível neste contexto.':
    response.status===409?'Conflito de revisão. Consulte o histórico; não sobrescreva automaticamente.':
+   response.status===429?'Limite de requisições atingido. Aguarde e tente atualizar o catálogo manualmente.':
    response.status===503?'Serviço privado indisponível. Nenhuma gravação foi confirmada.':
    'Operação rejeitada pelo contrato privado.',
    {status:response.status,code:typeof body?.code==='string'?body.code:'http_error',
-    retryable:[503].includes(response.status)});
+    retryable:[429,503].includes(response.status)});
   return {data:body,httpStatus:response.status};
  };
  const read=(path,options)=>request('GET',path,undefined,options).then(r=>r.data);
@@ -87,7 +88,19 @@ export function createPrivateAssessmentClient({enabled=false,baseUrl=null,fetchF
   request,
   async session(){const data=await read('/session');if(data?.authenticated!==true||typeof data.principalId!=='string')fail('Sessão inválida.');return data},
   async grants(){const data=await read('/grants');return (data?.grants||[]).map(scopeCheck)},
-  async list(after=null){if(after)idCheck(after);const data=await read('/assessments'+(after?'?after='+encodeURIComponent(after):''));if(!Array.isArray(data?.assessments))fail('Catálogo inválido.');return data},
+  async list(after=null){if(after)idCheck(after);
+   const data=await read('/assessments'+(after?'?after='+encodeURIComponent(after):''));
+   if(!Array.isArray(data?.assessments)||data.assessments.length>10||
+      !(data.nextCursor===null||isUUID(data.nextCursor)))fail('Página do catálogo incompatível com o limite de 10.');
+   const ids=new Set();
+   for(const item of data.assessments){
+    if(!isUUID(item?.id)||ids.has(item.id)||after&&item.id<=after)fail('Ordenação ou identidade de catálogo inválida.');
+    ids.add(item.id);
+   }
+   if(data.nextCursor!==null&&(!data.assessments.length||
+      data.nextCursor!==data.assessments.at(-1).id))fail('Cursor de página não corresponde à última avaliação.');
+   return data
+  },
   async open(assessmentId,revision=null){idCheck(assessmentId);if(revision!==null&&(!Number.isInteger(revision)||revision<1))fail('Revisão inválida.');
    const data=await read('/assessments/'+assessmentId+(revision===null?'':'/revisions/'+revision));
    if(data?.record?.id!==assessmentId||(revision!==null&&data.record.revision!==revision))fail('Revisão recuperada divergente.');
