@@ -125,9 +125,9 @@ test('P1 final classification: blank and double automatically count as zero and 
  assert.match(row(2).label.textContent,/Inválida — dupla marcação/);
  assert.match(row(3).label.textContent,/Sem resposta — inválida/);
  assert.equal(fields.scanScore.dataset.review,'false');
- assert.match(fields.scanScore.innerHTML,/Nota final 4,00 \\/ 10,00/);
+ assert.match(fields.scanScore.innerHTML,/Nota final 4,00 \/ 10,00/);
  row(2).select.value='D';row(2).select.onchange();
- assert.match(fields.scanScore.innerHTML,/Nota final 6,00 \\/ 10,00/);
+ assert.match(fields.scanScore.innerHTML,/Nota final 6,00 \/ 10,00/);
 });
 
 test('P1 code unreadable blocks final grade despite otherwise definitive strong answers',()=>{
