@@ -30,8 +30,8 @@ export function createPrivateLibraryController({
   scopeEquals(expected.scope,s.scope)&&expected.recordId===(s.record?.id??null)&&
   expected.revision===(s.record?.revision??null)&&expected.manifestHash===(s.record?.manifestHash??null);
  // A different assessment in the catalog is NOT the active writable record.
- function invalidateOpenedRecord(){
-  s.generation++;s.record=null;s.revisions=[];s.editorMode='blocked';
+ function invalidateOpenedRecord({keepRevisions=false}={}){
+  s.generation++;s.record=null;if(!keepRevisions)s.revisions=[];s.editorMode='blocked';
   s.selection=null;onSelection(null);
   signal('draft','Seleção alterada. Abra e confira a avaliação antes de salvar, emitir, duplicar, arquivar ou corrigir.');
  }
