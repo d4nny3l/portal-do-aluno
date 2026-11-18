@@ -103,7 +103,7 @@ test('P1 integrated read: loading gate blocks, automatic partial scores, teacher
  select.value='B';select.onchange();
  assert.equal(s.activeObservations[0].answer,'B');
  assert.match(h.$('scanScore').innerHTML,/Nota final 0,00/);
- assert.match(h.$('status').textContent,/não foi registrada no Diário/);
+ assert.match(h.$('status').textContent,/Nenhuma nota foi registrada no Diário/);
 });
 
 test('P1 integrated photo import reads immediately and identical file may be selected again',async()=>{
