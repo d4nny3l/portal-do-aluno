@@ -26,7 +26,17 @@ export function installPrivateAssessmentUI({document,client,getDraft,applyRecord
  const selectionId=make('input','',{type:'text',placeholder:'UUID de seleção confirmada','aria-label':'ID da sessão de correção'});
  const button=(label,action)=>{
   const b=make('button',label,{type:'button'});
-  b.onclick=async()=>{b.disabled=true;try{await action();render()}catch(error){status.textContent=error.message||'Operação não confirmada.';status.dataset.state='error'}finally{b.disabled=false}};
+  b.onclick=async()=>{
+   if(b.disabled)return;
+   b.disabled=true;
+   let failure=null;
+   try{await action()}catch(error){failure=error}
+   finally{
+    // Always reconcile buttons with the *current* controller record, even on errors.
+    render();
+    if(failure){status.textContent=failure.message||'Operação não confirmada.';status.dataset.state='error'}
+   }
+  };
   return b;
  };
  const clearOptions=(node,items)=>{
@@ -67,6 +77,10 @@ export function installPrivateAssessmentUI({document,client,getDraft,applyRecord
  const archive=button('Arquivar avaliação',()=>controller.archive());
  const select=button('Confirmar lote e selecionar revisão emitida',()=>controller.selectIssued());
  const resume=button('Retomar seleção pelo ID',()=>controller.resumeSelection(selectionId.value.trim()));
+ // Changing a displayed candidate cannot leave the previously opened record writable.
+ catalog.onchange=()=>{controller.invalidateOpenedRecord();render()};
+ revisions.onchange=()=>{controller.invalidateOpenedRecord({keepRevisions:true});render()};
+ scope.onchange=()=>{controller.invalidateOpenedRecord();render()};
  const selectLabel=make('p','A câmera não identifica automaticamente avaliações com cartões de geometria igual.');
  controls.append(connect,label('Turma e período',scope),chooseScope,label('Avaliação',catalog),fetchLibrary,more,
   label('Revisão',revisions),history,chooseAssessment,newDraft,saveDraft,issue,retry,
@@ -74,17 +88,26 @@ export function installPrivateAssessmentUI({document,client,getDraft,applyRecord
  host.replaceChildren(make('h3','Biblioteca privada · configuração autorizada'),selectLabel,controls,status);
  host.hidden=false;
  function render(){
-  const s=controller.view();
-  const prev=catalog.value;
-  clearOptions(catalog,[{value:'',label:'Selecione uma avaliação'},...s.rows.map(x=>({
-   value:x.id,label:x.title+' · rev. '+x.revision+' · '+x.state
-  }))]);
-  if([...catalog.options].some(x=>x.value===prev))catalog.value=prev;
-  const prevRev=revisions.value;
+  const s=controller.view(),prev=catalog.value,prevRev=revisions.value;
+  const rows=s.rows.map(x=>({value:x.id,label:x.title+' · rev. '+x.revision+' · '+x.state}));
+  // A just-saved revision might not yet appear in the paginated catalog.
+  if(s.record&&!rows.some(x=>x.value===s.record.id))
+   rows.push({value:s.record.id,label:s.record.definition?.title||'Avaliação confirmada · rev. '+s.record.revision});
+  clearOptions(catalog,[{value:'',label:'Selecione uma avaliação'},...rows]);
+  if(s.record&&s.editorMode==='opened')catalog.value=s.record.id;
+  else if([...catalog.options].some(x=>x.value===prev))catalog.value=prev;
   clearOptions(revisions,[{value:'',label:'Revisão atual'},...s.revisions.map(x=>({
    value:String(x.revision),label:'Rev. '+x.revision+' · '+x.status
   }))]);
   if([...revisions.options].some(x=>x.value===prevRev))revisions.value=prevRev;
+  const matchesOpened=s.editorMode==='opened'&&s.record?.id===catalog.value&&
+   (!revisions.value||Number(revisions.value)===s.record.revision);
+  const newDraftReady=s.editorMode==='new'&&!s.record&&!catalog.value;
+  const canWrite=Boolean(s.scope&&!s.pending&&(matchesOpened||newDraftReady));
+  saveDraft.disabled=!canWrite;issue.disabled=!canWrite;
+  duplicate.disabled=!matchesOpened||Boolean(s.pending);
+  archive.disabled=!matchesOpened||Boolean(s.pending);
+  select.disabled=!matchesOpened||Boolean(s.pending)||s.record.status!=='issued'||Boolean(s.record.archived);
   retry.disabled=!s.pending;
   more.disabled=!s.nextCursor;
   status.textContent=s.message;
