@@ -7,7 +7,7 @@ export function installIntegratedDraftPlanner({document,getSections,getMetadata,
  const $=id=>document.getElementById(id);
  const state={values:{},answers:{},display:'both',records:[],nextId:0,currentId:null,active:null,signature:null,restoring:false};
  const status=(message,kind='info')=>{$('integratedStatus').textContent=message;$('integratedStatus').dataset.state=kind};
- const editorSignature=()=>JSON.stringify({sections:getSections(),metadata:getMetadata(),values:state.values,answers:state.answers,display:state.display});
+ const editorSignature=()=>JSON.stringify({sections:getSections(),metadata:getMetadata(),modelHash:getModel()?.contentHash||null,values:state.values,answers:state.answers,display:state.display});
  function invalidate(){
   if(!state.active)return;
   state.active=null;state.signature=null;deactivate();
@@ -36,6 +36,7 @@ export function installIntegratedDraftPlanner({document,getSections,getMetadata,
   return createIntegratedPlan({metadata:currentMeta(),sections:getSections(),values:state.values,answers:state.answers,display:state.display,model,revision});
  }
  function showSummary(){
+  if(!getSections().length){$('integratedTotal').textContent='Valor total dos blocos: —';$('integratedKeyCount').textContent='Gabarito pendente';status('Adicione um bloco para começar a avaliação.','draft');return}
   try{
    const sum=draftSummary({sections:getSections(),values:state.values,answers:state.answers});
    $('integratedTotal').textContent='Valor total dos blocos: '+sum.total+' ponto(s)';
