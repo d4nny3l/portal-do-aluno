@@ -78,12 +78,12 @@ const nominalManifest=createCardManifest(nominal,header),nominalSvg=renderTempla
 const nominalRaster=await raster(nominalSvg).greyscale().raw().toBuffer();assert.equal(readRaster(nominal,nominalRaster,width,height,{manifest:nominalManifest}).identity.code,'0001200');
 for(const [variant,color,expected]of [['double','#000','double'],['weak','#b4b4b4','blank']]){
  const markedSvg=nominalSvg.replace(/<circle class="omr-answer-bubble"[^>]+>/g,tag=>tag.includes('data-question="1"')&&(tag.includes('data-choice="C"')||(variant==='double'&&tag.includes('data-choice="D"')))?tag.replace('fill="#fff"',`fill="${color}"`):tag);
- const pixels=await raster(markedSvg).greyscale().raw().toBuffer();const result=readRaster(nominal,pixels,width,height,{manifest:nominalManifest});assert.equal(result.observations[0].state,expected);assert.equal(result.needsReview,true);
+ const pixels=await raster(markedSvg).greyscale().raw().toBuffer();const result=readRaster(nominal,pixels,width,height,{manifest:nominalManifest});assert.equal(result.observations[0].state,expected);assert.equal(result.needsReview,false,'definitive blank/double cannot demand mandatory review');
  coverage.push({variant,state:result.observations[0].state,needsReview:result.needsReview});
  await raster(markedSvg).png().withMetadata({density:300}).toFile(`${output}/${variant}.png`);
 }
 await writeFile(`${output}/coverage-v2.json`,JSON.stringify(coverage,null,2));
-console.log('18 identity/institution/instructions combinations + nominal code 0001200 + double/weak review OK.');
+console.log('18 identity/institution/instructions combinations + nominal code 0001200 + definitive double/weak blank OK.');
 
 
 // PR38: rasterize the frame style actually used by the editor. The legacy
