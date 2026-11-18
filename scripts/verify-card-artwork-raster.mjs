@@ -137,7 +137,7 @@ for(const entry of pr38Cases){
   assert.equal(read.observations[0].state,sample.expected,entry.name+' '+sample.name+' state');
   assert.equal(read.observations[0].answer,sample.name==='filled'?chosen:null,entry.name+' '+sample.name+' answer');
   assert.ok(read.observations.slice(1).every(q=>q.state==='blank'),entry.name+' '+sample.name+' no unrelated marks');
-  if(sample.name==='double'||sample.name==='weak')assert.equal(read.needsReview,true,entry.name+' requires review');
+  if(sample.name==='double'||sample.name==='weak')assert.equal(read.needsReview,false,entry.name+' definitive blank/double needs no manual confirmation');
  }
  if(visualCases.has(entry.name)){
   const prefix=detailDir+'/'+entry.name;
