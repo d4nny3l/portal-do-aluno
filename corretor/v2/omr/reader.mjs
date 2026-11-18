@@ -13,21 +13,24 @@ export function readRaster(template, pixels, width, height, { darkThreshold = 10
   }
   if (template?.mode === "embedded") throw new TypeError("A leitura de quadros incorporados exige enquadramento próprio e ainda não está disponível. Use um cartão A4 independente para corrigir.");
   const layout = layoutTemplate(template, { width, height, page, showCode, manifest });
+  const identity = readIdentity(layout, pixels, width, height, darkThreshold);
   const samples = [];
   for (const cell of layout.cells) {
     const analysis = analyzeQuestion(cell, pixels, width, height, darkThreshold, ambiguityGap);
+    // Never promote weak/partial evidence while the required 7-digit identity
+    // is unreadable. Strong marks remain governed by their existing contract.
+    const state = identity.state === 'review' && analysis.recognition === 'partial' ? 'review' : analysis.state;
     samples.push(Object.freeze({
       questionId: cell.questionId,
       number: cell.number,
       page,
       marks: Object.freeze(analysis.marks),
-      answer: analysis.state === 'read' ? analysis.winner : null,
+      answer: state === 'read' ? analysis.winner : null,
       confidence: analysis.confidence,
-      state: analysis.state,
-      recognition: analysis.state === 'read' ? analysis.recognition : null,
+      state,
+      recognition: state === 'read' ? analysis.recognition : null,
     }));
   }
-  const identity = readIdentity(layout, pixels, width, height, darkThreshold);
   return Object.freeze({
     readerVersion: READER_VERSION,
     templateId: template.templateId,
