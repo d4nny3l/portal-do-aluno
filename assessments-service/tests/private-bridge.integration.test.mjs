@@ -105,6 +105,11 @@ test('real Auth + local D1: create draft, verify receipt+GET, issue, pin selecti
  assert.strictEqual(controller.view().selection,selected,'new revision cannot rewrite pinned selection');
  assert.equal(selected.plan.blocks[0].questions[0].correct,data.plan.blocks[0].questions[0].correct);
  assert.equal((await client.resumeSelection(selected.selectionId)).revision,2);
+ const reopenedSession=bridge(h,{actor:'a'});
+ assert.equal((await reopenedSession.session()).authenticated,true);
+ const reopenedSelection=await reopenedSession.resumeSelection(selected.selectionId);
+ assert.equal(reopenedSelection.revision,2,'new synthetic client session must recover immutable revision 2');
+ assert.equal(reopenedSelection.plan.blocks[0].questions[0].correct,selected.plan.blocks[0].questions[0].correct);
  assert.equal((await controller.history()).length,3);
  const restored=await client.open(created.record.id,2);
  assert.equal(restored.revision,2);assert.equal(planFromPrivateRecord(restored).plan.revision,2);
@@ -196,4 +201,24 @@ test('identical optical hash but different assessment IDs never authorize automa
  assert.notEqual(first.selection.plan.blocks[0].questions[0].correct,second.selection.plan.blocks[0].questions[0].correct);
  assert.throws(()=>pinnedSelection({selectionId:first.selection.selectionId,record:bSaved.record},
    {assessmentId:first.selection.assessmentId,revision:1}),/divergente/);
+});
+
+test('slow catalog response from previous school context never replaces a newer authorized context',async()=>{
+ const a={institutionId:'school-a',classId:'class-a',periodId:'2026'};
+ const b={institutionId:'school-b',classId:'class-b',periodId:'2026'};
+ let release;
+ const waiting=new Promise(resolve=>{release=resolve});
+ const client={
+  enabled:true,classifyError:()=> 'failed',
+  session:async()=>({authenticated:true,principalId:'teacher-a',epoch:1}),
+  grants:async()=>[a,b],list:()=>waiting
+ };
+ const ctl=createPrivateLibraryController({client,getDraft:()=>editor()});
+ await ctl.initialize();ctl.useScope(a);
+ const obsolete=ctl.list();
+ ctl.useScope(b);
+ release({assessments:[{id:'old-a',...a,title:'Not from current context'}],nextCursor:null});
+ assert.equal(await obsolete,null);
+ assert.deepEqual(ctl.view().rows,[]);
+ assert.deepEqual(ctl.view().scope,b);
 });
