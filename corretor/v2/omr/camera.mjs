@@ -113,10 +113,12 @@ export function widerRearCandidate(devices, track) {
 }
 
 function adequateWideStream(track, deviceId, priorZoom) {
-  const settings = track?.getSettings?.() || {}, caps = safeCapabilities(track);
+  const settings = track?.getSettings?.() || {};
   if (settings.facingMode === 'user' || /front|frontal|selfie/i.test(track?.label || '')) return false;
   if (settings.deviceId && settings.deviceId !== deviceId) return false;
-  const w = Number(settings.width || caps.width?.max), h = Number(settings.height || caps.height?.max);
+  // A supported maximum is not the resolution of the delivered video frames.
+  // Fail closed when effective track settings are missing or inconsistent.
+  const w = settings.width, h = settings.height;
   if (!Number.isFinite(w) || !Number.isFinite(h) || Math.min(w,h) < 960 || Math.max(w,h) < 1280) return false;
   const trialZoom = cameraZoomSnapshot(track);
   if (trialZoom.supported && priorZoom.supported && trialZoom.min > priorZoom.min + .001) return false;
