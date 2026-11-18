@@ -223,8 +223,8 @@ test('P1 interface contains only open/close, real lamp and import; scanner owns 
  assert.match(html,/stableFrames>=3/);
  assert.match(html,/captureQuality\(frame,detection,previousCameraFrame\)/);
  assert.match(html,/automatic:true,manualCorners:mapFramePoints\(detection.corners,frame,capture\)/);
- assert.match(html,/corretor-v2\.css\?v=20261117autocamera1/);
- assert.match(html,/camera\.mjs\?v=20261117autocamera1/);
+ assert.match(html,/corretor-v2\.css\?v=20261118wide1/);
+ assert.match(html,/camera\.mjs\?v=20261118wide1/);
  assert.match(css,/\.camera-stage video\{object-position:center;transform:none\}/);
 });
 
