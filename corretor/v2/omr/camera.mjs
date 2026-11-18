@@ -105,7 +105,7 @@ export async function reduceUnwantedCameraZoom(track) {
 export function widerRearCandidate(devices, track) {
   const settings = track?.getSettings?.() || {};
   const zoom = cameraZoomSnapshot(track);
-  const narrowed = (zoom.supported && zoom.min > 1.1) || settings.resizeMode === 'crop-and-scale';
+  const narrowed = (zoom.supported && zoom.min > 1.25) || settings.resizeMode === 'crop-and-scale';
   if (!narrowed) return null;
   return devices.find(d => d.kind === 'videoinput' && d.deviceId && d.deviceId !== settings.deviceId
     && /back|rear|traseira|environment/i.test(d.label || '')
