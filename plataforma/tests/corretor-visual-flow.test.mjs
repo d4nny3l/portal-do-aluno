@@ -102,13 +102,13 @@ test('camera button: opens once or cancels an active/pending camera',async()=>{
 test('photo import: downscaling draws the whole photograph instead of cropping it in both decoding paths',async()=>{
  const source=script.match(/async function loadPhoto\(file\)[^\n]+/)[0];
  for(const useBitmap of [true,false]){
-  let drawn,prepared,closed=0;const status={textContent:''};
+  let drawn,prepared,closed=0,readCalls=0;const status={textContent:''};
   const bitmap={width:2480,height:3508,close(){closed++}};
   const canvas={width:0,height:0,getContext(){return {canvas:this,drawImage(...args){drawn=args},getImageData(){return {data:new Uint8ClampedArray(4)}}}}};
   class Image {naturalWidth=2480;naturalHeight=3508;decode(){return Promise.resolve()}}
-  const actual=new Function('createImageBitmap','document','grayFromRgba','prepareImage','setScanMessage','$','Image','URL',`${source};return loadPhoto`)(useBitmap?async()=>bitmap:undefined,{createElement:()=>canvas},()=>new Uint8Array(1),(...args)=>prepared=args,()=>{},()=>status,Image,{createObjectURL:()=>'/synthetic',revokeObjectURL:()=>{}});
+  const actual=new Function('createImageBitmap','document','grayFromRgba','prepareImage','readNormalized','setScanMessage','$','Image','URL',`${source};return loadPhoto`)(useBitmap?async()=>bitmap:undefined,{createElement:()=>canvas},()=>new Uint8Array(1),(...args)=>{prepared=args;return {pixels:new Uint8Array(1)}},()=>{readCalls++;return {observations:[]}},()=>{},()=>status,Image,{createObjectURL:()=>'/synthetic',revokeObjectURL:()=>{}});
   await actual({type:'image/png',size:1024});assert.equal(status.textContent,'');
-  assert.deepEqual(drawn.slice(1),[0,0,1273,1800]);assert.deepEqual(prepared.slice(1),[1273,1800,{source:'import'}]);assert.equal(canvas.width,1273);assert.equal(canvas.height,1800);assert.equal(closed,useBitmap?1:0);
+  assert.deepEqual(drawn.slice(1),[0,0,1273,1800]);assert.deepEqual(prepared.slice(1),[1273,1800,{source:'import'}]);assert.equal(canvas.width,1273);assert.equal(canvas.height,1800);assert.equal(readCalls,1,'import auto-reads');assert.equal(closed,useBitmap?1:0);
  }
 });
 
