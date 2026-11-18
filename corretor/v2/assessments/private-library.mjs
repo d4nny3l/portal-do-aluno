@@ -5,20 +5,23 @@ export function createPrivateLibraryController({
 }){
  if(!client||typeof getDraft!=='function')throw new TypeError('Cliente e editor necessários.');
  const s={phase:'unavailable',message:'Biblioteca privada indisponível; nenhuma gravação foi realizada.',
-  session:null,grants:[],scope:null,rows:[],nextCursor:null,record:null,revisions:[],selection:null,pending:null,
+  session:null,grants:[],scope:null,rows:[],nextCursor:null,pageIndex:0,pageStarts:[null],catalogRequest:0,record:null,revisions:[],selection:null,pending:null,
   // 'new' requires an explicit new-draft/context choice; a failed open stays blocked.
   editorMode:'blocked',
   generation:0};
  const signal=(phase,message)=>{s.phase=phase;s.message=message;onStatus({phase,message})};
  const check=error=>{
   const state=client.classifyError(error);
-  if(state==='session'||state==='forbidden'){s.generation++;s.selection=null;onSelection(null);}
+  if(state==='session'||state==='forbidden'){
+   // Invalid identity/grants must never leave a writable record or old catalog.
+   resetContext();s.session=null;s.grants=[];s.scope=null;
+  }
   signal(state,error?.message||'Não foi possível confirmar esta operação.');throw error;
  };
  const scopeEquals=(a,b)=>['institutionId','classId','periodId'].every(k=>a?.[k]===b?.[k]);
  const secure=()=>{if(!client.enabled||!s.session||!s.scope)throw new Error('Biblioteca privada indisponível ou sem escopo autorizado.');};
  const resetContext=()=>{
-  s.generation++;s.rows=[];s.nextCursor=null;s.record=null;s.revisions=[];s.editorMode='blocked';
+  s.generation++;s.catalogRequest++;s.rows=[];s.nextCursor=null;s.pageIndex=0;s.pageStarts=[null];s.record=null;s.revisions=[];s.editorMode='blocked';
   s.selection=null;onSelection(null);
  };
  const fresh=(generation)=>s.generation===generation;
@@ -52,17 +55,31 @@ export function createPrivateLibraryController({
   s.editorMode='new';
   signal('draft','Contexto autorizado selecionado. Novo rascunho ainda não salvo.');
  }
- async function list({more=false}={}){
-  secure();const g=s.generation;signal('loading','Consultando biblioteca privada…');
+ async function list({more=false,back=false}={}){
+  secure();
+  if(more&&back)throw new Error('Escolha somente uma direção de navegação.');
+  if(more&&!s.nextCursor||back&&s.pageIndex===0)return s.rows;
+  // Keep a bounded page in memory; preserve cursor history only, not prior answers.
+  const g=s.generation,requestId=++s.catalogRequest;
+  const target=more?s.pageIndex+1:back?s.pageIndex-1:s.pageIndex;
+  const cursor=more?s.nextCursor:s.pageStarts[target]??null;
+  signal('loading','Consultando página '+(target+1)+' da biblioteca…');
   try{
-   const data=await client.list(more?s.nextCursor:null);
-   if(!fresh(g))return null;
+   const data=await client.list(cursor);
+   if(!fresh(g)||requestId!==s.catalogRequest)return null;
+   if(!Array.isArray(data?.assessments)||data.assessments.length>10||
+      !(data.nextCursor===null||typeof data.nextCursor==='string'))
+    throw new Error('Página inválida: o catálogo deve retornar até 10 avaliações.');
    const matching=data.assessments.filter(row=>scopeEquals(row,s.scope));
-   s.rows=more?s.rows.concat(matching):matching;
-   s.nextCursor=data.nextCursor;
-   signal('draft','Biblioteca consultada. Nenhuma avaliação foi alterada.');
+   s.rows=matching;s.nextCursor=data.nextCursor;s.pageIndex=target;
+   s.pageStarts=s.pageStarts.slice(0,target+1);
+   s.pageStarts[target]=cursor;
+   if(data.nextCursor)s.pageStarts[target+1]=data.nextCursor;
+   signal('draft',matching.length
+    ?'Página '+(target+1)+' · '+matching.length+' avaliação(ões) nesta página.'
+    :'Nenhuma avaliação encontrada nesta turma.');
    return s.rows;
-  }catch(error){if(!fresh(g))return null;check(error)}
+  }catch(error){if(!fresh(g)||requestId!==s.catalogRequest)return null;check(error)}
  }
  async function open(assessmentId,revision=null){
   secure();
@@ -192,7 +209,7 @@ export function createPrivateLibraryController({
  return {initialize,useScope,list,open,history,newDraft,invalidateOpenedRecord,save,retry,abandonPending,duplicate,archive,
   selectIssued,resumeSelection,
   view:()=>({phase:s.phase,message:s.message,session:s.session,grants:s.grants,scope:s.scope,rows:s.rows,
-   nextCursor:s.nextCursor,record:s.record,editorMode:s.editorMode,generation:s.generation,revisions:s.revisions,selection:s.selection,
+   nextCursor:s.nextCursor,pageIndex:s.pageIndex,hasPrevious:s.pageIndex>0,record:s.record,editorMode:s.editorMode,generation:s.generation,revisions:s.revisions,selection:s.selection,
    pending:s.pending&&{method:s.pending.operation.method,path:s.pending.operation.path,
      requestId:s.pending.operation.payload.requestId}})};
 }
