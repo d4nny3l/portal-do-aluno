@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {mapFramePoints,frameSize,drawVideoFrame,containMapping,guidePoints,CameraSession,cameraRank,cameraControls,applyCameraControl,captureQuality,motionBetween} from '../omr/camera.mjs';
+import {mapFramePoints,frameSize,drawVideoFrame,containMapping,guidePoints,CameraSession,cameraRank,cameraControls,applyCameraControl,captureQuality,motionBetween,cameraZoomSnapshot,reduceUnwantedCameraZoom} from '../omr/camera.mjs';
 
 const resolutions=[[1920,1080],[1080,1920],[4032,3024],[3024,4032],[640,480],[480,640],[1280,720],[720,1280]];
 test('whole-video conversion uses intrinsic orientation and a longest-edge cap, never CSS or crop',()=>{
@@ -75,4 +75,66 @@ test('capture maps the SAME preview markers and refuses an intervening device ro
 test('capability negotiation failure keeps the original stream usable',async()=>{
  const track=fakeTrack('Camera',{}, {width:{max:4096},height:{max:3072},resizeMode:['none']});track.applyConstraints=async()=>{throw Error('not supported')};
  const session=new CameraSession({getUserMedia:async()=>streamFor(track)});const result=await session.open();assert.equal(result.track,track);assert.equal(track.stopped,0);session.stop();
+});
+
+
+test('native zoom: reduce only verified amplification to actual supported min, never assume 1x',async()=>{
+ let current=2.5,constrained=null;
+ const track={
+  getCapabilities:()=>({zoom:{min:.5,max:5,step:.1}}),
+  getSettings:()=>({zoom:current,facingMode:'environment',resizeMode:'none'}),
+  getConstraints:()=>({zoom:constrained}),
+  async applyConstraints(payload){constrained=payload.advanced[0].zoom;current=constrained}
+ };
+ const before=cameraZoomSnapshot(track);
+ assert.equal(before.current,2.5);assert.equal(before.min,.5);
+ const result=await reduceUnwantedCameraZoom(track);
+ assert.equal(result.attempted,true);assert.equal(result.applied,true);
+ assert.equal(result.after.current,.5);
+ assert.equal(result.after.constraint,.5);
+ assert.equal(current,.5);
+ const again=await reduceUnwantedCameraZoom(track);
+ assert.equal(again.attempted,false);
+});
+
+test('native zoom unsupported, unreported or rejected stays unchanged with safe fallback',async()=>{
+ const noCapabilities={getSettings:()=>({zoom:3})};
+ assert.equal((await reduceUnwantedCameraZoom(noCapabilities)).attempted,false);
+ const unknown={getCapabilities:()=>({zoom:{min:1.3,max:4}}),getSettings:()=>({})};
+ assert.equal((await reduceUnwantedCameraZoom(unknown)).attempted,false);
+ const blocked={getCapabilities:()=>({zoom:{min:1.3,max:4}}),getSettings:()=>({zoom:2.4}),async applyConstraints(){throw Error('unsupported')}};
+ const result=await reduceUnwantedCameraZoom(blocked);
+ assert.equal(result.attempted,true);assert.equal(result.applied,false);
+ assert.equal(result.after.current,2.4);
+ const ignored={getCapabilities:()=>({zoom:{min:1,max:3}}),getSettings:()=>({zoom:2}),async applyConstraints(){}};
+ assert.equal((await reduceUnwantedCameraZoom(ignored)).applied,false,'do not claim success when browser ignores constraint');
+});
+
+test('rear camera is mandatory on default request and front camera is rejected',async()=>{
+ let video;const front=fakeTrack('Front Camera',{deviceId:'front',facingMode:'user'});
+ const session=new CameraSession({async getUserMedia(args){video=args.video;return streamFor(front)},async enumerateDevices(){return [{kind:'videoinput',label:'Front Camera',deviceId:'front'}]}});
+ await assert.rejects(session.open(),/traseira/);
+ assert.equal(video.facingMode.exact,'environment');
+ assert.equal(front.stopped,1);
+});
+
+test('camera preference: main rear zoom calibration is independent of drawVideoFrame bitmap',async()=>{
+ const ultra=fakeTrack('Back Ultra Wide Camera',{deviceId:'ultra',facingMode:'environment'});
+ let zoom=2.1;
+ const main=fakeTrack('Back Camera',{deviceId:'main',facingMode:'environment',zoom},{zoom:{min:1.2,max:4},width:{max:4096},height:{max:3072}});
+ main.getSettings=()=>({deviceId:'main',facingMode:'environment',zoom,width:1920,height:1440});
+ main.applyConstraints=async request=>{
+  main.constraints.push(request);
+  if(request.advanced?.[0]?.zoom!==undefined)zoom=request.advanced[0].zoom;
+ };
+ const session=new CameraSession({
+  async getUserMedia(args){return streamFor(args.video.deviceId?.exact?main:ultra)},
+  async enumerateDevices(){return [{kind:'videoinput',deviceId:'ultra',label:ultra.label},{kind:'videoinput',deviceId:'main',label:main.label}]}
+ });
+ const result=await session.open();
+ assert.equal(result.track,main);
+ assert.equal(result.zoom.applied,true);
+ assert.equal(zoom,1.2);
+ assert.equal(ultra.stopped,1);
+ session.stop();
 });
