@@ -151,13 +151,15 @@ function analyzeQuestion(cell, pixels, width, height, darkThreshold, ambiguityGa
  */
 export function diagnoseRaster(template, pixels, width, height, options = {}) {
   const { darkThreshold = 100, ambiguityGap = 18, page = 1, showCode = true, manifest = null } = options;
-  // Preserve all public reader input/manifest validations.
-  readRaster(template, pixels, width, height, options);
+  // Keep diagnostic states aligned with the public result, including an
+  // unreadable mandatory identity which vetoes partial auto-recognition.
+  const reading = readRaster(template, pixels, width, height, options);
+  const stateById = new Map(reading.observations.map(item => [item.questionId, item.state]));
   const layout = layoutTemplate(template, { width, height, page, showCode, manifest });
   return Object.freeze(layout.cells.map(cell => {
     const result = analyzeQuestion(cell, pixels, width, height, darkThreshold, ambiguityGap);
     return Object.freeze({
-      number: cell.number, questionId: cell.questionId, state: result.state,
+      number: cell.number, questionId: cell.questionId, state: stateById.get(cell.questionId) ?? result.state,
       candidateMarks: Object.freeze([...result.marks]),
       choiceScores: Object.freeze(result.scores.map(score => Object.freeze({
         choice: score.choice, core: Math.round(score.score * 10) / 10,
