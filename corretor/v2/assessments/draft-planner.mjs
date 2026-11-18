@@ -51,7 +51,8 @@ export function installIntegratedDraftPlanner({document,getSections,getMetadata,
    $('integratedKeyCount').textContent=(sum.blocks.reduce((n,b)=>n+b.filled,0))+' de '+sum.blocks.reduce((n,b)=>n+b.count,0)+' respostas informadas';
    if(sum.invalidAmounts||sum.missing)status('Preencha o valor de cada bloco e o gabarito completo antes de selecionar para correção.','draft');
    else if(state.active)status('Avaliação selecionada nesta sessão. A nota por bloco será aplicada à leitura.','ready');
-   else status('Configuração completa nesta aba. Selecione para corrigir ou registre uma versão temporária.','ready');
+   else if(state.currentRecord)status('Revisão local '+state.currentRecord.revision+' registrada nesta aba. Pode selecionar para correção.','ready');
+   else status('Rascunho não registrado. Registre uma versão nesta aba antes de selecionar para correção.','draft');
   }catch(error){$('integratedTotal').textContent='Valor total dos blocos: —';$('integratedKeyCount').textContent='Gabarito pendente';status(error.message,'error');}
  }
  function refresh(){
