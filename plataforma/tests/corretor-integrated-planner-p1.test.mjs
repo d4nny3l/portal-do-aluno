@@ -34,7 +34,7 @@ function fixture({bank=false}={}){
   bankActive:()=>bank
  });
  return {fields,planner,sections:()=>sections,selected:()=>selected,deactivated:()=>deactivated,opened:()=>opened,restored:()=>restored,
-  setSections:newSections=>{sections=newSections;planner.refresh()},setMeta:value=>{meta={...meta,...value};planner.notifyChanged()}};
+  setSections:newSections=>{sections=newSections;planner.refresh()},setMeta:value=>{meta={...meta,...value};planner.notifyChanged()},setModelHash:value=>{model.contentHash=value;planner.notifyChanged()}};
 }
 test('view uses real integrated plan controls, no fake persistence or answer key printed on card',()=>{
  for(const id of ['integratedBlockValues','integratedVisualKey','integratedPaste','integratedUse','integratedLocalLibrary','integratedRemember','integratedOpen','integratedDuplicate'])assert.match(html,new RegExp('id="'+id+'"'));
@@ -109,4 +109,22 @@ test('protected bank stays authoritative: local selection and temporary library 
  f.integratedUse.onclick();assert.equal(h.selected(),null);
  assert.match(f.integratedStatus.textContent,/Banco autenticado/);
  f.integratedRemember.onclick();assert.equal(h.planner.sessionRecords().length,0);
+});
+
+test('changing optical manifest hash invalidates a previously selected local plan',()=>{
+ const h=fixture(),f=h.fields;
+ for(const [i,v]of ['4','2'].entries()){
+  const input=f.integratedBlockValues.children[i].children[1];input.value=v;input.oninput();
+ }
+ f.integratedPaste.value='A C E';f.integratedPasteApply.onclick();
+ f.integratedUse.onclick();assert.ok(h.selected());
+ h.setModelHash('modified-geometry-or-header-hash');
+ assert.equal(h.selected(),null);
+ assert.equal(h.deactivated(),1);
+ assert.match(f.integratedReadingStatus.textContent,/Nenhuma avaliação integrada selecionada/);
+});
+test('initial empty editor presents an actionable draft rather than a false error or save',()=>{
+ const h=fixture();h.setSections([]);
+ assert.match(h.fields.integratedStatus.textContent,/Adicione um bloco/);
+ assert.equal(h.fields.integratedStatus.dataset.state,'draft');
 });
