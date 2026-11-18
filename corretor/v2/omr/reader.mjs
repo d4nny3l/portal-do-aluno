@@ -42,7 +42,7 @@ export function readRaster(template, pixels, width, height, { darkThreshold = 10
     layoutVersion: layout.manifest.layoutVersion || "v1",
     contentHash: layout.manifest.contentHash,
     observations: Object.freeze(samples),
-    needsReview: identity.state === "review" || samples.some(observation => observation.state !== "read"),
+    needsReview: identity.state === "review" || samples.some(observation => observation.state === "review"),
   });
 }
 
@@ -136,7 +136,10 @@ function analyzeQuestion(cell, pixels, width, height, darkThreshold, ambiguityGa
     const safeSingle = Boolean(item && !conflict && multipleWeak.length <= 1);
     state = partial.length > 1 ? 'double' : safeSingle ? 'read' : 'review';
   }
-  else if (multipleWeak.length > 1) state = 'review';
+  else if (multipleWeak.length > 1) state = 'double';
+  // Substantial but non-exclusive ink must never be mistaken for an empty answer.
+  // Existing optical thresholds remain unchanged: request a new capture instead.
+  else if (multipleWeak.length === 1) state = 'review';
   else state = 'blank';
   const recognizedPartial = state === 'read' && strong.length === 0 && partial.length === 1;
   return { scores, marks, state, winner: recognizedPartial ? partial[0].choice : first.choice,

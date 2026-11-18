@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {mapFramePoints,frameSize,drawVideoFrame,containMapping,guidePoints,CameraSession,cameraRank,cameraControls,applyCameraControl,captureQuality,motionBetween,cameraZoomSnapshot,reduceUnwantedCameraZoom} from '../omr/camera.mjs';
+import {mapFramePoints,frameSize,drawVideoFrame,containMapping,guidePoints,CameraSession,cameraRank,cameraControls,applyCameraControl,captureQuality,motionBetween,cameraZoomSnapshot,reduceUnwantedCameraZoom,widerRearCandidate} from '../omr/camera.mjs';
 
 const resolutions=[[1920,1080],[1080,1920],[4032,3024],[3024,4032],[640,480],[480,640],[1280,720],[720,1280]];
 test('whole-video conversion uses intrinsic orientation and a longest-edge cap, never CSS or crop',()=>{
@@ -137,4 +137,151 @@ test('camera preference: main rear zoom calibration is independent of drawVideoF
  assert.equal(zoom,1.2);
  assert.equal(ultra.stopped,1);
  session.stop();
+});
+
+test('P1 narrow native main camera selects a verified adequate rear ultrawide, never a frontal',async()=>{
+ const main=fakeTrack('Back Camera',{deviceId:'main',facingMode:'environment',zoom:1.6,width:1920,height:1440},
+  {zoom:{min:1.4,max:4},width:{max:1920},height:{max:1440}});
+ const ultra=fakeTrack('Back Ultra Wide Camera',{deviceId:'ultra',facingMode:'environment',zoom:1,width:1920,height:1280},
+  {zoom:{min:.5,max:2},width:{max:1920},height:{max:1280}});
+ const devices=[{kind:'videoinput',deviceId:'main',label:main.label},{kind:'videoinput',deviceId:'ultra',label:ultra.label},{kind:'videoinput',deviceId:'front',label:'Front Camera'}];
+ assert.equal(widerRearCandidate(devices,main).deviceId,'ultra');
+ let requested=[];
+ const session=new CameraSession({
+  async getUserMedia(opt){requested.push(opt.video);return streamFor(opt.video.deviceId?.exact==='ultra'?ultra:main)},
+  async enumerateDevices(){return devices}
+ });
+ const opened=await session.open();
+ assert.equal(opened.track,ultra);
+ assert.equal(main.stopped,1);
+ assert.ok(requested.some(v=>v.deviceId?.exact==='ultra'));
+ assert.equal(opened.track.getSettings().facingMode,'environment');
+ session.stop();assert.equal(ultra.stopped,1);
+});
+
+test('P1 adequate resolution is mandatory: unsharp low-resolution ultrawide reverts to rear main',async()=>{
+ const main=fakeTrack('Back Camera',{deviceId:'main',facingMode:'environment',zoom:1.5,width:1920,height:1440},
+  {zoom:{min:1.3,max:3},width:{max:1920},height:{max:1440}});
+ const ultra=fakeTrack('Back Ultra Wide Camera',{deviceId:'ultra',facingMode:'environment',width:640,height:480},
+  {width:{max:640},height:{max:480}});
+ let originalOpens=0;
+ const session=new CameraSession({
+  async getUserMedia(opt){if(opt.video.deviceId?.exact==='ultra')return streamFor(ultra);originalOpens++;return streamFor(main)},
+  async enumerateDevices(){return [{kind:'videoinput',deviceId:'main',label:main.label},{kind:'videoinput',deviceId:'ultra',label:ultra.label}]}
+ });
+ const result=await session.open();
+ assert.equal(result.track,main);
+ assert.equal(ultra.stopped,1);
+ assert.equal(originalOpens,1,'main camera stays alive instead of reopening after an optional rejection');
+ assert.equal(main.stopped,0,'main track is not interrupted by an inadequate optional lens');
+ session.stop();
+});
+
+test('P1 without native evidence, keep reliable rear camera; virtual crop can trigger adequate rear alternative',async()=>{
+ const main=fakeTrack('Back Camera',{deviceId:'main',facingMode:'environment',zoom:1,width:1920,height:1440,resizeMode:'none'},
+  {zoom:{min:1,max:3}});
+ const devices=[{kind:'videoinput',deviceId:'main',label:'Back Camera'},{kind:'videoinput',deviceId:'ultra',label:'Back Ultra Wide Camera'}];
+ assert.equal(widerRearCandidate(devices,main),null);
+ const virtual=fakeTrack('Back Dual Virtual Camera',{deviceId:'virtual',facingMode:'environment',width:1920,height:1440,resizeMode:'crop-and-scale'});
+ assert.equal(widerRearCandidate(devices,virtual)?.deviceId,'ultra');
+ const noSupport=fakeTrack('Back Camera',{deviceId:'main'});delete noSupport.getCapabilities;
+ assert.equal(widerRearCandidate(devices,noSupport),null);
+});
+
+test('P1 front camera reported as a wider lens is rejected and rear fallback remains usable',async()=>{
+ const main=fakeTrack('Back Camera',{deviceId:'main',facingMode:'environment',zoom:1.5,width:1920,height:1440},
+  {zoom:{min:1.3,max:3}});
+ const front=fakeTrack('Front Camera',{deviceId:'ultra',facingMode:'user',width:1920,height:1440});
+ const session=new CameraSession({
+  async getUserMedia(opt){return streamFor(opt.video.deviceId?.exact==='ultra'?front:main)},
+  async enumerateDevices(){return [{kind:'videoinput',deviceId:'main',label:'Back Camera'},{kind:'videoinput',deviceId:'ultra',label:'Back Ultra Wide Camera'}]}
+ });
+ const opened=await session.open();
+ assert.equal(opened.track,main);
+ assert.equal(front.stopped,1);
+ session.stop();
+});
+
+test('P1-02 regression: reported max capability is not effective ultra-wide resolution',async()=>{
+ const main=fakeTrack('Back Camera',{deviceId:'main',facingMode:'environment',zoom:1.8,width:1920,height:1440},
+  {zoom:{min:1.4,max:4}});
+ const ultra=fakeTrack('Back Ultra Wide Camera',{deviceId:'ultra',facingMode:'environment',zoom:1},
+  {width:{max:4096},height:{max:3072},zoom:{min:.5,max:3}});
+ const requested=[];
+ const session=new CameraSession({
+  async getUserMedia(args){requested.push(args.video);return streamFor(args.video.deviceId?.exact==='ultra'?ultra:main)},
+  async enumerateDevices(){return [{kind:'videoinput',deviceId:'main',label:main.label},{kind:'videoinput',deviceId:'ultra',label:ultra.label}]}
+ });
+ const result=await session.open();
+ assert.ok(requested.some(req=>req.deviceId?.exact==='ultra'),'optional ultra was actually probed');
+ assert.equal(result.track,main,'max capability is not accepted as delivered image size');
+ assert.equal(session.stream.getVideoTracks()[0],main);
+ assert.equal(ultra.stopped,1,'rejected optional stream always released');
+ assert.equal(main.stopped,0,'working main stream must stay usable');
+ session.stop();
+ assert.equal(main.stopped,1);
+});
+
+test('P1-03 regression: optional NotAllowedError never destroys a working main camera',async()=>{
+ const main=fakeTrack('Back Camera',{deviceId:'main',facingMode:'environment',zoom:1.7,width:1920,height:1440},
+  {zoom:{min:1.35,max:4}});
+ let ultraAttempts=0,mainAttempts=0;
+ const session=new CameraSession({
+  async getUserMedia(args){
+   if(args.video.deviceId?.exact==='ultra'){ultraAttempts++;throw Object.assign(Error('ultra permission denied'),{name:'NotAllowedError'})}
+   mainAttempts++;return streamFor(main);
+  },
+  async enumerateDevices(){return [{kind:'videoinput',deviceId:'main',label:main.label},{kind:'videoinput',deviceId:'ultra',label:'Back Ultra Wide Camera'}]}
+ });
+ const opened=await session.open();
+ assert.equal(ultraAttempts,1);
+ assert.equal(mainAttempts,1,'do not reopen a still-live main stream');
+ assert.equal(opened.track,main);
+ assert.equal(session.stream.getVideoTracks()[0],main);
+ assert.equal(main.stopped,0);
+ session.stop();assert.equal(main.stopped,1);assert.equal(session.stream,null);
+});
+
+test('P1-03 global revocation: if main track ended and original device is denied, fail explicitly',async()=>{
+ const main=fakeTrack('Back Camera',{deviceId:'main',facingMode:'environment',zoom:1.7,width:1920,height:1440},
+  {zoom:{min:1.35,max:4}});
+ main.readyState='live';
+ let restoreAttempts=0;
+ const denied=()=>Object.assign(Error('globally revoked'),{name:'NotAllowedError'});
+ const session=new CameraSession({
+  async getUserMedia(args){
+   if(args.video.deviceId?.exact==='ultra'){main.readyState='ended';throw denied()}
+   if(args.video.deviceId?.exact==='main'){restoreAttempts++;throw denied()}
+   return streamFor(main);
+  },
+  async enumerateDevices(){return [{kind:'videoinput',deviceId:'main',label:main.label},{kind:'videoinput',deviceId:'ultra',label:'Back Ultra Wide Camera'}]}
+ });
+ await assert.rejects(session.open(),{name:'NotAllowedError'});
+ assert.equal(restoreAttempts,1,'restore only previously verified original device');
+ assert.equal(session.stream,null);
+ assert.ok(main.stopped>=1,'revoked stream released');
+});
+
+test('P1-03 race: cancellation closes original and late optional stream without replacing newer session',async()=>{
+ const original=fakeTrack('Back Camera',{deviceId:'main',facingMode:'environment',zoom:1.6,width:1920,height:1440},
+  {zoom:{min:1.4,max:3}});
+ const ultra=fakeTrack('Back Ultra Wide Camera',{deviceId:'ultra',facingMode:'environment',width:1920,height:1440});
+ let signalProbe,resolveProbe;
+ const probed=new Promise(resolve=>{signalProbe=resolve});
+ const pendingUltra=new Promise(resolve=>{resolveProbe=resolve});
+ const session=new CameraSession({
+  async getUserMedia(args){
+   if(args.video.deviceId?.exact==='ultra'){signalProbe();return pendingUltra}
+   return streamFor(original);
+  },
+  async enumerateDevices(){return [{kind:'videoinput',deviceId:'main',label:original.label},{kind:'videoinput',deviceId:'ultra',label:ultra.label}]}
+ });
+ const opening=session.open();
+ await probed;
+ session.stop();
+ resolveProbe(streamFor(ultra));
+ await assert.rejects(opening,/cancelada/);
+ assert.equal(session.stream,null);
+ assert.equal(original.stopped,1);
+ assert.equal(ultra.stopped,1,'late optional camera must never leak');
 });

@@ -165,7 +165,7 @@ test('P1 observability limit: same pencil-like grayscale cannot prove marking in
 
 test('P1 exact published-vs-candidate reader: identical 23 rasters/manifests, no false answers',()=>{
  const counts={before:{read:0,review:0,blank:0,double:0},after:{read:0,review:0,blank:0,double:0},
-  reviewToRead:0,newIncorrect:0,blankToRead:0,doubleToRead:0};
+  reviewToRead:0,reviewToDouble:0,newIncorrect:0,blankToRead:0,doubleToRead:0};
  const changes=[];
  for(const entry of cases){
   const {template,manifest,pixels}=rasterFor(entry);
@@ -176,6 +176,7 @@ test('P1 exact published-vs-candidate reader: identical 23 rasters/manifests, no
   const first=before.observations[0],next=after.observations[0];
   counts.before[first.state]++;counts.after[next.state]++;
   if(first.state==='review'&&next.state==='read')counts.reviewToRead++;
+  if(first.state==='review'&&next.state==='double'){assert.ok(entry.truth.length>1,'only genuine double evidence may become invalid');counts.reviewToDouble++;}
   if(first.state==='blank'&&next.state==='read')counts.blankToRead++;
   if(first.state==='double'&&next.state==='read')counts.doubleToRead++;
   if(next.state==='read'&&(entry.truth.length!==1||next.answer!==entry.truth[0]))counts.newIncorrect++;
@@ -184,7 +185,8 @@ test('P1 exact published-vs-candidate reader: identical 23 rasters/manifests, no
   if(entry.truth.length>1){assert.notEqual(next.state,'read',entry.id);assert.equal(next.answer,null,entry.id)}
  }
  assert.deepEqual(counts.before,{read:5,review:8,blank:7,double:3});
- assert.deepEqual(counts.after,{read:10,review:3,blank:7,double:3});
+ assert.deepEqual(counts.after,{read:10,review:0,blank:7,double:6});
+ assert.equal(counts.reviewToDouble,3,'three genuine double-partial cases now classified invalid');
  assert.equal(counts.reviewToRead,5,'all five unique partial candidates recognized');
  assert.equal(counts.blankToRead,0);
  assert.equal(counts.doubleToRead,0);

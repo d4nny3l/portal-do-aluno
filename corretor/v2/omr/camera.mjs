@@ -100,6 +100,31 @@ export async function reduceUnwantedCameraZoom(track) {
   };
 }
 
+// An ultra-wide label is only a candidate. Ask for it when native settings
+// show unavoidable zoom or browser crop; never equate a label with real FOV.
+export function widerRearCandidate(devices, track) {
+  const settings = track?.getSettings?.() || {};
+  const zoom = cameraZoomSnapshot(track);
+  const narrowed = (zoom.supported && zoom.min > 1.25) || settings.resizeMode === 'crop-and-scale';
+  if (!narrowed) return null;
+  return devices.find(d => d.kind === 'videoinput' && d.deviceId && d.deviceId !== settings.deviceId
+    && /back|rear|traseira|environment/i.test(d.label || '')
+    && /ultra|0[.,]5|ultra.angular/i.test(d.label || '')) || null;
+}
+
+function adequateWideStream(track, deviceId, priorZoom) {
+  const settings = track?.getSettings?.() || {};
+  if (settings.facingMode === 'user' || /front|frontal|selfie/i.test(track?.label || '')) return false;
+  if (settings.deviceId && settings.deviceId !== deviceId) return false;
+  // A supported maximum is not the resolution of the delivered video frames.
+  // Fail closed when effective track settings are missing or inconsistent.
+  const w = settings.width, h = settings.height;
+  if (!Number.isFinite(w) || !Number.isFinite(h) || Math.min(w,h) < 960 || Math.max(w,h) < 1280) return false;
+  const trialZoom = cameraZoomSnapshot(track);
+  if (trialZoom.supported && priorZoom.supported && trialZoom.min > priorZoom.min + .001) return false;
+  return true;
+}
+
 export class CameraSession {
   constructor(mediaDevices) { this.mediaDevices = mediaDevices; this.generation = 0; this.stream = null; }
   stop() { this.generation++; this.stream?.getTracks().forEach(track => track.stop()); this.stream = null; }
@@ -107,44 +132,79 @@ export class CameraSession {
     this.stop(); const generation = this.generation;
     const media = this.mediaDevices;
     if (!media?.getUserMedia) throw new Error('Este navegador não oferece acesso à câmera. Importe uma fotografia para continuar.');
-    const acquire = async id => {
-      const stream = await media.getUserMedia({ audio: false, video: id ? { deviceId: { exact: id } } : { facingMode: { exact: 'environment' } } });
-      if (generation !== this.generation) { stream.getTracks().forEach(t => t.stop()); throw new Error('Abertura da câmera cancelada.'); }
-      this.stream = stream; return stream;
+    const acquire = async (id,activate=true) => {
+      const stream = await media.getUserMedia({audio:false,video:id?{deviceId:{exact:id}}:{facingMode:{exact:'environment'}}});
+      if (generation !== this.generation) {stream.getTracks().forEach(t=>t.stop());throw new Error('Abertura da câmera cancelada.');}
+      if (activate) this.stream = stream;return stream;
     };
-    try {
-      let stream = await acquire(deviceId);
-      let devices = [];
-      try { devices = (await media.enumerateDevices?.() || []).filter(d => d.kind === 'videoinput'); } catch { /* keep default camera */ }
-      if (generation !== this.generation) throw new Error('Abertura da câmera cancelada.');
-      if (!deviceId) {
-        const current = stream.getVideoTracks()[0];
-        const preferred = [...devices].sort((a,b) => cameraRank(b.label)-cameraRank(a.label))[0];
-        if (preferred && cameraRank(preferred.label) > cameraRank(current.label) && preferred.deviceId !== current.getSettings?.().deviceId) {
-          stream.getTracks().forEach(t => t.stop()); this.stream = null;
-          try { stream = await acquire(preferred.deviceId); }
-          catch (error) { if (generation !== this.generation || error.name === 'NotAllowedError') throw error; stream = await acquire(''); }
-        }
-      }
-      const track = stream.getVideoTracks()[0], caps = safeCapabilities(track);
+    const negotiate = async stream => {
+      const track = stream.getVideoTracks()[0];
+      if (!track) throw new Error('Nenhum fluxo de vídeo foi recebido. Importe uma fotografia.');
       const facing = track.getSettings?.().facingMode;
       if (facing === 'user' || (/front|user|frontal|face/i.test(track.label) && !/back|rear|traseira|environment/i.test(track.label))) {
         throw new Error('A câmera traseira não está disponível neste navegador. Importe uma fotografia para continuar.');
       }
-      // Request native frames where supported. Independent ideal bounds do not force 16:9.
-      const constraints = {};
-      for (const dimension of ['width','height']) if (caps[dimension]?.max) constraints[dimension] = { ideal: Math.min(2560, caps[dimension].max) };
-      if (caps.resizeMode?.includes('none')) constraints.resizeMode = { exact: 'none' };
+      const caps = safeCapabilities(track), constraints = {};
+      for (const dim of ['width','height']) if (caps[dim]?.max) constraints[dim]={ideal:Math.min(2560,caps[dim].max)};
+      if (caps.resizeMode?.includes('none')) constraints.resizeMode={exact:'none'};
       if (track.applyConstraints && Object.keys(constraints).length) {
-        try { await track.applyConstraints(constraints); } catch { /* original native/default stream remains usable */ }
+        try {await track.applyConstraints(constraints)} catch { /* Keep usable native video. */ }
       }
       if (generation !== this.generation) throw new Error('Abertura da câmera cancelada.');
       const zoom = await reduceUnwantedCameraZoom(track);
       if (generation !== this.generation) throw new Error('Abertura da câmera cancelada.');
-      return { stream, track, devices, capabilities: safeCapabilities(track), zoom };
-    } catch (error) {
-      // An old request must never stop a newer camera.
-      if (generation === this.generation) this.stop();
+      return {track,capabilities:safeCapabilities(track),zoom};
+    };
+    try {
+      let stream = await acquire(deviceId);
+      let devices = [];
+      try {devices=(await media.enumerateDevices?.()||[]).filter(d=>d.kind==='videoinput')}catch {/* Retain default. */}
+      if (generation !== this.generation) throw new Error('Abertura da câmera cancelada.');
+      if (!deviceId) {
+        const current = stream.getVideoTracks()[0];
+        const preferred=[...devices].sort((a,b)=>cameraRank(b.label)-cameraRank(a.label))[0];
+        if (preferred && cameraRank(preferred.label)>cameraRank(current?.label) && preferred.deviceId!==current?.getSettings?.().deviceId) {
+          stream.getTracks().forEach(t=>t.stop());this.stream=null;
+          try {stream=await acquire(preferred.deviceId)}
+          catch(error){if(generation!==this.generation||error.name==='NotAllowedError')throw error;stream=await acquire('')}
+        }
+      }
+      let selected=await negotiate(stream);
+      const wider=!deviceId?widerRearCandidate(devices,selected.track):null;
+      if (wider) {
+        const originalStream=stream;
+        const originalId=selected.track.getSettings?.().deviceId||'';
+        const originalZoom=selected.zoom.after;
+        let optionalStream=null;
+        try {
+          // Keep the proven main-camera stream alive while probing an optional lens.
+          // Cancellation still stops the main stream; a late candidate is stopped by acquire().
+          optionalStream=await acquire(wider.deviceId,false);
+          const candidate=await negotiate(optionalStream);
+          if (!adequateWideStream(candidate.track,wider.deviceId,originalZoom)) throw new Error('Lente mais aberta não confirmou resolução/qualidade nativa suficiente.');
+          if (generation!==this.generation) throw new Error('Abertura da câmera cancelada.');
+          originalStream.getTracks().forEach(t=>t.stop());
+          stream=optionalStream;this.stream=optionalStream;selected=candidate;
+        } catch(error) {
+          optionalStream?.getTracks().forEach(t=>t.stop());
+          if (generation!==this.generation) throw error;
+          // A denied OPTIONAL device is not proof that the selected main camera failed.
+          // If browser permission was revoked and the main track has ended, try only
+          // to restore the previously verified original device; never use a frontal fallback.
+          const mainIsLive=originalStream.active!==false &&
+            originalStream.getVideoTracks().some(t=>t.readyState!=='ended');
+          if (!mainIsLive) {
+            originalStream.getTracks().forEach(t=>t.stop());this.stream=null;
+            stream=await acquire(originalId);
+            selected=await negotiate(stream);
+          } else {
+            stream=originalStream;this.stream=originalStream;
+          }
+        }
+      }
+      return {stream,devices,...selected};
+    } catch(error) {
+      if (generation===this.generation) this.stop();
       throw error;
     }
   }

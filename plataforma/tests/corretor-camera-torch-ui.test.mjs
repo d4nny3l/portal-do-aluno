@@ -172,6 +172,7 @@ test('P1 auto rear: one camera starts without picker, torch still available and 
  assert.equal(h.requested[0].video.facingMode.exact,'environment');
  assert.equal(h.state.cameraStream.getVideoTracks()[0],h.tracks.get('main'));
  assert.equal(h.el('cameraTorchButton').hidden,false);
+ assert.match(h.messages.at(-1),/não informa zoom nativo/,'limitação do navegador é comunicada sem alegar zoom corrigido');
  assert.doesNotMatch(html,/id="cameraDevice"|id="cameraDeviceLabel"/);
  h.state.stopCamera();assert.equal(h.tracks.get('main').stopped,1);
 });
@@ -223,8 +224,8 @@ test('P1 interface contains only open/close, real lamp and import; scanner owns 
  assert.match(html,/stableFrames>=3/);
  assert.match(html,/captureQuality\(frame,detection,previousCameraFrame\)/);
  assert.match(html,/automatic:true,manualCorners:mapFramePoints\(detection.corners,frame,capture\)/);
- assert.match(html,/corretor-v2\.css\?v=20261117autocamera1/);
- assert.match(html,/camera\.mjs\?v=20261117autocamera1/);
+ assert.match(html,/corretor-v2\.css\?v=20261118camstates1/);
+ assert.match(html,/camera\.mjs\?v=20261118wide1/);
  assert.match(css,/\.camera-stage video\{object-position:center;transform:none\}/);
 });
 
