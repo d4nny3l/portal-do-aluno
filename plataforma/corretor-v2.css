@@ -109,4 +109,3 @@
 .corretor-content button.camera-torch-button:not([hidden]){display:inline-flex;align-items:center;justify-content:center;gap:6px}
 .corretor-content button.camera-torch-button[aria-pressed="true"]{border-color:#d2a245;background:#fff4d3;color:#61471a}
 .corretor-content button.camera-torch-button:disabled{opacity:.65;cursor:default}
-
