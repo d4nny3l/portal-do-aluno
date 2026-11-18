@@ -93,14 +93,14 @@ test('A-01/A-03: 23 independently labelled raster scenarios comparing audited PR
  assert.equal(after.incorrectDefinitive,0);
  assert.equal(after.blankReview,0);
  assert.equal(after.markedIgnored,1,'faint mark intentionally remains unrecognized');
- assert.equal(after.correctDefinitive,5);
- assert.equal(after.recoveredReview,5);
+ assert.equal(after.correctDefinitive,10,'five exclusive partial marks join five strong correct marks');
+ assert.equal(after.recoveredReview,0,'five unique partial marks no longer mandatory review');
  assert.ok(after.correctDefinitive>before.correctDefinitive);
  for(const id of ['strong-artifact-4','strong-artifact-5']){
   const row=rows.find(x=>x.id===id);assert.equal(row.before,'review');assert.equal(row.after,'read');assert.equal(row.answer,'A');assert.deepEqual(row.marks,['A']);
  }
  for(const id of ['partial-2','partial-4','partial-5','blue-offset-5','partial-shadow-2']){
-  const row=rows.find(x=>x.id===id);assert.equal(row.after,'review');assert.equal(row.answer,null);
+  const row=rows.find(x=>x.id===id);assert.equal(row.after,'read');assert.equal(row.answer,row.truth);
  }
  console.log('A-03 synthetic labelled comparison:',JSON.stringify({before,after}));
  console.log('A-03 per-case states:',JSON.stringify(rows));
@@ -129,8 +129,9 @@ test('P1 dry run: proposed pencil/partial promotion measured on the same 23 labe
   const {template,manifest,pixels}=rasterFor(entry);
   const result=readRaster(template,pixels,width,height,{manifest}).observations[0];
   const scores=diagnoseRaster(template,pixels,width,height,{manifest})[0].choiceScores;
-  totals[result.state+'Before']++;
-  const suggested=provisionalPromotion(result,scores);
+  const legacyState=auditedBefore(scores);
+  totals[legacyState+'Before']++;
+  const suggested=provisionalPromotion({state:legacyState,marks:result.marks,answer:null},scores);
   if(suggested){
    totals.promoted++;
    if(entry.truth.length===1&&entry.truth[0]===suggested)totals.correctPromoted++;
@@ -138,7 +139,7 @@ test('P1 dry run: proposed pencil/partial promotion measured on the same 23 labe
    if(entry.truth.length===0)totals.falseBlankPromoted++;
    if(entry.truth.length>1)totals.doublePromoted++;
   }
-  details.push({fixture:entry.id,before:result.state,proposal:suggested??'review unchanged'});
+  details.push({fixture:entry.id,before:legacyState,actual:result.state,proposal:suggested??'review unchanged'});
  }
  // Synthetic guardrails; a real-field acceptance requires a separate dataset.
  assert.equal(totals.wrongPromoted,0);
