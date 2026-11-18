@@ -60,7 +60,9 @@ export function installPrivateAssessmentUI({document,client,getDraft,applyRecord
   controller.useScope(grant);await controller.list();
  });
  const fetchLibrary=button('Atualizar biblioteca',()=>controller.list());
- const more=button('Mais resultados',()=>controller.list({more:true}));
+ const more=button('Próxima página',()=>controller.list({more:true}));
+ const previous=button('Página anterior',()=>controller.list({back:true}));
+ const pageIndicator=make('span','Página 1 · até 10 avaliações',{'aria-live':'polite','aria-label':'Página atual do catálogo'});
  const chooseAssessment=button('Abrir avaliação/revisão',async()=>{
   const id=catalog.value,revision=revisions.value?Number(revisions.value):null;
   if(!id)throw new Error('Escolha uma avaliação da biblioteca.');
@@ -83,7 +85,7 @@ export function installPrivateAssessmentUI({document,client,getDraft,applyRecord
  revisions.onchange=()=>{controller.invalidateOpenedRecord({keepRevisions:true});render()};
  scope.onchange=()=>{controller.invalidateOpenedRecord();render()};
  const selectLabel=make('p','A câmera não identifica automaticamente avaliações com cartões de geometria igual.');
- controls.append(connect,label('Turma e período',scope),chooseScope,label('Avaliação',catalog),fetchLibrary,more,
+ controls.append(connect,label('Turma e período',scope),chooseScope,label('Avaliação',catalog),fetchLibrary,previous,pageIndicator,more,
   label('Revisão',revisions),history,chooseAssessment,newDraft,saveDraft,issue,retry,
   duplicate,archive,select,label('Seleção confirmada',selectionId),resume);
  host.replaceChildren(make('h3','Biblioteca privada · configuração autorizada'),selectLabel,controls,status);
@@ -110,11 +112,14 @@ export function installPrivateAssessmentUI({document,client,getDraft,applyRecord
   archive.disabled=!matchesOpened||Boolean(s.pending);
   select.disabled=!matchesOpened||Boolean(s.pending)||s.record.status!=='issued'||Boolean(s.record.archived);
   retry.disabled=!s.pending;
-  more.disabled=!s.nextCursor;
+  fetchLibrary.disabled=!s.scope||Boolean(s.pending);
+  previous.disabled=!s.scope||!s.hasPrevious||Boolean(s.pending);
+  more.disabled=!s.scope||!s.nextCursor||Boolean(s.pending);
+  pageIndicator.textContent='Página '+(s.pageIndex+1)+' · '+s.rows.length+' de até 10 avaliações'+(s.nextCursor?' · há mais resultados':'');
   status.textContent=s.message;
   status.dataset.state=s.phase;
  }
  render();
  return Object.freeze({enabled:true,controller,render,controls:{scope,catalog,revisions,selectionId,connect,chooseScope,fetchLibrary,more,chooseAssessment,history,
-  newDraft,saveDraft,issue,retry,duplicate,archive,select,resume}});
+  newDraft,saveDraft,issue,retry,duplicate,archive,select,resume,previous,more,pageIndicator}});
 }
