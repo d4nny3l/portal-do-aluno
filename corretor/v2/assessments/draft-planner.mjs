@@ -201,7 +201,7 @@ export function installIntegratedDraftPlanner({document,getSections,getMetadata,
    editor.fields.assessmentKind=plan.metadata.kind;
    editor.fields.assessmentDate=plan.metadata.date;
    state.restoring=true;
-   try{invalidate();restoreEditor(editor);
+   try{invalidate();restoreEditor(editor,{skipBuild:true});
     state.values=Object.fromEntries(plan.blocks.map(block=>[block.sectionId,
       formatExact(BigInt(block.valueUnits),POINT_SCALE,4).replace(',','.')]));
     state.answers=Object.fromEntries(plan.blocks.flatMap(block=>block.questions.map(q=>[q.questionId,q.correct])));
