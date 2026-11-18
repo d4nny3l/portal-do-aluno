@@ -79,3 +79,67 @@ test('UI without a confirmed receipt must not show saved and keeps the same oper
  assert.equal(issued.length,2);
  assert.strictEqual(issued[0],issued[1],'retry passes the original object with same request ID/body');
 });
+
+
+test('P1-01 UI: opening A then failing B keeps displayed candidate B but disables every mutation of A',async()=>{
+ for(const code of [404,503,0]){
+  const {document,host}=uiDoc(),scope={institutionId:'school',classId:'class1',periodId:'p1'};
+  let writes=0,opened=[];
+  const client={
+   enabled:true,classifyError:error=>error.status===404?'missing':error.status===503?'unavailable':'failed',
+   session:async()=>({authenticated:true,principalId:'principal-a',epoch:1}),
+   grants:async()=>[scope],
+   list:async()=>({assessments:[
+    {id:'assessment-A',title:'Avaliação A',revision:1,state:'active',...scope},
+    {id:'assessment-B',title:'Avaliação B',revision:1,state:'active',...scope}],nextCursor:null}),
+   open:async id=>{opened.push(id);if(id==='assessment-B')throw Object.assign(Error('Falha ao abrir B'),{status:code});
+    return {id:'assessment-A',revision:1,status:'issued',manifestHash:'hash-a',definition:{title:'Avaliação A'},...scope}},
+   prepareSave:()=>{writes++;throw Error('write to A forbidden')},
+   prepareDuplicate:()=>{writes++;throw Error('duplicate A forbidden')},
+   prepareArchive:()=>{writes++;throw Error('archive A forbidden')},
+   prepareSelection:()=>{writes++;throw Error('select A forbidden')}
+  };
+  const ui=installPrivateAssessmentUI({document,client,getDraft:()=>({plan:{},manifest:{}}),
+   applyRecord:()=>{},onSelection:()=>{},confirmBatch:()=>true});
+  await ui.controls.connect.onclick();ui.controls.scope.value='0';await ui.controls.chooseScope.onclick();
+  ui.controls.catalog.value='assessment-A';ui.controls.catalog.onchange();await ui.controls.chooseAssessment.onclick();
+  assert.equal(ui.controller.view().record.id,'assessment-A');
+  assert.equal(ui.controls.saveDraft.disabled,false);
+  ui.controls.catalog.value='assessment-B';ui.controls.catalog.onchange();
+  assert.equal(ui.controller.view().record,null,'changing displayed candidate must invalidate old record immediately');
+  await ui.controls.chooseAssessment.onclick();
+  assert.deepEqual(opened,['assessment-A','assessment-B']);
+  assert.equal(ui.controls.catalog.value,'assessment-B');
+  assert.equal(ui.controller.view().record,null);
+  assert.equal(ui.controller.view().editorMode,'blocked');
+  for(const button of ['saveDraft','issue','duplicate','archive','select']){
+   assert.equal(ui.controls[button].disabled,true,button+' must be disabled after failed open');
+   await ui.controls[button].onclick();
+  }
+  assert.equal(writes,0);
+  assert.match(host.children.at(-1).textContent,/Falha ao abrir B|Abra e confira/);
+  await ui.controls.newDraft.onclick();
+  assert.equal(ui.controller.view().editorMode,'new');
+  assert.equal(ui.controller.view().record,null);
+ }
+});
+test('P1-01 UI: changing revision or scope immediately invalidates writable record, and read-only history remains accessible',async()=>{
+ const {document}=uiDoc(),a={institutionId:'school-a',classId:'A',periodId:'p'},b={institutionId:'school-b',classId:'B',periodId:'p'};
+ const ui=installPrivateAssessmentUI({document,client:{
+  enabled:true,classifyError:()=> 'failed',
+  session:async()=>({authenticated:true,principalId:'teacher',epoch:1}),grants:async()=>[a,b],
+  list:async()=>({assessments:[{id:'assessment-A',title:'A',revision:2,state:'active',...a}],nextCursor:null}),
+  open:async()=>({id:'assessment-A',revision:2,status:'issued',manifestHash:'hash',definition:{title:'A'},...a}),
+  history:async()=>[{revision:1,status:'issued'},{revision:2,status:'issued'}]
+ },getDraft:()=>({plan:{},manifest:{}})});
+ await ui.controls.connect.onclick();ui.controls.scope.value='0';await ui.controls.chooseScope.onclick();
+ ui.controls.catalog.value='assessment-A';ui.controls.catalog.onchange();await ui.controls.chooseAssessment.onclick();
+ await ui.controls.history.onclick();
+ ui.controls.revisions.value='1';ui.controls.revisions.onchange();
+ assert.equal(ui.controller.view().record,null);
+ assert.equal(ui.controller.view().editorMode,'blocked');
+ assert.equal(ui.controls.revisions.value,'1','historical revision remains selectable after invalidation');
+ assert.equal(ui.controls.saveDraft.disabled,true);
+ ui.controls.scope.value='1';ui.controls.scope.onchange();
+ assert.equal(ui.controls.saveDraft.disabled,true);
+});
