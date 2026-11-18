@@ -2,6 +2,7 @@
 // It does not persist or invoke the protected assessment repository.
 import {QUESTION_TYPES} from '../omr/assessment.mjs';
 import {applyKeyPaste,createIntegratedPlan,draftSummary,keyTextForPlan,formatExact,POINT_SCALE} from './block-scoring.mjs';
+import {planFromPrivateRecord} from './private-contract-adapter.mjs';
 
 export function installIntegratedDraftPlanner({document,getSections,getMetadata,getModel,prepareModel,snapshotEditor,restoreEditor,activate,deactivate,openCorrection,bankActive}){
  const $=id=>document.getElementById(id);
@@ -174,5 +175,44 @@ export function installIntegratedDraftPlanner({document,getSections,getMetadata,
   status('Novo planejamento temporário. Os blocos existentes continuam no editor; edite-os antes de registrar.','draft');
  };
  refreshLibrary();refresh();
- return {refresh,notifyChanged,active:()=>state.active,activeRecord:()=>state.activeRecord&&{id:state.activeRecord.id,revision:state.activeRecord.revision,plan:state.activeRecord.plan},sessionRecords:()=>state.records.map(x=>({id:x.id,revision:x.revision,title:x.plan.metadata.title}))};
+ return {
+  refresh,notifyChanged,
+  // Exposes an exact local snapshot for a separately approved v2 adapter, not a save.
+  captureForPrivate(){
+   if(bankActive())throw new Error('Banco de homologação ativo: não misture os contratos.');
+   if(!prepareModel())throw new Error('Gere um modelo válido para preparar a avaliação privada.');
+   const manifest=structuredClone(getModel());
+   const plan=createIntegratedPlan({metadata:currentMeta(),sections:getSections(),values:state.values,
+    answers:state.answers,display:state.display,model:manifest,revision:1});
+   return {plan,manifest};
+  },
+  adoptPrivateRecord(record){
+   if(bankActive())throw new Error('Banco de homologação ativo: revisão privada isolada.');
+   const {plan}=planFromPrivateRecord(record),editor=structuredClone(snapshotEditor());
+   editor.sections=plan.blocks.map((block,index)=>({
+    sectionId:block.sectionId,label:block.label,order:index,type:block.questions[0].type,
+    count:block.questions.length,
+    items:block.questions.map(question=>({
+     questionId:question.questionId,number:question.number,type:question.type,originalOrder:question.number
+    }))
+   }));
+   editor.fields.assessmentTitle=plan.metadata.title;
+   editor.fields.assessmentSubject=plan.metadata.subject;
+   editor.fields.assessmentKind=plan.metadata.kind;
+   editor.fields.assessmentDate=plan.metadata.date;
+   state.restoring=true;
+   try{invalidate();restoreEditor(editor);
+    state.values=Object.fromEntries(plan.blocks.map(block=>[block.sectionId,
+      formatExact(BigInt(block.valueUnits),POINT_SCALE,4).replace(',','.')]));
+    state.answers=Object.fromEntries(plan.blocks.flatMap(block=>block.questions.map(q=>[q.questionId,q.correct])));
+    state.display=plan.display;$('integratedDisplay').value=plan.display;
+    state.currentId=null;state.currentRecord=null;state.registeredSignature=null;
+   }finally{state.restoring=false}
+   refresh();
+   status('Revisão privada '+record.revision+' aberta como rascunho de edição. Confirme a nova versão no servidor antes de usá-la.','draft');
+  },
+  cancelLocalSelection:invalidate,
+  active:()=>state.active,activeRecord:()=>state.activeRecord&&{id:state.activeRecord.id,revision:state.activeRecord.revision,plan:state.activeRecord.plan},
+  sessionRecords:()=>state.records.map(x=>({id:x.id,revision:x.revision,title:x.plan.metadata.title}))
+ };
 }
