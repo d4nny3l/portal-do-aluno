@@ -79,6 +79,7 @@ function integrationHarness(){
   grayFromRgba(rgba){return new Uint8Array(rgba.length/4).fill(220)},
   createImageBitmap:async()=>({width:4,height:5,close(){}}),
  };
+ state.prepareImage=(gray,width,height)=>{state.normalizedRaster={pixels:gray,width,height};return state.normalizedRaster};
  vm.createContext(state);
  vm.runInContext(script,state,{timeout:2500});
  return {state,$,messages,readCalls,bankChecks};
