@@ -194,4 +194,5 @@ integratedPlanner=installIntegratedDraftPlanner({
  openCorrection:()=>showView('corrigir')
 });
 $('criar').addEventListener('input',event=>{if(!event.target.closest('#integratedPlanner'))integratedPlanner?.notifyChanged()});
+$('criar').addEventListener('change',event=>{if(!event.target.closest('#integratedPlanner'))integratedPlanner?.notifyChanged()});
 </script></body></html>
