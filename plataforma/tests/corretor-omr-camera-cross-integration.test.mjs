@@ -96,13 +96,13 @@ test('P1 integrated read: loading gate blocks, automatic partial scores, teacher
  assert.equal(h.readCalls.length,1);
  assert.equal(h.bankChecks.length,1);
  assert.equal(h.$('scanScore').dataset.review,'false');
- assert.match(h.$('scanScore').innerHTML,/Nota provisória 10,00/);
+ assert.match(h.$('scanScore').innerHTML,/Nota final 10,00/);
  const item=h.$('answers').children[0],select=item.children[1];
  assert.equal(select.value,'A');
  assert.match(item.children[0].textContent,/A reconhecida · marcação parcial/);
  select.value='B';select.onchange();
  assert.equal(s.activeObservations[0].answer,'B');
- assert.match(h.$('scanScore').innerHTML,/Nota provisória 0,00/);
+ assert.match(h.$('scanScore').innerHTML,/Nota final 0,00/);
  assert.match(h.$('status').textContent,/não foi registrada no Diário/);
 });
 
@@ -148,7 +148,7 @@ test('P1 integrated scanner triggers partial grade, avoids duplicate sheet and a
  for(let i=0;i<4;i++)s.scanCameraFrame();
  assert.equal(captureCount,1);
  assert.equal(h.readCalls.length,1);
- assert.match(h.$('scanScore').innerHTML,/Nota provisória 10,00/);
+ assert.match(h.$('scanScore').innerHTML,/Nota final 10,00/);
  for(let i=0;i<4;i++)s.scanCameraFrame();
  assert.equal(captureCount,1,'No duplicate while first card remains');
  found=false;s.scanCameraFrame();s.scanCameraFrame();
