@@ -128,7 +128,7 @@ export class CameraSession {
       }
       const track = stream.getVideoTracks()[0], caps = safeCapabilities(track);
       const facing = track.getSettings?.().facingMode;
-      if (facing === 'user' || cameraRank(track.label) < 0) {
+      if (facing === 'user' || (/front|user|frontal|face/i.test(track.label) && !/back|rear|traseira|environment/i.test(track.label))) {
         throw new Error('A câmera traseira não está disponível neste navegador. Importe uma fotografia para continuar.');
       }
       // Request native frames where supported. Independent ideal bounds do not force 16:9.
