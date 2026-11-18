@@ -69,7 +69,7 @@ export function installPrivateAssessmentUI({document,client,getDraft,applyRecord
   if(!catalog.value)throw new Error('Escolha uma avaliação.');
   await controller.history(catalog.value);
  });
- const newDraft=button('Novo rascunho',async()=>controller.newDraft());
+ const newDraft=button('Novo rascunho',async()=>{catalog.value='';revisions.value='';controller.newDraft()});
  const saveDraft=button('Salvar rascunho privado',()=>controller.save('draft'));
  const issue=button('Emitir nova revisão',()=>controller.save('issued'));
  const retry=button('Reenviar mesma operação',()=>controller.retry());
