@@ -48,7 +48,10 @@ export function validateDefinition(input) {
 }
 export function printArtifact(record) {
  const {template} = importCardManifest(record.definition.manifest);
+ const svg=renderTemplateSvg(template,{manifest:record.definition.manifest});
  // Explicit projection: no definition, key, score, digest of answers or editor JSON.
  return {schemaVersion:'salta-assessment-print-binding-v1', assessmentId:record.id, revision:record.revision,
-  manifestHash:record.manifestHash, svg:renderTemplateSvg(template,{manifest:record.definition.manifest})};
+  manifestHash:record.manifestHash,
+  // Nonvisual provenance survives saving the SVG itself. It is not an optical ID.
+  svg:svg.replace('<svg ',`<svg data-assessment-id="${record.id}" data-assessment-revision="${record.revision}" `)};
 }

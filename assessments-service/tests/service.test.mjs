@@ -3,6 +3,8 @@ import assert from 'node:assert/strict';
 import {harness,packet,definition,secret,scope} from './helpers.mjs';
 import {validateDefinition} from '../definition.mjs';
 import {keyring,open} from '../crypto.mjs';
+import {renderTemplateSvg} from '../../corretor/v2/omr/render.mjs';
+import {importCardManifest} from '../../corretor/v2/omr/manifest.mjs';
 const count=(h,table)=>h.db.sqlite.prepare('SELECT COUNT(*) AS n FROM '+table).get().n;
 const saved=async(h,id,p)=>{const r=await h.request('/assessments/'+id,{method:'PUT',data:p});assert.equal(r.status,201,await r.clone().text());return r.json();};
 
@@ -75,6 +77,8 @@ test('selection pins an issued revision, public print excludes secrets, duplicat
  const print=await(await h.request('/assessments/'+id+'/revisions/1/print')).json();
  assert.deepEqual(Object.keys(print).sort(),['assessmentId','manifestHash','revision','schemaVersion','svg']);
  assert.ok(print.svg.includes('width="210mm" height="297mm"'));assert.ok(!JSON.stringify(print).includes('"correct"'));assert.ok(!JSON.stringify(print).includes('valueUnits'));
+ assert.ok(print.svg.includes(`data-assessment-id="${id}" data-assessment-revision="1"`));
+ assert.equal(print.svg.replace(/ data-assessment-id="[^"]+" data-assessment-revision="[^"]+"/,''),renderTemplateSvg(importCardManifest(p.definition.manifest).template,{manifest:p.definition.manifest}),'Only nonvisual association attributes differ; drawing and optical coordinates are identical');
  const p2=packet(1);p2.definition.answers[0].correct='E';await saved(h,id,p2);
  const session=(await(await h.request('/selections/'+selection.selectionId)).json()).record;assert.equal(session.revision,1);assert.deepEqual(session.definition.answers,p.definition.answers);
  const newId=crypto.randomUUID(),duplicate={requestId:crypto.randomUUID(),newId,sourceRevision:1};
