@@ -32,7 +32,8 @@ export function installPrivateAssessmentUI({document,client,getDraft,applyRecord
    let failure=null;
    try{await action()}catch(error){failure=error}
    finally{
-    // Always reconcile buttons with the *current* controller record, even on errors.
+    // Release the busy lock, then recompute permanent eligibility from the controller.
+    b.disabled=false;
     render();
     if(failure){status.textContent=failure.message||'Operação não confirmada.';status.dataset.state='error'}
    }
