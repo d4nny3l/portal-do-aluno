@@ -41,7 +41,8 @@ export function createPrivateLibraryController({
   try{
    const data=await client.list(more?s.nextCursor:null);
    if(!fresh(g))return null;
-   s.rows=more?s.rows.concat(data.assessments):data.assessments;
+   const matching=data.assessments.filter(row=>scopeEquals(row,s.scope));
+   s.rows=more?s.rows.concat(matching):matching;
    s.nextCursor=data.nextCursor;
    signal('draft','Biblioteca consultada. Nenhuma avaliação foi alterada.');
    return s.rows;
