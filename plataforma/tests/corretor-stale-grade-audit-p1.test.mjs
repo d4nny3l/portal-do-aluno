@@ -27,7 +27,7 @@ function fixture(){
  const template={pageCount:1,questions:['q1','q2','q3'].map(questionId=>({questionId,choices:['A','B','C','D']}))};
  let key=new Map([['q1','A'],['q2','A'],['q3','A']]),valid=true;
  const build=new Function('$','document','template','parseKey','renderHistory','toPageRaster','updateCaptureComparison','paintGray','setScanMessage',
-  'let activeObservations=[],rawRaster=null,normalizedRaster=null,manualMode=false,manualPoints=[];'+
+  'let activeObservations=[],activeHistoryEntry=null,rawRaster=null,normalizedRaster=null,manualMode=false,manualPoints=[];'+
   ['markLastReadingPending','calculateScore','renderAnswers','prepareImage'].map(production).join(';')+
   ';return {render:renderAnswers,normalize:prepareImage,score:calculateScore,observations:()=>activeObservations}');
  const editor=build($,{createElement:tag=>new Node(tag)},template,
