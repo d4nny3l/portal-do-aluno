@@ -8,6 +8,9 @@ test('bank controller references actual labeled controls in the integrated edito
  for(const [,id]of source.matchAll(/\$\('([^']+)'\)/g))assert.ok(ids.has(id),'Missing bank control '+id);
  assert.match(html,/<section id="assessmentBank"[^>]*hidden/);
  assert.match(html,/id="bankStatus"[^>]*role="status"/);
+ assert.match(html,/<input id="read" type="hidden" aria-hidden="true">/);
+ assert.match(html,/if\(\$\('read'\)\.disabled\)throw new Error/);
+ assert.doesNotMatch(html,/<button[^>]+id="read"/);
 });
 test('assessment switch clears the prior photo, grade, capture history and camera before applying another model',()=>{
  const source=html.match(/function clearAssessmentReview\(\)[^\n]+/)[0];let stopped=0,rendered=0,comparisonCleared=0;
