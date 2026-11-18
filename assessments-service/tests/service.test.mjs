@@ -19,9 +19,11 @@ test('existing Auth session reader, fail closed, forged identities, unprovisione
  assert.equal(count(h,'av_assessments'),0);
 });
 test('blocks, exact keys, no omissions, weights or ambiguous score units accepted',()=>{
- const d=definition(),checked=validateDefinition(d);assert.equal(checked.totalUnits,10000);assert.equal(checked.scoreScale,1000);
+ const d=definition(),checked=validateDefinition(d);assert.equal(checked.totalUnits,'100000');assert.equal(checked.scoreScale,10000);
  assert.deepEqual(checked.definition,d);
- for(const mutate of [d=>d.blocks[0].valueUnits=-1,d=>d.blocks[0].valueUnits=0.1,d=>d.blocks[0].questionIds.pop(),d=>d.blocks[1].questionIds.push(d.blocks[0].questionIds[0]),d=>d.answers[0].correct='Z',d=>d.answers.pop(),d=>d.blocks[0].weight=2,d=>d.display.score='automatic',d=>d.date='2026-02-30']){
+ const fractional=structuredClone(d);fractional.blocks[0].valueUnits='65001';fractional.blocks[1].valueUnits='34999';
+ assert.equal(validateDefinition(fractional).totalUnits,'100000','Four decimal places remain exact without converting block weights to floats');
+ for(const mutate of [d=>d.blocks[0].valueUnits=-1,d=>d.blocks[0].valueUnits=0.1,d=>d.blocks[0].valueUnits='0',d=>{d.blocks[0].valueUnits='99999999';d.blocks[1].valueUnits='99999999';},d=>d.blocks[0].blockId='wrong-section',d=>d.blocks[0].questionIds.pop(),d=>d.blocks[1].questionIds.push(d.blocks[0].questionIds[0]),d=>d.answers[0].correct='Z',d=>d.answers.pop(),d=>d.blocks[0].weight=2,d=>d.display.score='automatic',d=>d.date='2026-02-30']){
   const copy=structuredClone(d);mutate(copy);assert.throws(()=>validateDefinition(copy));
  }
 });
@@ -31,7 +33,7 @@ test('persist, recover in a new authenticated request, isolation and historical 
   const id=crypto.randomUUID(),p=packet(0,{definition:definition({legacy})});await saved(h,id,p);
   assert.equal((await h.request('/assessments/'+id,{actor:'b'})).status,404);
   const first=(await(await h.request('/assessments/'+id+'/revisions/1')).json()).record;
-  assert.deepEqual(first.definition,p.definition);assert.equal(first.totalUnits,10000);
+  assert.deepEqual(first.definition,p.definition);assert.equal(first.totalUnits,'100000');
   const p2=packet(1,{definition:structuredClone(p.definition)});p2.definition.answers[0].correct='E';await saved(h,id,p2);
   assert.deepEqual((await(await h.request('/assessments/'+id+'/revisions/1')).json()).record,first);
   assert.equal((await(await h.request('/assessments/'+id)).json()).record.definition.answers[0].correct,'E');

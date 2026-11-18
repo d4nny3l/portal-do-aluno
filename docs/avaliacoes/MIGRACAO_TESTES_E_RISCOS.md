@@ -2,9 +2,9 @@
 
 ## Estado desta entrega
 
-Branch exclusiva `codex/salta-avaliacoes-arquitetura-20261118`, a partir da última main disponível localmente `f355d52187f1e797ddd912290af8a8581d744a6b`. Candidato backend em `assessments-service/`, documentação nesta pasta e workflow de testes sem deploy. Nenhuma alteração em Auth/Stats/Diário, lógica óptica, geometria, frontend publicado, laboratório, bindings oficiais ou bancos remotos.
+Branch exclusiva `codex/salta-avaliacoes-arquitetura-20261118`, atualizada sobre a main confirmada `bcae46584a92b683f6e3edf0028f22dc029e7a0b`. Candidato backend em `assessments-service/`, documentação nesta pasta e workflow de testes sem deploy. Nenhuma alteração em Auth/Stats/Diário, lógica óptica, geometria, frontend publicado, laboratório, bindings oficiais ou bancos remotos.
 
-A rede desta execução falhou por DNS/timeout no Git/CLI, GitHub conectado e ferramenta web. A interface de rede do Mac aparece conectada; isso não comprovou resolução/conexão aos serviços. Estado da main remota, PR e CI não puderam ser confirmados. Testes locais não devem ser rotulados como CI verde. Não fazer merge/deploy dessa branch sem revisão e autorização específica.
+A rede falhou inicialmente por DNS/timeout no Git/CLI, GitHub conectado e ferramenta web. Depois a API e o fetch voltaram a funcionar: main confirmada e branch própria atualizada sem conflitos. O PR #63 foi inspecionado somente em leitura para alinhar o contrato ao Executor. Testes locais não devem ser rotulados como CI verde: o resultado remoto do PR será registrado separadamente na entrega. Não fazer merge/deploy dessa branch sem revisão e autorização específica.
 
 ## Estrutura e reutilização
 
@@ -19,7 +19,7 @@ O serviço reaproveita o importador e renderizador V1/V2 existentes e os envelop
 
 ## Testes executados e evidência
 
-1. **162 testes completos aprovados:** Corretor V1/V2, plataforma, Stats/Diário, laboratório existente e nove testes do serviço novo. Incluem os testes geométricos/manifestos históricos já existentes; nenhum arquivo histórico foi regravado.
+1. **211 testes completos aprovados na base atualizada:** Corretor V1/V2, plataforma, Stats/Diário, laboratório existente e nove testes do serviço novo. Incluem os testes geométricos/manifestos históricos já existentes; nenhum arquivo histórico foi regravado.
 2. **Integração workerd/D1/Auth local:** teste adicional usando o Auth Worker e SessionStore originais por service binding, schema real no D1 isolado e sessões sintéticas. Exercita duas sessões independentes do mesmo usuário, recuperação sem frase, concorrência, reenvio, rollback completo com falha no último recibo, arquivo de impressão, seleção imutável, logout e reinício do runtime mantendo D1/sessões/chaves de servidor.
 3. **Integração do laboratório existente:** HTTP real com Workerd/D1, ciphertext anterior, autorização, conflito, revisão histórica e rollback/reaplicação. Exige build allowlist local antes do ensaio.
 4. Sintaxe de todos os módulos novos e `git diff --check`.
@@ -51,7 +51,7 @@ Restaurar D1 e chaves juntos em ambiente isolado, conferir contagens, FKs, revis
 
 ## Riscos residuais e recomendação
 
-**P0 de ativação:** principal/grants reais ainda não aprovados; segredo e custódia não provisionados; gateway/cookie real e navegador não homologados; estado remoto/main/CI indisponível nesta execução. Mantê-lo desligado. **Recomendação: apto para revisão técnica e homologação local sintética, inapto para uso acadêmico real ou deploy neste estado.**
+**P0 de ativação:** principal/grants reais ainda não aprovados; segredo e custódia não provisionados; gateway/cookie real e navegador não homologados; revisão independente e CI do commit exato ainda necessárias antes de ativação. Mantê-lo desligado. **Recomendação: apto para revisão técnica e homologação local sintética, inapto para uso acadêmico real ou deploy neste estado.**
 
 **P0 de expansão:** Auth tem uma única conta configurada, sem subject imutável multiusuário nem diretório de permissões. Não habilitar outros docentes sob a mesma conta. A proposta de evolução do emissor deve ser aprovada antes de implementá-la.
 

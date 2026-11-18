@@ -39,7 +39,7 @@ export function definition({legacy=false}={}) {
  const template=(legacy?createLegacyTemplate:createTemplate)([{type:'A-E',count:3,label:'Bloco visual A'},{type:'C-E',count:2,label:'Bloco visual B'}]);
  const manifest=JSON.parse(JSON.stringify(createCardManifest(template)));
  return {schemaVersion:'salta-assessment-definition-v2',title:'Avaliação sintética privada',subject:'Matemática',kind:'Prova',date:'2026-11-18',manifest,
-  blocks:[{blockId:'block-a',label:'Bloco A',valueUnits:6000,questionIds:template.questions.slice(0,3).map(q=>q.questionId)},{blockId:'block-b',label:'Bloco B',valueUnits:4000,questionIds:template.questions.slice(3).map(q=>q.questionId)}],
+  blocks:[{blockId:template.questions[0].sectionId,label:'Bloco A',valueUnits:'60000',questionIds:template.questions.slice(0,3).map(q=>q.questionId)},{blockId:template.questions[3].sectionId,label:'Bloco B',valueUnits:'40000',questionIds:template.questions.slice(3).map(q=>q.questionId)}],
   answers:template.questions.map(q=>({questionId:q.questionId,correct:q.choices[0]})),display:{score:'both'}};
 }
 export const packet=(expectedRevision=0,overrides={})=>({requestId:crypto.randomUUID(),expectedRevision,...scope,status:'issued',definition:definition(),...overrides});

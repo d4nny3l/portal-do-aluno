@@ -22,19 +22,21 @@ export function validateDefinition(input) {
  for (const logo of input.manifest.panels?.header?.logos||[]) if (!/^data:image\/(?:png|jpeg|webp);base64,[A-Za-z0-9+/=]+$/.test(logo.href)) fail('Use logotipo incorporado, sem referência externa.');
  exact(input.display,['score']);
  if (!['final','blocks','both'].includes(input.display.score)) fail('Exibição de pontuação inválida.');
- if (!Array.isArray(input.blocks) || !input.blocks.length || input.blocks.length > template.questions.length) fail('Blocos inválidos.');
+ if (!Array.isArray(input.blocks) || !input.blocks.length || input.blocks.length > 32 || input.blocks.length > template.questions.length) fail('Blocos inválidos.');
  const questions = new Map(template.questions.map(q => [q.questionId,q])), seen = new Set(), blockIds = new Set();
  let totalUnits = 0;
  for (const block of input.blocks) {
   exact(block,['blockId','label','valueUnits','questionIds']);
-  if (!opaqueId(block.blockId) || blockIds.has(block.blockId)) fail('ID de bloco inválido ou repetido.');
-  blockIds.add(block.blockId); text(block.label,80);
-  if (!Number.isSafeInteger(block.valueUnits) || block.valueUnits < 0 || block.valueUnits > 1_000_000) fail('Valor de bloco inválido.');
+  if (typeof block.blockId!=='string' || !block.blockId || block.blockId.length>80 || blockIds.has(block.blockId)) fail('ID de bloco inválido ou repetido.');
+  blockIds.add(block.blockId); text(block.label,64);
+  // Same decimal precision and positive-value bounds as the Executor PR #63.
+  // Decimal integer strings cross JSON without BigInt serialization/rounding.
+  if (typeof block.valueUnits!=='string' || !/^[1-9][0-9]{0,7}$/.test(block.valueUnits)) fail('Valor de bloco inválido.');
   if (!Array.isArray(block.questionIds) || !block.questionIds.length) fail('Bloco sem questões.');
-  for (const id of block.questionIds) { if (!questions.has(id) || seen.has(id)) fail('Questão ausente, alheia ou repetida nos blocos.'); seen.add(id); }
-  totalUnits += block.valueUnits;
+  for (const id of block.questionIds) { if (!questions.has(id) || questions.get(id).sectionId!==block.blockId || seen.has(id)) fail('Questão ausente, alheia ou repetida nos blocos.'); seen.add(id); }
+  totalUnits += Number(block.valueUnits);
  }
- if (seen.size !== questions.size || !Number.isSafeInteger(totalUnits)) fail('Todos os itens devem pertencer a exatamente um bloco.');
+ if (seen.size !== questions.size || !Number.isSafeInteger(totalUnits) || totalUnits>100_000_000) fail('Revise os blocos e o total de até 10.000 pontos.');
  if (!Array.isArray(input.answers) || input.answers.length !== questions.size) fail('Gabarito incompleto.');
  const keyed = new Set();
  for (const answer of input.answers) {
@@ -42,7 +44,7 @@ export function validateDefinition(input) {
   if (!q || keyed.has(q.questionId) || !q.choices.includes(answer.correct)) fail('Gabarito incompatível com o manifesto.');
   keyed.add(q.questionId);
  }
- return {definition:structuredClone(input), totalUnits, scoreScale:1000};
+ return {definition:structuredClone(input), totalUnits:String(totalUnits), scoreScale:10000};
 }
 export function printArtifact(record) {
  const {template} = importCardManifest(record.definition.manifest);

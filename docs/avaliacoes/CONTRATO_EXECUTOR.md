@@ -26,7 +26,7 @@ Toda operação exige principal ativo. Para cada objeto verificar proprietário 
 | answers | uma entrada `{questionId,correct}` para cada questão do manifesto |
 | display | `{score: "final" | "blocks" | "both"}` |
 
-IDs de questão vêm do manifesto, nunca de posição em array. Cada questão pertence a exatamente um bloco; não pode faltar, aparecer duas vezes ou apontar para outra prova. Não admitir pesos individuais. `blockId` é estável e independente de título/posição. Rótulo tem até 80 caracteres. `valueUnits` é inteiro não negativo, até 1.000.000 por bloco, com **scoreScale=1000**: 6,5 pontos = 6500 unidades. Total é a soma exata de valueUnits, calculada pelo servidor; não aceitar máximo informado separadamente.
+IDs de questão vêm do manifesto, nunca de posição em array. Cada questão pertence a exatamente um bloco; não pode faltar, aparecer duas vezes ou apontar para outra prova/seção. Não admitir pesos individuais. `blockId` é o sectionId exato do manifesto, estável e independente de título/posição; máximo 32 blocos, rótulo até 64 caracteres. `valueUnits` é **string decimal inteira positiva**, até `"99999999"` por bloco, com **scoreScale=10000**: 6,5 pontos = `"65000"`. Não aceitar float, notação científica, zero ou BigInt JSON. Total é a soma exata calculada pelo servidor, devolvida como string; máximo `"100000000"` (10.000 pontos). Não aceitar máximo informado separadamente. Limites/precisão acompanham o candidato do Executor no PR #63; não constituem alteração em critérios do Diário.
 
 Questões do bloco têm a fração exata `valueUnits / quantidadeDeQuestoes`; não arredondar o valor unitário antes da soma. O Executor deve manter numerador/denominador ou cálculo racional e apresentar sua proposta de arredondamento à homologação pedagógica. Esta missão guarda o plano, **não calcula nem publica notas**. Não ligar automaticamente essa definição ao `calculateScore()` legado, que usa valor global uniforme.
 
@@ -84,3 +84,22 @@ Não há transação distribuída entre logout no Auth e batch D1: uma requisiç
 ## Limites de integração
 
 Sem endpoint de alunos, notas, correção automática, publicação acadêmica, redefinição de cofre, compartilhamento ou administração pública de grants. Nenhuma chave de armazenamento no frontend. O repositório legado exige modos synthetic-only/protected-synthetic e deve ser preservado; o Executor criará adaptador explícito para este contrato, sem remover suas guardas para fazê-lo funcionar.
+
+## Adaptação do PR #63
+
+Referência de leitura: HEAD `cdfd2dbceade1bce012dd626e5cc18396fb0beed`, ainda separado da main desta preparação. Não importar esse PR ou modificar sua branch implicitamente. O schema transitório `salta-integrated-plan-local-v1` não é aceito diretamente como payload persistente.
+
+| Origem do plano P1 | Definição persistente |
+|---|---|
+| metadata.title/subject/kind/date | campos de mesmo nome |
+| manifesto exato selecionado pelo editor | manifest, sem regeneração ou respostas corretas |
+| blocks[].sectionId | blocks[].blockId; deve corresponder ao sectionId do manifesto |
+| blocks[].label/valueUnits | label/valueUnits sem conversão decimal: strings inteiras de 1/10000 |
+| blocks[].questions[].questionId | questionIds do respectivo bloco |
+| blocks[].questions[].correct | answers por questionId, uma entrada por questão |
+| display | display.score |
+| model.templateId/revision/contentHash | conferir contra manifest; nunca substituir a revisão da avaliação por essa revisão geométrica |
+
+Revisões `aba-*` e contadores em memória não são IDs/revisões do servidor. Criar UUID de avaliação/operação e usar CAS com a revisão confirmada pelo backend. Para retomar a correção, reconstruir o plano racional a partir da revisão **selecionada**, preservando valores, gabarito e manifesto; conferir todos os IDs/números/tipos ao adaptar. A saída de `GET /selections/{id}` fixa esse vínculo, e uma nova revisão corrente não o altera. Guardar a referência em futuras propostas de correção, sem publicar no Diário nesta etapa.
+
+O adaptador deve validar o snapshot inteiro antes de habilitar leitura; falhas de persistência ou sessão não podem promover silenciosamente um plano transitório a avaliação salva. A implementação da UI/adaptação e seu ensaio ponta a ponta ficam com o Executor, sujeitos a revisão própria. Os testes desta branch provam o serviço e o contrato da sessão, não a interface do PR #63.

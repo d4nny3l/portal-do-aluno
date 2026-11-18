@@ -4,9 +4,11 @@ Data: 18/11/2026. Estado: candidato local; nenhuma liberação produtiva.
 
 ## Base e limites da inspeção
 
-Base local disponível: `f355d52187f1e797ddd912290af8a8581d744a6b` (merge do PR #45). A consulta da main remota falhou por rede tanto no Git/CLI quanto no conector GitHub nesta execução. Confirmar a base atual antes de publicar/revisar o PR; não considerar esta base como confirmação da produção atual.
+Base inicial disponível: `f355d52187f1e797ddd912290af8a8581d744a6b` (merge do PR #45). A rede falhou temporariamente no Git/CLI e conector; depois a consulta/fetch funcionou. Branch atualizada sobre a main confirmada `bcae46584a92b683f6e3edf0028f22dc029e7a0b` (PR #61). Auth, Stats, AGENTS.md e domínio/contratos/criptografia do banco não mudaram entre essas bases. As evoluções ópticas/câmera dessa main são herdadas, sem alteração nesta missão.
 
-Foram lidos AGENTS.md, diretrizes de produto, Auth, proxy de autenticação Stats, frontend professor/Corretor, domínio/repositório/criptografia do banco e seus contratos de homologação. Nenhum banco, sessão real, segredo ou dado acadêmico foi consultado. Os documentos históricos descrevem a homologação; não comprovam o estado remoto de hoje.
+Inspecionado somente em leitura o [PR #63](https://github.com/d4nny3l/portal-do-aluno/pull/63), HEAD `cdfd2dbceade1bce012dd626e5cc18396fb0beed`, que aguarda contrato de persistência. O contrato novo alinha blocos por sectionId, valores positivos em strings inteiras de 1/10000 e modos final/blocos/ambos. Nenhum arquivo, branch ou status desse PR foi alterado. A interface e seu motor racional continuam sob auditoria própria.
+
+Foram lidos AGENTS.md, diretrizes de produto, Auth, proxy de autenticação Stats, frontend professor/Corretor, domínio/repositório/criptografia do banco e seus contratos de homologação. Nenhum banco, sessão real, segredo ou dado acadêmico foi consultado. O HTML público foi obtido por GET estático e conferido com a main, confirmando a rota de sessão no host Stats. O binário/estado implantado do Auth não foi extraído: a conclusão sobre seu contrato vem do repositório e dos testes locais, não de leitura de sessões produtivas. Os documentos históricos descrevem a homologação; não comprovam o estado remoto de hoje.
 
 ## Diagnóstico demonstrado pelo código
 
@@ -42,7 +44,7 @@ O laboratório permanece intacto. Esquema novo aditivo e isolado, sem reutilizar
 
 ## Bloqueios de ativação
 
-- Confirmar main/PR por rede e revisar o commit exato.
+- Revisar o PR/CI no commit exato antes de qualquer habilitação; main confirmada na preparação não elimina mudanças concorrentes posteriores.
 - Aprovar modelo de custódia de chaves gerenciado pelo servidor e responsável por backup/restauração.
 - Provisionar principal real e grants por instituição/turma/período aprovados. O nome Colégio Olavo Bilac e turmas 1A/1B conhecidos de outra missão não constituem IDs institucionais aprovados para este domínio.
 - Autorizar separadamente gateway no host autenticado e novo Worker privado/D1 exclusivo; nenhuma implantação automática nesta branch.
