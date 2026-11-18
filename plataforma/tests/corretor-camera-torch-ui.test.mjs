@@ -214,7 +214,10 @@ test('P1 front-only device is refused, permission failure retries without lockin
  denied.state.stopCamera();
 });
 test('P1 interface contains only open/close, real lamp and import; scanner owns capture',()=>{
- assert.doesNotMatch(html,/id="capture"|id="read"|id="cameraDevice"|id="cameraDeviceLabel"/);
+ assert.doesNotMatch(html,/id="capture"|id="cameraDevice"|id="cameraDeviceLabel"/);
+ assert.match(html,/<input id="read" type="hidden" aria-hidden="true">/);
+ assert.doesNotMatch(html,/<button[^>]*id="read"/);
+ assert.match(html,/if\(\$\('read'\)\.disabled\)throw new Error\('Aguarde a avaliação/);
  assert.doesNotMatch(html,/Fotografar para ajustar|Você também pode fotografar/);
  assert.match(html,/function scanCameraFrame\(\)/);
  assert.match(html,/stableFrames>=3/);
