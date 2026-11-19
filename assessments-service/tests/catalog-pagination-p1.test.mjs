@@ -31,7 +31,7 @@ test('catalog pages 0/1/10/11/20/23: bounded SQL, opaque cursors, private owner,
    const cpu=process.cpuUsage(cpuBefore),elapsed=performance.now()-begin,sql=sqlStatements.slice(before);
    assert.ok(data.assessments.length<=10,'never more than ten records per page');
    assert.ok(sql.some(line=>/LIMIT 11/.test(line)),'11th row used only as cursor sentinel');
-   assert.ok(sql.length<=32,'bounded queries: 2 auth/list + at most 3 per decrypted record');
+   assert.equal(sql.length,2,'one principal lookup + one authorized JOIN, without N+1 revision queries');
    assert.equal(data.assessments.some(row=>row.ownerId||row.answers||row.definition),false);
    assert.equal(JSON.stringify(data).includes('"correct"'),false);
    if(data.nextCursor)assert.equal(data.nextCursor,data.assessments.at(-1).id);
