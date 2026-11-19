@@ -1,0 +1,50 @@
+name: SALTA isolated private pilot gateway
+on:
+  pull_request:
+    paths:
+      - "private-pilot/**"
+      - "assessments-service/**"
+      - "corretor/v2/assessments/**"
+      - "plataforma/tests/corretor-private-catalog-pages-p1.test.mjs"
+      - "docs/avaliacoes/CONTRATO_EXECUTOR.md"
+      - ".github/workflows/test-private-pilot.yml"
+permissions:
+  contents: read
+jobs:
+  isolated-pilot:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    env:
+      WRANGLER_SEND_METRICS: "false"
+      WRANGLER_WRITE_LOGS: "false"
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          ref: ${{ github.event.pull_request.head.sha }}
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+      - run: npm ci --prefix assessments-lab --ignore-scripts --no-audit --no-fund
+      - name: Accept only the exact audited catalog and preserve protected source
+        run: node private-pilot/integrity.mjs
+      - name: Syntax
+        run: |
+          for file in private-pilot/*.mjs private-pilot/tests/*.mjs; do node --check "$file"; done
+      - name: Existing regressions and gateway isolation
+        run: node --test corretor/v2/tests/*.test.mjs plataforma/tests/*.test.mjs stats-worker/tests/*.test.mjs assessments-lab/tests/*.test.mjs assessments-service/tests/*.test.mjs private-pilot/tests/*.test.mjs
+      - name: Real local Stats gateway, private backend, Auth and D1
+        run: node --test private-pilot/tests/pilot.integration.mjs
+      - name: Existing Auth and D1 persistence contract
+        run: node --test assessments-service/tests/d1-auth.integration.mjs
+      - name: Existing encrypted laboratory compatibility
+        run: |
+          node assessments-lab/build.mjs
+          node --test assessments-lab/tests/d1-http.integration.mjs
+      - name: Build only the sealed pilot artifacts
+        run: node private-pilot/build.mjs
+      - uses: actions/upload-artifact@v4
+        with:
+          name: private-pilot-disabled-artifacts
+          path: private-pilot/dist/
+      - run: git diff --check
