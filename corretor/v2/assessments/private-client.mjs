@@ -88,8 +88,12 @@ export function createPrivateAssessmentClient({enabled=false,baseUrl=null,fetchF
   request,
   async session(){const data=await read('/session');if(data?.authenticated!==true||typeof data.principalId!=='string')fail('Sessão inválida.');return data},
   async grants(){const data=await read('/grants');return (data?.grants||[]).map(scopeCheck)},
-  async list(after=null){if(after)idCheck(after);
-   const data=await read('/assessments'+(after?'?after='+encodeURIComponent(after):''));
+  async list(after=null,scope=null){if(after)idCheck(after);
+   if(scope)scopeCheck(scope);
+   const query=new URLSearchParams();
+   if(after)query.set('after',after);
+   if(scope)for(const k of scopeFields)query.set(k,scope[k]);
+   const data=await read('/assessments'+(query.size?'?'+query.toString():''));
    if(!Array.isArray(data?.assessments)||data.assessments.length>10||
      (data.nextCursor!=null&&!isUUID(data.nextCursor))||
      (data.nextCursor!==null&&data.nextCursor!==undefined&&
