@@ -3,6 +3,10 @@ on:
   pull_request:
     paths:
       - "private-pilot/**"
+      - "assessments-service/**"
+      - "corretor/v2/assessments/**"
+      - "plataforma/tests/corretor-private-catalog-pages-p1.test.mjs"
+      - "docs/avaliacoes/CONTRATO_EXECUTOR.md"
       - ".github/workflows/test-private-pilot.yml"
 permissions:
   contents: read
@@ -17,12 +21,13 @@ jobs:
       - uses: actions/checkout@v4
         with:
           fetch-depth: 0
+          ref: ${{ github.event.pull_request.head.sha }}
       - uses: actions/setup-node@v4
         with:
           node-version: 24
       - run: npm ci --prefix assessments-lab --ignore-scripts --no-audit --no-fund
-      - name: Preserve audited source and existing deploy workflow
-        run: git diff --exit-code d453e1da14147990a8ba837a39f38975bbdff627 HEAD -- stats-worker auth-worker assessments-service corretor plataforma assessments-lab .github/workflows/deploy-salta-stats.yml
+      - name: Accept only the exact audited catalog and preserve protected source
+        run: node private-pilot/integrity.mjs
       - name: Syntax
         run: |
           for file in private-pilot/*.mjs private-pilot/tests/*.mjs; do node --check "$file"; done

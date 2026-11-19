@@ -62,7 +62,7 @@ test('catalog 0/1/10/11/20/31: exact scoped ten/page, stable cursors, owner isol
  assert.equal((await h.request('/assessments?'+query(scope)+'&after=bad')).status,400);
  assert.equal((await h.request('/assessments?'+query(scope)+'&classId=duplicate')).status,400);
  assert.equal((await h.request('/assessments?untrusted=1')).status,400);
- const latest=ids[0];
+ const latest=[...ids].sort()[0];
  await save(h,latest,1,'Avaliação sintética versão 2');
  const revision1=(await(await h.request('/assessments/'+latest+'/revisions/1')).json()).record;
  const revision2=(await(await h.request('/assessments/'+latest+'/revisions/2')).json()).record;

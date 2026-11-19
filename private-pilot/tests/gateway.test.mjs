@@ -55,6 +55,19 @@ test('only real verified session cookies and fixed internal target cross the ser
  assert.equal(r.headers.get('Set-Cookie'),null);assert.equal(r.headers.get('Cache-Control'),'no-store');assert.equal(r.headers.get('Access-Control-Allow-Origin'),PORTAL_ORIGIN);
  assert.ok(h.calls.limits.some(c=>c.name==='PRIVATE_WRITE_LIMITER'));
 });
+test('audited catalog scope and cursor cross the gateway intact; partial, duplicate and arbitrary filters fail closed',async()=>{
+ const h=harness(),scope='institutionId=synthetic-school&classId=synthetic-class&periodId=2026';
+ for(const query of [scope,'after='+id+'&'+scope,scope+'&after='+id]){
+  const r=await h.worker.fetch(h.request('/assessments?'+query),h.env);
+  assert.equal(r.status,200);
+  assert.equal(new URL(h.calls.backend.at(-1).url).search,'?'+query);
+ }
+ const forwarded=h.calls.backend.length;
+ for(const query of ['institutionId=school','classId=class&periodId=2026',scope+'&classId=duplicate',scope+'&after='+id+'&after='+id,scope+'&after=',scope+'&limit=100','institutionId=school&classId=%2Fother&periodId=2026','institutionId=school&classId=class&periodId=',scope+'&ownerId=another-teacher'])
+  assert.equal((await h.worker.fetch(h.request('/assessments?'+query),h.env)).status,400,query);
+ assert.equal((await h.worker.fetch(h.request('/session?'+scope),h.env)).status,400);
+ assert.equal(h.calls.backend.length,forwarded,'Rejected queries never reach the private backend');
+});
 test('session expiry, forged identity, Auth outage and limiter failure are explicit and closed',async()=>{
  const h=harness();
  assert.equal((await h.worker.fetch(h.request('/session',{headers:{Cookie:'',Authorization:'Bearer forged'}}),h.env)).status,401);

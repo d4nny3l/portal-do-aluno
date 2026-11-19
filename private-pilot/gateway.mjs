@@ -30,7 +30,11 @@ function allowed(url){
  if(!match)fail(404,'private_route_not_found');
  if(url.search){
   const entries=[...url.searchParams];
-  if(path!=='/assessments'||entries.length!==1||entries[0][0]!=='after'||!new RegExp('^'+UUID+'$','i').test(entries[0][1]))fail(400,'invalid_query');
+  const scope=['institutionId','classId','periodId'], names=['after',...scope];
+  if(path!=='/assessments'||entries.some(([key])=>!names.includes(key))||names.some(key=>url.searchParams.getAll(key).length>1))fail(400,'invalid_query');
+  if(url.searchParams.has('after')&&!new RegExp('^'+UUID+'$','i').test(url.searchParams.get('after')))fail(400,'invalid_query');
+  const scoped=scope.filter(key=>url.searchParams.has(key));
+  if(scoped.length&&scoped.length!==scope.length||scoped.some(key=>!/^[A-Za-z0-9][A-Za-z0-9._-]{1,63}$/.test(url.searchParams.get(key))))fail(400,'invalid_query');
  }
  return match[1];
 }
