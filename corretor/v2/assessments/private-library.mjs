@@ -5,20 +5,23 @@ export function createPrivateLibraryController({
 }){
  if(!client||typeof getDraft!=='function')throw new TypeError('Cliente e editor necessários.');
  const s={phase:'unavailable',message:'Biblioteca privada indisponível; nenhuma gravação foi realizada.',
-  session:null,grants:[],scope:null,rows:[],nextCursor:null,record:null,revisions:[],selection:null,pending:null,
+  session:null,grants:[],scope:null,rows:[],nextCursor:null,pageIndex:0,pageCursors:[null],catalogRequest:0,record:null,revisions:[],selection:null,pending:null,
   // 'new' requires an explicit new-draft/context choice; a failed open stays blocked.
   editorMode:'blocked',
   generation:0};
  const signal=(phase,message)=>{s.phase=phase;s.message=message;onStatus({phase,message})};
  const check=error=>{
   const state=client.classifyError(error);
-  if(state==='session'||state==='forbidden'){s.generation++;s.selection=null;onSelection(null);}
+  if(state==='session'||state==='forbidden'){
+   // A revoked/expired session cannot retain writable records or a private catalog.
+   resetContext();s.session=null;s.grants=[];s.scope=null;s.pending=null;
+  }
   signal(state,error?.message||'Não foi possível confirmar esta operação.');throw error;
  };
  const scopeEquals=(a,b)=>['institutionId','classId','periodId'].every(k=>a?.[k]===b?.[k]);
  const secure=()=>{if(!client.enabled||!s.session||!s.scope)throw new Error('Biblioteca privada indisponível ou sem escopo autorizado.');};
  const resetContext=()=>{
-  s.generation++;s.rows=[];s.nextCursor=null;s.record=null;s.revisions=[];s.editorMode='blocked';
+  s.generation++;s.catalogRequest++;s.rows=[];s.nextCursor=null;s.pageIndex=0;s.pageCursors=[null];s.record=null;s.revisions=[];s.editorMode='blocked';
   s.selection=null;onSelection(null);
  };
  const fresh=(generation)=>s.generation===generation;
@@ -52,17 +55,43 @@ export function createPrivateLibraryController({
   s.editorMode='new';
   signal('draft','Contexto autorizado selecionado. Novo rascunho ainda não salvo.');
  }
- async function list({more=false}={}){
-  secure();const g=s.generation;signal('loading','Consultando biblioteca privada…');
+ async function loadPage(index,after,{refresh=false}={}){
+  secure();
+  if(s.pending)throw new Error('Conclua ou confira a gravação pendente antes de navegar.');
+  const g=s.generation,seq=++s.catalogRequest,selectedScope={...s.scope};
+  const current=()=>fresh(g)&&seq===s.catalogRequest;
+  signal('loading','Consultando página '+(index+1)+' da biblioteca privada…');
   try{
-   const data=await client.list(more?s.nextCursor:null);
-   if(!fresh(g))return null;
-   const matching=data.assessments.filter(row=>scopeEquals(row,s.scope));
-   s.rows=more?s.rows.concat(matching):matching;
-   s.nextCursor=data.nextCursor;
-   signal('draft','Biblioteca consultada. Nenhuma avaliação foi alterada.');
+   const data=await client.list(after,selectedScope);
+   if(!current())return null;
+   if(!Array.isArray(data?.assessments)||data.assessments.length>10)
+    throw new Error('O servidor retornou uma página inválida de avaliações.');
+   if(data.assessments.some(row=>!scopeEquals(row,selectedScope)))
+    throw new Error('Catálogo incompatível com a turma selecionada.');
+   if(data.nextCursor!=null&&(!data.assessments.length||data.nextCursor!==data.assessments.at(-1).id))
+    throw new Error('Cursor de catálogo inválido.');
+   s.rows=data.assessments;s.nextCursor=data.nextCursor??null;
+   s.pageIndex=index;
+   if(refresh)s.pageCursors=[null];
+   s.pageCursors[index]=after;
+   s.pageCursors.length=index+1;
+   signal('draft',s.rows.length?
+    'Página '+(index+1)+' carregada · '+s.rows.length+' avaliação(ões), sem gabaritos na listagem.':
+    'Nenhuma avaliação nesta turma.');
    return s.rows;
-  }catch(error){if(!fresh(g))return null;check(error)}
+  }catch(error){if(!current())return null;check(error)}
+ }
+ async function list({more=false}={}){
+  if(more)return nextPage(); // Compatibility: "Mais resultados" now advances one page.
+  return loadPage(0,null,{refresh:true});
+ }
+ async function nextPage(){
+  secure();if(!s.nextCursor)return s.rows;
+  return loadPage(s.pageIndex+1,s.nextCursor);
+ }
+ async function previousPage(){
+  secure();if(s.pageIndex===0)return s.rows;
+  return loadPage(s.pageIndex-1,s.pageCursors[s.pageIndex-1]??null);
  }
  async function open(assessmentId,revision=null){
   secure();
@@ -189,10 +218,10 @@ export function createPrivateLibraryController({
    return selection;
   }catch(error){if(!fresh(g))return null;check(error)}
  }
- return {initialize,useScope,list,open,history,newDraft,invalidateOpenedRecord,save,retry,abandonPending,duplicate,archive,
+ return {initialize,useScope,list,nextPage,previousPage,open,history,newDraft,invalidateOpenedRecord,save,retry,abandonPending,duplicate,archive,
   selectIssued,resumeSelection,
   view:()=>({phase:s.phase,message:s.message,session:s.session,grants:s.grants,scope:s.scope,rows:s.rows,
-   nextCursor:s.nextCursor,record:s.record,editorMode:s.editorMode,generation:s.generation,revisions:s.revisions,selection:s.selection,
+   nextCursor:s.nextCursor,pageIndex:s.pageIndex,pageSize:10,hasPrevious:s.pageIndex>0,record:s.record,editorMode:s.editorMode,generation:s.generation,revisions:s.revisions,selection:s.selection,
    pending:s.pending&&{method:s.pending.operation.method,path:s.pending.operation.path,
      requestId:s.pending.operation.payload.requestId}})};
 }

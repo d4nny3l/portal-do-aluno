@@ -130,11 +130,44 @@ async function route(request,env) {
  if (path==='/assessments/v1/session'&&request.method==='GET') return json({authenticated:true,principalId:actor.id,epoch:actor.epoch,cryptoModel:'server-managed'});
  if (path==='/assessments/v1/grants'&&request.method==='GET') return json({grants:(await db.prepare('SELECT institution_id AS institutionId,class_id AS classId,period_id AS periodId FROM av_grants WHERE principal_id=? AND enabled=1 AND expires_at>? ORDER BY institution_id,class_id,period_id').bind(actor.id,Date.now()).all()).results});
  if (path==='/assessments/v1/assessments'&&request.method==='GET') {
+  const allowed=['after','institutionId','classId','periodId'];
+  if ([...url.searchParams.keys()].some(k=>!allowed.includes(k))||
+      allowed.some(k=>url.searchParams.getAll(k).length>1))
+   throw new TypeError('Parâmetros de catálogo inválidos.');
   const after=url.searchParams.get('after')||''; if (after&&!uuid(after)) throw new TypeError('Cursor inválido.');
-  const rows=(await db.prepare(`SELECT a.* FROM av_assessments a JOIN av_grants g ON g.principal_id=a.owner_id AND g.institution_id=a.institution_id AND g.class_id=a.class_id AND g.period_id=a.period_id WHERE a.owner_id=? AND a.id>? AND g.enabled=1 AND g.expires_at>? ORDER BY a.id LIMIT 21`).bind(actor.id,after,Date.now()).all()).results;
+  const hasScope=['institutionId','classId','periodId'].map(k=>url.searchParams.has(k));
+  if (hasScope.some(Boolean)&&!hasScope.every(Boolean)) throw new TypeError('Informe o escopo completo.');
+  const scope=hasScope.every(Boolean)?Object.fromEntries(['institutionId','classId','periodId'].map(k=>[k,url.searchParams.get(k)])):null;
+  if (scope){checkScope(scope);await grant(db,actor,scope);}
+  // One scoped, owner-filtered read of 10 entries plus lookahead. The latest
+  // revisions remain encrypted in D1 and are authenticated/decrypted only
+  // after the query. LEFT JOIN fails closed if an expected revision is missing.
+  const rows=(await db.prepare(`
+   SELECT a.id,a.owner_id,a.institution_id,a.class_id,a.period_id,a.current_revision,a.state,
+    r.revision,r.status,r.manifest_hash,r.key_version,r.encrypted_json
+   FROM av_assessments a
+   JOIN av_grants g ON g.principal_id=a.owner_id AND g.institution_id=a.institution_id
+    AND g.class_id=a.class_id AND g.period_id=a.period_id
+   LEFT JOIN av_revisions r ON r.assessment_id=a.id AND r.revision=a.current_revision
+   WHERE a.owner_id=? AND a.id>? AND g.enabled=1 AND g.expires_at>?
+   ${scope?'AND a.institution_id=? AND a.class_id=? AND a.period_id=?':''}
+   ORDER BY a.id LIMIT 11`).bind(actor.id,after,Date.now(),
+    ...(scope?[scope.institutionId,scope.classId,scope.periodId]:[])).all()).results;
   const assessments=[];
-  for (const a of rows.slice(0,20)) { const record=await load(db,actor,ring,a.id,a.current_revision); assessments.push({id:a.id,...rowScope(a),revision:a.current_revision,state:a.state,title:record.definition.title,totalUnits:record.totalUnits,scoreScale:record.scoreScale}); }
-  return json({assessments,nextCursor:rows.length>20?rows[19].id:null});
+  for (const a of rows.slice(0,10)) {
+   const record={id:a.id,ownerId:actor.id,...rowScope(a),revision:a.current_revision,
+    status:a.status,manifestHash:a.manifest_hash,keyVersion:a.key_version};
+   let checked;
+   try {
+    if (a.owner_id!==actor.id||a.revision!==a.current_revision||!a.encrypted_json) throw Error('Revision missing');
+    const definition=await open(ring,record,JSON.parse(a.encrypted_json));
+    checked=validateDefinition(definition);
+    if (checked.definition.manifest.contentHash!==record.manifestHash) throw Error('Manifest binding mismatch');
+   } catch { deny(503,'record_unavailable','Não foi possível autenticar ou recuperar esta revisão.'); }
+   assessments.push({id:a.id,...rowScope(a),revision:a.current_revision,state:a.state,
+    title:checked.definition.title,totalUnits:checked.totalUnits,scoreScale:checked.scoreScale});
+  }
+  return json({assessments,nextCursor:rows.length>10?rows[9].id:null});
  }
  if (path==='/assessments/v1/selections'&&request.method==='POST') return select(db,actor,ring,await body(request));
  const selection=path.match(/^\/assessments\/v1\/selections\/([0-9a-f-]{36})$/i);
