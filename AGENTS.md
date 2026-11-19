@@ -24,6 +24,15 @@ Este arquivo é a memória operacional permanente do projeto. Antes de mudanças
 - Fórmulas e critérios DF/GO/EJA, recuperação e arredondamento exigem homologação pedagógica; nunca modificá-los implicitamente.
 - Prioridades do dossiê V2: D-01 consulta de frequência com erro interno; D-02 aba Frequência exibindo Notas; D-03 parser de notas; D-04 primeira marcação coletiva implícita; D-05 cálculo parcial sem estado claro. Usar dados sintéticos e ambiente isolado em ensaios de escrita.
 
+## Diretriz permanente — OMR multidispositivo (todos os agentes)
+- **Aplica-se ao DIRETOR DE OPERAÇÕES, SALTA EXECUTOR, CODEX SALTA, SALTA PESQUISADOR, SALTA AUDITOR e agentes futuros.** Decisão e atribuições: [issue #75](https://github.com/d4nny3l/portal-do-aluno/issues/75); experimentos de captura/OMR: [issue #52](https://github.com/d4nny3l/portal-do-aluno/issues/52).
+- O Corretor deve funcionar com múltiplas câmeras, aparelhos e navegadores compatíveis. O iPhone e Mac do proprietário são equipamentos de homologação inicial, **não são alvo exclusivo de otimização nem comprovam compatibilidade universal**.
+- Preferir algoritmos independentes de fabricante e ajustes automáticos com base nas capacidades detectadas. Não exigir foco, exposição, torch, zoom ou resolução que algum navegador não ofereça; declarar limitações e degradação segura.
+- Alterações em captura/OMR exigem regressões com imagens/manifestos fixos e, progressivamente, diferentes celulares/navegadores (Safari/iOS, Chrome/Android), computadores, luz uniforme e desigual, sombras, reflexos, resolução e impressão física. Informar **quais dispositivos foram e não foram testados**. Testes locais e sintéticos não equivalem a homologação física ampla.
+- Não baixar limiares globais para salvar uma marcação específica nem promover indícios insuficientes de tinta a resposta definitiva. Preservar brancos e duplas legítimos, revisão humana para ambiguidades, identificação de sete dígitos, fiduciais, geometria e manifestos V1/V2. Investigar especialmente marcações preenchidas classificadas como vazias.
+- **Responsabilidades:** DIRETOR define escopo/gates; EXECUTOR implementa e mede regressões; PESQUISADOR elabora protocolos e separa hipóteses de evidências; CODEX preserva contratos críticos; AUDITOR verifica independência de dispositivo, classificação e lacunas; agentes futuros consultam esta seção antes de trabalhar no leitor.
+- Esta diretriz **não autoriza** alterações técnicas, merge, deploy, Workers, D1 ou modificações em produção; manter a pesquisa óptica separada do piloto privado PR #74.
+
 ## Corretor OMR
 - Motor geométrico e leitor são acoplados: nunca mover bolhas, marcadores, código de sete dígitos ou escala sem atualizar layout/manifesto/template/leitor/exportação e testes de regressão, incluindo impressão/escaneamento real.
 - Cabeçalho institucional é prioritário. Conferir não-sobreposição entre identificação institucional, turma e grade de código. Não criar folhas visualmente melhores mas ilegíveis pelo scanner.
