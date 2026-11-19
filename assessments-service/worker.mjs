@@ -130,9 +130,15 @@ async function route(request,env) {
  if (path==='/assessments/v1/session'&&request.method==='GET') return json({authenticated:true,principalId:actor.id,epoch:actor.epoch,cryptoModel:'server-managed'});
  if (path==='/assessments/v1/grants'&&request.method==='GET') return json({grants:(await db.prepare('SELECT institution_id AS institutionId,class_id AS classId,period_id AS periodId FROM av_grants WHERE principal_id=? AND enabled=1 AND expires_at>? ORDER BY institution_id,class_id,period_id').bind(actor.id,Date.now()).all()).results});
  if (path==='/assessments/v1/assessments'&&request.method==='GET') {
-  if ([...url.searchParams.keys()].some(k=>k!=='after')||url.searchParams.getAll('after').length>1)
+  const allowed=['after','institutionId','classId','periodId'];
+  if ([...url.searchParams.keys()].some(k=>!allowed.includes(k))||
+      allowed.some(k=>url.searchParams.getAll(k).length>1))
    throw new TypeError('Parâmetros de catálogo inválidos.');
   const after=url.searchParams.get('after')||''; if (after&&!uuid(after)) throw new TypeError('Cursor inválido.');
+  const hasScope=['institutionId','classId','periodId'].map(k=>url.searchParams.has(k));
+  if (hasScope.some(Boolean)&&!hasScope.every(Boolean)) throw new TypeError('Informe o escopo completo.');
+  const scope=hasScope.every(Boolean)?Object.fromEntries(['institutionId','classId','periodId'].map(k=>[k,url.searchParams.get(k)])):null;
+  if (scope){checkScope(scope);await grant(db,actor,scope);}
   // One scoped, owner-filtered read of 10 entries plus lookahead. The latest
   // revisions remain encrypted in D1 and are authenticated/decrypted only
   // after the query. LEFT JOIN fails closed if an expected revision is missing.
@@ -144,7 +150,9 @@ async function route(request,env) {
     AND g.class_id=a.class_id AND g.period_id=a.period_id
    LEFT JOIN av_revisions r ON r.assessment_id=a.id AND r.revision=a.current_revision
    WHERE a.owner_id=? AND a.id>? AND g.enabled=1 AND g.expires_at>?
-   ORDER BY a.id LIMIT 11`).bind(actor.id,after,Date.now()).all()).results;
+   ${scope?'AND a.institution_id=? AND a.class_id=? AND a.period_id=?':''}
+   ORDER BY a.id LIMIT 11`).bind(actor.id,after,Date.now(),
+    ...(scope?[scope.institutionId,scope.classId,scope.periodId]:[])).all()).results;
   const assessments=[];
   for (const a of rows.slice(0,10)) {
    const record={id:a.id,ownerId:actor.id,...rowScope(a),revision:a.current_revision,
