@@ -24,6 +24,8 @@ export function installPrivateAssessmentUI({document,client,getDraft,applyRecord
  const catalog=make('select','',{'aria-label':'Avaliação privada'});
  const revisions=make('select','',{'aria-label':'Revisão da avaliação'});
  const selectionId=make('input','',{type:'text',placeholder:'UUID de seleção confirmada','aria-label':'ID da sessão de correção'});
+ const pageLabel=make('p','Página 1 · nenhuma avaliação carregada.',{'aria-live':'polite'});
+ const activeLabel=make('p','Nenhuma avaliação privada aberta.',{'aria-live':'polite'});
  const button=(label,action)=>{
   const b=make('button',label,{type:'button'});
   b.onclick=async()=>{
@@ -35,7 +37,10 @@ export function installPrivateAssessmentUI({document,client,getDraft,applyRecord
     // Release the busy lock, then recompute permanent eligibility from the controller.
     b.disabled=false;
     render();
-    if(failure){status.textContent=failure.message||'Operação não confirmada.';status.dataset.state='error'}
+    if(failure&&controller.view().message!==failure.message){
+     status.textContent=failure.message||'Operação não confirmada.';
+     status.dataset.state='error';
+    }
    }
   };
   return b;
@@ -55,12 +60,13 @@ export function installPrivateAssessmentUI({document,client,getDraft,applyRecord
   }))]);
  });
  const chooseScope=button('Abrir turma',async()=>{
-  const grant=controller.view().grants[Number(scope.value)];
+  const grant=scope.value===''?null:controller.view().grants[Number(scope.value)];
   if(!grant)throw new Error('Selecione uma instituição, turma e período autorizado.');
   controller.useScope(grant);await controller.list();
  });
  const fetchLibrary=button('Atualizar biblioteca',()=>controller.list());
- const more=button('Mais resultados',()=>controller.list({more:true}));
+ const previous=button('Página anterior',()=>controller.previousPage());
+ const more=button('Próxima página',()=>controller.nextPage());
  const chooseAssessment=button('Abrir avaliação/revisão',async()=>{
   const id=catalog.value,revision=revisions.value?Number(revisions.value):null;
   if(!id)throw new Error('Escolha uma avaliação da biblioteca.');
@@ -83,25 +89,31 @@ export function installPrivateAssessmentUI({document,client,getDraft,applyRecord
  revisions.onchange=()=>{controller.invalidateOpenedRecord({keepRevisions:true});render()};
  scope.onchange=()=>{controller.invalidateOpenedRecord();render()};
  const selectLabel=make('p','A câmera não identifica automaticamente avaliações com cartões de geometria igual.');
- controls.append(connect,label('Turma e período',scope),chooseScope,label('Avaliação',catalog),fetchLibrary,more,
-  label('Revisão',revisions),history,chooseAssessment,newDraft,saveDraft,issue,retry,
+ controls.append(connect,label('Turma e período',scope),chooseScope,label('Avaliação',catalog),pageLabel,previous,more,fetchLibrary,
+  label('Revisão',revisions),history,chooseAssessment,activeLabel,newDraft,saveDraft,issue,retry,
   duplicate,archive,select,label('Seleção confirmada',selectionId),resume);
  host.replaceChildren(make('h3','Biblioteca privada · configuração autorizada'),selectLabel,controls,status);
  host.hidden=false;
  function render(){
   const s=controller.view(),prev=catalog.value,prevRev=revisions.value;
   const rows=s.rows.map(x=>({value:x.id,label:x.title+' · rev. '+x.revision+' · '+x.state}));
-  // A just-saved revision might not yet appear in the paginated catalog.
-  if(s.record&&!rows.some(x=>x.value===s.record.id))
-   rows.push({value:s.record.id,label:s.record.definition?.title||'Avaliação confirmada · rev. '+s.record.revision});
+  // Only the ten actual page rows appear in the catalog. An opened record
+  // outside this page is shown separately, never disguised as an 11th result.
   clearOptions(catalog,[{value:'',label:'Selecione uma avaliação'},...rows]);
-  if(s.record&&s.editorMode==='opened')catalog.value=s.record.id;
-  else if([...catalog.options].some(x=>x.value===prev))catalog.value=prev;
+  if(s.record&&s.editorMode==='opened'&&rows.some(x=>x.value===s.record.id))
+   catalog.value=s.record.id;
+  else if(rows.some(x=>x.value===prev))catalog.value=prev;
+  pageLabel.textContent=s.rows.length?'Página '+(s.pageIndex+1)+' · '+s.rows.length+' avaliação(ões) nesta página':
+   'Página '+(s.pageIndex+1)+' · nenhuma avaliação nesta turma';
+  activeLabel.textContent=s.record&&s.editorMode==='opened'?
+   'Registro aberto: '+(s.record.definition?.title||s.record.id)+' · revisão '+s.record.revision+' · ID '+s.record.id:
+   'Nenhuma avaliação privada aberta para gravação.';
   clearOptions(revisions,[{value:'',label:'Revisão atual'},...s.revisions.map(x=>({
    value:String(x.revision),label:'Rev. '+x.revision+' · '+x.status
   }))]);
   if([...revisions.options].some(x=>x.value===prevRev))revisions.value=prevRev;
-  const matchesOpened=s.editorMode==='opened'&&s.record?.id===catalog.value&&
+  const matchesOpened=s.editorMode==='opened'&&Boolean(s.record)&&
+   (!catalog.value||s.record.id===catalog.value)&&
    (!revisions.value||Number(revisions.value)===s.record.revision);
   const newDraftReady=s.editorMode==='new'&&!s.record&&!catalog.value;
   const canWrite=Boolean(s.scope&&!s.pending&&(matchesOpened||newDraftReady));
@@ -110,11 +122,17 @@ export function installPrivateAssessmentUI({document,client,getDraft,applyRecord
   archive.disabled=!matchesOpened||Boolean(s.pending);
   select.disabled=!matchesOpened||Boolean(s.pending)||s.record.status!=='issued'||Boolean(s.record.archived);
   retry.disabled=!s.pending;
-  more.disabled=!s.nextCursor;
+  previous.disabled=!s.scope||!s.hasPrevious||Boolean(s.pending);
+  more.disabled=!s.scope||!s.nextCursor||Boolean(s.pending);
+  fetchLibrary.disabled=!s.scope||Boolean(s.pending);
+  chooseAssessment.disabled=!s.scope||!catalog.value||Boolean(s.pending);
+  history.disabled=!s.scope||!catalog.value;
+  chooseScope.disabled=!s.session;
+  if(!s.session)clearOptions(scope,[{value:'',label:'Conecte-se novamente à SALTA'}]);
   status.textContent=s.message;
   status.dataset.state=s.phase;
  }
  render();
  return Object.freeze({enabled:true,controller,render,controls:{scope,catalog,revisions,selectionId,connect,chooseScope,fetchLibrary,more,chooseAssessment,history,
-  newDraft,saveDraft,issue,retry,duplicate,archive,select,resume}});
+  newDraft,saveDraft,issue,retry,duplicate,archive,select,resume,previous,pageLabel,activeLabel}});
 }
