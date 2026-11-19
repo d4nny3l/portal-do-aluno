@@ -131,10 +131,21 @@ async function route(request,env) {
  if (path==='/assessments/v1/grants'&&request.method==='GET') return json({grants:(await db.prepare('SELECT institution_id AS institutionId,class_id AS classId,period_id AS periodId FROM av_grants WHERE principal_id=? AND enabled=1 AND expires_at>? ORDER BY institution_id,class_id,period_id').bind(actor.id,Date.now()).all()).results});
  if (path==='/assessments/v1/assessments'&&request.method==='GET') {
   const after=url.searchParams.get('after')||''; if (after&&!uuid(after)) throw new TypeError('Cursor inválido.');
-  const rows=(await db.prepare(`SELECT a.* FROM av_assessments a JOIN av_grants g ON g.principal_id=a.owner_id AND g.institution_id=a.institution_id AND g.class_id=a.class_id AND g.period_id=a.period_id WHERE a.owner_id=? AND a.id>? AND g.enabled=1 AND g.expires_at>? ORDER BY a.id LIMIT 21`).bind(actor.id,after,Date.now()).all()).results;
+  // One indexed keyset read retrieves ten encrypted current revisions; the
+  // 11th is only the cursor sentinel, never decrypted. No N+1 D1 reads.
+  const rows=(await db.prepare(`SELECT a.*,r.status AS revision_status,r.manifest_hash AS revision_manifest_hash,r.key_version AS revision_key_version,r.encrypted_json AS revision_encrypted_json FROM av_assessments a JOIN av_grants g ON g.principal_id=a.owner_id AND g.institution_id=a.institution_id AND g.class_id=a.class_id AND g.period_id=a.period_id JOIN av_revisions r ON r.assessment_id=a.id AND r.revision=a.current_revision WHERE a.owner_id=? AND a.id>? AND g.enabled=1 AND g.expires_at>? ORDER BY a.id LIMIT 11`).bind(actor.id,after,Date.now()).all()).results;
   const assessments=[];
-  for (const a of rows.slice(0,20)) { const record=await load(db,actor,ring,a.id,a.current_revision); assessments.push({id:a.id,...rowScope(a),revision:a.current_revision,state:a.state,title:record.definition.title,totalUnits:record.totalUnits,scoreScale:record.scoreScale}); }
-  return json({assessments,nextCursor:rows.length>20?rows[19].id:null});
+  for (const a of rows.slice(0,10)) {
+   const record={id:a.id,ownerId:actor.id,...rowScope(a),revision:a.current_revision,status:a.revision_status,manifestHash:a.revision_manifest_hash,keyVersion:a.revision_key_version};
+   let checked;
+   try {
+    const definition=await open(ring,record,JSON.parse(a.revision_encrypted_json));
+    checked=validateDefinition(definition);
+    if (checked.definition.manifest.contentHash!==record.manifestHash) throw Error('Manifest binding mismatch');
+   } catch { deny(503,'record_unavailable','Não foi possível autenticar ou recuperar esta revisão.'); }
+   assessments.push({id:a.id,...rowScope(a),revision:a.current_revision,state:a.state,title:checked.definition.title,totalUnits:checked.totalUnits,scoreScale:checked.scoreScale});
+  }
+  return json({assessments,nextCursor:rows.length>10?rows[9].id:null});
  }
  if (path==='/assessments/v1/selections'&&request.method==='POST') return select(db,actor,ring,await body(request));
  const selection=path.match(/^\/assessments\/v1\/selections\/([0-9a-f-]{36})$/i);

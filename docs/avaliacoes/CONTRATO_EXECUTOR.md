@@ -40,7 +40,7 @@ Prefixo comum `/assessments/v1`. Todos são privados e respondem JSON com no-sto
 |---|---|
 | GET `/session` | `{authenticated,principalId,epoch,cryptoModel:"server-managed"}`; sem segredo |
 | GET `/grants` | escopos ativos aprovados, sem alunos |
-| GET `/assessments?after=UUID` | biblioteca privada, 20 registros/página em ordem de ID, `nextCursor`; metadados/título/total, sem gabarito |
+| GET `/assessments?after=UUID` | biblioteca privada, **até 10 registros/página** em ordem de ID, `nextCursor` para avançar (`after` da página seguinte); cursor da página anterior mantido somente no cliente; metadados/título/total, sem gabarito |
 | PUT `/assessments/{id}` | criar revisão completa ou adicionar nova por CAS |
 | GET `/assessments/{id}` | revisão atual autorizada |
 | GET `/assessments/{id}/revisions` | lista de revisões, estado/hash/data; sem gabarito |
