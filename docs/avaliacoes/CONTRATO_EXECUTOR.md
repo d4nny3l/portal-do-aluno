@@ -40,7 +40,7 @@ Prefixo comum `/assessments/v1`. Todos são privados e respondem JSON com no-sto
 |---|---|
 | GET `/session` | `{authenticated,principalId,epoch,cryptoModel:"server-managed"}`; sem segredo |
 | GET `/grants` | escopos ativos aprovados, sem alunos |
-| GET `/assessments?after=UUID` | biblioteca privada, 20 registros/página em ordem de ID, `nextCursor`; metadados/título/total, sem gabarito |
+| GET `/assessments?after=UUID&institutionId=...&classId=...&periodId=...` | biblioteca privada, **até 10 avaliações/página** em ordem de ID, `nextCursor`; os três filtros de escopo são opcionais apenas em conjunto e exigem grant ativo; sem filtros, retorna todos os escopos concedidos do proprietário. Metadados/título/total, sem gabarito |
 | PUT `/assessments/{id}` | criar revisão completa ou adicionar nova por CAS |
 | GET `/assessments/{id}` | revisão atual autorizada |
 | GET `/assessments/{id}/revisions` | lista de revisões, estado/hash/data; sem gabarito |
@@ -60,6 +60,12 @@ Seleção recebe `{requestId,selectionId,assessmentId,revision}`. Responde 201 `
 Respostas de detalhe contêm `record={id,ownerId,institutionId,classId,periodId,revision,status,manifestHash,keyVersion,definition,totalUnits,scoreScale,archived}`. `keyVersion` é identificador de versão, não chave. Não persistir esses payloads privados em cache compartilhado, telemetria, logs de erro ou exportação pública. Nunca incluir answers no SVG/PNG/JPG/PDF, QR, nome de arquivo, URL ou manifesto imprimível.
 
 O endpoint print retorna SVG pronto pelo renderizador homologado e um vínculo **sem gabarito**. O SVG recebe somente dois atributos não visuais na raiz (`data-assessment-id`, `data-assessment-revision`); teste confirma que todo o desenho é idêntico ao SVG original. Não alterar o manifesto histórico para gravar essa associação. Para exportação PNG/JPG/PDF, usar esse mesmo SVG e dimensões A4, sem alterar coordenadas, e preservar obrigatoriamente o binding no pacote/registro de exportação. A rasterização pode descartar metadados SVG: uma imagem avulsa sem binding não deve ser tratada como prova identificada. O Executor precisa implementar esse transporte e bloquear correção sem seleção explícita. Não desenhar QR ou outro marcador novo. A folha/fotografia **não identifica automaticamente** prova/revisão: duas avaliações podem ter geometria e hash iguais. O professor seleciona avaliação/revisão uma vez e confere o lote físico. A seleção fixa o gabarito; o hash só verifica o modelo geométrico.
+
+## Paginação do catálogo para piloto sintético
+
+O catálogo usa `LIMIT 11` (dez resultados mais um de verificação) e envia no máximo dez avaliações por resposta. O próximo cursor é o ID da décima avaliação devolvida; não é índice de página, total de registros, timestamp nem revisão de avaliação. A interface guarda cursores para avançar e voltar; a paginação é **por turma autorizada** quando os três filtros são informados. Consultas sem filtros preservam a listagem dos escopos concedidos. Filtros parciais ou parâmetros duplicados são rejeitados. O título é descriptografado e autenticado no serviço, sem retornar gabaritos ou conteúdo criptografado ao catálogo.
+
+Testes sintéticos de volume, latência, tempo de CPU **Node** e número de chamadas locais `D1.prepare` não comprovam limites reais de Workers Free, `rows_read`, `duration` de Workerd ou D1 remoto. A ativação depende de medição em ambiente autorizado com métricas reais e gate próprio.
 
 ## Concorrência, erros e confirmação
 
