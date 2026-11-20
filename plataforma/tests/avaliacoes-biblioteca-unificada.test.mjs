@@ -1074,7 +1074,7 @@ test('P0-80-RF-01 actual adapter + Corretor callback clears private reader on 40
 
 test('P0-80-RF-02 normal navigation does not reinitialize a ready controller',async()=>{
  const m=make({counts:[2],types:['A-E']});
- const grant={institutionId:'school',classId:'A',periodId:'2026'};
+ const grant={institutionId:'school',classId:'class-A',periodId:'2026'};
  let sessions=0;
  const fetchFn=async(url)=>{
   const route=new URL(url).pathname.slice('/assessments/v1'.length);
