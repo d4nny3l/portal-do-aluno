@@ -340,7 +340,7 @@ async function mountedRaceFixture({onPut=async()=>{},onSelection=async()=>{},onO
 
  await tick();
  const top=host.children[0],scoring=host.children[1],actions=top.children[2];
- const button=label=>actions.children.find(item=>item.textContent===label);
+ const button=label=>[...actions.children,...top.children[3].children].find(item=>item.textContent===label);
  const fill=async()=>{
   const area=scoring.children[2].children[0];area.value='1 A\n2 B';
   await scoring.children[3].handlers.click();
