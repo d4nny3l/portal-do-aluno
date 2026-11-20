@@ -1,0 +1,40 @@
+name: SALTA unified assessments library — validation only
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - '.github/workflows/test-avaliacoes-biblioteca.yml'
+      - 'plataforma/corretor-v2.html'
+      - 'plataforma/avaliacoes-biblioteca.mjs'
+      - 'plataforma/avaliacoes-biblioteca.css'
+      - 'plataforma/tests/avaliacoes-biblioteca-unificada.test.mjs'
+      - 'corretor/v2/assessments/**'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  united-library:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Validate syntax and patch scope
+        run: |
+          node --check plataforma/avaliacoes-biblioteca.mjs
+          node --check plataforma/tests/avaliacoes-biblioteca-unificada.test.mjs
+          git diff --check
+      - name: Native contracts and browser-independent integration
+        run: |
+          node --test plataforma/tests/avaliacoes-biblioteca-unificada.test.mjs
+      - name: Preserve optical card and existing public UI regressions
+        run: |
+          node --test corretor/v2/tests/card-v2.test.mjs corretor/v2/tests/card-layout.test.mjs corretor/v2/tests/answer-key.test.mjs
+          node --test plataforma/tests/corretor-interface.test.mjs plataforma/tests/corretor-visual-flow.test.mjs
+      - name: Restrict changes to integration only
+        run: |
+          if git diff --name-only origin/main...HEAD | grep -E '^((stats-worker|auth-worker|assessments-service)/|corretor/v2/omr/|plataforma/corretor-v2\.css$)'; then
+            echo "Forbidden production, optical or correction stylesheet change"; exit 1
+          fi

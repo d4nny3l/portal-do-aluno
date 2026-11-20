@@ -1,0 +1,22 @@
+/* Scoped to the existing "Criar avaliação" only. No change to Corrigir cartões. */
+#savedAssessments{margin:0 0 18px;padding:17px;background:var(--card,#fff)}
+#savedAssessments h3{margin:0;font-size:1.1rem}
+#savedAssessments .library-toolbar{display:grid;gap:10px}
+#savedAssessments .library-selectors{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px}
+#savedAssessments .library-selectors label{display:flex;flex-direction:column;gap:5px;font-weight:650;min-width:0}
+#savedAssessments select,#savedAssessments textarea,#savedAssessments input{width:100%;box-sizing:border-box}
+#savedAssessments .library-actions{display:flex;gap:7px;flex-wrap:wrap}
+#savedAssessments .library-actions button{flex:1 1 auto;min-width:115px}
+#savedAssessments .library-aux{display:flex;gap:7px;flex-wrap:wrap}
+#savedAssessments .library-aux button{font-size:.9rem}
+#savedAssessments .library-scoring{display:grid;grid-template-columns:repeat(auto-fit,minmax(190px,1fr));gap:8px;margin:12px 0}
+#savedAssessments .library-scoring label{display:block;font-weight:600}
+#savedAssessments .library-scoring input{margin:3px 0}
+#savedAssessments .library-answers{margin-top:10px}
+#savedAssessments .library-answers>summary{cursor:pointer;font-weight:700}
+#savedAssessments .library-answers textarea{display:block;margin:5px 0 8px;min-height:80px}
+#savedAssessments .library-choices{display:grid;grid-template-columns:repeat(auto-fit,minmax(110px,1fr));gap:8px;max-height:340px;overflow-y:auto;margin:14px 0}
+#savedAssessments .library-choices label{display:flex;flex-direction:column;gap:5px;font-size:.86rem}
+#savedAssessments [data-state="error"],#savedAssessments [data-state="forbidden"],#savedAssessments [data-state="session"],#savedAssessments [data-state="unavailable"]{color:#9b3030}
+#savedAssessments [hidden]{display:none!important}
+@media(max-width:760px){#savedAssessments .library-selectors{grid-template-columns:1fr}#savedAssessments .library-actions button{flex:1 1 100%}#savedAssessments{padding:12px}}
