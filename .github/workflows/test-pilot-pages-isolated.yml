@@ -1,0 +1,55 @@
+name: SALTA isolated pilot Pages — validation only
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - '.github/workflows/test-pilot-pages-isolated.yml'
+      - 'plataforma/piloto-avaliacoes.html'
+      - 'plataforma/piloto-avaliacoes.mjs'
+      - 'plataforma/piloto-avaliacoes.css'
+      - 'plataforma/tests/piloto-avaliacoes-isolado.test.mjs'
+      - 'corretor/v2/assessments/private-ui.mjs'
+      - 'corretor/v2/assessments/private-library.mjs'
+      - 'corretor/v2/assessments/private-client.mjs'
+      - 'corretor/v2/assessments/private-contract-adapter.mjs'
+      - 'corretor/v2/assessments/block-scoring.mjs'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: salta-pilot-pages-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  isolated-pages-tests:
+    name: Synthetic pilot and OMR compatibility (never deploy)
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Check syntax
+        run: |
+          node --check plataforma/piloto-avaliacoes.mjs
+          node --check corretor/v2/assessments/private-ui.mjs
+          node --check corretor/v2/assessments/private-library.mjs
+          node --check corretor/v2/assessments/private-client.mjs
+          node --check plataforma/tests/piloto-avaliacoes-isolado.test.mjs
+          git diff --check
+      - name: Isolated private pilot and public OMR regression
+        run: |
+          node --test \
+            plataforma/tests/piloto-avaliacoes-isolado.test.mjs \
+            corretor/v2/tests/answer-key.test.mjs \
+            corretor/v2/tests/card-layout.test.mjs \
+            corretor/v2/tests/card-header.test.mjs \
+            corretor/v2/tests/card-v2.test.mjs
+      - name: Verify no secret or mutation in published Corretor
+        run: |
+          node --test --test-name-pattern='dedicated HTML|original private modules' plataforma/tests/piloto-avaliacoes-isolado.test.mjs
+          git diff --check
