@@ -317,27 +317,36 @@ export function mountAssessmentLibrary({
  const prev=btn('Anterior',()=>controller.previousPage(),'previous');
  const next=btn('Próxima',()=>controller.nextPage(),'next');
  const refresh=btn('Atualizar',()=>loadCatalog(),'refresh');
- let scheduledRequestId=null;
+ let scheduledRequestId=null,autoAttemptedRequestId=null,onlineAttemptedRequestId=null;
  function scheduleRecovery(){
   const pending=controller.view().pending;
-  if(!pending||!window.setTimeout||scheduledRequestId===pending.requestId)return;
-  const requestId=pending.requestId;
+  if(!pending||!contextKey()||autoAttemptedRequestId===pending.requestId||
+     scheduledRequestId===pending.requestId)return;
+  const requestId=pending.requestId,origin=contextKey();
+  autoAttemptedRequestId=requestId;
+  if(!window.setTimeout){manualRetryNeeded=true;render();return;}
   scheduledRequestId=requestId;
   window.setTimeout(()=>{
    scheduledRequestId=null;
-   if(controller.view().pending?.requestId!==requestId)return;
-   if(operationBusy){scheduleRecovery();return;}
+   if(controller.view().pending?.requestId!==requestId||contextKey()!==origin||
+      onlineAttemptedRequestId===requestId)return;
+   if(operationBusy||window.navigator?.onLine===false){
+    manualRetryNeeded=true;render();return;
+   }
    operationBusy=true;
-   void recoverPending().catch(error=>{
-    status.textContent=error.message||'A operação continua pendente de confirmação.';
-    status.dataset.state='error';
+   void recoverPending().catch(()=>{
+    if(controller.view().pending?.requestId===requestId&&contextKey()===origin){
+     manualRetryNeeded=true;
+     status.textContent='Não foi possível confirmar a operação. Use Tentar novamente.';
+     status.dataset.state='error';
+    }
    }).finally(()=>{operationBusy=false;render({preserveError:status.dataset.state==='error'})});
   },2500);
  }
  async function recoverPending(){
   const pending=controller.view().pending;
-  if(!pending)return null;
-  // Retain original requestId, payload, CAS and verified receipt.
+  if(!pending||!contextKey())return null;
+  // Original requestId, body, scope and CAS remain inside the audited controller.
   const result=await controller.retry();
   if(!result)return null;
   if(pending.method==='PUT'&&pendingSave?.requestId===pending.requestId)
@@ -346,9 +355,22 @@ export function mountAssessmentLibrary({
    resolveStaleSelection();
    if(!controller.view().pending)selectionAttempt=null;
   }
+  if(!controller.view().pending)manualRetryNeeded=false;
   return result;
  }
  const retry=btn('Conferir salvamento',recoverPending,'recover');
+ const manualRetry=btn('Tentar novamente',async()=>{
+  const pending=controller.view().pending;
+  if(!pending||!contextKey())return;
+  try{
+   const result=await recoverPending();
+   if(!result&&controller.view().pending?.requestId===pending.requestId)
+    throw Error('A operação ainda não foi confirmada.');
+  }catch(error){
+   manualRetryNeeded=Boolean(controller.view().pending&&contextKey());
+   throw error;
+  }
+ },'recover');
  const apply=btn('Aplicar gabarito',()=>{
   answers={...applyKeyPaste(paste.value,getSections(),answers)};
   markEdited();paste.value='';
@@ -367,7 +389,8 @@ export function mountAssessmentLibrary({
  deletion.setAttribute('data-action-icon','delete');
  deletion.hidden=true;deletion.disabled=true;actions.append(deletion);
  open.hidden=true;refresh.hidden=true;prev.hidden=true;next.hidden=true;retry.hidden=true;
- aux.append(connect,refresh,prev,next,retry);
+ manualRetry.hidden=true;
+ aux.append(connect,refresh,prev,next,retry,manualRetry);
  top.append(title,choose,actions,aux,status,summary);
  const scoring=el(document,'details','',{class:'library-answers'});
  const scoringTitle=el(document,'summary','Gabarito e valor dos blocos');
@@ -473,6 +496,8 @@ export function mountAssessmentLibrary({
   prev.disabled=operationBusy||!ready||!s.hasPrevious||Boolean(s.pending);
   next.disabled=operationBusy||!ready||!s.nextCursor||Boolean(s.pending);
   retry.disabled=operationBusy||!s.pending;
+  manualRetry.hidden=!(ready&&s.pending&&manualRetryNeeded);
+  manualRetry.disabled=operationBusy||!ready||!s.pending;
   connect.hidden=ready;
   if(!preserveError){
    status.dataset.state=s.phase;
