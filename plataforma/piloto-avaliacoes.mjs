@@ -138,3 +138,12 @@ export async function mountPrivatePilot(document,{fetchFn=fetch,printFn=()=>wind
  app.hidden=false;
  return {enabled:ui.enabled,ui,release,client};
 }
+
+// Entry point runs only when this dedicated page is actually loaded.
+if(typeof document!=='undefined'&&document.getElementById('pilotGate')){
+ mountPrivatePilot(document).catch(()=>{
+  document.getElementById('pilotApp').hidden=true;
+  document.getElementById('pilotGate').textContent=
+   'Não foi possível preparar a homologação privada. Nenhuma operação foi confirmada.';
+ });
+}
