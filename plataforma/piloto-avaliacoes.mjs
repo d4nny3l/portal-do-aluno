@@ -14,11 +14,11 @@ const options={identityMode:'seven-digit-code',mode:'full-page',layoutVersion:'v
 
 export function syntheticSections(){
  return [0,1].map(index=>({
-  sectionId:'salta-pilot-block-'+(index+1),
-  label:'Bloco '+(index+1),
+  sectionId:'synthetic-'+(index===0?'a':'b'),
+  label:'Bloco '+(index===0?'a':'b'),
   type:'A-E',
   items:Array.from({length:30},(_,offset)=>({
-   questionId:'salta-pilot-q-'+String(index*30+offset+1).padStart(3,'0'),
+   questionId:(index===0?'a':'b')+'-q'+(offset+1),
    number:index*30+offset+1,
    type:'A-E'
   }))
@@ -40,7 +40,7 @@ export function preparePilotDraft({title,subject='Matemática',kind='Prova',date
  const {sections,template,manifest}=createPilotModel();
  const answers=applyKeyPaste(rawKey,sections);
  const plan=createIntegratedPlan({metadata:{title,subject,kind,date},
-  sections,values:{'salta-pilot-block-1':'6','salta-pilot-block-2':'4'},
+  sections,values:{'synthetic-a':'6','synthetic-b':'4'},
   answers,display,model:manifest,revision:1});
  if(plan.blocks.length!==2||plan.blocks[0].questions.length!==30||
     plan.blocks[1].questions.length!==30||plan.totalUnits!=='100000')
