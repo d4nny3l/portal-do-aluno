@@ -218,15 +218,17 @@ export function mountAssessmentLibrary({
  const resolveStaleSelection=()=>{
   if(selectionAttempt&&selectionAttempt.editVersion!==editVersion){
    selectionNeedsConfirmation=true;
-   // Only after the remote operation settles. Never invalidate a pending
-   // request: doing so would discard its original idempotent retry context.
-   if(!controller.view().pending)controller.invalidateOpenedRecord();
+   // An old selection may be registered server-side, but is not activated in
+   // the Corretor. Keep the opened record so the later local edits can still
+   // become the next revision without losing their writable context.
+   activeSelection=false;clearSelection();
    return true;
   }
   return false;
  };
  const selectForCorrection=btn('Usar na correção',async()=>{
   if(controller.view().record?.id!==catalog.value)throw Error('Abra a avaliação e confirme a versão antes de corrigir.');
+  if(unsaved)throw Error('Salve suas alterações antes de selecionar uma avaliação para correção.');
   selectionNeedsConfirmation=false;
   selectionAttempt={editVersion};
   try{
