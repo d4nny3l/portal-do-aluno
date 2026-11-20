@@ -145,14 +145,11 @@ export function mountAssessmentLibrary({
     await pendingTask;
     render();
    }catch(e){
-    if(controller.view().pending){
-     try{
-      await recoverPending();
-      if(!controller.view().pending){render();return;}
-     }catch{ /* Original request remains available for later reconciliation. */ }
-    }
+    // Keep the original pending request visible until it can be reconciled.
+    // Never retry synchronously here: its requestId/CAS must remain inspectable.
     status.textContent=e?.message||'Operação não concluída.';
     status.dataset.state='error';render({preserveError:true});
+    scheduleRecovery();
    }finally{operationBusy=false;item.disabled=false;render({preserveError:status.dataset.state==='error'})}
   });
   return item;
@@ -294,6 +291,22 @@ export function mountAssessmentLibrary({
  const prev=btn('Anterior',()=>controller.previousPage(),'previous');
  const next=btn('Próxima',()=>controller.nextPage(),'next');
  const refresh=btn('Atualizar',()=>loadCatalog(),'refresh');
+ let scheduledRequestId=null;
+ function scheduleRecovery(){
+  const pending=controller.view().pending;
+  if(!pending||!window.setTimeout||scheduledRequestId===pending.requestId)return;
+  scheduledRequestId=pending.requestId;
+  window.setTimeout(()=>{
+   scheduledRequestId=null;
+   if(!controller.view().pending)return;
+   if(operationBusy){scheduleRecovery();return;}
+   operationBusy=true;
+   void recoverPending().catch(error=>{
+    status.textContent=error.message||'A operação continua pendente de confirmação.';
+    status.dataset.state='error';
+   }).finally(()=>{operationBusy=false;render({preserveError:status.dataset.state==='error'})});
+  },2500);
+ }
  async function recoverPending(){
   const pending=controller.view().pending;
   if(!pending)return null;
