@@ -1,0 +1,32 @@
+:root{color-scheme:light;--salta-blue:#204a77;--salta-line:#d9e2ec;--salta-ink:#1f2937}
+*{box-sizing:border-box}body{margin:0;font:16px/1.5 system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;background:#f5f8fc;color:var(--salta-ink)}
+.pilot-header,.pilot-footer{padding:22px max(20px,calc((100vw - 980px)/2));background:#fff}
+.pilot-header{display:flex;align-items:center;justify-content:space-between;gap:20px;border-bottom:1px solid var(--salta-line)}
+.pilot-header h1{font-size:1.5rem;margin:0}.pilot-header p{margin:5px 0}.pilot-eyebrow{letter-spacing:.08em;font-size:.75rem;color:var(--salta-blue);font-weight:750}
+.pilot-header a{white-space:nowrap;color:var(--salta-blue)}main{max-width:980px;margin:24px auto;padding:0 20px}
+.pilot-panel{background:white;border:1px solid var(--salta-line);border-radius:12px;padding:20px;margin-bottom:18px}
+.pilot-panel h2{font-size:1.15rem;margin:0 0 10px}
+.pilot-fields{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}
+label{font-weight:650;display:block}
+input,select,textarea,button{font:inherit}
+label input,label select,textarea{display:block;width:100%;min-height:40px;margin-top:5px;padding:8px 10px;border:1px solid #aabaca;border-radius:7px;background:#fff;color:#1f2937}
+textarea{resize:vertical;font-family:ui-monospace,monospace}
+.pilot-key-label{margin:16px 0 6px}.pilot-actions{margin-top:12px}
+button{cursor:pointer;background:var(--salta-blue);color:#fff;border:0;border-radius:7px;padding:10px 14px;min-height:42px}
+button:hover:not(:disabled){background:#153959}button:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-visible{outline:3px solid #75a5df;outline-offset:2px}
+button:disabled{cursor:not-allowed;opacity:.55}
+.private-assessments-controls{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px;align-items:end}
+.private-assessments-controls>p{margin:3px 0}
+#privateAssessmentsHost [data-state="session"],#privateAssessmentsHost [data-state="forbidden"],#privateAssessmentsHost [data-state="unavailable"],#privateAssessmentsHost [data-state="rate-limited"],#privateAssessmentsHost [data-state="error"]{color:#a12b2b}
+.pilot-page{display:flex;justify-content:center;margin:18px auto}.pilot-page img{width:min(100%,550px);height:auto;border:1px solid var(--salta-line);background:white}
+#pilotPrintLabel{font-size:.95rem;overflow-wrap:anywhere}.pilot-footer{font-size:.83rem;color:#526273;border-top:1px solid var(--salta-line)}
+[hidden]{display:none!important}
+@media(max-width:700px){.pilot-header{display:block}.pilot-header a{display:inline-block;margin-top:10px}.pilot-fields,.private-assessments-controls{grid-template-columns:1fr}}
+@page{size:A4 portrait;margin:0}
+@media print{
+ html,body{margin:0!important;width:210mm;height:297mm;overflow:hidden;background:white}
+ .pilot-header,.pilot-footer,main>.pilot-panel,.pilot-panel:not(:last-child),#pilotPrint,#pilotPrintLabel,#privateAssessmentsHost{display:none!important}
+ main,#pilotApp,.pilot-panel:last-child,.pilot-page{display:block!important;margin:0!important;padding:0!important;border:0!important;width:210mm!important;height:297mm!important}
+ .pilot-panel:last-child>h2{display:none!important}
+ .pilot-page img:not([hidden]){display:block!important;width:210mm!important;height:297mm!important;max-width:none!important;object-fit:fill!important;border:0!important;margin:0!important}
+}
