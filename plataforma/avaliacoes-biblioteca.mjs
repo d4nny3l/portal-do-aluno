@@ -94,7 +94,7 @@ export function mountAssessmentLibrary({
  if(!host)throw new Error('A biblioteca deve ficar na aba Criar avaliação.');
  const client=createPrivateAssessmentClient({enabled:true,baseUrl:LIBRARY_GATEWAY,fetchFn});
  const get=id=>document.getElementById(id);
- let values={},answers={},savedManifest=null,savedSignature=null,ready=false,activeSelection=false;
+ let values={},answers={},savedManifest=null,savedSignature=null,ready=false,activeSelection=false,lastScoringSections='';
  const editorSignature=()=>JSON.stringify(snapshotEditor());
  const status=el(document,'p','Conectando à sua conta SALTA…',{role:'status','aria-live':'polite'});
  const title=el(document,'h3','Minhas avaliações');
@@ -213,6 +213,7 @@ export function mountAssessmentLibrary({
  };
  function renderScoring(){
   const sections=getSections();
+  lastScoringSections=JSON.stringify(sections.map(s=>({id:s.sectionId,items:s.items.map(q=>({id:q.questionId,n:q.number,t:q.type})),label:s.label})));
   const existing=new Set(sections.flatMap(s=>s.items.map(q=>q.questionId)));
   for(const id of Object.keys(answers))if(!existing.has(id))delete answers[id];
   scoreBox.replaceChildren();choicesBox.replaceChildren();
@@ -242,7 +243,7 @@ export function mountAssessmentLibrary({
  function render({preserveError=false}={}){
   const s=controller.view(),current=s.record;
   ready=Boolean(s.session&&s.scope);
-  const grantItems=s.grants.map((g,i)=>({value:String(i),label:g.classId+' · '+g.periodId}));
+  const grantItems=s.grants.map((g,i)=>({value:String(i),label:'Turma autorizada '+(i+1)}));
   fillOptions(scope,grantItems);
   const grantIdx=s.grants.findIndex(g=>scopeEquals(g,s.scope));
   if(grantIdx>=0)scope.value=String(grantIdx);
@@ -264,7 +265,7 @@ export function mountAssessmentLibrary({
   connect.hidden=ready;
   if(!preserveError){
    status.dataset.state=s.phase;
-   status.textContent=!s.session?'Biblioteca indisponível. Faça login na SALTA e tente conectar.':
+   status.textContent=!s.session?'Não foi possível conectar a biblioteca. Se já entrou na SALTA, tente novamente.':
     !s.scope?'Selecione uma turma para acessar suas avaliações.':
     s.phase==='saved'?'Avaliação salva e conferida no servidor.':
     s.phase==='selected'?'Avaliação confirmada para correção.':
@@ -284,7 +285,9 @@ export function mountAssessmentLibrary({
  function onEditorChanged(){
   if(activeSelection){activeSelection=false;clearSelection()}
   savedManifest=null;savedSignature=null;
-  renderScoring();
+  const sections=getSections();
+  const signature=JSON.stringify(sections.map(s=>({id:s.sectionId,items:s.items.map(q=>({id:q.questionId,n:q.number,t:q.type})),label:s.label})));
+  if(signature!==lastScoringSections)renderScoring();else updateSummary();
  }
  renderScoring();
  render();
