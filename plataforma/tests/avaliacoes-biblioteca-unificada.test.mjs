@@ -283,7 +283,7 @@ test('actual Create-tab UI mounts and saves/opens/selects/duplicates without a s
 
 const deferred=()=>{let resolve,reject;const promise=new Promise((yes,no)=>{resolve=yes;reject=no});return{promise,resolve,reject}};
 const tick=()=>new Promise(resolve=>setImmediate(resolve));
-async function mountedRaceFixture({onPut=async()=>{},onSelection=async()=>{},onOpen=async()=>{},counts=[2],restoreOutOfOrder=false}={}){
+async function mountedRaceFixture({onPut=async()=>{},onSelection=async()=>{},onOpen=async()=>{},counts=[2],restoreOutOfOrder=false,windowOverrides={}}={}){
  const m=make({counts,types:counts.map(()=> 'A-E')});
  m.sections.forEach((section,i)=>{section.order=restoreOutOfOrder?counts.length-i-1:i});
  const grants={institutionId:'salta-hml-20261119',classId:'turma-sintetica-ab',periodId:'2026-11-piloto'};
@@ -300,7 +300,7 @@ async function mountedRaceFixture({onPut=async()=>{},onSelection=async()=>{},onO
   if(route.startsWith('/assessments/')&&init.method==='PUT'){
    const body=JSON.parse(init.body),id=route.split('/')[2],entry=records.get(id),revision=(entry?.revision||0)+1;
    writeCalls.push(structuredClone(body));
-   if(requestById.has(body.requestId)){const prior=requestById.get(body.requestId);return Response.json({ok:true,id:prior.id,revision:prior.revision,manifestHash:prior.manifestHash});}
+   if(requestById.has(body.requestId)){const prior=requestById.get(body.requestId);await onPut({body,record:prior,replay:true});return Response.json({ok:true,id:prior.id,revision:prior.revision,manifestHash:prior.manifestHash});}
    assert.equal(body.expectedRevision,revision-1);
    const record={id,revision,definition:body.definition,manifestHash:body.definition.manifest.contentHash,
     scoreScale:10000,totalUnits:'100000',status:body.status,archived:false,...grants};
@@ -331,7 +331,7 @@ async function mountedRaceFixture({onPut=async()=>{},onSelection=async()=>{},onO
  const host=new SurfaceNode('section'),createPanel=new SurfaceNode('section');
  const doc={getElementById:id=>id==='savedAssessments'?host:id==='criar'?createPanel:null,
   createElement:tag=>new SurfaceNode(tag)};
- const mounted=mountAssessmentLibrary({document:doc,window:{confirm:()=>true},host,fetchFn,
+ const mounted=mountAssessmentLibrary({document:doc,window:{confirm:()=>true,...windowOverrides},host,fetchFn,
   getSections:()=>m.sections,getMetadata:()=>({title:m.editor.fields.assessmentTitle,subject:m.editor.fields.assessmentSubject,
    kind:m.editor.fields.assessmentKind,date:m.editor.fields.assessmentDate,className:m.editor.fields.assessmentClass}),
   getModel:()=>m.manifest,prepareModel:()=>{modelBuilds++;return true},snapshotEditor:()=>snapshotOverride??currentEditor,
@@ -425,7 +425,7 @@ test('P0 race SAVE: delayed receipt confirms frozen A while edited B remains uns
  assert.equal(result.revision,1);
  assert.equal(result.definition.title,'Avaliação de Matemática');
  assert.equal(f.m.editor.fields.assessmentTitle,'Título posterior B','local edit B must remain visible');
- assert.match(f.top.children[4].textContent,/versão enviada foi salva.*alterações posteriores/i);
+ assert.match(f.top.children[4].textContent,/avaliação enviada foi salva.*alterações posteriores/i);
  assert.equal(f.getPending(),null,'receipt and verifying GET settled original request');
  await f.button('Salvar avaliação').handlers.click();
  assert.equal(f.mounted.controller.view().record.revision,2);
@@ -531,7 +531,7 @@ test('P0 structural buttons: delayed PUT preserves A receipt but never declares 
   assert.equal(f.getPending(),null);
   assert.equal(f.writeCalls[0].requestId,original);
   assert.equal(f.writeCalls[0].expectedRevision,0);
-  assert.match(f.top.children[4].textContent,/versão enviada foi salva.*alterações posteriores/i);
+  assert.match(f.top.children[4].textContent,/avaliação enviada foi salva.*alterações posteriores/i);
   assert.equal(f.button('Usar na correção').disabled,true);
  });
 });
