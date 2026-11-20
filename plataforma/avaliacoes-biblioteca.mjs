@@ -95,6 +95,14 @@ export function mountAssessmentLibrary({
  const client=createPrivateAssessmentClient({enabled:true,baseUrl:LIBRARY_GATEWAY,fetchFn});
  const get=id=>document.getElementById(id);
  let values={},answers={},savedManifest=null,savedSignature=null,ready=false,activeSelection=false,lastScoringSections='';
+ // UI edit clock is separate from controller operation generation. Never
+ // invalidate that generation during PUT: the original requestId must survive.
+ let editVersion=0,unsaved=false,confirmedEarlierSave=false,pendingSave=null,selectionAttempt=null,openAttempt=null,selectionNeedsConfirmation=false;
+ const markEdited=()=>{
+  editVersion++;unsaved=true;savedManifest=null;savedSignature=null;
+  if(selectionAttempt)selectionNeedsConfirmation=true;
+  if(activeSelection){activeSelection=false;clearSelection();}
+ };
  const editorSignature=()=>JSON.stringify(snapshotEditor());
  const status=el(document,'p','Conectando à sua conta SALTA…',{role:'status','aria-live':'polite'});
  const title=el(document,'h3','Minhas avaliações');
@@ -131,6 +139,8 @@ export function mountAssessmentLibrary({
   return {plan:payload.plan,manifest:payload.manifest};
  };
  function applyRecord(record){
+  if(openAttempt&&openAttempt.editVersion!==editVersion)
+   throw new Error('A avaliação foi editada durante a abertura. Suas alterações foram preservadas; abra novamente se desejar.');
   const restored=editorFromPrivateRecord(record,snapshotEditor());
   restoreEditor(restored.editor);
   values=Object.fromEntries(restored.plan.blocks.map(b=>[b.sectionId,formatExact(BigInt(b.valueUnits),POINT_SCALE,4).replace(',','.')]));
@@ -140,16 +150,23 @@ export function mountAssessmentLibrary({
   savedSignature=editorSignature();
   applyExactModel({manifest:restored.manifest,title:record.definition.title,revision:record.revision});
   clearSelection();activeSelection=false;
+  unsaved=false;confirmedEarlierSave=false;selectionNeedsConfirmation=false;
   renderScoring();
  }
  const controller=createPrivateLibraryController({
   client,getDraft,applyRecord,
-  onSelection:selection=>{activeSelection=Boolean(selection);if(selection)activateSelection(selection);else clearSelection()},
+  onSelection:selection=>{
+   if(!selection){activeSelection=false;clearSelection();return;}
+   if(!selectionAttempt||selectionAttempt.editVersion!==editVersion){
+    activeSelection=false;selectionNeedsConfirmation=true;clearSelection();return;
+   }
+   activeSelection=true;activateSelection(selection);
+  },
   confirmBatch:details=>window.confirm('Confirma a avaliação “'+details.title+'”, versão '+details.revision+
    ', para corrigir este lote? Cartões visualmente iguais podem ter gabaritos diferentes.')
  });
  const connect=btn('Conectar',async()=>{await connectAndList()});
- const create=btn('Nova avaliação',async()=>{if(!ready)throw Error('Sua biblioteca não está conectada.');controller.newDraft();resetScores();newEditor();renderScoring()});
+ const create=btn('Nova avaliação',async()=>{if(!ready)throw Error('Sua biblioteca não está conectada.');controller.newDraft();resetScores();newEditor();editVersion++;unsaved=false;confirmedEarlierSave=false;selectionNeedsConfirmation=false;renderScoring()});
  const save=btn('Salvar avaliação',async()=>{
   if(!ready)throw Error('Conecte sua biblioteca antes de salvar.');
   // A new revision cannot inherit a prior correction-lot confirmation.
@@ -184,7 +201,7 @@ export function mountAssessmentLibrary({
  const retry=btn('Conferir salvamento',()=>controller.retry());
  const apply=btn('Aplicar gabarito',()=>{
   answers={...applyKeyPaste(paste.value,getSections(),answers)};
-  paste.value='';
+  markEdited();paste.value='';
   renderScoring();
   status.textContent='Gabarito preenchido. Confira as alternativas.';
  });
@@ -224,7 +241,7 @@ export function mountAssessmentLibrary({
   for(const section of sections){
    const val=el(document,'input','',{type:'text',placeholder:'Ex.: 10',value:values[section.sectionId]??(sections.length===1?'10':'')});
    if(values[section.sectionId]===undefined&&sections.length===1)values[section.sectionId]='10';
-   val.oninput=()=>{values[section.sectionId]=val.value;if(activeSelection){activeSelection=false;clearSelection();}updateSummary()};
+   val.oninput=()=>{values[section.sectionId]=val.value;markEdited();updateSummary()};
    scoreBox.append(field(document,section.label+' · '+section.items.length+' questão(ões)',val));
   }
   for(const q of sections.flatMap(s=>s.items)){
@@ -232,7 +249,7 @@ export function mountAssessmentLibrary({
    select.append(option(document,'','—'));
    for(const c of QUESTION_TYPES[q.type]||[])select.append(option(document,c,c));
    select.value=answers[q.questionId]||'';
-   select.onchange=()=>{if(select.value)answers[q.questionId]=select.value;else delete answers[q.questionId];if(activeSelection){activeSelection=false;clearSelection();}updateSummary()};
+   select.onchange=()=>{if(select.value)answers[q.questionId]=select.value;else delete answers[q.questionId];markEdited();updateSummary()};
    choicesBox.append(field(document,'Questão '+q.number+' · '+q.type,select));
   }
   updateSummary();
@@ -271,6 +288,10 @@ export function mountAssessmentLibrary({
    status.dataset.state=s.phase;
    status.textContent=!s.session?'Não foi possível conectar a biblioteca. Se já entrou na SALTA, tente novamente.':
     !s.scope?'Selecione uma turma para acessar suas avaliações.':
+    s.pending?'Operação anterior sem confirmação final. Confira o salvamento antes de iniciar outra.':
+    confirmedEarlierSave?'A versão enviada foi salva e conferida; suas alterações posteriores ainda não foram salvas.':
+    selectionNeedsConfirmation?'A avaliação mudou durante a seleção. Reabra a versão e confirme novamente para corrigir.':
+    unsaved?'Há alterações nesta avaliação que ainda não foram salvas.':
     s.phase==='saved'?'Avaliação salva e conferida no servidor.':
     s.phase==='selected'?'Avaliação confirmada para correção.':
     s.phase==='loading'?'Carregando suas avaliações…':
@@ -287,11 +308,14 @@ export function mountAssessmentLibrary({
   render();
  }
  function onEditorChanged(){
-  if(activeSelection){activeSelection=false;clearSelection()}
-  savedManifest=null;savedSignature=null;
+  markEdited();
   const sections=getSections();
   const signature=JSON.stringify(sections.map(s=>({id:s.sectionId,items:s.items.map(q=>({id:q.questionId,n:q.number,t:q.type})),label:s.label})));
   if(signature!==lastScoringSections)renderScoring();else updateSummary();
+  status.dataset.state='draft';
+  status.textContent=controller.view().pending?
+   'A operação anterior continua pendente; alterações recentes ainda não foram salvas.':
+   'Alterações ainda não salvas nesta avaliação.';
  }
  renderScoring();
  render();
