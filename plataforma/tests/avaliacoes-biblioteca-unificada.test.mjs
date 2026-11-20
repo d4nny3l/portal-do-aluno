@@ -4,7 +4,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import {createHash} from 'node:crypto';
 import {fileURLToPath} from 'node:url';
-import {createLibraryPlan,editorFromPrivateRecord,assertLibraryModel,mountAssessmentLibrary,LIBRARY_GATEWAY} from '../avaliacoes-biblioteca.mjs';
+import {createLibraryPlan,editorFromPrivateRecord,assertLibraryModel,mountAssessmentLibrary,LIBRARY_GATEWAY,assessmentLabel,validScorePrecision} from '../avaliacoes-biblioteca.mjs';
 import {createTemplate} from '../../corretor/v2/omr/template.mjs';
 import {createCardManifest,DEFAULT_CARD_HEADER} from '../../corretor/v2/omr/render.mjs';
 import {createIntegratedPlan,scoreIntegratedPlan,POINT_SCALE} from '../../corretor/v2/assessments/block-scoring.mjs';
@@ -567,4 +567,65 @@ test('P0 structural retry: requestId, body and CAS are unchanged after silent se
  assert.deepEqual(f.writeCalls[0],f.writeCalls[1],'frozen HTTP payload and CAS must replay byte-for-byte');
  assert.equal(f.mounted.controller.view().record.revision,1);
  assert.match(f.top.children[4].textContent,/alterações posteriores/i);
+});
+
+
+test('UX-79B catalog labels omit missing fields and technical active states',()=>{
+ assert.equal(assessmentLabel({title:'Prova',subject:'Matemática',className:'7º A'}),'Prova · Matemática · 7º A');
+ assert.equal(assessmentLabel({title:'Prova',subject:'',className:''}),'Prova');
+ assert.equal(assessmentLabel({title:'Prova',state:'active'}),'Prova');
+ assert.equal(assessmentLabel({title:'Prova',definition:{subject:'Ciências',manifest:{header:{className:'6º B'}}}}),'Prova · Ciências · 6º B');
+});
+
+test('UX-79B score precision is strict and never silently rounds',()=>{
+ for(const value of ['10','10,1','0.05','0,00','25.99'])assert.equal(validScorePrecision(value),true,value);
+ for(const value of ['1.234','2,999','3,','1.','-2.50','abc',''])assert.equal(validScorePrecision(value),false,value);
+ const f=await mountedRaceFixture();
+ await f.fill();
+ const amount=f.scoring.children[1].children[0].children[0];
+ amount.value='3,125';amount.oninput();
+ assert.equal(amount.value,'10','three decimals are rejected without changing the previous value');
+ amount.value='3,12';amount.oninput();
+ assert.equal(amount.value,'3,12','two decimals are accepted');
+});
+
+test('UX-79B automatic current-revision opening, accessible actions and hidden legacy controls',async()=>{
+ const f=await mountedRaceFixture();
+ await f.fill();
+ await f.button('Salvar avaliação').handlers.click();
+ const first=f.mounted.controller.view().record;
+ await f.button('Duplicar avaliação').handlers.click();
+ const copy=f.mounted.controller.view().record;
+ assert.notEqual(copy.id,first.id);
+ const selectors=f.top.children[1],catalog=selectors.children[1].children[0];
+ assert.equal(selectors.children[2].hidden,true,'public revision selector hidden; history remains internal');
+ const option=catalog.options.find(x=>x.value===first.id);
+ assert.equal(option?.textContent,'Avaliação de Matemática · Matemática · Turma sintética 7A');
+ assert.equal(catalog.options.some(x=>x.textContent.includes('active')),false);
+ for(const name of ['Abrir avaliação','Atualizar','Anterior','Próxima','Conferir salvamento'])
+  assert.equal(f.button(name).hidden,true,name+' is not visible');
+ const deletion=f.button('Excluir avaliação');
+ assert.equal(deletion.hidden,true,'deletion must not be offered without real backend');
+ assert.equal(deletion.disabled,true,'no simulated delete action');
+ for(const button of f.top.children[2].children){
+  assert.ok(button.textContent,'icon buttons must retain accessible names');
+  assert.ok(button.attrs['data-action-icon'],'icon token required');
+ }
+ catalog.value=first.id;
+ await catalog.onchange();
+ assert.equal(f.mounted.controller.view().record.id,first.id,'selection opens latest revision automatically');
+ assert.equal(f.mounted.controller.view().record.revision,1);
+ assert.equal(f.mounted.controller.view().editorMode,'opened');
+});
+
+test('UX-79B manual key editor is placed in Criar, private JSON importer is hidden only while selected',()=>{
+ const html=read('plataforma/corretor-v2.html');
+ assert.match(html,/manualKeyPanel\.append\(manualKeyHeading,\$\('answerKey'\)\.closest\('label'\)\)/);
+ assert.match(html,/\$\('criar'\)\.append\(manualKeyPanel\)/);
+ assert.match(html,/manualJson\.hidden=privateMode/);
+ assert.match(html,/setPrivateCorrectionUi\(true\)/);
+ assert.match(html,/setPrivateCorrectionUi\(false\)/);
+ const css=read('plataforma/avaliacoes-biblioteca.css');
+ assert.match(css,/\[data-action-icon="save"\]::before/);
+ assert.match(css,/\[data-action-icon="correct"\]::before/);
 });
