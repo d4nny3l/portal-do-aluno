@@ -202,8 +202,10 @@ export function mountAssessmentLibrary({
   metadataById.set(record.id,{subject:record.definition.subject||'',className:String(record.definition.manifest?.header?.className||'')});
   selectedCatalogId=record.id;
   savedSignature=editorSignature();
-  applyExactModel({manifest:restored.manifest,title:record.definition.title,revision:record.revision});
+  // Clear the previous correction binding *before* installing this private
+  // assessment model; clearing afterward would erase the just-opened model.
   clearSelection();activeSelection=false;
+  applyExactModel({manifest:restored.manifest,title:record.definition.title,revision:record.revision});
   unsaved=false;confirmedEarlierSave=false;selectionNeedsConfirmation=false;
   renderScoring();
  }
