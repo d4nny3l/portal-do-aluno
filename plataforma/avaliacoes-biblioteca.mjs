@@ -503,8 +503,9 @@ export function mountAssessmentLibrary({
    status.dataset.state=s.phase;
    status.textContent=!s.session?'Não foi possível conectar a biblioteca. Se já entrou na SALTA, tente novamente.':
     !s.scope?'Selecione uma turma para acessar suas avaliações.':
-    s.pending?'Operação pendente. A SALTA tentará recuperar a mesma solicitação ao reconectar.':
-    confirmedEarlierSave?'A versão enviada foi salva e conferida; suas alterações posteriores ainda não foram salvas.':
+    s.pending&&manualRetryNeeded?'A operação não foi confirmada. Use Tentar novamente quando houver conexão.':
+  s.pending?'A operação está sendo verificada. Alterações posteriores ainda não foram salvas.':
+    confirmedEarlierSave?'A avaliação enviada foi salva e conferida; suas alterações posteriores ainda não foram salvas.':
     selectionNeedsConfirmation?'A avaliação mudou durante a seleção. Salve as alterações e confirme novamente para corrigir.':
     unsaved?'Há alterações nesta avaliação que ainda não foram salvas.':
     s.phase==='saved'?'Avaliação salva e conferida no servidor.':
@@ -559,11 +560,17 @@ export function mountAssessmentLibrary({
   });
  },true);
  window.addEventListener?.('online',()=>{
-  if(!controller.view().pending||operationBusy)return;
+  const pending=controller.view().pending;
+  if(!pending||!contextKey()||operationBusy||
+     onlineAttemptedRequestId===pending.requestId)return;
+  onlineAttemptedRequestId=pending.requestId;
   operationBusy=true;
-  void recoverPending().catch(error=>{
-   status.textContent=error.message||'A operação ainda não foi confirmada.';
-   status.dataset.state='error';
+  void recoverPending().catch(()=>{
+   if(controller.view().pending?.requestId===pending.requestId&&contextKey()){
+    manualRetryNeeded=true;
+    status.textContent='Não foi possível confirmar a operação. Use Tentar novamente.';
+    status.dataset.state='error';
+   }
   }).finally(()=>{operationBusy=false;render({preserveError:status.dataset.state==='error'})});
  });
  renderScoring();
