@@ -398,6 +398,7 @@ export function mountAssessmentLibrary({
   status.textContent=controller.view().pending?
    'A operação anterior continua pendente; alterações recentes ainda não foram salvas.':
    'Alterações ainda não salvas nesta avaliação.';
+  render({preserveError:true}); // Refresh disabled actions without losing the edit warning.
  }
  // Capture the editor state before native onclick handlers mutate sections.
  // Inspect after the click dispatch, including Add/Remove/Move/Restore.
