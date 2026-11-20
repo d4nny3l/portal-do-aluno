@@ -195,7 +195,7 @@ class SurfaceNode{
 test('actual Create-tab UI mounts and saves/opens/selects/duplicates without a second login or visible internal IDs',async()=>{
  const m=make({counts:[2],types:['A-E']});m.values={'block-1':'10'};
  const grants={institutionId:'salta-hml-20261119',classId:'turma-sintetica-ab',periodId:'2026-11-piloto'};
- const records=new Map(),selections=new Map();let currentEditor=m.editor,selected=null,nominalCleared=0,appliedExact=null;
+ const records=new Map(),selections=new Map();let currentEditor=m.editor,selected=null,nominalCleared=0,appliedExact=null,modelBuilds=0;
  const fetchFn=async(url,init)=>{
   const route=new URL(url).pathname.slice('/assessments/v1'.length),q=new URL(url).searchParams;
   if(route==='/session'&&init.method==='GET')return Response.json({authenticated:true,principalId:'teacher-a',epoch:1});
@@ -238,7 +238,7 @@ test('actual Create-tab UI mounts and saves/opens/selects/duplicates without a s
  const mounted=mountAssessmentLibrary({document:doc,window:{confirm:()=>true},host,fetchFn,
   getSections:()=>m.sections,getMetadata:()=>({title:m.editor.fields.assessmentTitle,subject:m.editor.fields.assessmentSubject,
    kind:m.editor.fields.assessmentKind,date:m.editor.fields.assessmentDate,className:m.editor.fields.assessmentClass}),
-  getModel:()=>m.manifest,prepareModel:()=>true,snapshotEditor:()=>currentEditor,
+  getModel:()=>m.manifest,prepareModel:()=>{modelBuilds++;return true},snapshotEditor:()=>currentEditor,
   restoreEditor:e=>{currentEditor=e},applyExactModel:bundle=>{appliedExact=bundle.manifest.contentHash},
   nominalFields:()=>({}),newEditor:()=>{nominalCleared++},
   activateSelection:s=>{selected=s},clearSelection:()=>{selected=null}
@@ -263,6 +263,9 @@ test('actual Create-tab UI mounts and saves/opens/selects/duplicates without a s
  await find('Abrir avaliação').handlers.click();
  assert.equal(mounted.controller.view().record.id,saved.id);
  assert.equal(appliedExact,saved.manifestHash,'opened record must use the immutable stored geometry');
+ const beforeResaveBuilds=modelBuilds;
+ assert.equal(mounted.getDraft().manifest.contentHash,saved.manifestHash);
+ assert.equal(modelBuilds,beforeResaveBuilds,'unmodified record must not regenerate a different layout');
  assert.equal(currentEditor.header.teacher,m.editor.header.teacher);
  await find('Usar na correção').handlers.click();
  assert.equal(selected.assessmentId,saved.id);
