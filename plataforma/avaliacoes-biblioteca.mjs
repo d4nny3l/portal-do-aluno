@@ -115,14 +115,20 @@ export function mountAssessmentLibrary({
  const choicesBox=el(document,'div','',{class:'library-choices'});
  const paste=el(document,'textarea','',{placeholder:'1 A\n2 C\n3 D',rows:'4',spellcheck:'false'});
  const actions=el(document,'div','',{class:'omr-actions library-actions'});
+ let operationBusy=false;
  const aux=el(document,'div','',{class:'omr-actions library-aux'});
  const btn=(label,callback)=>{
   const item=el(document,'button',label,{type:'button'});
   item.addEventListener('click',async()=>{
-   if(item.disabled)return;
-   item.disabled=true;
-   try{await callback();render()}catch(e){status.textContent=e?.message||'Operação não concluída.';status.dataset.state='error';render({preserveError:true})}
-   finally{item.disabled=false;render({preserveError:status.dataset.state==='error'})}
+   if(item.disabled||operationBusy)return;
+   operationBusy=true;item.disabled=true;
+   try{
+    const pendingTask=callback();
+    render(); // Lock other library controls but leave the editor editable.
+    await pendingTask;
+    render();
+   }catch(e){status.textContent=e?.message||'Operação não concluída.';status.dataset.state='error';render({preserveError:true})}
+   finally{operationBusy=false;item.disabled=false;render({preserveError:status.dataset.state==='error'})}
   });
   return item;
  };
@@ -174,7 +180,7 @@ export function mountAssessmentLibrary({
   pendingSave=null;
   const sync=()=>{
    if(editVersion===version){
-    unsaved=false;confirmedEarlierSave=false;
+    unsaved=false;confirmedEarlierSave=false;selectionNeedsConfirmation=false;
     savedManifest=result.record.definition.manifest;
     savedSignature=editorSignature();
    }else{
@@ -275,13 +281,13 @@ export function mountAssessmentLibrary({
  scoring.append(scoringTitle,scoreBox,pasteLabel,apply,choicesBox);
  host.replaceChildren(top,scoring);
  host.hidden=false;
- scope.onchange=async()=>{try{
+ scope.onchange=async()=>{if(operationBusy||controller.view().pending)return;try{
   const chosen=controller.view().grants[Number(scope.value)];
   if(!chosen)throw Error('Selecione a turma.');
   resetScores();controller.useScope(chosen);await controller.list();render();
  }catch(error){status.textContent=error.message;status.dataset.state='error'}};
- catalog.onchange=()=>{controller.invalidateOpenedRecord();render()};
- revisions.onchange=()=>{controller.invalidateOpenedRecord({keepRevisions:true});render()};
+ catalog.onchange=()=>{if(operationBusy||controller.view().pending)return;controller.invalidateOpenedRecord();render()};
+ revisions.onchange=()=>{if(operationBusy||controller.view().pending)return;controller.invalidateOpenedRecord({keepRevisions:true});render()};
  const fillOptions=(node,items)=>{
   const old=node.value;
   node.replaceChildren(...items.map(({value,label})=>option(document,value,label)));
@@ -329,15 +335,18 @@ export function mountAssessmentLibrary({
   if(current&&rows.some(x=>x.value===current.id))catalog.value=current.id;
   fillOptions(revisions,[{value:'',label:'Atual'},...s.revisions.map(x=>({value:String(x.revision),label:'Versão '+x.revision}))]);
   const opened=Boolean(current&&s.editorMode==='opened');
-  create.disabled=!ready||Boolean(s.pending);
-  save.disabled=!ready||(!opened&&s.editorMode!=='new')||Boolean(s.pending);
-  open.disabled=!ready||!catalog.value||Boolean(s.pending);
-  duplicate.disabled=!ready||!opened||current.id!==catalog.value||Boolean(s.pending);
-  selectForCorrection.disabled=!ready||!opened||current.status!=='issued'||current.id!==catalog.value||Boolean(s.pending);
-  refresh.disabled=!ready||Boolean(s.pending);
-  prev.disabled=!ready||!s.hasPrevious||Boolean(s.pending);
-  next.disabled=!ready||!s.nextCursor||Boolean(s.pending);
-  retry.disabled=!s.pending;
+  scope.disabled=operationBusy||Boolean(s.pending);
+  catalog.disabled=operationBusy||Boolean(s.pending);
+  revisions.disabled=operationBusy||Boolean(s.pending);
+  create.disabled=operationBusy||!ready||Boolean(s.pending);
+  save.disabled=operationBusy||!ready||(!opened&&s.editorMode!=='new')||Boolean(s.pending);
+  open.disabled=operationBusy||!ready||!catalog.value||Boolean(s.pending);
+  duplicate.disabled=operationBusy||!ready||!opened||current.id!==catalog.value||Boolean(s.pending);
+  selectForCorrection.disabled=operationBusy||unsaved||!ready||!opened||current.status!=='issued'||current.id!==catalog.value||Boolean(s.pending);
+  refresh.disabled=operationBusy||!ready||Boolean(s.pending);
+  prev.disabled=operationBusy||!ready||!s.hasPrevious||Boolean(s.pending);
+  next.disabled=operationBusy||!ready||!s.nextCursor||Boolean(s.pending);
+  retry.disabled=operationBusy||!s.pending;
   connect.hidden=ready;
   if(!preserveError){
    status.dataset.state=s.phase;
