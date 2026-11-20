@@ -89,7 +89,7 @@ export function createLibraryPlan({metadata,sections,values,answers,manifest,edi
 export function mountAssessmentLibrary({
  document,window,fetchFn=fetch,host=document.getElementById('savedAssessments'),
  getSections,getMetadata,getModel,prepareModel,snapshotEditor,restoreEditor,
- nominalFields=()=>({}),newEditor,activateSelection,clearSelection
+ nominalFields=()=>({}),newEditor,applyExactModel=()=>{},activateSelection,clearSelection
 }){
  if(!host)throw new Error('A biblioteca deve ficar na aba Criar avaliação.');
  const client=createPrivateAssessmentClient({enabled:true,baseUrl:LIBRARY_GATEWAY,fetchFn});
@@ -137,6 +137,7 @@ export function mountAssessmentLibrary({
   // The exact immutable manifest is selected; editing creates another revision.
   savedManifest=restored.manifest;
   savedSignature=editorSignature();
+  applyExactModel({manifest:restored.manifest,title:record.definition.title,revision:record.revision});
   clearSelection();activeSelection=false;
   renderScoring();
  }
