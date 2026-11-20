@@ -4,7 +4,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import {createHash} from 'node:crypto';
 import {fileURLToPath} from 'node:url';
-import {createLibraryPlan,editorFromPrivateRecord,assertLibraryModel,LIBRARY_GATEWAY} from '../avaliacoes-biblioteca.mjs';
+import {createLibraryPlan,editorFromPrivateRecord,assertLibraryModel,mountAssessmentLibrary,LIBRARY_GATEWAY} from '../avaliacoes-biblioteca.mjs';
 import {createTemplate} from '../../corretor/v2/omr/template.mjs';
 import {createCardManifest,DEFAULT_CARD_HEADER} from '../../corretor/v2/omr/render.mjs';
 import {createIntegratedPlan,scoreIntegratedPlan,POINT_SCALE} from '../../corretor/v2/assessments/block-scoring.mjs';
@@ -175,4 +175,94 @@ test('original v2 client handles separate accounts, scope isolation, save/reopen
  actor='teacher-b';
  await assert.rejects(()=>again.open(id,1),error=>error.status===404);
  await assert.rejects(()=>again.list(null,scope),error=>error.status===403);
+});
+
+class SurfaceNode{
+ constructor(tag){this.tag=tag;this.children=[];this.handlers={};this.hidden=false;this.disabled=false;this.value='';
+  this.textContent='';this.attrs={};this.dataset={};this.style={}}
+ append(...items){this.children.push(...items)}
+ replaceChildren(...items){this.children=[...items];this.value=''}
+ setAttribute(k,v){this.attrs[k]=v}
+ addEventListener(event,handler){this.handlers[event]=handler}
+ get options(){return this.children.filter(x=>x.tag==='option')}
+}
+test('actual Create-tab UI mounts and saves/opens/selects/duplicates without a second login or visible internal IDs',async()=>{
+ const m=make({counts:[2],types:['A-E']});m.values={'block-1':'10'};
+ const grants={institutionId:'salta-hml-20261119',classId:'turma-sintetica-ab',periodId:'2026-11-piloto'};
+ const records=new Map(),selections=new Map();let currentEditor=m.editor,selected=null,nominalCleared=0;
+ const fetchFn=async(url,init)=>{
+  const route=new URL(url).pathname.slice('/assessments/v1'.length),q=new URL(url).searchParams;
+  if(route==='/session'&&init.method==='GET')return Response.json({authenticated:true,principalId:'teacher-a',epoch:1});
+  if(route==='/grants'&&init.method==='GET')return Response.json({grants:[grants]});
+  if(route==='/assessments'&&init.method==='GET'){
+   assert.equal(q.get('classId'),grants.classId);
+   const assessments=[...records.values()].map(r=>({id:r.id,title:r.definition.title,revision:r.revision,state:r.status,...grants}));
+   return Response.json({assessments,nextCursor:null});
+  }
+  if(route.startsWith('/assessments/')&&init.method==='PUT'){
+   const body=JSON.parse(init.body),id=route.split('/')[2],entry=records.get(id),revision=(entry?.revision||0)+1;
+   assert.equal(body.expectedRevision,revision-1);
+   const record={id,revision,definition:body.definition,manifestHash:body.definition.manifest.contentHash,
+    scoreScale:10000,totalUnits:'100000',status:body.status,archived:false,...grants};
+   records.set(id,record);return Response.json({ok:true,id,revision,manifestHash:record.manifestHash});
+  }
+  const open=route.match(/^\/assessments\/([^/]+)\/revisions\/(\d+)$/);
+  if(open&&init.method==='GET')return Response.json({record:records.get(open[1])});
+  const history=route.match(/^\/assessments\/([^/]+)\/revisions$/);
+  if(history&&init.method==='GET')return Response.json({revisions:[{revision:records.get(history[1]).revision,status:records.get(history[1]).status}]});
+  const duplicate=route.match(/^\/assessments\/([^/]+)\/duplicate$/);
+  if(duplicate&&init.method==='POST'){
+   const p=JSON.parse(init.body),source=records.get(duplicate[1]);
+   const record={...source,id:p.newId,revision:1,status:'draft'};records.set(p.newId,record);
+   return Response.json({ok:true,id:p.newId,revision:1,manifestHash:record.manifestHash});
+  }
+  if(route==='/selections'&&init.method==='POST'){
+   const p=JSON.parse(init.body),record=records.get(p.assessmentId);
+   selections.set(p.selectionId,record);
+   return Response.json({ok:true,id:record.id,revision:record.revision,selectionId:p.selectionId,manifestHash:record.manifestHash});
+  }
+  const selection=route.match(/^\/selections\/([^/]+)$/);
+  if(selection&&init.method==='GET')return Response.json({selectionId:selection[1],record:selections.get(selection[1])});
+  throw Error('Unexpected route '+init.method+' '+route);
+ };
+ const host=new SurfaceNode('section'),doc={getElementById:id=>id==='savedAssessments'?host:null,
+  createElement:tag=>new SurfaceNode(tag)};
+ const mounted=mountAssessmentLibrary({document:doc,window:{confirm:()=>true},host,fetchFn,
+  getSections:()=>m.sections,getMetadata:()=>({title:m.editor.fields.assessmentTitle,subject:m.editor.fields.assessmentSubject,
+   kind:m.editor.fields.assessmentKind,date:m.editor.fields.assessmentDate,className:m.editor.fields.assessmentClass}),
+  getModel:()=>m.manifest,prepareModel:()=>true,snapshotEditor:()=>currentEditor,
+  restoreEditor:e=>{currentEditor=e},
+  nominalFields:()=>({}),newEditor:()=>{nominalCleared++},
+  activateSelection:s=>{selected=s},clearSelection:()=>{selected=null}
+ });
+ await new Promise(resolve=>setImmediate(resolve));
+ assert.equal(mounted.controller.view().scope.classId,grants.classId,'unique grant automatically selected');
+ assert.equal(host.hidden,false);
+ const top=host.children[0],scoring=host.children[1],actions=top.children[2];
+ const find=name=>actions.children.find(b=>b.textContent===name);
+ for(const name of ['Nova avaliação','Salvar avaliação','Abrir avaliação','Duplicar avaliação','Usar na correção'])
+  assert.ok(find(name));
+ const selectors=top.children[1];
+ assert.equal(selectors.children[0].hidden,true,'unique scope selector hidden');
+ const scoreInputs=scoring.children[1];assert.equal(scoreInputs.children.length,1);
+ const paste=scoring.children[2].children[0];paste.value='1 A\n2 B';
+ await scoring.children[3].handlers.click();
+ await find('Salvar avaliação').handlers.click();
+ const saved=mounted.controller.view().record;
+ assert.ok(saved?.id&&saved.revision===1&&saved.status==='issued');
+ const select=selectors.children[1].children[0];
+ assert.equal(select.value,saved.id);
+ await find('Abrir avaliação').handlers.click();
+ assert.equal(mounted.controller.view().record.id,saved.id);
+ assert.equal(currentEditor.header.teacher,m.editor.header.teacher);
+ await find('Usar na correção').handlers.click();
+ assert.equal(selected.assessmentId,saved.id);
+ assert.equal(selected.plan.blocks[0].questions.length,2);
+ await find('Duplicar avaliação').handlers.click();
+ const copied=mounted.controller.view().record;
+ assert.notEqual(copied.id,saved.id);
+ assert.equal(copied.status,'draft');
+ assert.equal(copied.revision,1);
+ assert.equal(top.children[4].textContent.includes(saved.id),false,'status hides internal identifiers');
+ assert.equal(nominalCleared,0);
 });
