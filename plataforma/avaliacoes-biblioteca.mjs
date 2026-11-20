@@ -144,8 +144,16 @@ export function mountAssessmentLibrary({
     render(); // Lock other library controls but leave the editor editable.
     await pendingTask;
     render();
-   }catch(e){status.textContent=e?.message||'Operação não concluída.';status.dataset.state='error';render({preserveError:true})}
-   finally{operationBusy=false;item.disabled=false;render({preserveError:status.dataset.state==='error'})}
+   }catch(e){
+    if(controller.view().pending){
+     try{
+      await recoverPending();
+      if(!controller.view().pending){render();return;}
+     }catch{ /* Original request remains available for later reconciliation. */ }
+    }
+    status.textContent=e?.message||'Operação não concluída.';
+    status.dataset.state='error';render({preserveError:true});
+   }finally{operationBusy=false;item.disabled=false;render({preserveError:status.dataset.state==='error'})}
   });
   return item;
  };
@@ -286,19 +294,21 @@ export function mountAssessmentLibrary({
  const prev=btn('Anterior',()=>controller.previousPage(),'previous');
  const next=btn('Próxima',()=>controller.nextPage(),'next');
  const refresh=btn('Atualizar',()=>loadCatalog(),'refresh');
- const retry=btn('Conferir salvamento',async()=>{
+ async function recoverPending(){
   const pending=controller.view().pending;
-  if(!pending)throw Error('Não existe operação pendente.');
-  // The original controller resends the frozen requestId/body/expectedRevision.
+  if(!pending)return null;
+  // Retain original requestId, payload, CAS and verified receipt.
   const result=await controller.retry();
-  if(!result)return;
+  if(!result)return null;
   if(pending.method==='PUT'&&pendingSave?.requestId===pending.requestId)
    await reconcileSaved(result,pendingSave);
   else if(pending.method==='POST'&&pending.path==='/selections'){
    resolveStaleSelection();
    if(!controller.view().pending)selectionAttempt=null;
   }
- },'recover');
+  return result;
+ }
+ const retry=btn('Conferir salvamento',recoverPending,'recover');
  const apply=btn('Aplicar gabarito',()=>{
   answers={...applyKeyPaste(paste.value,getSections(),answers)};
   markEdited();paste.value='';
@@ -481,6 +491,14 @@ export function mountAssessmentLibrary({
    if(version===editVersion&&before!==editorSignature())onEditorChanged();
   });
  },true);
+ window.addEventListener?.('online',()=>{
+  if(!controller.view().pending||operationBusy)return;
+  operationBusy=true;
+  void recoverPending().catch(error=>{
+   status.textContent=error.message||'A operação ainda não foi confirmada.';
+   status.dataset.state='error';
+  }).finally(()=>{operationBusy=false;render({preserveError:status.dataset.state==='error'})});
+ });
  renderScoring();
  render();
  void connectAndList().catch(()=>{ready=false;render()});
