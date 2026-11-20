@@ -355,7 +355,7 @@ export function mountAssessmentLibrary({
   try{
    const chosen=controller.view().grants[Number(scope.value)];
    if(!chosen)throw Error('Selecione a turma.');
-   resetScores();controller.useScope(chosen);allRows=[];selectedCatalogId='';unsaved=false;
+   resetScores();controller.useScope(chosen);newEditor();editVersion++;allRows=[];selectedCatalogId='';unsaved=false;
    await loadCatalog();
   }catch(error){status.textContent=error.message;status.dataset.state='error'}
   finally{operationBusy=false;render({preserveError:status.dataset.state==='error'})}
@@ -429,7 +429,7 @@ export function mountAssessmentLibrary({
   const rows=(allRows.length?allRows:s.rows).map(x=>({value:x.id,label:assessmentLabel({...x,...metadataById.get(x.id)})||'Avaliação sem título'}));
   fillOptions(catalog,[{value:'',label:'Selecione uma avaliação'},...rows]);
   if(current&&rows.some(x=>x.value===current.id))selectedCatalogId=current.id;
-  if(rows.some(x=>x.value===selectedCatalogId))catalog.value=selectedCatalogId;
+  catalog.value=rows.some(x=>x.value===selectedCatalogId)?selectedCatalogId:'';
   fillOptions(revisions,[{value:'',label:'Atual'},...s.revisions.map(x=>({value:String(x.revision),label:'Versão '+x.revision}))]);
   const opened=Boolean(current&&s.editorMode==='opened');
   scope.disabled=operationBusy||Boolean(s.pending);
