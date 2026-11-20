@@ -27,7 +27,7 @@ const make=({counts=[10,20],types=['A-D','A-E'],mode='full-page',identityMode='s
  const sections=counts.map((count,i)=>({sectionId:'block-'+(i+1),label:'Bloco '+(i+1),type:types[i%types.length],
   items:Array.from({length:count},()=>({questionId:'question-'+(++num),number:num,type:types[i%types.length]}))}));
  const template=createTemplate(sections,{layoutVersion:'v2',revision:8,title:h.title,
-   schoolName:h.institution,identityMode,mode,metadata:{...h,className:h.className,subject:h.subject,
+   schoolName:h.institution,identityMode,mode,embeddedSize:mode==='embedded'?{widthMm:120,heightMm:180}:null,metadata:{...h,className:h.className,subject:h.subject,
     date:h.date,teacher:h.teacher,visibleFields:h.visible}});
  const manifest=createCardManifest(template,h,{sectionFrameStyle:'content'});
  const answers=Object.fromEntries(template.questions.map(q=>[q.questionId,q.choices[0]]));
@@ -120,7 +120,7 @@ test('no silent conversion for CDU, embedded cards, nominal students or incompat
 test('original v2 client handles separate accounts, scope isolation, save/reopen/revisions and selection',async()=>{
  const scope={institutionId:'salta-hml-20261119',classId:'turma-sintetica-ab',periodId:'2026-11-piloto'};
  const other={...scope,classId:'turma-outro-professor'};
- const data=new Map(),ids=new Map(),actor='teacher-a';
+ const data=new Map();let actor='teacher-a';
  const fixedId=()=>crypto.randomUUID();
  const fetchFn=async(url,opts)=>{
   const pathname=new URL(url).pathname.slice('/assessments/v1'.length);
