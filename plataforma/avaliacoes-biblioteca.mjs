@@ -120,11 +120,12 @@ export function mountAssessmentLibrary({
  };
  const resetScores=()=>{values={};answers={};savedManifest=null;savedSignature=null;clearSelection();activeSelection=false};
  const getDraft=()=>{
-  if(!prepareModel())throw new Error('Não foi possível montar o cartão. Revise a composição.');
-  const m=getModel(),editor=snapshotEditor();
+  const unchanged=Boolean(savedManifest&&savedSignature===editorSignature());
+  if(!unchanged&&!prepareModel())throw new Error('Não foi possível montar o cartão. Revise a composição.');
+  const m=unchanged?savedManifest:getModel(),editor=snapshotEditor();
   const payload=createLibraryPlan({
    sections:getSections(),metadata:getMetadata(),values,answers,
-   manifest:savedManifest&&savedSignature===editorSignature()?savedManifest:m,
+   manifest:m,
    editor,nominalFields:nominalFields()
   });
   return {plan:payload.plan,manifest:payload.manifest};
