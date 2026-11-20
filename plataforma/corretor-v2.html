@@ -214,6 +214,21 @@ function resetAssessmentEditor(){
  for(const id of ['studentName','studentClass','studentCode'])$(id).value='';
  $('showInstructions').checked=false;syncHeaderForm();drawSections();build();
 }
+// Legacy manual correction still reads #answerKey, but its editor lives only
+// under Criar avaliação. The private flow installs a verified key and manifest.
+const manualKeyPanel=document.createElement('details');
+manualKeyPanel.className='omr-group omr-advanced';
+const manualKeyHeading=document.createElement('summary');
+manualKeyHeading.textContent='Gabarito para correção manual';
+manualKeyPanel.append(manualKeyHeading,$('answerKey').closest('label'));
+$('criar').append(manualKeyPanel);
+$('answerKey').closest('label')?.classList?.add('manual-key-editor');
+document.querySelector('#corrigir .key-entry').hidden=true;
+function setPrivateCorrectionUi(privateMode){
+ manualKeyPanel.hidden=privateMode;
+ const manualJson=$('loadManifest').closest('label');
+ if(manualJson)manualJson.hidden=privateMode;
+}
 function activatePrivateCorrection(selection){
  if(!selection||selection.manifestHash!==selection.manifest?.contentHash)
   throw Error('O modelo e o gabarito da seleção não correspondem.');
@@ -221,6 +236,7 @@ function activatePrivateCorrection(selection){
  applyAssessmentModel({manifest:selection.manifest,title:selection.plan.metadata.title,revision:selection.revision});
  privateSelection=selection;
  $('answerKey').value=keyTextForPlan(selection.plan);$('answerKey').readOnly=true;
+ setPrivateCorrectionUi(true);
  $('scanMaxScore').value=formatExact(BigInt(selection.plan.totalUnits),POINT_SCALE,4).replace(',','.');
  $('scanMaxScore').readOnly=true;
  $('scanModelStatus').textContent=selection.plan.metadata.title+' · versão '+selection.revision+' confirmada para correção. Confira o lote físico.';
@@ -228,6 +244,7 @@ function activatePrivateCorrection(selection){
 function clearPrivateCorrection(){
  if(!privateSelection)return;
  privateSelection=null;clearAssessmentReview();$('answerKey').value='';$('answerKey').readOnly=false;
+ setPrivateCorrectionUi(false);
  $('scanMaxScore').readOnly=false;setExportAvailability(false);
  $('scanModelStatus').textContent='Escolha uma avaliação na aba Criar avaliação para vincular o gabarito.';
 }
