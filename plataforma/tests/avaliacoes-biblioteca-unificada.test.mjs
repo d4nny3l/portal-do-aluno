@@ -666,3 +666,187 @@ test('UX-79B fetches all internal catalog pages without exposing pagination cont
  for(const button of host.children[0].children[3].children.slice(1))
   assert.equal(button.hidden,true,'internal navigation and retry are not public');
 });
+
+
+test('UX-79B P0 privacy: 401/403 purge 13 cached assessments, metadata and editable key',async t=>{
+ for(const [code,trigger] of [[401,'open'],[403,'list']])await t.test(code+' '+trigger,async()=>{
+  const m=make({counts:[2],types:['A-E']});
+  const grant={institutionId:'salta-hml-20261119',classId:'turma-sintetica-ab',periodId:'2026-11-piloto'};
+  const ids=Array.from({length:13},()=>crypto.randomUUID());
+  const rows=ids.map((id,i)=>({id,title:'Privada '+(i+1),revision:1,state:'active',...grant}));
+  const {definition}=createLibraryPlan(planArgs(m));
+  const record={id:ids[0],revision:1,definition,manifestHash:definition.manifest.contentHash,
+   scoreScale:10000,totalUnits:'100000',status:'issued',archived:false,...grant};
+  let deny=false,cleared=0;
+  const fetchFn=async(url,req)=>{
+   const u=new URL(url),route=u.pathname.slice('/assessments/v1'.length);
+   if(route==='/session')return Response.json({authenticated:true,principalId:'teacher-a',epoch:1});
+   if(route==='/grants')return Response.json({grants:[grant]});
+   if(route==='/assessments'){
+    if(deny&&trigger==='list')return Response.json({code:'denied'},{status:code});
+    const after=u.searchParams.get('after'),pos=after?ids.indexOf(after)+1:0;
+    const items=rows.slice(pos,pos+10);
+    return Response.json({assessments:items,nextCursor:pos+items.length<rows.length?items.at(-1).id:null});
+   }
+   if(route.startsWith('/assessments/')&&req.method==='GET'){
+    if(deny&&trigger==='open')return Response.json({code:'denied'},{status:code});
+    if(route==='/assessments/'+ids[0])return Response.json({record});
+    if(route==='/assessments/'+ids[0]+'/revisions')return Response.json({revisions:[{revision:1,status:'issued'}]});
+   }
+   throw Error('Unexpected '+route);
+  };
+  const host=new SurfaceNode('section'),doc={getElementById:id=>id==='savedAssessments'?host:null,
+   createElement:tag=>new SurfaceNode(tag)};
+  const mounted=mountAssessmentLibrary({document:doc,window:{confirm:()=>true},host,fetchFn,
+   getSections:()=>m.sections,getMetadata:()=>planArgs(m).metadata,
+   getModel:()=>m.manifest,prepareModel:()=>true,snapshotEditor:()=>m.editor,
+   restoreEditor:()=>{},nominalFields:()=>({}),newEditor:()=>{
+    cleared++;for(const key of ['assessmentTitle','assessmentSubject','assessmentClass'])m.editor.fields[key]='';
+    m.editor.header.title='';
+   },activateSelection:()=>{},clearSelection:()=>{}});
+  const top=host.children[0],catalog=top.children[1].children[1].children[0];
+  for(let step=0;step<16&&catalog.options.length!==14;step++)await tick();
+  assert.equal(catalog.options.length,14,'two pages of private titles are visible before revocation');
+  catalog.value=ids[0];await catalog.onchange();
+  assert.ok(catalog.options.some(x=>x.textContent.includes('Matemática')),'loaded private metadata cached');
+  deny=true;
+  if(trigger==='open'){catalog.value=ids[1];await catalog.onchange();}
+  else await assert.rejects(()=>mounted.controller.list(),e=>e.status===code);
+  assert.equal(mounted.controller.view().session,null);
+  assert.equal(mounted.controller.view().scope,null);
+  assert.equal(catalog.options.length,1,'all cached private titles were purged');
+  assert.ok(!catalog.options.some(x=>x.textContent.includes('Privada')||x.textContent.includes('Matemática')));
+  assert.equal(catalog.value,'','no previous assessment may be selected');
+  assert.equal(m.editor.fields.assessmentTitle,'','editor title cleared');
+  assert.ok(cleared>=1,'private editor reset after lost authorization');
+  mounted.render();
+  assert.equal(catalog.options.length,1,'later renders must never expose old cache');
+ });
+});
+
+test('UX-79B P0 privacy: scope change invalidates old pages and delayed GET',async()=>{
+ const m=make({counts:[2],types:['A-E']});
+ const grantA={institutionId:'salta-hml-20261119',classId:'class-a',periodId:'2026-11-piloto'};
+ const grantB={...grantA,classId:'class-b'};
+ const ids=Array.from({length:13},()=>crypto.randomUUID());
+ const rowsA=ids.map((id,i)=>({id,title:'A privada '+(i+1),revision:1,state:'active',...grantA}));
+ const onlyB={id:crypto.randomUUID(),title:'B exclusiva',revision:1,state:'active',...grantB};
+ const {definition}=createLibraryPlan(planArgs(m));
+ const entered=deferred(),release=deferred();
+ const record={id:ids[0],revision:1,definition,manifestHash:definition.manifest.contentHash,
+  scoreScale:10000,totalUnits:'100000',status:'issued',archived:false,...grantA};
+ const fetchFn=async(url,request)=>{
+  const u=new URL(url),route=u.pathname.slice('/assessments/v1'.length);
+  if(route==='/session')return Response.json({authenticated:true,principalId:'teacher-a',epoch:1});
+  if(route==='/grants')return Response.json({grants:[grantA,grantB]});
+  if(route==='/assessments'){
+   const scope=u.searchParams.get('classId'),src=scope==='class-a'?rowsA:[onlyB];
+   const after=u.searchParams.get('after'),pos=after?src.findIndex(x=>x.id===after)+1:0;
+   const part=src.slice(pos,pos+10);
+   return Response.json({assessments:part,nextCursor:pos+part.length<src.length?part.at(-1).id:null});
+  }
+  if(route==='/assessments/'+ids[0]){
+   entered.resolve();await release.promise;return Response.json({record});
+  }
+  throw Error('Unexpected '+route);
+ };
+ const host=new SurfaceNode('section'),doc={getElementById:id=>id==='savedAssessments'?host:null,
+  createElement:tag=>new SurfaceNode(tag)};
+ const mounted=mountAssessmentLibrary({document:doc,window:{confirm:()=>true},host,fetchFn,
+  getSections:()=>m.sections,getMetadata:()=>planArgs(m).metadata,
+  getModel:()=>m.manifest,prepareModel:()=>true,snapshotEditor:()=>m.editor,
+  restoreEditor:()=>{},nominalFields:()=>({}),newEditor:()=>{},activateSelection:()=>{},clearSelection:()=>{}});
+ for(let n=0;n<8&&mounted.controller.view().grants.length!==2;n++)await tick();
+ mounted.controller.useScope(grantA);
+ await mounted.controller.list();
+ await mounted.controller.nextPage();
+ mounted.render();
+ const catalog=host.children[0].children[1].children[1].children[0];
+ assert.ok(catalog.options.some(x=>x.textContent.includes('A privada')));
+ catalog.value=ids[0];
+ const opening=catalog.onchange();
+ await entered.promise;
+ mounted.controller.useScope(grantB);
+ mounted.render();
+ assert.equal(catalog.options.some(x=>x.textContent.includes('A privada')),false,'changing grants purges old catalog');
+ await mounted.controller.list();mounted.render();
+ assert.ok(catalog.options.some(x=>x.textContent==='B exclusiva'));
+ release.resolve();await opening;
+ mounted.render();
+ assert.equal(catalog.options.some(x=>x.textContent.includes('A privada')),false,'late response cannot reinsert old principal/scope');
+ assert.equal(mounted.controller.view().record,null,'old GET must not replace new context');
+});
+
+test('UX-79B P0 recovery: two failures then contextual manual retry replays identical PUT',async()=>{
+ let tries=0;const timers=[],events={};
+ const fakeWindow={setTimeout:fn=>{timers.push(fn);return timers.length;},addEventListener:(event,fn)=>{events[event]=fn;},
+  navigator:{onLine:true}};
+ const f=await mountedRaceFixture({windowOverrides:fakeWindow,onPut:async()=>{
+  if(++tries<=2)throw Error('synthetic network unavailable');
+ }});
+ await f.fill();
+ assert.equal(f.button('Tentar novamente').hidden,true);
+ await f.button('Salvar avaliação').handlers.click();
+ const original=f.getPending()?.requestId;assert.ok(original);
+ assert.equal(timers.length,1,'only one automatic retry scheduled');
+ assert.equal(f.button('Tentar novamente').hidden,true,'manual control waits for failed automatic retry');
+ timers.shift()();await tick();await tick();
+ assert.equal(tries,2);
+ assert.equal(f.getPending()?.requestId,original);
+ assert.equal(timers.length,0,'no uncontrolled auto retry loop');
+ assert.equal(f.button('Tentar novamente').hidden,false,'retry shown only after repeated failures');
+ assert.equal(f.button('Tentar novamente').disabled,false);
+ await f.button('Tentar novamente').handlers.click();
+ assert.equal(tries,3);
+ assert.equal(f.getPending(),null);
+ assert.equal(f.button('Tentar novamente').hidden,true,'button disappears after confirmation');
+ assert.equal(f.mounted.controller.view().record.revision,1);
+ assert.equal(f.writeCalls.length,3);
+ assert.deepEqual(f.writeCalls[0],f.writeCalls[1]);
+ assert.deepEqual(f.writeCalls[1],f.writeCalls[2],'requestId, payload, scope and CAS all frozen');
+ assert.equal(f.records.size,1,'confirmed replay must not create a second assessment');
+});
+
+test('UX-79B P0 recovery: offline timer, one online attempt and eventual manual recovery',async()=>{
+ let tries=0;const timers=[],events={};
+ const navigator={onLine:false};
+ const f=await mountedRaceFixture({windowOverrides:{
+  navigator,setTimeout:fn=>{timers.push(fn);return timers.length;},
+  addEventListener:(name,fn)=>{events[name]=fn}
+ },onPut:async()=>{if(++tries<=2)throw Error('synthetic connection lost')}});
+ await f.fill();await f.button('Salvar avaliação').handlers.click();
+ const requestId=f.getPending().requestId;
+ assert.equal(timers.length,1);
+ timers.shift()();await tick();
+ assert.equal(tries,1,'no request during offline state');
+ assert.equal(f.button('Tentar novamente').hidden,false);
+ navigator.onLine=true;events.online();await tick();await tick();
+ assert.equal(tries,2);
+ events.online();await tick();
+ assert.equal(tries,2,'repeated online events do not create retry loops');
+ assert.equal(f.getPending()?.requestId,requestId);
+ await f.button('Tentar novamente').handlers.click();
+ assert.equal(tries,3);
+ assert.equal(f.getPending(),null);
+ assert.equal(f.button('Tentar novamente').hidden,true);
+ assert.deepEqual(f.writeCalls[0],f.writeCalls[2]);
+});
+
+test('UX-79B P0 messaging: physical batch confirmation and reader status reveal no hashes or revision numbers',async()=>{
+ const messages=[];
+ const f=await mountedRaceFixture({windowOverrides:{confirm:message=>{messages.push(message);return true}}});
+ await f.fill();await f.button('Salvar avaliação').handlers.click();
+ await f.button('Usar na correção').handlers.click();
+ assert.equal(messages.length,1);
+ assert.match(messages[0],/Avaliação de Matemática/);
+ assert.match(messages[0],/cartão físico|lote/i);
+ assert.match(messages[0],/gabaritos diferentes/i);
+ assert.doesNotMatch(messages[0],/versão\s+\d+|revisão\s+\d+|[a-f0-9]{32,}/i);
+ const ui=read('plataforma/avaliacoes-biblioteca.mjs');
+ const html=read('plataforma/corretor-v2.html');
+ assert.doesNotMatch(ui,/Avaliação aberta · versão/);
+ assert.doesNotMatch(ui,/versão '\+details\.revision/);
+ assert.doesNotMatch(html,/scanModelStatus'\)\.textContent=[^\n]*(?:\.version|contentHash|\.revision)/);
+ assert.doesNotMatch(html,/confirmada para correção\. Confira o lote físico\.';.*selection\.revision/);
+ assert.match(html,/activeManifest\.contentHash!==privateSelection\.manifestHash/,'cryptographic binding retained internally');
+});
