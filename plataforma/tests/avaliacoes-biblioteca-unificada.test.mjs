@@ -1,4 +1,5 @@
 import test from 'node:test';
+import {runInNewContext} from 'node:vm';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import path from 'node:path';
@@ -955,4 +956,144 @@ test('P0-80-RF-02 old pending PUT remains unretryable after teacher reinitialize
  assert.equal(ctl.view().scope,null);
  await assert.rejects(()=>ctl.retry(),/Não há operação pendente/);
  assert.equal(calls,1,'no old PUT retry against teacher B');
+});
+
+
+// Extract actual callbacks from the inline Corretor script instead of copying
+// their logic. The harness stubs rendering, not the private-data teardown.
+function realReaderCallbacks(){
+ const html=read('plataforma/corretor-v2.html');
+ const startClear=html.indexOf('function clearPrivateCorrection(){');
+ const endClear=html.indexOf('\nfunction assessmentEditorState()',startClear);
+ const startApply=html.indexOf('function applyAssessmentModel(');
+ const endApply=html.indexOf('\nassessmentBank=await',startApply);
+ assert.ok(startClear>0&&endClear>startClear&&startApply>endClear&&endApply>startApply);
+ const nodes=new Map();
+ const node=id=>{
+  if(!nodes.has(id))nodes.set(id,{value:'',readOnly:false,textContent:'',innerHTML:'',
+   replaceChildren(){this.innerHTML='';this.children=[]}});
+  return nodes.get(id);
+ };
+ const code=[
+  "let privateSelection=null,privateModelLoaded=false,template=null,activeManifest=null,activeSvg='',exactScanModel=false;",
+  html.slice(startClear,endClear),html.slice(startApply,endApply),
+  "({applyAssessmentModel,clearPrivateCorrection,setSelection:x=>{privateSelection=x;},",
+  "state:()=>({privateSelection,privateModelLoaded,template,activeManifest,activeSvg,exactScanModel})})"
+ ].join('\n');
+ const reader=runInNewContext(code,{
+  importCardManifest,renderTemplateSvg:()=>'<svg id="private-model"></svg>',
+  $:node,clearAssessmentReview:()=>{},
+  setPrivateCorrectionUi:()=>{},setExportAvailability:()=>{},syncScanInputs:()=>{}
+ });
+ return {reader,node};
+}
+
+test('P0-80-RF-01 inline Corretor scrubs private model without selection but retains manual import',()=>{
+ const m=make({counts:[2],types:['A-E']});
+ const {reader,node}=realReaderCallbacks();
+ reader.applyAssessmentModel({title:'Private title before selection',revision:1,manifest:m.manifest},{privateAssessment:true});
+ assert.equal(reader.state().privateSelection,null);
+ assert.equal(reader.state().privateModelLoaded,true);
+ assert.match(node('scanModelStatus').textContent,/Private title before selection/);
+ assert.ok(reader.state().activeManifest);
+ reader.clearPrivateCorrection();
+ assert.equal(reader.state().activeManifest,null);
+ assert.equal(reader.state().template,null);
+ assert.equal(reader.state().activeSvg,'');
+ assert.equal(node('preview').innerHTML,'');
+ assert.doesNotMatch(node('scanModelStatus').textContent,/Private title before selection/);
+ assert.equal(node('answerKey').value,'');
+ assert.equal(node('answerKey').readOnly,false);
+ reader.applyAssessmentModel({title:'Manual model',manifest:m.manifest},{privateAssessment:false});
+ const manual=reader.state().activeManifest;
+ reader.clearPrivateCorrection();
+ assert.equal(reader.state().activeManifest,manual,'manual model preserved');
+ assert.match(node('scanModelStatus').textContent,/Manual model/);
+ reader.applyAssessmentModel({title:'Other private',revision:2,manifest:m.manifest},{privateAssessment:true});
+ reader.setSelection({selectionId:'selection-test'});
+ node('answerKey').value='1 A';node('answerKey').readOnly=true;
+ reader.clearPrivateCorrection();
+ assert.equal(reader.state().privateSelection,null);
+ assert.equal(reader.state().activeManifest,null);
+ assert.equal(node('answerKey').value,'');
+});
+
+test('P0-80-RF-01 actual adapter + Corretor callback clears private reader on 401 and 403',async t=>{
+ for(const code of [401,403])await t.test('HTTP '+code,async()=>{
+  const m=make({counts:[2],types:['A-E']});
+  const {reader,node}=realReaderCallbacks();
+  const grant={institutionId:'school',classId:'class-1',periodId:'2026'},id=crypto.randomUUID();
+  const {definition}=createLibraryPlan(planArgs(m));
+  const record={id,revision:1,definition,manifestHash:definition.manifest.contentHash,
+   scoreScale:10000,totalUnits:'60000',status:'issued',archived:false,...grant};
+  const rows=Array.from({length:13},(_,i)=>({id:i?crypto.randomUUID():id,
+   title:'Confidential '+(i+1),revision:1,state:'active',...grant}));
+  let revoked=false;
+  const fetchFn=async(url,req)=>{
+   const u=new URL(url),route=u.pathname.slice('/assessments/v1'.length);
+   if(route==='/session')return Response.json({authenticated:true,principalId:'A',epoch:1});
+   if(route==='/grants')return Response.json({grants:[grant]});
+   if(route==='/assessments'){
+    if(revoked)return Response.json({code:'unauthorized'},{status:code});
+    const after=u.searchParams.get('after'),pos=after?rows.findIndex(x=>x.id===after)+1:0;
+    const part=rows.slice(pos,pos+10);
+    return Response.json({assessments:part,nextCursor:pos+part.length<rows.length?part.at(-1).id:null});
+   }
+   if(route==='/assessments/'+id)return Response.json({record});
+   if(route==='/assessments/'+id+'/revisions')return Response.json({revisions:[{revision:1,status:'issued'}]});
+   throw Error('Unexpected '+req.method+' '+route);
+  };
+  const host=new SurfaceNode('section'),doc={getElementById:id=>id==='savedAssessments'?host:null,
+   createElement:tag=>new SurfaceNode(tag)};
+  let restored=m.editor;
+  const library=mountAssessmentLibrary({document:doc,window:{confirm:()=>true},host,fetchFn,
+   getSections:()=>m.sections,getMetadata:()=>planArgs(m).metadata,
+   getModel:()=>m.manifest,prepareModel:()=>true,
+   snapshotEditor:()=>restored,restoreEditor:e=>{restored=e},nominalFields:()=>({}),
+   newEditor:()=>{restored={...m.editor,fields:{...m.editor.fields,assessmentTitle:''}};},
+   applyExactModel:bundle=>reader.applyAssessmentModel(bundle,{privateAssessment:true}),
+   activateSelection:s=>reader.setSelection(s),clearSelection:()=>reader.clearPrivateCorrection()});
+  const catalog=host.children[0].children[1].children[1].children[0];
+  for(let i=0;i<16&&catalog.options.length<14;i++)await tick();
+  assert.equal(catalog.options.length,14);
+  catalog.value=id;await catalog.onchange();
+  assert.equal(reader.state().privateSelection,null);
+  assert.match(node('scanModelStatus').textContent,/Avaliação de Matemática/);
+  assert.ok(reader.state().activeManifest);
+  revoked=true;
+  await assert.rejects(()=>library.controller.list(),e=>e.status===code);
+  assert.equal(library.controller.view().session,null);
+  assert.equal(catalog.options.length,1);
+  assert.equal(reader.state().activeManifest,null);
+  assert.equal(reader.state().template,null);
+  assert.doesNotMatch(node('scanModelStatus').textContent,/Avaliação de Matemática|Confidential/);
+  library.render();
+  assert.equal(reader.state().activeManifest,null);
+ });
+});
+
+test('P0-80-RF-02 normal navigation does not reinitialize a ready controller',async()=>{
+ const m=make({counts:[2],types:['A-E']});
+ const grant={institutionId:'school',classId:'A',periodId:'2026'};
+ let sessions=0;
+ const fetchFn=async(url)=>{
+  const route=new URL(url).pathname.slice('/assessments/v1'.length);
+  if(route==='/session'){sessions++;return Response.json({authenticated:true,principalId:'teacher-A',epoch:1});}
+  if(route==='/grants')return Response.json({grants:[grant]});
+  if(route==='/assessments')return Response.json({assessments:[],nextCursor:null});
+  throw Error('Unexpected '+route);
+ };
+ const host=new SurfaceNode('section'),doc={getElementById:id=>id==='savedAssessments'?host:null,
+  createElement:tag=>new SurfaceNode(tag)};
+ const library=mountAssessmentLibrary({document:doc,window:{confirm:()=>true},host,fetchFn,
+  getSections:()=>m.sections,getMetadata:()=>planArgs(m).metadata,
+  getModel:()=>m.manifest,prepareModel:()=>true,snapshotEditor:()=>m.editor,
+  restoreEditor:()=>{},nominalFields:()=>({}),newEditor:()=>{},activateSelection:()=>{},clearSelection:()=>{}});
+ for(let i=0;i<12&&!library.controller.view().scope;i++)await tick();
+ assert.equal(sessions,1);
+ const connect=host.children[0].children[3].children.find(x=>x.textContent==='Conectar');
+ assert.equal(connect.hidden,true,'session switch is not a normal navigation action while authenticated');
+ const html=read('plataforma/corretor-v2.html');
+ assert.match(html,/function showView\(id\)/);
+ assert.doesNotMatch(html,/function showView\(id\)[^\n]*initialize\(/);
 });
