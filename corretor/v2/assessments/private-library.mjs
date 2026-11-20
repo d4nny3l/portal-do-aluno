@@ -39,10 +39,18 @@ export function createPrivateLibraryController({
   signal('draft','Seleção alterada. Abra e confira a avaliação antes de salvar, emitir, duplicar, arquivar ou corrigir.');
  }
  async function initialize(){
+  // A reauthentication attempt cannot keep the previous teacher's writable
+  // records, scope or idempotent request alive while the new identity is unknown.
+  // This is also necessary if the new session/grants call later fails.
+  resetContext();
+  s.session=null;s.grants=[];s.scope=null;s.pending=null;
+  const g=s.generation;
   if(!client.enabled){signal('unavailable','Biblioteca privada desativada. Não é possível salvar no servidor.');return false;}
-  const g=++s.generation;signal('loading','Verificando sessão e concessões autorizadas…');
+  signal('loading','Verificando sessão e concessões autorizadas…');
   try{
-   const session=await client.session(),grants=await client.grants();
+   const session=await client.session();
+   if(!fresh(g))return false;
+   const grants=await client.grants();
    if(!fresh(g))return false;
    s.session=session;s.grants=grants;
    signal('draft',grants.length?'Escolha instituição, turma e período autorizado.':'Nenhuma turma autorizada para avaliações.');

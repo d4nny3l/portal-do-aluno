@@ -18,7 +18,7 @@ const original={
  'corretor/v2/assessments/block-scoring.mjs':'6abefc55e210b065d8b2080587a9038fd5f5856b',
  'corretor/v2/assessments/private-contract-adapter.mjs':'a938f541db6019b56c6429b3ca14853005974bcd',
  'corretor/v2/assessments/private-client.mjs':'d909b412f95747c4f3b1830fdcb0fd385633694b',
- 'corretor/v2/assessments/private-library.mjs':'4c585cdc4ef4c8c13845c010b49f01c1cb8fa393',
+ 'corretor/v2/assessments/private-library.mjs':'8eb63a54c83a121d58108af7066be381c7290bd2',
  'corretor/v2/assessments/private-ui.mjs':'f22f6a04ef2248bf28216d1e7764fb89741b0494',
  'corretor/v2/omr/template.mjs':'d0c0e0a5a061b778a4b92973f0fd3009a1683f30',
  'corretor/v2/omr/render.mjs':'90667f4dc78ee1f6d071325f4bb3077f431f3bb5',
@@ -26,8 +26,11 @@ const original={
 };
 const fakeKey=letter=>Array(60).fill(letter).join(' ');
 
-test('P0-08B-03: original private modules and V2/OMR contracts byte-for-byte match #74',()=>{
+test('P0-08B-03: V2/OMR and private contracts stay pinned; approved frontend reauth controller stays protected',()=>{
  for(const [file,expected]of Object.entries(original))assert.equal(gitBlob(file),expected,file);
+ const controller=text('corretor/v2/assessments/private-library.mjs');
+ assert.match(controller,/resetContext\(\);\s*s\.session=null;s\.grants=\[\];s\.scope=null;s\.pending=null;/,
+  'reinitialization must invalidate previous professor, grant and request before I/O');
 });
 test('synthetic A/B uses original generator, 60 A-E, 30+30, 6+4 and native 210x297 A4 V2',()=>{
  const {sections,template,manifest}=createPilotModel();

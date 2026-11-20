@@ -29,7 +29,7 @@ import { calibrationSvg, calibrationMetrics } from '../corretor/v2/omr/camera-ca
 import { detectFiducials, normalizeCard, warpFromFiducials } from '../corretor/v2/omr/normalize.mjs?v=20261115camera1';
 let sections=[],template,activeManifest=null,activeSvg="",nextQuestionNumber=1,nextSectionOrder=0,layoutRevision=8;
 let headerState={...DEFAULT_CARD_HEADER,logoWidthMm:22,secondaryLogoWidthMm:22,logoAspect:1,secondaryLogoAspect:1,visible:{...DEFAULT_CARD_HEADER.visible,className:true},customFields:[]};
-let currentPage=1,exactScanModel=false,assessmentTitleValue='',assessmentBank=null,privateLibrary=null,privateSelection=null;
+let currentPage=1,exactScanModel=false,assessmentTitleValue='',assessmentBank=null,privateLibrary=null,privateSelection=null,privateModelLoaded=false;
 const $=id=>document.getElementById(id);
 function syncConditionalFields(){
  const mode=$('cardMode').value,identity=$('identityMode').value;
@@ -47,7 +47,7 @@ function updateHeaderPreview(){try{$('headerPreview').innerHTML=renderHeaderPrev
 function syncHeaderForm(){document.querySelectorAll('[data-header]').forEach(el=>{el.value=el.dataset.header==='title'?assessmentTitleValue:(headerState[el.dataset.header]||'')});document.querySelectorAll('[data-visible]').forEach(el=>{el.checked=headerState.visible[el.dataset.visible]===true});$('logoWidth').value=headerState.logoWidthMm;$('logoWidth2').value=headerState.secondaryLogoWidthMm;}
 function currentMetadata(){return{showInstructions:$('showInstructions').checked,kind:$('assessmentKind').value,subject:$('assessmentSubject').value.trim(),className:$('assessmentClass').value.trim(),date:$('assessmentDate').value,teacher:headerState.teacher,grade:headerState.grade,schoolYear:headerState.schoolYear,customFields:headerState.customFields,visibleFields:headerState.visible,headerLayout:headerState.layout,logoWidthMm:Number(headerState.logoWidthMm)||22,secondaryLogoWidthMm:Number(headerState.secondaryLogoWidthMm)||22,logoAspect:Number(headerState.logoAspect)||1,secondaryLogoAspect:Number(headerState.secondaryLogoAspect)||1,cduPosition:'bottom'}}
 function updateAssessmentHeader(){headerState.title=assessmentTitleValue.trim()||'CARTÃO DE RESPOSTAS';headerState.subject=$('assessmentSubject').value.trim();headerState.className=$('assessmentClass').value.trim();headerState.date=$('assessmentDate').value;}
-function renderPreviews(){headerState.title=assessmentTitleValue.trim()||'CARTÃO DE RESPOSTAS';const nominalCode=$('studentCode')?.value.trim()||'';const identityMode=$('identityMode').value;const student={name:$('studentName').value.trim(),className:$('studentClass').value.trim(),code:nominalCode};if(!student.name&&!student.className&&!student.code){}else if(identityMode==='seven-digit-code'&&nominalCode&&!/^\d{7}$/.test(nominalCode))throw new Error('O código do aluno precisa conter exatamente sete dígitos.');const mode=$('cardMode').value;const embeddedSize=mode==='embedded'?{widthMm:Number($('embeddedWidth').value),heightMm:Number($('embeddedHeight').value)}:null;headerState.showStudentCode=identityMode==='seven-digit-code';headerState.showInstructions=$('showInstructions').checked;template=createTemplate(sections,{templateId:'omr-a4',revision:layoutRevision,title:headerState.title,schoolName:headerState.institution,student:student.name||student.className||student.code?student:null,identityMode,mode,embeddedSize,columnCount:$('columnCount').value==='auto'?null:Number($('columnCount').value),layoutVersion:'v2',showName:headerState.visible.studentName,metadata:currentMetadata()});activeManifest=createCardManifest(template,headerState,{sectionFrameStyle:'content'});const svgMarkup=renderTemplateSvg(template,{page:1,header:headerState,manifest:activeManifest});activeSvg=svgMarkup;exactScanModel=true;syncScanInputs();$('scanModelStatus').textContent='Modelo ativo: '+activeManifest.version+' · '+activeManifest.contentHash.slice(0,8)+' · '+activeManifest.questionCount+(activeManifest.questionCount===1?' questão':' questões')+scanModelNotice(activeManifest);const manifest=activeManifest;currentPage=1;$('pageSelect').value='1';const page=document.createElement('div');page.className='omr-page';page.innerHTML=svgMarkup;$('preview').replaceChildren(page);$('sectionText').textContent=`${sections.length} seção(ões) · ${template.questionCount} questões · 1 cartão A4${manifest.geometry.objectiveRowPitchMm<6.2?` · passo vertical ${manifest.geometry.objectiveRowPitchMm.toFixed(2)} mm`:''}`;updateHeaderPreview();}
+function renderPreviews(){privateModelLoaded=false;headerState.title=assessmentTitleValue.trim()||'CARTÃO DE RESPOSTAS';const nominalCode=$('studentCode')?.value.trim()||'';const identityMode=$('identityMode').value;const student={name:$('studentName').value.trim(),className:$('studentClass').value.trim(),code:nominalCode};if(!student.name&&!student.className&&!student.code){}else if(identityMode==='seven-digit-code'&&nominalCode&&!/^\d{7}$/.test(nominalCode))throw new Error('O código do aluno precisa conter exatamente sete dígitos.');const mode=$('cardMode').value;const embeddedSize=mode==='embedded'?{widthMm:Number($('embeddedWidth').value),heightMm:Number($('embeddedHeight').value)}:null;headerState.showStudentCode=identityMode==='seven-digit-code';headerState.showInstructions=$('showInstructions').checked;template=createTemplate(sections,{templateId:'omr-a4',revision:layoutRevision,title:headerState.title,schoolName:headerState.institution,student:student.name||student.className||student.code?student:null,identityMode,mode,embeddedSize,columnCount:$('columnCount').value==='auto'?null:Number($('columnCount').value),layoutVersion:'v2',showName:headerState.visible.studentName,metadata:currentMetadata()});activeManifest=createCardManifest(template,headerState,{sectionFrameStyle:'content'});const svgMarkup=renderTemplateSvg(template,{page:1,header:headerState,manifest:activeManifest});activeSvg=svgMarkup;exactScanModel=true;syncScanInputs();$('scanModelStatus').textContent='Modelo pronto para correção · '+activeManifest.questionCount+(activeManifest.questionCount===1?' questão':' questões')+scanModelNotice(activeManifest);const manifest=activeManifest;currentPage=1;$('pageSelect').value='1';const page=document.createElement('div');page.className='omr-page';page.innerHTML=svgMarkup;$('preview').replaceChildren(page);$('sectionText').textContent=`${sections.length} seção(ões) · ${template.questionCount} questões · 1 cartão A4${manifest.geometry.objectiveRowPitchMm<6.2?` · passo vertical ${manifest.geometry.objectiveRowPitchMm.toFixed(2)} mm`:''}`;updateHeaderPreview();}
 const exportButtons=['download','downloadPng','downloadJpg','downloadJson','printCard','printBatch'];
 function setExportAvailability(enabled){for(const id of exportButtons){const button=$(id);if(button)button.disabled=!enabled}}
 function build(){updateHeaderPreview();template=null;activeManifest=null;activeSvg='';exactScanModel=false;syncScanInputs();setExportAvailability(false);$('preview').replaceChildren();if(!sections.length){$('sectionText').textContent='';$('buildStatus').textContent='';return false}try{renderPreviews();$('buildStatus').textContent='';setExportAvailability(!assessmentBank||assessmentBank.canExport(activeManifest));return true}catch(error){const beforeColumns=$('columnCount').value;const canRecompose=beforeColumns!=='auto';if(canRecompose){$('columnCount').value='auto';try{renderPreviews();$('buildStatus').textContent='A composição foi reorganizada automaticamente para caber. Confira a prévia antes de exportar.';setExportAvailability(!assessmentBank||assessmentBank.canExport(activeManifest));return true}catch(recomposeError){$('columnCount').value=beforeColumns;template=null;activeManifest=null;activeSvg='';$('preview').replaceChildren();$('sectionText').textContent='Ajuste a composição para gerar uma prévia válida.';$('buildStatus').textContent=recomposeError.message||error.message;return false}}template=null;activeManifest=null;activeSvg='';$('preview').replaceChildren();$('sectionText').textContent='Ajuste a composição para gerar uma prévia válida.';$('buildStatus').textContent=error.message;return false}}
@@ -111,8 +111,8 @@ async function loadPhoto(file){if(!file)return;typeof markLastReadingPending==='
 $('file').onchange=async event=>{await loadPhoto(event.target.files[0]);event.target.value=''};
 function scanModelNotice(model){if(model.mode==='embedded')return ' Quadros incorporados: leitura automática indisponível.';if(model.questions.some(q=>q.type==='CDU'))return ' C-D-U: leitura automática indisponível.';return ''}
 function syncScanInputs(){for(const id of ['scanType','scanCount']){$(id).disabled=exactScanModel;$(id).closest('label').hidden=exactScanModel}}
-function resetScanDefault(){if(exactScanModel)return;template=null;activeManifest=null;activeObservations=[];activeHistoryEntry=null;$('answers').replaceChildren();$('scanScore').hidden=true;$('scanModelStatus').textContent='Composição padrão V2. Importe o JSON exato para cartões personalizados ou anteriores.'}
-function ensureScanTemplate(){if(!template){const type=$('scanType').value,count=Number($('scanCount').value);if(!Number.isInteger(count)||count<1||count>150)throw new Error('Informe de 1 a 150 questões.');template=createTemplate([{type,count,label:'Questões objetivas'}],{layoutVersion:'v2'});activeManifest=createCardManifest(template);$('scanModelStatus').textContent='Modelo padrão: '+activeManifest.version+' · confira o JSON para cartões personalizados.';currentPage=Math.min(currentPage,template.pageCount);}}
+function resetScanDefault(){if(exactScanModel)return;template=null;activeManifest=null;activeObservations=[];activeHistoryEntry=null;$('answers').replaceChildren();$('scanScore').hidden=true;$('scanModelStatus').textContent='Modelo padrão disponível. Importe o arquivo do cartão para corrigir avaliações anteriores.'}
+function ensureScanTemplate(){if(!template){const type=$('scanType').value,count=Number($('scanCount').value);if(!Number.isInteger(count)||count<1||count>150)throw new Error('Informe de 1 a 150 questões.');template=createTemplate([{type,count,label:'Questões objetivas'}],{layoutVersion:'v2'});activeManifest=createCardManifest(template);$('scanModelStatus').textContent='Modelo padrão pronto. Para outro cartão, confira o arquivo correspondente.';currentPage=Math.min(currentPage,template.pageCount);}}
 function parseKey(){return parseAnswerKey($('answerKey').value,template.questions)}
 function calculateScore(){const scoreBox=$('scanScore');if(!activeObservations.length){scoreBox.hidden=true;return}const stale=scoreBox.dataset.stale==='true',lastReading=stale?'<span class="scan-last-reading">Última leitura bem-sucedida — nova leitura não concluída</span>':'';const block=(title,message)=>{scoreBox.hidden=false;scoreBox.dataset.review='true';scoreBox.innerHTML=lastReading+`<strong>${title}</strong><span>${message}</span>`};if(template.pageCount>1){block('Aguardando as demais páginas','A nota final requer todas as páginas conferidas e reunidas.');return}if(scoreBox.dataset.identity==='review'){block('Identificação inconclusiva','Código obrigatório de sete dígitos ilegível. Faça nova captura.');return}if(activeObservations.length!==template.questions.length||new Set(activeObservations.map(item=>item.questionId)).size!==template.questions.length){block('Leitura incompleta','A nota exige todas as questões deste cartão.');return}const unresolved=activeObservations.filter(item=>!item.reviewed).length;if(unresolved){block(`Leitura inconclusiva: ${unresolved} questão(ões)`,'Evidência insuficiente. Faça nova captura ou corrija manualmente se houver confirmação.');return}const key=parseKey();if(!key.valid){block('Gabarito necessário',key.error);return}const max=Number($('scanMaxScore').value);if(!Number.isFinite(max)||max<0){block('Valor inválido','Informe valor máximo igual ou superior a zero.');return}const correct=activeObservations.filter(item=>item.answer&&key.answers.get(item.questionId)===item.answer).length;const grade=(correct/template.questions.length*max).toFixed(2).replace('.',',');scoreBox.hidden=false;scoreBox.dataset.review='false';scoreBox.innerHTML=lastReading+`<strong>${stale?'Nota da última leitura':'Nota final'} ${grade} / ${max.toFixed(2).replace('.',',')}</strong><span>${correct} acerto(s) em ${template.questions.length} questão(ões). Branco, dupla e erro valem zero. Nota não registrada no Diário.</span>`;if(activeHistoryEntry){activeHistoryEntry.grade=grade;activeHistoryEntry.correct=correct;activeHistoryEntry.count=template.questions.length;renderHistory()}}
 // The original public scorer above remains byte-for-byte unchanged. Only an
@@ -128,7 +128,7 @@ calculateScore=function(){
  if(!template||!activeManifest||
     activeManifest.contentHash!==privateSelection.manifestHash||
     template.questionCount!==privateSelection.template.questionCount){
-  blocked('Modelo incompatível','A avaliação selecionada não corresponde ao cartão. Escolha a avaliação e a versão corretas.');return;
+  blocked('Modelo incompatível','A avaliação selecionada não corresponde ao cartão. Confira a avaliação e o cartão físico.');return;
  }
  let result;
  try{
@@ -196,7 +196,7 @@ addEventListener('resize',()=>{if(cameraStream)positionGuides(previousCorners?.c
 $('downloadCalibration').onclick=()=>{const url=URL.createObjectURL(new Blob([calibrationSvg()],{type:'image/svg+xml'})),link=document.createElement('a');link.href=url;link.download='SALTA-padrao-diagnostico-camera.svg';link.click();setTimeout(()=>URL.revokeObjectURL(url),1000)};
 $('analyzeCalibration').onclick=()=>{try{if(!normalizedRaster)throw new Error('Fotografe o padrão primeiro.');const m=calibrationMetrics(normalizedRaster.pixels,normalizedRaster.width,normalizedRaster.height);$('calibrationStatus').textContent=`Padrão normalizado: curvatura residual máxima ${m.maxCurvatureMm.toFixed(2)} mm; desvio de posição máximo ${m.maxOffsetMm.toFixed(2)} mm; nitidez relativa borda/centro ${m.edgeToCenter?.toFixed(2)??'indisponível'}. São indicadores do padrão, sem certificação óptica ou correção de lente. Compare linhas e círculo nas duas imagens.`}catch(error){$('calibrationStatus').textContent=error.message}};
 $('rescanLast').onclick=()=>{if(!scanHistory.length)return;replaceLastCapture=true;waitingForRemoval=false;stableFrames=0;previousCorners=null;absentFrames=0;setScanMessage('A próxima leitura substituirá a captura mais recente. Retire esta folha e enquadre novamente.')};
-$('loadManifest').onchange=async event=>{try{const file=event.target.files[0];if(!file)return;if(file.size>2000000)throw new Error('O modelo deve ter até 2 MB.');const imported=importCardManifest(await file.text());assessmentBank?.clearReading();template=imported.template;activeManifest=imported.manifest;activeSvg='';activeObservations=[];$('answers').replaceChildren();$('scanScore').hidden=true;exactScanModel=true;syncScanInputs();$('scanModelStatus').textContent='Modelo importado: '+activeManifest.version+' · '+activeManifest.contentHash.slice(0,8)+' · '+activeManifest.questionCount+(activeManifest.questionCount===1?' questão':' questões')+scanModelNotice(activeManifest);setExportAvailability(false)}catch(error){$('scanModelStatus').textContent=error.message}};
+$('loadManifest').onchange=async event=>{try{const file=event.target.files[0];if(!file)return;if(file.size>2000000)throw new Error('O modelo deve ter até 2 MB.');const imported=importCardManifest(await file.text());assessmentBank?.clearReading();privateModelLoaded=false;template=imported.template;activeManifest=imported.manifest;activeSvg='';activeObservations=[];$('answers').replaceChildren();$('scanScore').hidden=true;exactScanModel=true;syncScanInputs();$('scanModelStatus').textContent='Modelo importado · '+activeManifest.questionCount+(activeManifest.questionCount===1?' questão':' questões')+scanModelNotice(activeManifest);setExportAvailability(false)}catch(error){$('scanModelStatus').textContent=error.message}};
 $('scanType').onchange=resetScanDefault;$('scanCount').onchange=resetScanDefault;$('answerKey').oninput=calculateScore;$('scanMaxScore').oninput=calculateScore;addEventListener('pagehide',stopCamera);
 document.querySelectorAll('[data-view]').forEach(button=>button.onclick=()=>showView(button.dataset.view));document.querySelectorAll('[data-go]').forEach(button=>button.onclick=()=>showView(button.dataset.go));function showView(id){if(id!=='corrigir'&&cameraStream)stopCamera();document.querySelectorAll('.module-view').forEach(panel=>panel.classList.toggle('active',panel.id===id));document.querySelectorAll('[data-view]').forEach(button=>{if(button.dataset.view===id)button.setAttribute('aria-current','page');else button.removeAttribute('aria-current')});if(id==='cartoes')document.getElementById('cartoes').scrollIntoView({block:'start',behavior:'smooth'});else window.scrollTo({top:0,behavior:'smooth'})}
 
@@ -214,26 +214,55 @@ function resetAssessmentEditor(){
  for(const id of ['studentName','studentClass','studentCode'])$(id).value='';
  $('showInstructions').checked=false;syncHeaderForm();drawSections();build();
 }
+// Legacy manual correction still reads #answerKey, but its editor lives only
+// under Criar avaliação. The private flow installs a verified key and manifest.
+const manualKeyPanel=document.createElement('details');
+manualKeyPanel.className='omr-group omr-advanced';
+const manualKeyHeading=document.createElement('summary');
+manualKeyHeading.textContent='Gabarito para correção manual';
+manualKeyPanel.append(manualKeyHeading,$('answerKey').closest('label'));
+$('criar').append(manualKeyPanel);
+$('answerKey').closest('label')?.classList?.add('manual-key-editor');
+document.querySelector('#corrigir .key-entry').hidden=true;
+function setPrivateCorrectionUi(privateMode){
+ manualKeyPanel.hidden=privateMode;
+ const manualJson=$('loadManifest').closest('label');
+ if(manualJson)manualJson.hidden=privateMode;
+}
 function activatePrivateCorrection(selection){
  if(!selection||selection.manifestHash!==selection.manifest?.contentHash)
   throw Error('O modelo e o gabarito da seleção não correspondem.');
  clearAssessmentReview();
- applyAssessmentModel({manifest:selection.manifest,title:selection.plan.metadata.title,revision:selection.revision});
+ applyAssessmentModel({manifest:selection.manifest,title:selection.plan.metadata.title,revision:selection.revision},{privateAssessment:true});
  privateSelection=selection;
  $('answerKey').value=keyTextForPlan(selection.plan);$('answerKey').readOnly=true;
+ setPrivateCorrectionUi(true);
  $('scanMaxScore').value=formatExact(BigInt(selection.plan.totalUnits),POINT_SCALE,4).replace(',','.');
  $('scanMaxScore').readOnly=true;
- $('scanModelStatus').textContent=selection.plan.metadata.title+' · versão '+selection.revision+' confirmada para correção. Confira o lote físico.';
+ $('scanModelStatus').textContent=selection.plan.metadata.title+' · avaliação confirmada para correção. Confira o lote físico.';
 }
 function clearPrivateCorrection(){
- if(!privateSelection)return;
- privateSelection=null;clearAssessmentReview();$('answerKey').value='';$('answerKey').readOnly=false;
- $('scanMaxScore').readOnly=false;setExportAvailability(false);
+ // Opening a private assessment loads its manifest before a selection exists.
+ // A revoked session must clear that private model as well as an active key.
+ if(!privateSelection&&!privateModelLoaded)return;
+ const hadPrivateModel=privateModelLoaded;
+ privateSelection=null;privateModelLoaded=false;
+ clearAssessmentReview();
+ // Hidden score markup must also be removed, not merely concealed.
+ $('scanScore').replaceChildren();
+ $('answerKey').value='';$('answerKey').readOnly=false;
+ setPrivateCorrectionUi(false);
+ $('scanMaxScore').readOnly=false;$('scanMaxScore').value='10';
+ if(hadPrivateModel){
+  template=null;activeManifest=null;activeSvg='';exactScanModel=false;
+  $('preview').replaceChildren();syncScanInputs();
+ }
+ setExportAvailability(false);
  $('scanModelStatus').textContent='Escolha uma avaliação na aba Criar avaliação para vincular o gabarito.';
 }
 function assessmentEditorState(){return {version:1,sections:structuredClone(sections),header:structuredClone(headerState),layoutRevision,nextQuestionNumber,nextSectionOrder,fields:Object.fromEntries(bankFieldIds.map(id=>[id,$(id).value])),showInstructions:$('showInstructions').checked}}
 function clearAssessmentReview(){if(cameraStream)stopCamera();typeof setCameraProgress==='function'&&setCameraProgress();activeObservations=[];activeHistoryEntry=null;scanHistory.length=0;replaceLastCapture=false;renderHistory();$('answers').replaceChildren();$('scanScore').hidden=true;$('status').textContent='';$('file').value='';normalizedRaster=null;rawRaster=null;$('canvas').hidden=true;updateCaptureComparison();}
-function applyAssessmentModel(bundle){const imported=importCardManifest(bundle.manifest);template=imported.template;activeManifest=imported.manifest;activeSvg=renderTemplateSvg(template,{manifest:activeManifest});exactScanModel=true;syncScanInputs();$('preview').innerHTML='<div class="omr-page">'+activeSvg+'</div>';$('scanModelStatus').textContent='Avaliação '+bundle.title+' · revisão '+bundle.revision+' · modelo '+activeManifest.contentHash;setExportAvailability(false)}
+function applyAssessmentModel(bundle,{privateAssessment=false}={}){const imported=importCardManifest(bundle.manifest);template=imported.template;activeManifest=imported.manifest;privateModelLoaded=privateAssessment;activeSvg=renderTemplateSvg(template,{manifest:activeManifest});exactScanModel=true;syncScanInputs();$('preview').innerHTML='<div class="omr-page">'+activeSvg+'</div>';$('scanModelStatus').textContent='Avaliação '+bundle.title+' pronta para correção.';setExportAvailability(false)}
 assessmentBank=await installAssessmentBank({
  editor:assessmentEditorState,
  questions:()=>sections.flatMap(section=>section.items),
@@ -256,7 +285,7 @@ privateLibrary=mountAssessmentLibrary({
  restoreEditor:restoreAssessmentEditor,
  nominalFields:()=>({name:$('studentName').value,className:$('studentClass').value,code:$('studentCode').value}),
  newEditor:resetAssessmentEditor,
- applyExactModel:applyAssessmentModel,
+ applyExactModel:bundle=>applyAssessmentModel(bundle,{privateAssessment:true}),
  activateSelection:activatePrivateCorrection,
  clearSelection:clearPrivateCorrection
 });
