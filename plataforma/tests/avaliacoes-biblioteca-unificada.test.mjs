@@ -1098,3 +1098,37 @@ test('P0-80-RF-02 normal navigation does not reinitialize a ready controller',as
  assert.match(html,/function showView\(id\)/);
  assert.doesNotMatch(html,/function showView\(id\)[^\n]*initialize\(/);
 });
+
+
+test('P0-80-RF-01 revoking a library session does not discard a manually imported reader model',async()=>{
+ const m=make({counts:[2],types:['A-E']});
+ const {reader,node}=realReaderCallbacks();
+ reader.applyAssessmentModel({title:'Cartão manual independente',manifest:m.manifest});
+ const manual=reader.state().activeManifest;
+ const scope={institutionId:'school',classId:'class-A',periodId:'2026'};
+ let revoked=false,editorResets=0;
+ const fetchFn=async(url)=>{
+  const route=new URL(url).pathname.slice('/assessments/v1'.length);
+  if(route==='/session')return Response.json({authenticated:true,principalId:'teacher-A',epoch:1});
+  if(route==='/grants')return Response.json({grants:[scope]});
+  if(route==='/assessments')return revoked?Response.json({code:'expired'},{status:401}):
+   Response.json({assessments:[],nextCursor:null});
+  throw Error('Unexpected '+route);
+ };
+ const host=new SurfaceNode('section'),doc={getElementById:id=>id==='savedAssessments'?host:null,
+  createElement:tag=>new SurfaceNode(tag)};
+ const library=mountAssessmentLibrary({document:doc,window:{confirm:()=>true},host,fetchFn,
+  getSections:()=>m.sections,getMetadata:()=>planArgs(m).metadata,
+  getModel:()=>m.manifest,prepareModel:()=>true,
+  snapshotEditor:()=>m.editor,restoreEditor:()=>{},nominalFields:()=>{},
+  newEditor:()=>{editorResets++;},
+  applyExactModel:bundle=>reader.applyAssessmentModel(bundle,{privateAssessment:true}),
+  activateSelection:s=>reader.setSelection(s),clearSelection:()=>reader.clearPrivateCorrection()});
+ for(let n=0;n<20&&!library.controller.view().scope;n++)await tick();
+ assert.ok(library.controller.view().scope,'authorized scope ready');
+ revoked=true;await assert.rejects(()=>library.controller.list(),e=>e.status===401);
+ assert.equal(library.controller.view().session,null);
+ assert.equal(editorResets,0,'private authentication loss must not overwrite an independent manual editor');
+ assert.equal(reader.state().activeManifest,manual,'unrelated manual reader model remains available');
+ assert.match(node('scanModelStatus').textContent,/Cartão manual independente/);
+});
