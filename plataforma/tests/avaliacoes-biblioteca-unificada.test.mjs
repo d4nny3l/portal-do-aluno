@@ -206,6 +206,8 @@ test('actual Create-tab UI mounts and saves/opens/selects/duplicates without a s
     scoreScale:10000,totalUnits:'100000',status:body.status,archived:false,...grants};
    records.set(id,record);return Response.json({ok:true,id,revision,manifestHash:record.manifestHash});
   }
+  const current=route.match(/^\/assessments\/([^/]+)$/);
+  if(current&&init.method==='GET')return Response.json({record:records.get(current[1])});
   const open=route.match(/^\/assessments\/([^/]+)\/revisions\/(\d+)$/);
   if(open&&init.method==='GET')return Response.json({record:records.get(open[1])});
   const history=route.match(/^\/assessments\/([^/]+)\/revisions$/);
