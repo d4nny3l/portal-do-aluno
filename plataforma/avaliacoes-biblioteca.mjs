@@ -248,7 +248,7 @@ export function mountAssessmentLibrary({
   openAttempt=editSnapshot();
   try{
    const record=await controller.open(id,null);
-   if(record&&sameEdit(openAttempt))await controller.history(id);
+   if(record&&openAttempt.editVersion===editVersion)await controller.history(id);
    if(record)selectedCatalogId=id;
    return record;
   }finally{openAttempt=null;}
