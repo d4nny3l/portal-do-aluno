@@ -1089,9 +1089,10 @@ test('P0-80-RF-02 normal navigation does not reinitialize a ready controller',as
   getSections:()=>m.sections,getMetadata:()=>planArgs(m).metadata,
   getModel:()=>m.manifest,prepareModel:()=>true,snapshotEditor:()=>m.editor,
   restoreEditor:()=>{},nominalFields:()=>({}),newEditor:()=>{},activateSelection:()=>{},clearSelection:()=>{}});
- for(let i=0;i<12&&!library.controller.view().scope;i++)await tick();
- assert.equal(sessions,1);
  const connect=host.children[0].children[3].children.find(x=>x.textContent==='Conectar');
+ for(let i=0;i<20&&!connect.hidden;i++)await tick();
+ assert.equal(sessions,1);
+ assert.ok(library.controller.view().scope,'scope loaded before checking UI');
  assert.equal(connect.hidden,true,'session switch is not a normal navigation action while authenticated');
  const html=read('plataforma/corretor-v2.html');
  assert.match(html,/function showView\(id\)/);
