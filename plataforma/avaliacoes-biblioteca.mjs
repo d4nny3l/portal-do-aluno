@@ -102,7 +102,7 @@ export function mountAssessmentLibrary({
  const get=id=>document.getElementById(id);
  let values={},answers={},savedManifest=null,savedSignature=null,ready=false,activeSelection=false,lastScoringSections='';
  let allRows=[],selectedCatalogId='',metadataById=new Map();
- let authorizedContext='',manualRetryNeeded=false;
+ let authorizedContext='',manualRetryNeeded=false,privateEditorLoaded=false;
  // UI edit clock is separate from controller operation generation. Never
  // invalidate that generation during PUT: the original requestId must survive.
  let editVersion=0,unsaved=false,confirmedEarlierSave=false,pendingSave=null,selectionAttempt=null,openAttempt=null,selectionNeedsConfirmation=false;
@@ -159,11 +159,13 @@ export function mountAssessmentLibrary({
  function wipePrivateUi(){
   // No catalog/metadata/answer key may survive revocation or a new principal.
   allRows=[];metadataById.clear();selectedCatalogId='';
+  const hadPrivateEditor=privateEditorLoaded;privateEditorLoaded=false;
   resetScores();pendingSave=null;selectionAttempt=null;openAttempt=null;
   unsaved=false;confirmedEarlierSave=false;selectionNeedsConfirmation=false;
   manualRetryNeeded=false;scheduledRequestId=null;editVersion++;
-  newEditor();renderScoring();
-  scope.replaceChildren();catalog.replaceChildren();
+  // A manually composed card is not an assessment from the private library.
+  if(hadPrivateEditor)newEditor();
+  renderScoring();scope.replaceChildren();catalog.replaceChildren();
  }
  const contextKey=()=>{
   const s=controller.view();
@@ -193,6 +195,7 @@ export function mountAssessmentLibrary({
    flagUnnoticedEdit(openAttempt);
    throw new Error('A avaliação foi editada durante a abertura. Suas alterações foram preservadas; abra novamente se desejar.');
   }
+  privateEditorLoaded=true; // Also covers partially restored private editor on failure.
   const restored=editorFromPrivateRecord(record,snapshotEditor());
   restoreEditor(restored.editor);
   values=Object.fromEntries(restored.plan.blocks.map(b=>[b.sectionId,scoreForInput(b.valueUnits)]));
@@ -228,7 +231,7 @@ export function mountAssessmentLibrary({
    '” para corrigir este lote? Confira o cartão físico: modelos visualmente iguais podem ter gabaritos diferentes.')
  });
  const connect=btn('Conectar',async()=>{await connectAndList()},'connect');
- const create=btn('Nova avaliação',async()=>{if(!ready)throw Error('Sua biblioteca não está conectada.');controller.newDraft();resetScores();newEditor();editVersion++;unsaved=false;confirmedEarlierSave=false;selectionNeedsConfirmation=false;selectedCatalogId='';renderScoring()},'new');
+ const create=btn('Nova avaliação',async()=>{if(!ready)throw Error('Sua biblioteca não está conectada.');controller.newDraft();privateEditorLoaded=true;resetScores();newEditor();editVersion++;unsaved=false;confirmedEarlierSave=false;selectionNeedsConfirmation=false;selectedCatalogId='';renderScoring()},'new');
  const reconcileSaved=async(result,attempt)=>{
   if(!result?.record)return false;
   // A verified immutable revision is real, even if the teacher subsequently
