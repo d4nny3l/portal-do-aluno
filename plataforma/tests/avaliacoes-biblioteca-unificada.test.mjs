@@ -850,3 +850,109 @@ test('UX-79B P0 messaging: physical batch confirmation and reader status reveal 
  assert.doesNotMatch(html,/confirmada para correção\. Confira o lote físico\.';.*selection\.revision/);
  assert.match(html,/activeManifest\.contentHash!==privateSelection\.manifestHash/,'cryptographic binding retained internally');
 });
+
+
+test('P0-80-RF-02 reinitialize fails closed before I/O; A session, epoch and grants never remain in B',async()=>{
+ const grantA={institutionId:'school',classId:'class-A',periodId:'2026'};
+ const grantB={...grantA,classId:'class-B'};
+ let active={principalId:'teacher-A',epoch:1,grants:[grantA]},heldSession=null;
+ let revocations=0;
+ const client={
+  enabled:true,
+  session:async()=>{
+   if(heldSession){const hold=heldSession;heldSession=null;return hold.promise;}
+   return {principalId:active.principalId,epoch:active.epoch};
+  },
+  grants:async()=>active.grants,
+  list:async()=>({assessments:[{id:'private-A',title:'Secret A',...grantA}],nextCursor:null}),
+  open:async()=>({id:'private-A',revision:1,manifestHash:'hash-A',...grantA}),
+  resumeSelection:async()=>({selectionId:'selection-A',assessmentId:'private-A',revision:1,manifestHash:'hash-A',scope:grantA}),
+  classifyError:e=>e.status===401?'session':e.status===403?'forbidden':'unavailable'
+ };
+ const ctl=createPrivateLibraryController({client,getDraft:()=>({}),onSelection:sel=>{if(!sel)revocations++}});
+ await ctl.initialize();ctl.useScope(grantA);
+ await ctl.list();await ctl.open('private-A');await ctl.resumeSelection('selection-A');
+ assert.equal(ctl.view().record.id,'private-A');
+ assert.equal(ctl.view().selection.assessmentId,'private-A');
+ const entered=deferred();heldSession=entered;active={principalId:'teacher-B',epoch:2,grants:[grantB]};
+ const reauth=ctl.initialize();
+ assert.equal(ctl.view().session,null,'old principal invalidated before remote /session response');
+ assert.deepEqual(ctl.view().grants,[],'old grants not retained during loading');
+ assert.equal(ctl.view().scope,null);
+ assert.deepEqual(ctl.view().rows,[]);
+ assert.equal(ctl.view().record,null);
+ assert.equal(ctl.view().selection,null);
+ assert.equal(ctl.view().editorMode,'blocked');
+ assert.ok(revocations>=1,'old private correction selection invalidated');
+ await assert.rejects(()=>ctl.list(),/escopo|indisponível/i);
+ entered.resolve({principalId:'teacher-B',epoch:2});await reauth;
+ assert.equal(ctl.view().session.principalId,'teacher-B');
+ assert.deepEqual(ctl.view().grants,[grantB]);
+ assert.equal(ctl.view().scope,null,'a grant requires explicit new scope choice');
+ assert.equal(ctl.view().pending,null);
+ assert.deepEqual(ctl.view().rows,[]);
+ assert.throws(()=>ctl.useScope(grantA),/não concedido/i);
+ ctl.useScope(grantB);
+ assert.equal(ctl.view().scope.classId,'class-B');
+ active={principalId:'teacher-B',epoch:3,grants:[grantB]};
+ await ctl.initialize();
+ assert.equal(ctl.view().session.epoch,3);
+ assert.equal(ctl.view().scope,null,'epoch change invalidates even otherwise identical grant');
+ active={principalId:'teacher-B',epoch:3,grants:[]};
+ await ctl.initialize();
+ assert.deepEqual(ctl.view().grants,[]);
+ assert.equal(ctl.view().scope,null,'revoked grants never keep the prior scope');
+});
+
+test('P0-80-RF-02 old async GET and failed 401/403 initialization cannot revive any prior record',async t=>{
+ for(const code of [401,403])await t.test('reauth '+code,async()=>{
+  const grant={institutionId:'school',classId:'class-A',periodId:'2026'};
+  const late=deferred(),enter=deferred();let holdOpen=false,failed=false,applied=0;
+  const client={
+   enabled:true,session:async()=>{if(failed)throw Object.assign(Error('revoked'),{status:code});return {principalId:'A',epoch:1}},
+   grants:async()=>[grant],
+   open:async()=>{
+    if(holdOpen){enter.resolve();return late.promise;}
+    return {id:'private-A',revision:1,...grant};
+   },
+   classifyError:e=>e.status===401?'session':e.status===403?'forbidden':'network'
+  };
+  const ctl=createPrivateLibraryController({client,getDraft:()=>({}),
+   applyRecord:()=>{applied++}});
+  await ctl.initialize();ctl.useScope(grant);
+  holdOpen=true;
+  const pendingOpen=ctl.open('private-A');await enter.promise;
+  failed=true;
+  await assert.rejects(()=>ctl.initialize(),e=>e.status===code);
+  assert.equal(ctl.view().session,null);
+  assert.equal(ctl.view().scope,null);
+  assert.equal(ctl.view().record,null);
+  assert.deepEqual(ctl.view().rows,[]);
+  late.resolve({id:'private-A',revision:1,...grant});
+  assert.equal(await pendingOpen,null,'stale GET discarded by generation');
+  assert.equal(applied,0,'no old record applied after invalid session');
+  assert.equal(ctl.view().record,null);
+ });
+});
+
+test('P0-80-RF-02 old pending PUT remains unretryable after teacher reinitialize',async()=>{
+ const grant={institutionId:'school',classId:'class-A',periodId:'2026'};
+ let active='A',calls=0;
+ const client={
+  enabled:true,
+  session:async()=>({principalId:active,epoch:active==='A'?1:2}),
+  grants:async()=>active==='A'?[grant]:[{...grant,classId:'class-B'}],
+  prepareSave:()=>({method:'PUT',path:'/assessments/private-A',payload:{requestId:'frozen-A',expectedRevision:0,...grant}}),
+  saveAndVerify:async()=>{calls++;throw Error('network lost receipt')},
+  classifyError:()=> 'network'
+ };
+ const ctl=createPrivateLibraryController({client,getDraft:()=>({plan:{},manifest:{}})});
+ await ctl.initialize();ctl.useScope(grant);
+ await assert.rejects(()=>ctl.save('issued'),/network lost receipt/);
+ assert.equal(ctl.view().pending.requestId,'frozen-A');
+ active='B';await ctl.initialize();
+ assert.equal(ctl.view().pending,null,'old request never follows new principal');
+ assert.equal(ctl.view().scope,null);
+ await assert.rejects(()=>ctl.retry(),/Não há operação pendente/);
+ assert.equal(calls,1,'no old PUT retry against teacher B');
+});
