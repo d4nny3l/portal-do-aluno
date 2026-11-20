@@ -167,22 +167,47 @@ export function mountAssessmentLibrary({
  });
  const connect=btn('Conectar',async()=>{await connectAndList()});
  const create=btn('Nova avaliação',async()=>{if(!ready)throw Error('Sua biblioteca não está conectada.');controller.newDraft();resetScores();newEditor();editVersion++;unsaved=false;confirmedEarlierSave=false;selectionNeedsConfirmation=false;renderScoring()});
+ const reconcileSaved=async(result,version)=>{
+  if(!result?.record)return false;
+  // A verified immutable revision is real, even if the teacher subsequently
+  // changed the editor. Preserve this result and its original requestId.
+  pendingSave=null;
+  const sync=()=>{
+   if(editVersion===version){
+    unsaved=false;confirmedEarlierSave=false;
+    savedManifest=result.record.definition.manifest;
+    savedSignature=editorSignature();
+   }else{
+    unsaved=true;confirmedEarlierSave=true;savedManifest=null;savedSignature=null;
+   }
+  };
+  sync();
+  try{
+   await controller.list();
+   await controller.history(result.record.id);
+  }catch{
+   // Catalog refresh is secondary; the verified receipt + GET are definitive.
+  }
+  sync();return true;
+ };
  const save=btn('Salvar avaliação',async()=>{
   if(!ready)throw Error('Conecte sua biblioteca antes de salvar.');
-  // A new revision cannot inherit a prior correction-lot confirmation.
   if(activeSelection){clearSelection();activeSelection=false;}
-  await controller.save('issued');
-  savedManifest=controller.view().record.definition.manifest;
-  savedSignature=editorSignature();
-  await controller.list();
-  await controller.history(controller.view().record.id);
-  status.textContent='Avaliação salva e recuperada do servidor. Para corrigir, confirme a versão desejada.';
+  const version=editVersion;
+  const saving=controller.save('issued');
+  const pending=controller.view().pending;
+  if(pending?.requestId)pendingSave={version,requestId:pending.requestId};
+  const result=await saving;
+  if(result)await reconcileSaved(result,version);
  });
  const open=btn('Abrir avaliação',async()=>{
   if(!catalog.value)throw Error('Escolha uma avaliação.');
-  await controller.open(catalog.value,revisions.value?Number(revisions.value):null);
-  await controller.history(catalog.value);
-  status.textContent='Avaliação e gabarito recuperados. Você pode continuar editando.';
+  const id=catalog.value;
+  openAttempt={editVersion};
+  try{
+   const record=await controller.open(id,revisions.value?Number(revisions.value):null);
+   if(record&&openAttempt.editVersion===editVersion)await controller.history(id);
+  }finally{openAttempt=null;}
  });
  const duplicate=btn('Duplicar avaliação',async()=>{
   if(controller.view().record?.id!==catalog.value)throw Error('Abra a avaliação antes de duplicar.');
@@ -190,15 +215,43 @@ export function mountAssessmentLibrary({
   await controller.list();
   status.textContent='Cópia criada como avaliação independente.';
  });
+ const resolveStaleSelection=()=>{
+  if(selectionAttempt&&selectionAttempt.editVersion!==editVersion){
+   selectionNeedsConfirmation=true;
+   // Only after the remote operation settles. Never invalidate a pending
+   // request: doing so would discard its original idempotent retry context.
+   if(!controller.view().pending)controller.invalidateOpenedRecord();
+   return true;
+  }
+  return false;
+ };
  const selectForCorrection=btn('Usar na correção',async()=>{
   if(controller.view().record?.id!==catalog.value)throw Error('Abra a avaliação e confirme a versão antes de corrigir.');
-  await controller.selectIssued();
-  status.textContent='Gabarito e modelo fixados. Abra Corrigir cartões para ler o lote confirmado.';
+  selectionNeedsConfirmation=false;
+  selectionAttempt={editVersion};
+  try{
+   const result=await controller.selectIssued();
+   if(result)resolveStaleSelection();
+  }finally{
+   if(!controller.view().pending)selectionAttempt=null;
+  }
  });
  const prev=btn('Anterior',()=>controller.previousPage());
  const next=btn('Próxima',()=>controller.nextPage());
  const refresh=btn('Atualizar',()=>controller.list());
- const retry=btn('Conferir salvamento',()=>controller.retry());
+ const retry=btn('Conferir salvamento',async()=>{
+  const pending=controller.view().pending;
+  if(!pending)throw Error('Não existe operação pendente.');
+  // The original controller resends the frozen requestId/body/expectedRevision.
+  const result=await controller.retry();
+  if(!result)return;
+  if(pending.method==='PUT'&&pendingSave?.requestId===pending.requestId)
+   await reconcileSaved(result,pendingSave.version);
+  else if(pending.method==='POST'&&pending.path==='/selections'){
+   resolveStaleSelection();
+   if(!controller.view().pending)selectionAttempt=null;
+  }
+ });
  const apply=btn('Aplicar gabarito',()=>{
   answers={...applyKeyPaste(paste.value,getSections(),answers)};
   markEdited();paste.value='';
