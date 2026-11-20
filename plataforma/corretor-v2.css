@@ -120,3 +120,21 @@
 .camera-progress span{display:inline-block;padding:5px 9px;border:1px solid rgba(255,255,255,.28);border-radius:999px;background:rgba(18,57,46,.86);color:#fff;font-size:11px;font-weight:650;box-shadow:0 1px 4px rgba(0,0,0,.2)}
 .camera-progress span[hidden]{display:none!important}
 .scan-last-reading{display:block;margin:0 0 7px;color:#766a44;font-size:12px;font-weight:700}
+
+/* Integrated assessment planning: session-only, compact and accessible. */
+.integrated-planner{display:grid;gap:12px}
+.integrated-planner h3{margin:9px 0 0;font-size:15px}
+.integrated-block-values{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,255px),1fr));gap:9px}
+.integrated-value-row,.integrated-key-item{display:grid;gap:6px;min-width:0;padding:10px;border:1px solid #e5e6f2;border-radius:10px;background:#fff;color:#555b78;font-size:12px;font-weight:650}
+.integrated-value-row input,.integrated-key-item select,.integrated-paste-row textarea,.integrated-library input,.integrated-library select{box-sizing:border-box;width:100%;max-width:100%;padding:9px 11px;min-height:39px;border:1px solid #dfe1ec;border-radius:9px;background:#fff;color:#353956;font:inherit;font-size:14px}
+.integrated-value-row input{font-variant-numeric:tabular-nums}
+.integrated-visual-key{display:grid;grid-template-columns:repeat(auto-fill,minmax(116px,1fr));gap:8px;max-height:360px;overflow:auto;padding:2px}
+.integrated-paste-row{align-items:end}
+.integrated-paste-row label{flex:1 1 250px}
+.integrated-total{font-weight:700;color:#3e4264}
+.integrated-library{border-top:1px solid #e5e6f2;padding-top:12px}
+.integrated-library summary{cursor:pointer;font-size:13px;font-weight:700;color:#4d4dc2}
+.integrated-block-results{display:grid;gap:6px;margin:9px 0}
+.integrated-block-results>div{display:flex;gap:16px;justify-content:space-between;align-items:center;border-bottom:1px solid #e9eafa;padding:4px 0}
+.integrated-block-results>div strong{white-space:nowrap;font-variant-numeric:tabular-nums}
+@media(max-width:560px){.integrated-visual-key{grid-template-columns:repeat(2,minmax(0,1fr))}.integrated-block-results>div{flex-wrap:wrap}}
