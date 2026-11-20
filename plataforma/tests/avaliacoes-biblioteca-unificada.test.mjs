@@ -283,10 +283,11 @@ test('actual Create-tab UI mounts and saves/opens/selects/duplicates without a s
 
 const deferred=()=>{let resolve,reject;const promise=new Promise((yes,no)=>{resolve=yes;reject=no});return{promise,resolve,reject}};
 const tick=()=>new Promise(resolve=>setImmediate(resolve));
-async function mountedRaceFixture({onPut=async()=>{},onSelection=async()=>{},onOpen=async()=>{}}={}){
- const m=make({counts:[2],types:['A-E']});m.values={'block-1':'10'};
+async function mountedRaceFixture({onPut=async()=>{},onSelection=async()=>{},onOpen=async()=>{},counts=[2],restoreOutOfOrder=false}={}){
+ const m=make({counts,types:counts.map(()=> 'A-E')});
+ m.sections.forEach((section,i)=>{section.order=restoreOutOfOrder?counts.length-i-1:i});
  const grants={institutionId:'salta-hml-20261119',classId:'turma-sintetica-ab',periodId:'2026-11-piloto'};
- const records=new Map(),selections=new Map(),requestById=new Map(),writeCalls=[];let currentEditor=m.editor,selected=null,nominalCleared=0,appliedExact=null,modelBuilds=0;
+ const records=new Map(),selections=new Map(),requestById=new Map(),writeCalls=[];let currentEditor=m.editor,selected=null,nominalCleared=0,appliedExact=null,modelBuilds=0,snapshotOverride=null;
  const fetchFn=async(url,init)=>{
   const route=new URL(url).pathname.slice('/assessments/v1'.length),q=new URL(url).searchParams;
   if(route==='/session'&&init.method==='GET')return Response.json({authenticated:true,principalId:'teacher-a',epoch:1});
@@ -327,12 +328,13 @@ async function mountedRaceFixture({onPut=async()=>{},onSelection=async()=>{},onO
   if(selection&&init.method==='GET')return Response.json({selectionId:selection[1],record:selections.get(selection[1])});
   throw Error('Unexpected route '+init.method+' '+route);
  };
- const host=new SurfaceNode('section'),doc={getElementById:id=>id==='savedAssessments'?host:null,
+ const host=new SurfaceNode('section'),createPanel=new SurfaceNode('section');
+ const doc={getElementById:id=>id==='savedAssessments'?host:id==='criar'?createPanel:null,
   createElement:tag=>new SurfaceNode(tag)};
  const mounted=mountAssessmentLibrary({document:doc,window:{confirm:()=>true},host,fetchFn,
   getSections:()=>m.sections,getMetadata:()=>({title:m.editor.fields.assessmentTitle,subject:m.editor.fields.assessmentSubject,
    kind:m.editor.fields.assessmentKind,date:m.editor.fields.assessmentDate,className:m.editor.fields.assessmentClass}),
-  getModel:()=>m.manifest,prepareModel:()=>{modelBuilds++;return true},snapshotEditor:()=>currentEditor,
+  getModel:()=>m.manifest,prepareModel:()=>{modelBuilds++;return true},snapshotEditor:()=>snapshotOverride??currentEditor,
   restoreEditor:e=>{currentEditor=e},applyExactModel:bundle=>{appliedExact=bundle.manifest.contentHash},
   nominalFields:()=>({}),newEditor:()=>{nominalCleared++},
   activateSelection:s=>{selected=s},clearSelection:()=>{selected=null}
@@ -342,8 +344,15 @@ async function mountedRaceFixture({onPut=async()=>{},onSelection=async()=>{},onO
  const top=host.children[0],scoring=host.children[1],actions=top.children[2];
  const button=label=>[...actions.children,...top.children[3].children].find(item=>item.textContent===label);
  const fill=async()=>{
-  const area=scoring.children[2].children[0];area.value='1 A\n2 B';
+  const area=scoring.children[2].children[0];
+  area.value=m.sections.flatMap(s=>s.items).map(q=>q.number+' '+(q.number===2?'B':'A')).join('\n');
   await scoring.children[3].handlers.click();
+  if(counts.length>1){
+   for(let i=0;i<counts.length;i++){
+    const input=scoring.children[1].children[i].children[0];
+    input.value=String(i===0?6:4);input.oninput();
+   }
+  }
  };
  function editTitle(title){
   m.editor.fields.assessmentTitle=title;
@@ -355,7 +364,23 @@ async function mountedRaceFixture({onPut=async()=>{},onSelection=async()=>{},onO
   m.manifest=createCardManifest(tm,m.editor.header,{sectionFrameStyle:'content'});
   mounted.onEditorChanged();
  }
- return {mounted,m,host,top,scoring,records,selections,writeCalls,button,fill,editTitle,
+ // Simulate native structural buttons: a capturing click, synchronous onclick
+ // mutation, and no input/change notification from the original editor.
+ const silentClick=async(kind)=>{
+  assert.ok(createPanel.handlers.click,'Create panel must observe native button clicks');
+  createPanel.handlers.click({target:{closest:()=>null}});
+  if(kind==='Adicionar bloco'){
+   const number=1+Math.max(...m.sections.flatMap(s=>s.items.map(q=>q.number)));
+   m.sections.push({sectionId:'block-added',label:'Bloco adicional',order:m.sections.length,
+    type:'A-E',items:[{questionId:'question-'+number,number,type:'A-E'}]});
+  }else if(kind==='Remover')m.sections.pop();
+  else if(kind==='Mover seção')m.sections.reverse();
+  else if(kind==='Restaurar ordem')m.sections.sort((a,b)=>a.order-b.order);
+  else throw Error('Unknown native button '+kind);
+  await tick();
+ };
+ return {mounted,m,host,top,scoring,records,selections,writeCalls,button,fill,editTitle,silentClick,
+  freezeSnapshot:()=>{snapshotOverride=structuredClone(currentEditor)},
   getSelected:()=>selected,getEditor:()=>currentEditor,getPending:()=>mounted.controller.view().pending};
 }
 
@@ -446,4 +471,100 @@ test('P0 race OPEN: an old GET cannot overwrite edits made while assessment is l
  assert.equal(f.mounted.controller.view().record,null,'stale open cannot install an older writable record');
  assert.match(f.top.children[4].textContent,/editada durante a abertura/i);
  assert.equal(f.records.get(saved.id).definition.title,'Avaliação de Matemática');
+});
+
+
+const structuralButtons=['Adicionar bloco','Remover','Mover seção','Restaurar ordem'];
+test('P0 structural buttons: delayed SELECT never reactivates an old key without input/change',async t=>{
+ for(const kind of structuralButtons)await t.test(kind,async()=>{
+  const entered=deferred(),hold=deferred();
+  const f=await mountedRaceFixture({
+   counts:[2,1],restoreOutOfOrder:kind==='Restaurar ordem',
+   onSelection:async()=>{entered.resolve();await hold.promise}
+  });
+  await f.fill();await f.button('Salvar avaliação').handlers.click();
+  const id=f.mounted.controller.view().record.id;
+  f.freezeSnapshot(); // Only getSections() can reveal the silent structural change.
+  const selecting=f.button('Usar na correção').handlers.click();
+  await entered.promise;
+  await f.silentClick(kind);
+  assert.equal(f.getSelected(),null);
+  hold.resolve();await selecting;
+  assert.equal(f.getSelected(),null,'old key cannot return after '+kind);
+  assert.equal(f.mounted.controller.view().record.id,id,'keep writable revision for B');
+  assert.match(f.top.children[4].textContent,/não foram salvas|confirme novamente/i);
+  assert.equal(f.button('Usar na correção').disabled,true);
+ });
+});
+
+test('P0 structural buttons: an already active selection is cleared without an input/change event',async t=>{
+ for(const kind of structuralButtons)await t.test(kind,async()=>{
+  const f=await mountedRaceFixture({counts:[2,1],restoreOutOfOrder:kind==='Restaurar ordem'});
+  await f.fill();await f.button('Salvar avaliação').handlers.click();
+  await f.button('Usar na correção').handlers.click();
+  assert.ok(f.getSelected(),'issued selection must be active before mutation');
+  await f.silentClick(kind);
+  assert.equal(f.getSelected(),null,'already selected key must be cleared after '+kind);
+  assert.equal(f.button('Usar na correção').disabled,true);
+  assert.match(f.top.children[4].textContent,/alterações ainda não salvas/i);
+ });
+});
+
+test('P0 structural buttons: delayed PUT preserves A receipt but never declares B saved',async t=>{
+ for(const kind of structuralButtons)await t.test(kind,async()=>{
+  const entered=deferred(),hold=deferred();
+  const f=await mountedRaceFixture({
+   counts:[2,1],restoreOutOfOrder:kind==='Restaurar ordem',
+   onPut:async()=>{entered.resolve();await hold.promise}
+  });
+  await f.fill();
+  const writing=f.button('Salvar avaliação').handlers.click();
+  await entered.promise;
+  const original=f.getPending()?.requestId;assert.ok(original);
+  const before=JSON.stringify(f.m.sections);
+  await f.silentClick(kind);
+  assert.notEqual(JSON.stringify(f.m.sections),before);
+  assert.equal(f.getPending()?.requestId,original);
+  hold.resolve();await writing;
+  const saved=f.mounted.controller.view().record;
+  assert.equal(saved.revision,1);
+  assert.equal(f.getPending(),null);
+  assert.equal(f.writeCalls[0].requestId,original);
+  assert.equal(f.writeCalls[0].expectedRevision,0);
+  assert.match(f.top.children[4].textContent,/versão enviada foi salva.*alterações posteriores/i);
+  assert.equal(f.button('Usar na correção').disabled,true);
+ });
+});
+
+test('P0 structural OPEN: a delayed GET cannot overwrite a silent change in getSections()',async()=>{
+ const entered=deferred(),hold=deferred();
+ const f=await mountedRaceFixture({counts:[2,1],onOpen:async()=>{entered.resolve();await hold.promise}});
+ await f.fill();await f.button('Salvar avaliação').handlers.click();
+ const saved=f.mounted.controller.view().record;
+ const opening=f.button('Abrir avaliação').handlers.click();
+ await entered.promise;
+ f.freezeSnapshot();
+ await f.silentClick('Remover');
+ hold.resolve();await opening;
+ assert.equal(f.m.sections.length,1);
+ assert.equal(f.mounted.controller.view().record,null,'stale GET cannot replace local structure');
+ assert.match(f.top.children[4].textContent,/editada durante a abertura/i);
+ assert.equal(f.records.get(saved.id).revision,1);
+});
+
+test('P0 structural retry: requestId, body and CAS are unchanged after silent section edits',async()=>{
+ const entered=deferred(),hold=deferred();let calls=0;
+ const f=await mountedRaceFixture({counts:[2,1],onPut:async()=>{if(++calls===1){entered.resolve();await hold.promise}}});
+ await f.fill();
+ const writing=f.button('Salvar avaliação').handlers.click();
+ await entered.promise;
+ const requestId=f.getPending().requestId;
+ await f.silentClick('Mover seção');
+ hold.reject(new Error('synthetic acknowledgement lost'));await writing;
+ assert.equal(f.getPending()?.requestId,requestId);
+ await f.button('Conferir salvamento').handlers.click();
+ assert.equal(f.writeCalls.length,2);
+ assert.deepEqual(f.writeCalls[0],f.writeCalls[1],'frozen HTTP payload and CAS must replay byte-for-byte');
+ assert.equal(f.mounted.controller.view().record.revision,1);
+ assert.match(f.top.children[4].textContent,/alterações posteriores/i);
 });
