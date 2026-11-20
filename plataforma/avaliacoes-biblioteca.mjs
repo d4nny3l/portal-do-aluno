@@ -213,7 +213,10 @@ export function mountAssessmentLibrary({
   };
   sync();
   try{
-   await controller.list();
+   selectedCatalogId=result.record.id;
+   metadataById.set(result.record.id,{subject:result.record.definition.subject||'',
+    className:String(result.record.definition.manifest?.header?.className||'')});
+   await loadCatalog();
    await controller.history(result.record.id);
   }catch{
    // Catalog refresh is secondary; the verified receipt + GET are definitive.
@@ -232,19 +235,26 @@ export function mountAssessmentLibrary({
   const result=await saving;
   if(result)await reconcileSaved(result,attempt);
  },'save');
- const open=btn('Abrir avaliação',async()=>{
-  if(!catalog.value)throw Error('Escolha uma avaliação.');
-  const id=catalog.value;
+ const openSelected=async id=>{
+  if(!id)throw Error('Escolha uma avaliação.');
   openAttempt=editSnapshot();
   try{
-   const record=await controller.open(id,revisions.value?Number(revisions.value):null);
+   const record=await controller.open(id,null);
    if(record&&sameEdit(openAttempt))await controller.history(id);
+   if(record)selectedCatalogId=id;
+   return record;
   }finally{openAttempt=null;}
- });
+ };
+ const open=btn('Abrir avaliação',()=>openSelected(catalog.value),'open');
  const duplicate=btn('Duplicar avaliação',async()=>{
   if(controller.view().record?.id!==catalog.value)throw Error('Abra a avaliação antes de duplicar.');
-  await controller.duplicate();
-  await controller.list();
+  const result=await controller.duplicate();
+  if(result?.record){
+   selectedCatalogId=result.record.id;
+   metadataById.set(result.record.id,{subject:result.record.definition.subject||'',
+    className:String(result.record.definition.manifest?.header?.className||'')});
+  }
+  await loadCatalog();
   status.textContent='Cópia criada como avaliação independente.';
  },'duplicate');
  const resolveStaleSelection=()=>{
@@ -272,7 +282,7 @@ export function mountAssessmentLibrary({
   }finally{
    if(!controller.view().pending)selectionAttempt=null;
   }
- });
+ },'correct');
  const prev=btn('Anterior',()=>controller.previousPage(),'previous');
  const next=btn('Próxima',()=>controller.nextPage(),'next');
  const refresh=btn('Atualizar',()=>loadCatalog(),'refresh');
@@ -288,7 +298,7 @@ export function mountAssessmentLibrary({
    resolveStaleSelection();
    if(!controller.view().pending)selectionAttempt=null;
   }
- });
+ },'recover');
  const apply=btn('Aplicar gabarito',()=>{
   answers={...applyKeyPaste(paste.value,getSections(),answers)};
   markEdited();paste.value='';
@@ -315,13 +325,33 @@ export function mountAssessmentLibrary({
  scoring.append(scoringTitle,scoreBox,pasteLabel,apply,choicesBox);
  host.replaceChildren(top,scoring);
  host.hidden=false;
- scope.onchange=async()=>{if(operationBusy||controller.view().pending)return;try{
-  const chosen=controller.view().grants[Number(scope.value)];
-  if(!chosen)throw Error('Selecione a turma.');
-  resetScores();controller.useScope(chosen);await controller.list();render();
- }catch(error){status.textContent=error.message;status.dataset.state='error'}};
- catalog.onchange=()=>{if(operationBusy||controller.view().pending)return;controller.invalidateOpenedRecord();render()};
- revisions.onchange=()=>{if(operationBusy||controller.view().pending)return;controller.invalidateOpenedRecord({keepRevisions:true});render()};
+ scope.onchange=async()=>{
+  if(operationBusy||controller.view().pending)return;
+  if(unsaved&&!window.confirm('Há alterações não salvas. Deseja descartá-las ao trocar de turma?')){render();return;}
+  operationBusy=true;
+  try{
+   const chosen=controller.view().grants[Number(scope.value)];
+   if(!chosen)throw Error('Selecione a turma.');
+   resetScores();controller.useScope(chosen);allRows=[];selectedCatalogId='';unsaved=false;
+   await loadCatalog();
+  }catch(error){status.textContent=error.message;status.dataset.state='error'}
+  finally{operationBusy=false;render({preserveError:status.dataset.state==='error'})}
+ };
+ catalog.onchange=async()=>{
+  if(operationBusy||controller.view().pending)return;
+  const id=catalog.value;
+  if(id===selectedCatalogId)return;
+  if(unsaved&&!window.confirm('Há alterações não salvas. Deseja descartá-las e carregar outra avaliação?')){
+   catalog.value=selectedCatalogId;render();return;
+  }
+  operationBusy=true;
+  try{
+   if(!id){controller.invalidateOpenedRecord();selectedCatalogId='';return;}
+   selectedCatalogId=id;
+   await openSelected(id);
+  }catch(error){status.textContent=error.message;status.dataset.state='error'}
+  finally{operationBusy=false;render({preserveError:status.dataset.state==='error'})}
+ };
  const fillOptions=(node,items)=>{
   const old=node.value;
   node.replaceChildren(...items.map(({value,label})=>option(document,value,label)));
@@ -409,10 +439,24 @@ export function mountAssessmentLibrary({
   }
   updateSummary();
  }
+ async function loadCatalog(){
+  const first=await controller.list();
+  if(!first)return [];
+  const rows=[...first];
+  let pages=0;
+  while(controller.view().nextCursor){
+   if(++pages>500)throw new Error('O catálogo é muito grande para esta consulta. Nenhum registro foi alterado.');
+   const page=await controller.nextPage();
+   if(!page)break;
+   rows.push(...page);
+  }
+  allRows=rows;
+  return rows;
+ }
  async function connectAndList(){
   await controller.initialize();
   const grants=controller.view().grants;
-  if(grants.length===1){controller.useScope(grants[0]);await controller.list()}
+  if(grants.length===1){controller.useScope(grants[0]);await loadCatalog()}
   render();
  }
  function onEditorChanged(){
