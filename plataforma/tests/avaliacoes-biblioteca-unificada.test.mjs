@@ -708,7 +708,7 @@ test('UX-79B P0 privacy: 401/403 purge 13 cached assessments, metadata and edita
   for(let step=0;step<16&&catalog.options.length!==14;step++)await tick();
   assert.equal(catalog.options.length,14,'two pages of private titles are visible before revocation');
   catalog.value=ids[0];await catalog.onchange();
-  assert.ok(catalog.options.some(x=>x.textContent.includes('Matemática')),'loaded private metadata cached');
+  assert.ok(catalog.options.some(x=>x.textContent.includes('Matemática')),`loaded private metadata cached: ${JSON.stringify({record:mounted.controller.view().record?.id,phase:mounted.controller.view().phase,labels:catalog.options.map(x=>x.textContent),status:top.children[4].textContent})}`);
   deny=true;
   if(trigger==='open'){catalog.value=ids[1];await catalog.onchange();}
   else await assert.rejects(()=>mounted.controller.list(),e=>e.status===code);
