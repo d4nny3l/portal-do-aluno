@@ -963,29 +963,32 @@ test('P0-80-RF-02 old pending PUT remains unretryable after teacher reinitialize
 // their logic. The harness stubs rendering, not the private-data teardown.
 function realReaderCallbacks(){
  const html=read('plataforma/corretor-v2.html');
+ const startActivate=html.indexOf('function activatePrivateCorrection(selection){');
  const startClear=html.indexOf('function clearPrivateCorrection(){');
  const endClear=html.indexOf('\nfunction assessmentEditorState()',startClear);
  const startApply=html.indexOf('function applyAssessmentModel(');
  const endApply=html.indexOf('\nassessmentBank=await',startApply);
- assert.ok(startClear>0&&endClear>startClear&&startApply>endClear&&endApply>startApply);
+ assert.ok(startActivate>0&&startClear>startActivate&&endClear>startClear&&startApply>endClear&&endApply>startApply);
  const nodes=new Map();
  const node=id=>{
   if(!nodes.has(id))nodes.set(id,{value:'',readOnly:false,textContent:'',innerHTML:'',
    replaceChildren(){this.innerHTML='';this.children=[]}});
   return nodes.get(id);
  };
+ let privateMode=false;
  const code=[
   "let privateSelection=null,privateModelLoaded=false,template=null,activeManifest=null,activeSvg='',exactScanModel=false;",
-  html.slice(startClear,endClear),html.slice(startApply,endApply),
-  "({applyAssessmentModel,clearPrivateCorrection,setSelection:x=>{privateSelection=x;},",
+  html.slice(startActivate,endClear),html.slice(startApply,endApply),
+  "({activatePrivateCorrection,applyAssessmentModel,clearPrivateCorrection,setSelection:x=>{privateSelection=x;},",
   "state:()=>({privateSelection,privateModelLoaded,template,activeManifest,activeSvg,exactScanModel})})"
  ].join('\n');
  const reader=runInNewContext(code,{
   importCardManifest,renderTemplateSvg:()=>'<svg id="private-model"></svg>',
   $:node,clearAssessmentReview:()=>{},
-  setPrivateCorrectionUi:()=>{},setExportAvailability:()=>{},syncScanInputs:()=>{}
+  setPrivateCorrectionUi:mode=>{privateMode=mode;},setExportAvailability:()=>{},syncScanInputs:()=>{},
+  keyTextForPlan:()=> '1 A\n2 B',formatExact:()=> '10,00',POINT_SCALE
  });
- return {reader,node};
+ return {reader,node,privateMode:()=>privateMode};
 }
 
 test('P0-80-RF-01 inline Corretor scrubs private model without selection but retains manual import',()=>{
@@ -1016,6 +1019,52 @@ test('P0-80-RF-01 inline Corretor scrubs private model without selection but ret
  assert.equal(reader.state().privateSelection,null);
  assert.equal(reader.state().activeManifest,null);
  assert.equal(node('answerKey').value,'');
+});
+
+
+test('P1-80-FINAL actual activation marks selection private, teardown scrubs all private reader state',()=>{
+ const m=make({counts:[2],types:['A-E']});
+ const {reader,node,privateMode}=realReaderCallbacks();
+ const selected={
+  manifest:m.manifest,manifestHash:m.manifest.contentHash,revision:2,
+  plan:{metadata:{title:'Avaliação particular da professora A'},totalUnits:'100000'}
+ };
+ reader.activatePrivateCorrection(selected);
+ assert.equal(reader.state().privateSelection,selected,'actual correction callback retains verified selection');
+ assert.equal(reader.state().privateModelLoaded,true,'selection is explicitly private');
+ assert.equal(reader.state().activeManifest.contentHash,m.manifest.contentHash);
+ assert.ok(reader.state().template,'immutable private template installed');
+ assert.match(node('scanModelStatus').textContent,/Avaliação particular da professora A/);
+ assert.match(node('preview').innerHTML,/private-model/);
+ assert.equal(node('answerKey').readOnly,true);
+ assert.match(node('answerKey').value,/1 A/);
+ assert.equal(node('scanMaxScore').readOnly,true);
+ assert.equal(node('scanMaxScore').value,'10.00');
+ assert.equal(privateMode(),true);
+ node('scanScore').innerHTML='<strong>Nota privada: 9,25</strong>';
+ node('scanScore').hidden=false;
+ reader.clearPrivateCorrection();
+ assert.equal(reader.state().privateSelection,null);
+ assert.equal(reader.state().privateModelLoaded,false);
+ assert.equal(reader.state().activeManifest,null);
+ assert.equal(reader.state().template,null);
+ assert.equal(reader.state().activeSvg,'');
+ assert.equal(reader.state().exactScanModel,false);
+ assert.equal(node('preview').innerHTML,'');
+ assert.equal(node('scanScore').innerHTML,'','hidden private score must be removed from DOM');
+ assert.equal(node('answerKey').value,'');
+ assert.equal(node('answerKey').readOnly,false);
+ assert.equal(node('scanMaxScore').value,'10');
+ assert.equal(node('scanMaxScore').readOnly,false);
+ assert.equal(privateMode(),false,'manual controls restored');
+ assert.doesNotMatch(node('scanModelStatus').textContent,/Avaliação particular da professora A/);
+ reader.clearPrivateCorrection(); // invalidation is idempotent
+ assert.equal(reader.state().activeManifest,null);
+ reader.applyAssessmentModel({title:'Modelo manual independente',manifest:m.manifest});
+ const manual=reader.state().activeManifest;
+ reader.clearPrivateCorrection();
+ assert.equal(reader.state().activeManifest,manual,'traditional manual reader remains intact');
+ assert.match(node('scanModelStatus').textContent,/Modelo manual independente/);
 });
 
 test('P0-80-RF-01 actual adapter + Corretor callback clears private reader on 401 and 403',async t=>{
