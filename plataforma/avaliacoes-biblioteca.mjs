@@ -102,6 +102,7 @@ export function mountAssessmentLibrary({
  const get=id=>document.getElementById(id);
  let values={},answers={},savedManifest=null,savedSignature=null,ready=false,activeSelection=false,lastScoringSections='';
  let allRows=[],selectedCatalogId='',metadataById=new Map();
+ let authorizedContext='',manualRetryNeeded=false;
  // UI edit clock is separate from controller operation generation. Never
  // invalidate that generation during PUT: the original requestId must survive.
  let editVersion=0,unsaved=false,confirmedEarlierSave=false,pendingSave=null,selectionAttempt=null,openAttempt=null,selectionNeedsConfirmation=false;
@@ -155,6 +156,26 @@ export function mountAssessmentLibrary({
   return item;
  };
  const resetScores=()=>{values={};answers={};savedManifest=null;savedSignature=null;clearSelection();activeSelection=false};
+ function wipePrivateUi(){
+  // No catalog/metadata/answer key may survive revocation or a new principal.
+  allRows=[];metadataById.clear();selectedCatalogId='';
+  resetScores();pendingSave=null;selectionAttempt=null;openAttempt=null;
+  unsaved=false;confirmedEarlierSave=false;selectionNeedsConfirmation=false;
+  manualRetryNeeded=false;scheduledRequestId=null;editVersion++;
+  newEditor();renderScoring();
+  scope.replaceChildren();catalog.replaceChildren();
+ }
+ const contextKey=()=>{
+  const s=controller.view();
+  if(!s.session?.principalId||!s.scope)return '';
+  return JSON.stringify([s.session.principalId,s.session.epoch,
+   s.scope.institutionId,s.scope.classId,s.scope.periodId]);
+ };
+ function syncPrivateContext(){
+  const next=contextKey();
+  if(authorizedContext&&next!==authorizedContext)wipePrivateUi();
+  authorizedContext=next;
+ }
  const getDraft=()=>{
   if(Object.values(values).some(value=>!validScorePrecision(value)))throw new Error('A pontuação de cada bloco deve ter no máximo duas casas decimais.');
   const unchanged=Boolean(savedManifest&&savedSignature===editorSignature());
@@ -196,8 +217,13 @@ export function mountAssessmentLibrary({
    }
    activeSelection=true;activateSelection(selection);
   },
-  confirmBatch:details=>window.confirm('Confirma a avaliação “'+details.title+'”, versão '+details.revision+
-   ', para corrigir este lote? Cartões visualmente iguais podem ter gabaritos diferentes.')
+  onStatus:()=>{
+   syncPrivateContext();
+   // Controller clears session/grants/selection before signalling 401/403.
+   if(!contextKey())render();
+  },
+  confirmBatch:details=>window.confirm('Confirma a avaliação “'+details.title+
+   '” para corrigir este lote? Confira o cartão físico: modelos visualmente iguais podem ter gabaritos diferentes.')
  });
  const connect=btn('Conectar',async()=>{await connectAndList()},'connect');
  const create=btn('Nova avaliação',async()=>{if(!ready)throw Error('Sua biblioteca não está conectada.');controller.newDraft();resetScores();newEditor();editVersion++;unsaved=false;confirmedEarlierSave=false;selectionNeedsConfirmation=false;selectedCatalogId='';renderScoring()},'new');
@@ -275,7 +301,7 @@ export function mountAssessmentLibrary({
   return false;
  };
  const selectForCorrection=btn('Usar na correção',async()=>{
-  if(controller.view().record?.id!==catalog.value)throw Error('Abra a avaliação e confirme a versão antes de corrigir.');
+  if(controller.view().record?.id!==catalog.value)throw Error('Selecione a avaliação e confira os dados antes de corrigir.');
   // Even an unreported structural mutation must not reuse a saved key.
   if(savedSignature&&savedSignature!==editorSignature())markEdited();
   if(unsaved||!savedSignature)throw Error('Salve suas alterações antes de selecionar uma avaliação para correção.');
@@ -420,8 +446,10 @@ export function mountAssessmentLibrary({
   }catch{summary.textContent='Adicione questões e informe os valores e gabaritos.'}
  }
  function render({preserveError=false}={}){
+  syncPrivateContext();
   const s=controller.view(),current=s.record;
   ready=Boolean(s.session&&s.scope);
+  if(!ready&&(allRows.length||metadataById.size||selectedCatalogId))wipePrivateUi();
   const grantItems=s.grants.map((g,i)=>({value:String(i),label:'Turma autorizada '+(i+1)}));
   fillOptions(scope,grantItems);
   const grantIdx=s.grants.findIndex(g=>scopeEquals(g,s.scope));
@@ -452,13 +480,13 @@ export function mountAssessmentLibrary({
     !s.scope?'Selecione uma turma para acessar suas avaliações.':
     s.pending?'Operação pendente. A SALTA tentará recuperar a mesma solicitação ao reconectar.':
     confirmedEarlierSave?'A versão enviada foi salva e conferida; suas alterações posteriores ainda não foram salvas.':
-    selectionNeedsConfirmation?'A avaliação mudou durante a seleção. Reabra a versão e confirme novamente para corrigir.':
+    selectionNeedsConfirmation?'A avaliação mudou durante a seleção. Salve as alterações e confirme novamente para corrigir.':
     unsaved?'Há alterações nesta avaliação que ainda não foram salvas.':
     s.phase==='saved'?'Avaliação salva e conferida no servidor.':
     s.phase==='selected'?'Avaliação confirmada para correção.':
     s.phase==='loading'?'Carregando suas avaliações…':
     s.phase==='unavailable'?'Biblioteca indisponível no momento.':
-    opened?'Avaliação aberta · versão '+current.revision+'.':
+    opened?'Avaliação aberta para edição.':
     'Escolha uma avaliação ou crie uma nova.';
   }
   updateSummary();
