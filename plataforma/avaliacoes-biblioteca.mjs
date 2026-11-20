@@ -24,6 +24,12 @@ const el=(doc,tag,label='',attrs={})=>{
 const option=(doc,value,label)=>el(doc,'option',label,{value});
 const field=(doc,title,control)=>{const node=el(doc,'label',title);node.append(control);return node};
 const scopeEquals=(a,b)=>['institutionId','classId','periodId'].every(k=>a?.[k]===b?.[k]);
+export const assessmentLabel=row=>[row?.title,row?.subject??row?.definition?.subject,
+ row?.className??row?.definition?.manifest?.header?.className]
+ .map(value=>typeof value==='string'?value.trim():'').filter(Boolean).join(' · ');
+export const validScorePrecision=value=>/^\d+(?:[.,]\d{1,2})?$/.test(String(value||'').trim());
+const scoreForInput=units=>formatExact(BigInt(units),POINT_SCALE,4).replace(',','.')
+ .replace(/(\.\d*?)0+$/,'$1').replace(/\.$/,'');
 
 export function assertLibraryModel({manifest,editor,nominalFields={}}){
  if(!manifest)throw new Error('Gere primeiro um cartão válido.');
@@ -95,6 +101,7 @@ export function mountAssessmentLibrary({
  const client=createPrivateAssessmentClient({enabled:true,baseUrl:LIBRARY_GATEWAY,fetchFn});
  const get=id=>document.getElementById(id);
  let values={},answers={},savedManifest=null,savedSignature=null,ready=false,activeSelection=false,lastScoringSections='';
+ let allRows=[],selectedCatalogId='',metadataById=new Map();
  // UI edit clock is separate from controller operation generation. Never
  // invalidate that generation during PUT: the original requestId must survive.
  let editVersion=0,unsaved=false,confirmedEarlierSave=false,pendingSave=null,selectionAttempt=null,openAttempt=null,selectionNeedsConfirmation=false;
@@ -126,8 +133,9 @@ export function mountAssessmentLibrary({
  const actions=el(document,'div','',{class:'omr-actions library-actions'});
  let operationBusy=false;
  const aux=el(document,'div','',{class:'omr-actions library-aux'});
- const btn=(label,callback)=>{
+ const btn=(label,callback,icon='action')=>{
   const item=el(document,'button',label,{type:'button'});
+  item.setAttribute('data-action-icon',icon);
   item.addEventListener('click',async()=>{
    if(item.disabled||operationBusy)return;
    operationBusy=true;item.disabled=true;
@@ -143,6 +151,7 @@ export function mountAssessmentLibrary({
  };
  const resetScores=()=>{values={};answers={};savedManifest=null;savedSignature=null;clearSelection();activeSelection=false};
  const getDraft=()=>{
+  if(Object.values(values).some(value=>!validScorePrecision(value)))throw new Error('A pontuação de cada bloco deve ter no máximo duas casas decimais.');
   const unchanged=Boolean(savedManifest&&savedSignature===editorSignature());
   if(!unchanged&&!prepareModel())throw new Error('Não foi possível montar o cartão. Revise a composição.');
   const m=unchanged?savedManifest:getModel(),editor=snapshotEditor();
@@ -160,10 +169,12 @@ export function mountAssessmentLibrary({
   }
   const restored=editorFromPrivateRecord(record,snapshotEditor());
   restoreEditor(restored.editor);
-  values=Object.fromEntries(restored.plan.blocks.map(b=>[b.sectionId,formatExact(BigInt(b.valueUnits),POINT_SCALE,4).replace(',','.')]));
+  values=Object.fromEntries(restored.plan.blocks.map(b=>[b.sectionId,scoreForInput(b.valueUnits)]));
   answers=Object.fromEntries(restored.plan.blocks.flatMap(b=>b.questions.map(q=>[q.questionId,q.correct])));
   // The exact immutable manifest is selected; editing creates another revision.
   savedManifest=restored.manifest;
+  metadataById.set(record.id,{subject:record.definition.subject||'',className:String(record.definition.manifest?.header?.className||'')});
+  selectedCatalogId=record.id;
   savedSignature=editorSignature();
   applyExactModel({manifest:restored.manifest,title:record.definition.title,revision:record.revision});
   clearSelection();activeSelection=false;
@@ -183,8 +194,8 @@ export function mountAssessmentLibrary({
   confirmBatch:details=>window.confirm('Confirma a avaliação “'+details.title+'”, versão '+details.revision+
    ', para corrigir este lote? Cartões visualmente iguais podem ter gabaritos diferentes.')
  });
- const connect=btn('Conectar',async()=>{await connectAndList()});
- const create=btn('Nova avaliação',async()=>{if(!ready)throw Error('Sua biblioteca não está conectada.');controller.newDraft();resetScores();newEditor();editVersion++;unsaved=false;confirmedEarlierSave=false;selectionNeedsConfirmation=false;renderScoring()});
+ const connect=btn('Conectar',async()=>{await connectAndList()},'connect');
+ const create=btn('Nova avaliação',async()=>{if(!ready)throw Error('Sua biblioteca não está conectada.');controller.newDraft();resetScores();newEditor();editVersion++;unsaved=false;confirmedEarlierSave=false;selectionNeedsConfirmation=false;selectedCatalogId='';renderScoring()},'new');
  const reconcileSaved=async(result,attempt)=>{
   if(!result?.record)return false;
   // A verified immutable revision is real, even if the teacher subsequently
@@ -220,7 +231,7 @@ export function mountAssessmentLibrary({
   if(pending?.requestId)pendingSave={...attempt,requestId:pending.requestId};
   const result=await saving;
   if(result)await reconcileSaved(result,attempt);
- });
+ },'save');
  const open=btn('Abrir avaliação',async()=>{
   if(!catalog.value)throw Error('Escolha uma avaliação.');
   const id=catalog.value;
@@ -235,7 +246,7 @@ export function mountAssessmentLibrary({
   await controller.duplicate();
   await controller.list();
   status.textContent='Cópia criada como avaliação independente.';
- });
+ },'duplicate');
  const resolveStaleSelection=()=>{
   if(selectionAttempt&&!sameEdit(selectionAttempt)){
    flagUnnoticedEdit(selectionAttempt);
@@ -262,9 +273,9 @@ export function mountAssessmentLibrary({
    if(!controller.view().pending)selectionAttempt=null;
   }
  });
- const prev=btn('Anterior',()=>controller.previousPage());
- const next=btn('Próxima',()=>controller.nextPage());
- const refresh=btn('Atualizar',()=>controller.list());
+ const prev=btn('Anterior',()=>controller.previousPage(),'previous');
+ const next=btn('Próxima',()=>controller.nextPage(),'next');
+ const refresh=btn('Atualizar',()=>loadCatalog(),'refresh');
  const retry=btn('Conferir salvamento',async()=>{
   const pending=controller.view().pending;
   if(!pending)throw Error('Não existe operação pendente.');
@@ -283,14 +294,19 @@ export function mountAssessmentLibrary({
   markEdited();paste.value='';
   renderScoring();
   status.textContent='Gabarito preenchido. Confira as alternativas.';
- });
+ },'key');
  const top=el(document,'div','',{class:'library-toolbar'});
  const choose=el(document,'div','',{class:'library-selectors'});
  const versionLabel=field(document,'Versão',revisions);
+ versionLabel.hidden=true;
  const scopeWrap=field(document,'Turma e período',scope);
  const catalogWrap=field(document,'Avaliação',catalog);
  choose.append(scopeWrap,catalogWrap,versionLabel);
  actions.append(create,save,open,duplicate,selectForCorrection);
+ const deletion=el(document,'button','Excluir avaliação',{type:'button'});
+ deletion.setAttribute('data-action-icon','delete');
+ deletion.hidden=true;deletion.disabled=true;actions.append(deletion);
+ open.hidden=true;refresh.hidden=true;prev.hidden=true;next.hidden=true;retry.hidden=true;
  aux.append(connect,refresh,prev,next,retry);
  top.append(title,choose,actions,aux,status,summary);
  const scoring=el(document,'details','',{class:'library-answers'});
@@ -318,10 +334,19 @@ export function mountAssessmentLibrary({
   for(const id of Object.keys(answers))if(!existing.has(id))delete answers[id];
   scoreBox.replaceChildren();choicesBox.replaceChildren();
   for(const section of sections){
-   const val=el(document,'input','',{type:'text',placeholder:'Ex.: 10',value:values[section.sectionId]??(sections.length===1?'10':'')});
+   const val=el(document,'input','',{type:'text',placeholder:'Ex.: 10,00',value:values[section.sectionId]??(sections.length===1?'10':'')});
+   val.setAttribute('inputmode','decimal');
    if(values[section.sectionId]===undefined&&sections.length===1)values[section.sectionId]='10';
-   val.oninput=()=>{values[section.sectionId]=val.value;markEdited();updateSummary()};
-   scoreBox.append(field(document,section.label+' · '+section.items.length+' questão(ões)',val));
+   val.oninput=()=>{
+    const input=String(val.value);
+    if(input&&!/^\d*(?:[.,]\d{0,2})?$/.test(input)){
+     val.value=values[section.sectionId]??'';
+     status.textContent='Use no máximo duas casas decimais na pontuação.';
+     status.dataset.state='error';return;
+    }
+    values[section.sectionId]=input;markEdited();updateSummary();
+   };
+   scoreBox.append(field(document,section.label+' · '+section.items.length+' questão(ões) · até 2 decimais',val));
   }
   for(const q of sections.flatMap(s=>s.items)){
    const select=el(document,'select','',{'aria-label':'Gabarito da questão '+q.number});
@@ -348,9 +373,10 @@ export function mountAssessmentLibrary({
   const grantIdx=s.grants.findIndex(g=>scopeEquals(g,s.scope));
   if(grantIdx>=0)scope.value=String(grantIdx);
   scopeWrap.hidden=s.grants.length<=1;
-  const rows=s.rows.map(x=>({value:x.id,label:x.title+' · '+x.state}));
+  const rows=(allRows.length?allRows:s.rows).map(x=>({value:x.id,label:assessmentLabel({...x,...metadataById.get(x.id)})||'Avaliação sem título'}));
   fillOptions(catalog,[{value:'',label:'Selecione uma avaliação'},...rows]);
-  if(current&&rows.some(x=>x.value===current.id))catalog.value=current.id;
+  if(current&&rows.some(x=>x.value===current.id))selectedCatalogId=current.id;
+  if(rows.some(x=>x.value===selectedCatalogId))catalog.value=selectedCatalogId;
   fillOptions(revisions,[{value:'',label:'Atual'},...s.revisions.map(x=>({value:String(x.revision),label:'Versão '+x.revision}))]);
   const opened=Boolean(current&&s.editorMode==='opened');
   scope.disabled=operationBusy||Boolean(s.pending);
@@ -370,7 +396,7 @@ export function mountAssessmentLibrary({
    status.dataset.state=s.phase;
    status.textContent=!s.session?'Não foi possível conectar a biblioteca. Se já entrou na SALTA, tente novamente.':
     !s.scope?'Selecione uma turma para acessar suas avaliações.':
-    s.pending?'Operação anterior sem confirmação final. Confira o salvamento antes de iniciar outra.':
+    s.pending?'Operação pendente. A SALTA tentará recuperar a mesma solicitação ao reconectar.':
     confirmedEarlierSave?'A versão enviada foi salva e conferida; suas alterações posteriores ainda não foram salvas.':
     selectionNeedsConfirmation?'A avaliação mudou durante a seleção. Reabra a versão e confirme novamente para corrigir.':
     unsaved?'Há alterações nesta avaliação que ainda não foram salvas.':
