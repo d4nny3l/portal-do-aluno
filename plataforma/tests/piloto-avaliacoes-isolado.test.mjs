@@ -174,3 +174,87 @@ test('original private UI can initialize and enumerate synthetic scope without w
  assert.equal(ui.controls.more.disabled,true);
  assert.ok(called.every(x=>x.method==='GET'&&x.url.startsWith(PRIVATE_GATEWAY_URL+'/')));
 });
+
+test('private UI/controller/client: synthetic draft save, issued revision, history, pinned selection, duplicate (mock only)',async()=>{
+ const scope={institutionId:'salta-hml-20261119',classId:'turma-sintetica-ab',periodId:'2026-11-piloto'};
+ const store=new Map(),selectedById=new Map(),operations=[];let lastSelection=null,openCopy=null;
+ const latest=id=>store.get(id)?.at(-1);
+ const fetchFn=async(url,opts)=>{
+  const route=new URL(url).pathname.slice('/assessments/v1'.length);
+  operations.push({method:opts.method,route,credentials:opts.credentials,cache:opts.cache});
+  if(opts.method==='GET'&&route==='/session')return Response.json({authenticated:true,principalId:'teacher-synthetic',epoch:1});
+  if(opts.method==='GET'&&route==='/grants')return Response.json({grants:[scope]});
+  if(opts.method==='GET'&&route.startsWith('/assessments?'))return Response.json({assessments:[],nextCursor:null});
+  if(opts.method==='PUT'&&/^\/assessments\/[\w-]+$/.test(route)){
+   const id=route.split('/')[2],payload=JSON.parse(opts.body),list=store.get(id)||[];
+   assert.equal(payload.expectedRevision,list.length);
+   assert.equal(payload.institutionId,scope.institutionId);
+   assert.equal(payload.classId,scope.classId);
+   assert.equal(payload.periodId,scope.periodId);
+   const record={id,revision:list.length+1,definition:payload.definition,
+    manifestHash:payload.definition.manifest.contentHash,totalUnits:'100000',scoreScale:10000,
+    status:payload.status,archived:false,...scope};
+   store.set(id,[...list,record]);
+   return Response.json({ok:true,id,revision:record.revision,manifestHash:record.manifestHash},{status:201});
+  }
+  const getRevision=route.match(/^\/assessments\/([\w-]+)\/revisions\/(\d+)$/);
+  if(opts.method==='GET'&&getRevision){
+   const record=store.get(getRevision[1])?.find(x=>x.revision===Number(getRevision[2]));
+   return Response.json({record},{status:record?200:404});
+  }
+  const history=route.match(/^\/assessments\/([\w-]+)\/revisions$/);
+  if(opts.method==='GET'&&history)return Response.json({revisions:(store.get(history[1])||[]).map(x=>({revision:x.revision,status:x.status}))});
+  const dupe=route.match(/^\/assessments\/([\w-]+)\/duplicate$/);
+  if(opts.method==='POST'&&dupe){
+   const p=JSON.parse(opts.body),original=store.get(dupe[1])?.find(x=>x.revision===p.sourceRevision);
+   assert.ok(original);const copy={...original,id:p.newId,revision:1,status:'draft'};
+   store.set(p.newId,[copy]);
+   return Response.json({ok:true,id:p.newId,revision:1,manifestHash:copy.manifestHash});
+  }
+  if(opts.method==='POST'&&route==='/selections'){
+   const p=JSON.parse(opts.body),record=store.get(p.assessmentId)?.find(x=>x.revision===p.revision);
+   assert.equal(record.status,'issued');selectedById.set(p.selectionId,record);
+   return Response.json({ok:true,id:record.id,revision:record.revision,
+    selectionId:p.selectionId,manifestHash:record.manifestHash});
+  }
+  const selected=route.match(/^\/selections\/([\w-]+)$/);
+  if(opts.method==='GET'&&selected)return Response.json({selectionId:selected[1],record:selectedById.get(selected[1])});
+  throw Error('unexpected mock request '+opts.method+' '+route);
+ };
+ const host=new Node('section');
+ const doc={getElementById:id=>id==='privateAssessmentsHost'?host:null,createElement:tag=>new Node(tag)};
+ const client=createPrivateAssessmentClient({enabled:true,baseUrl:PRIVATE_GATEWAY_URL,fetchFn});
+ const ui=installPrivateAssessmentUI({document:doc,client,
+  getDraft:()=>preparePilotDraft({title:'Prova A sintética',date:'2026-11-20',rawKey:fakeKey('A')}),
+  applyRecord:record=>{openCopy=record;},
+  onSelection:s=>{lastSelection=s;},
+  confirmBatch:()=>true
+ });
+ await ui.controls.connect.onclick();ui.controls.scope.value='0';
+ await ui.controls.chooseScope.onclick();
+ await ui.controls.saveDraft.onclick();
+ const initial=ui.controller.view().record;
+ assert.ok(initial&&initial.revision===1&&initial.status==='draft');
+ assert.equal(store.get(initial.id).length,1);
+ await ui.controls.issue.onclick();
+ const issued=ui.controller.view().record;
+ assert.equal(issued.id,initial.id);assert.equal(issued.revision,2);
+ assert.equal(issued.status,'issued');
+ assert.equal(store.get(initial.id)[0].status,'draft','history cannot be overwritten');
+ await ui.controller.history(issued.id);
+ assert.deepEqual(ui.controller.view().revisions.map(r=>r.revision),[1,2]);
+ await ui.controls.select.onclick();
+ assert.equal(lastSelection.assessmentId,initial.id);
+ assert.equal(lastSelection.revision,2);
+ assert.equal(lastSelection.manifestHash,issued.manifestHash);
+ assert.equal(lastSelection.plan.totalUnits,'100000');
+ await ui.controls.duplicate.onclick();
+ const copy=ui.controller.view().record;
+ assert.notEqual(copy.id,initial.id);assert.equal(copy.revision,1);
+ assert.equal(copy.status,'draft');assert.equal(openCopy.id,copy.id);
+ assert.equal(store.get(initial.id).length,2);
+ assert.equal(store.get(copy.id).length,1);
+ assert.ok(operations.some(o=>o.method==='PUT'));
+ assert.ok(operations.some(o=>o.method==='POST'&&o.route==='/selections'));
+ assert.ok(operations.every(o=>o.credentials==='include'&&o.cache==='no-store'));
+});
