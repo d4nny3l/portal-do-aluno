@@ -280,3 +280,167 @@ test('actual Create-tab UI mounts and saves/opens/selects/duplicates without a s
  assert.equal(top.children[4].textContent.includes(saved.id),false,'status hides internal identifiers');
  assert.equal(nominalCleared,0);
 });
+
+const deferred=()=>{let resolve,reject;const promise=new Promise((yes,no)=>{resolve=yes;reject=no});return{promise,resolve,reject}};
+const tick=()=>new Promise(resolve=>setImmediate(resolve));
+async function mountedRaceFixture({onPut=async()=>{},onSelection=async()=>{},onOpen=async()=>{}}={}){
+ const m=make({counts:[2],types:['A-E']});m.values={'block-1':'10'};
+ const grants={institutionId:'salta-hml-20261119',classId:'turma-sintetica-ab',periodId:'2026-11-piloto'};
+ const records=new Map(),selections=new Map(),requestById=new Map(),writeCalls=[];let currentEditor=m.editor,selected=null,nominalCleared=0,appliedExact=null,modelBuilds=0;
+ const fetchFn=async(url,init)=>{
+  const route=new URL(url).pathname.slice('/assessments/v1'.length),q=new URL(url).searchParams;
+  if(route==='/session'&&init.method==='GET')return Response.json({authenticated:true,principalId:'teacher-a',epoch:1});
+  if(route==='/grants'&&init.method==='GET')return Response.json({grants:[grants]});
+  if(route==='/assessments'&&init.method==='GET'){
+   assert.equal(q.get('classId'),grants.classId);
+   const assessments=[...records.values()].map(r=>({id:r.id,title:r.definition.title,revision:r.revision,state:r.status,...grants}));
+   return Response.json({assessments,nextCursor:null});
+  }
+  if(route.startsWith('/assessments/')&&init.method==='PUT'){
+   const body=JSON.parse(init.body),id=route.split('/')[2],entry=records.get(id),revision=(entry?.revision||0)+1;
+   writeCalls.push(structuredClone(body));
+   if(requestById.has(body.requestId)){const prior=requestById.get(body.requestId);return Response.json({ok:true,id:prior.id,revision:prior.revision,manifestHash:prior.manifestHash});}
+   assert.equal(body.expectedRevision,revision-1);
+   const record={id,revision,definition:body.definition,manifestHash:body.definition.manifest.contentHash,
+    scoreScale:10000,totalUnits:'100000',status:body.status,archived:false,...grants};
+   records.set(id,record);requestById.set(body.requestId,record);
+   await onPut({body,record});return Response.json({ok:true,id,revision,manifestHash:record.manifestHash});
+  }
+  const current=route.match(/^\/assessments\/([^/]+)$/);
+  if(current&&init.method==='GET'){await onOpen();return Response.json({record:records.get(current[1])});}
+  const open=route.match(/^\/assessments\/([^/]+)\/revisions\/(\d+)$/);
+  if(open&&init.method==='GET')return Response.json({record:records.get(open[1])});
+  const history=route.match(/^\/assessments\/([^/]+)\/revisions$/);
+  if(history&&init.method==='GET')return Response.json({revisions:[{revision:records.get(history[1]).revision,status:records.get(history[1]).status}]});
+  const duplicate=route.match(/^\/assessments\/([^/]+)\/duplicate$/);
+  if(duplicate&&init.method==='POST'){
+   const p=JSON.parse(init.body),source=records.get(duplicate[1]);
+   const record={...source,id:p.newId,revision:1,status:'draft'};records.set(p.newId,record);
+   return Response.json({ok:true,id:p.newId,revision:1,manifestHash:record.manifestHash});
+  }
+  if(route==='/selections'&&init.method==='POST'){
+   const p=JSON.parse(init.body),record=records.get(p.assessmentId);
+   selections.set(p.selectionId,record);
+   await onSelection();return Response.json({ok:true,id:record.id,revision:record.revision,selectionId:p.selectionId,manifestHash:record.manifestHash});
+  }
+  const selection=route.match(/^\/selections\/([^/]+)$/);
+  if(selection&&init.method==='GET')return Response.json({selectionId:selection[1],record:selections.get(selection[1])});
+  throw Error('Unexpected route '+init.method+' '+route);
+ };
+ const host=new SurfaceNode('section'),doc={getElementById:id=>id==='savedAssessments'?host:null,
+  createElement:tag=>new SurfaceNode(tag)};
+ const mounted=mountAssessmentLibrary({document:doc,window:{confirm:()=>true},host,fetchFn,
+  getSections:()=>m.sections,getMetadata:()=>({title:m.editor.fields.assessmentTitle,subject:m.editor.fields.assessmentSubject,
+   kind:m.editor.fields.assessmentKind,date:m.editor.fields.assessmentDate,className:m.editor.fields.assessmentClass}),
+  getModel:()=>m.manifest,prepareModel:()=>{modelBuilds++;return true},snapshotEditor:()=>currentEditor,
+  restoreEditor:e=>{currentEditor=e},applyExactModel:bundle=>{appliedExact=bundle.manifest.contentHash},
+  nominalFields:()=>({}),newEditor:()=>{nominalCleared++},
+  activateSelection:s=>{selected=s},clearSelection:()=>{selected=null}
+ });
+
+ await tick();
+ const top=host.children[0],scoring=host.children[1],actions=top.children[2];
+ const button=label=>actions.children.find(item=>item.textContent===label);
+ const fill=async()=>{
+  const area=scoring.children[2].children[0];area.value='1 A\n2 B';
+  await scoring.children[3].handlers.click();
+ };
+ function editTitle(title){
+  m.editor.fields.assessmentTitle=title;
+  m.editor.header.title=title;
+  // The real editor rebuilds the model on title edits; reproduce that.
+  const tm=createTemplate(m.sections,{layoutVersion:'v2',revision:8,title,
+   schoolName:m.editor.header.institution,identityMode:'seven-digit-code',
+   metadata:{...m.editor.header,title}});
+  m.manifest=createCardManifest(tm,m.editor.header,{sectionFrameStyle:'content'});
+  mounted.onEditorChanged();
+ }
+ return {mounted,m,host,top,scoring,records,selections,writeCalls,button,fill,editTitle,
+  getSelected:()=>selected,getEditor:()=>currentEditor,getPending:()=>mounted.controller.view().pending};
+}
+
+test('P0 race SELECT: delayed issued selection cannot revive old answer key after professor edit',async()=>{
+ const hold=deferred(),entered=deferred();
+ const f=await mountedRaceFixture({onSelection:async()=>{entered.resolve();await hold.promise}});
+ await f.fill();await f.button('Salvar avaliação').handlers.click();
+ const initial=f.mounted.controller.view().record;
+ assert.equal(initial.revision,1);
+ const selecting=f.button('Usar na correção').handlers.click();
+ await entered.promise;
+ f.editTitle('Versão B — posterior à confirmação');
+ assert.equal(f.getSelected(),null);
+ hold.resolve();
+ await selecting;
+ assert.equal(f.getSelected(),null,'stale selection must never activate private key');
+ assert.equal(f.mounted.controller.view().record.id,initial.id,'preserve writable record for editing B');
+ assert.match(f.top.children[4].textContent,/não foram salvas|confirme novamente/);
+ await f.button('Usar na correção').handlers.click();
+ assert.equal(f.getSelected(),null,'unsaved B cannot silently select old issued A');
+ await f.button('Salvar avaliação').handlers.click();
+ assert.equal(f.mounted.controller.view().record.revision,2);
+ assert.equal(f.records.get(initial.id).definition.title,'Versão B — posterior à confirmação');
+ await f.button('Usar na correção').handlers.click();
+ assert.equal(f.getSelected()?.revision,2,'only a fresh teacher confirmation can activate revision 2');
+});
+
+test('P0 race SAVE: delayed receipt confirms frozen A while edited B remains unsaved and intact',async()=>{
+ const hold=deferred(),entered=deferred();let calls=0;
+ const f=await mountedRaceFixture({onPut:async()=>{if(++calls===1){entered.resolve();await hold.promise}}});
+ await f.fill();
+ const writing=f.button('Salvar avaliação').handlers.click();
+ await entered.promise;
+ const pending=f.getPending();assert.ok(pending?.requestId);
+ f.editTitle('Título posterior B');
+ hold.resolve();
+ await writing;
+ const result=f.mounted.controller.view().record;
+ assert.equal(result.revision,1);
+ assert.equal(result.definition.title,'Avaliação de Matemática');
+ assert.equal(f.m.editor.fields.assessmentTitle,'Título posterior B','local edit B must remain visible');
+ assert.match(f.top.children[4].textContent,/versão enviada foi salva.*alterações posteriores/i);
+ assert.equal(f.getPending(),null,'receipt and verifying GET settled original request');
+ await f.button('Salvar avaliação').handlers.click();
+ assert.equal(f.mounted.controller.view().record.revision,2);
+ assert.equal(f.mounted.controller.view().record.definition.title,'Título posterior B');
+ assert.notEqual(f.writeCalls[0].requestId,f.writeCalls[1].requestId,'new teacher save is a new operation');
+});
+
+test('P0 retry: edited B cannot change original requestId/body/CAS while lost A receipt is retried',async()=>{
+ const hold=deferred(),entered=deferred();let calls=0;
+ const f=await mountedRaceFixture({onPut:async()=>{if(++calls===1){entered.resolve();await hold.promise}}});
+ await f.fill();
+ const writing=f.button('Salvar avaliação').handlers.click();
+ await entered.promise;
+ const id=f.getPending()?.requestId;assert.ok(id);
+ f.editTitle('Outra edição B');
+ hold.reject(new Error('synthetic lost acknowledgement'));
+ await writing;
+ assert.equal(f.getPending()?.requestId,id,'pending operation retains its original requestId');
+ assert.equal(f.mounted.controller.view().record,null,'no false save before GET confirmation');
+ await f.button('Conferir salvamento').handlers.click();
+ assert.equal(f.getPending(),null);
+ assert.equal(f.writeCalls.length,2);
+ assert.equal(f.writeCalls[0].requestId,id);
+ assert.deepEqual(f.writeCalls[0],f.writeCalls[1],'same requestId, immutable body and CAS on retry');
+ const saved=f.mounted.controller.view().record;
+ assert.equal(saved.revision,1,'idempotent replay cannot create revision 2');
+ assert.equal(saved.definition.title,'Avaliação de Matemática');
+ assert.equal(f.m.editor.fields.assessmentTitle,'Outra edição B');
+ assert.match(f.top.children[4].textContent,/alterações posteriores/i);
+});
+
+test('P0 race OPEN: an old GET cannot overwrite edits made while assessment is loading',async()=>{
+ const entered=deferred(),hold=deferred();
+ const f=await mountedRaceFixture({onOpen:async()=>{entered.resolve();await hold.promise}});
+ await f.fill();await f.button('Salvar avaliação').handlers.click();
+ const saved=f.mounted.controller.view().record;
+ const opening=f.button('Abrir avaliação').handlers.click();
+ await entered.promise;
+ f.editTitle('Edição local durante abertura');
+ hold.resolve();await opening;
+ assert.equal(f.m.editor.fields.assessmentTitle,'Edição local durante abertura');
+ assert.equal(f.getEditor().fields.assessmentTitle,'Edição local durante abertura');
+ assert.equal(f.mounted.controller.view().record,null,'stale open cannot install an older writable record');
+ assert.match(f.top.children[4].textContent,/editada durante a abertura/i);
+ assert.equal(f.records.get(saved.id).definition.title,'Avaliação de Matemática');
+});
