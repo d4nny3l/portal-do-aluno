@@ -179,6 +179,9 @@ export function mountAssessmentLibrary({
   authorizedContext=next;
  }
  const getDraft=()=>{
+  // The default new-draft scope may be saved without clicking "Nova avaliação".
+  // Once prepared for private persistence, its editor must be scrubbed on 401/403.
+  privateEditorLoaded=true;
   if(Object.values(values).some(value=>!validScorePrecision(value)))throw new Error('A pontuação de cada bloco deve ter no máximo duas casas decimais.');
   const unchanged=Boolean(savedManifest&&savedSignature===editorSignature());
   if(!unchanged&&!prepareModel())throw new Error('Não foi possível montar o cartão. Revise a composição.');
