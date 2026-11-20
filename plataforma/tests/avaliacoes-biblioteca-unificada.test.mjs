@@ -270,6 +270,8 @@ test('actual Create-tab UI mounts and saves/opens/selects/duplicates without a s
  await find('Usar na correção').handlers.click();
  assert.equal(selected.assessmentId,saved.id);
  assert.equal(selected.plan.blocks[0].questions.length,2);
+ await find('Salvar avaliação').handlers.click();
+ assert.equal(selected,null,'newly issued revision must invalidate previous correction-lot selection');
  await find('Duplicar avaliação').handlers.click();
  const copied=mounted.controller.view().record;
  assert.notEqual(copied.id,saved.id);
