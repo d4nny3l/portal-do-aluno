@@ -34,6 +34,7 @@ test('synthetic A/B uses original generator, 60 A-E, 30+30, 6+4 and native 210x2
  assert.equal(syntheticSections().length,2);
  assert.deepEqual(sections.map(s=>s.items.length),[30,30]);
  assert.equal(manifest.contentHash.length,16);
+ assert.equal(manifest.contentHash,'a139057ba70b83fd','must match the validated A/B reference ZIP exactly');
  assert.equal(manifest.questionCount,60);
  const reconstructed=importCardManifest(manifest);
  assert.equal(reconstructed.manifest.contentHash,manifest.contentHash);
