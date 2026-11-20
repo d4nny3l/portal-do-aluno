@@ -103,7 +103,16 @@ export function mountAssessmentLibrary({
   if(selectionAttempt)selectionNeedsConfirmation=true;
   if(activeSelection){activeSelection=false;clearSelection();}
  };
- const editorSignature=()=>JSON.stringify(snapshotEditor());
+ // Snapshot both the real section model and all editable academic inputs.
+ // Button-driven section changes do not necessarily emit input/change events.
+ const editorSignature=()=>JSON.stringify({
+  editor:snapshotEditor(),sections:getSections(),metadata:getMetadata(),values,answers
+ });
+ const editSnapshot=()=>({editVersion,signature:editorSignature()});
+ const sameEdit=attempt=>Boolean(attempt&&attempt.editVersion===editVersion&&attempt.signature===editorSignature());
+ const flagUnnoticedEdit=attempt=>{
+  if(attempt&&attempt.editVersion===editVersion&&attempt.signature!==editorSignature())markEdited();
+ };
  const status=el(document,'p','Conectando à sua conta SALTA…',{role:'status','aria-live':'polite'});
  const title=el(document,'h3','Minhas avaliações');
  const scopeLabel=el(document,'span','Turma e período');
@@ -145,8 +154,10 @@ export function mountAssessmentLibrary({
   return {plan:payload.plan,manifest:payload.manifest};
  };
  function applyRecord(record){
-  if(openAttempt&&openAttempt.editVersion!==editVersion)
+  if(openAttempt&&!sameEdit(openAttempt)){
+   flagUnnoticedEdit(openAttempt);
    throw new Error('A avaliação foi editada durante a abertura. Suas alterações foram preservadas; abra novamente se desejar.');
+  }
   const restored=editorFromPrivateRecord(record,snapshotEditor());
   restoreEditor(restored.editor);
   values=Object.fromEntries(restored.plan.blocks.map(b=>[b.sectionId,formatExact(BigInt(b.valueUnits),POINT_SCALE,4).replace(',','.')]));
@@ -163,7 +174,8 @@ export function mountAssessmentLibrary({
   client,getDraft,applyRecord,
   onSelection:selection=>{
    if(!selection){activeSelection=false;clearSelection();return;}
-   if(!selectionAttempt||selectionAttempt.editVersion!==editVersion){
+   if(!sameEdit(selectionAttempt)){
+    flagUnnoticedEdit(selectionAttempt);
     activeSelection=false;selectionNeedsConfirmation=true;clearSelection();return;
    }
    activeSelection=true;activateSelection(selection);
@@ -173,17 +185,18 @@ export function mountAssessmentLibrary({
  });
  const connect=btn('Conectar',async()=>{await connectAndList()});
  const create=btn('Nova avaliação',async()=>{if(!ready)throw Error('Sua biblioteca não está conectada.');controller.newDraft();resetScores();newEditor();editVersion++;unsaved=false;confirmedEarlierSave=false;selectionNeedsConfirmation=false;renderScoring()});
- const reconcileSaved=async(result,version)=>{
+ const reconcileSaved=async(result,attempt)=>{
   if(!result?.record)return false;
   // A verified immutable revision is real, even if the teacher subsequently
   // changed the editor. Preserve this result and its original requestId.
   pendingSave=null;
   const sync=()=>{
-   if(editVersion===version){
+   if(sameEdit(attempt)){
     unsaved=false;confirmedEarlierSave=false;selectionNeedsConfirmation=false;
     savedManifest=result.record.definition.manifest;
     savedSignature=editorSignature();
    }else{
+    flagUnnoticedEdit(attempt);
     unsaved=true;confirmedEarlierSave=true;savedManifest=null;savedSignature=null;
    }
   };
@@ -199,20 +212,22 @@ export function mountAssessmentLibrary({
  const save=btn('Salvar avaliação',async()=>{
   if(!ready)throw Error('Conecte sua biblioteca antes de salvar.');
   if(activeSelection){clearSelection();activeSelection=false;}
-  const version=editVersion;
+  // getDraft() may normalize the model synchronously; capture after the
+  // request payload is frozen, before the first possible user edit.
   const saving=controller.save('issued');
+  const attempt=editSnapshot();
   const pending=controller.view().pending;
-  if(pending?.requestId)pendingSave={version,requestId:pending.requestId};
+  if(pending?.requestId)pendingSave={...attempt,requestId:pending.requestId};
   const result=await saving;
-  if(result)await reconcileSaved(result,version);
+  if(result)await reconcileSaved(result,attempt);
  });
  const open=btn('Abrir avaliação',async()=>{
   if(!catalog.value)throw Error('Escolha uma avaliação.');
   const id=catalog.value;
-  openAttempt={editVersion};
+  openAttempt=editSnapshot();
   try{
    const record=await controller.open(id,revisions.value?Number(revisions.value):null);
-   if(record&&openAttempt.editVersion===editVersion)await controller.history(id);
+   if(record&&sameEdit(openAttempt))await controller.history(id);
   }finally{openAttempt=null;}
  });
  const duplicate=btn('Duplicar avaliação',async()=>{
@@ -222,7 +237,8 @@ export function mountAssessmentLibrary({
   status.textContent='Cópia criada como avaliação independente.';
  });
  const resolveStaleSelection=()=>{
-  if(selectionAttempt&&selectionAttempt.editVersion!==editVersion){
+  if(selectionAttempt&&!sameEdit(selectionAttempt)){
+   flagUnnoticedEdit(selectionAttempt);
    selectionNeedsConfirmation=true;
    // An old selection may be registered server-side, but is not activated in
    // the Corretor. Keep the opened record so the later local edits can still
@@ -234,9 +250,11 @@ export function mountAssessmentLibrary({
  };
  const selectForCorrection=btn('Usar na correção',async()=>{
   if(controller.view().record?.id!==catalog.value)throw Error('Abra a avaliação e confirme a versão antes de corrigir.');
-  if(unsaved)throw Error('Salve suas alterações antes de selecionar uma avaliação para correção.');
+  // Even an unreported structural mutation must not reuse a saved key.
+  if(savedSignature&&savedSignature!==editorSignature())markEdited();
+  if(unsaved||!savedSignature)throw Error('Salve suas alterações antes de selecionar uma avaliação para correção.');
   selectionNeedsConfirmation=false;
-  selectionAttempt={editVersion};
+  selectionAttempt=editSnapshot();
   try{
    const result=await controller.selectIssued();
    if(result)resolveStaleSelection();
@@ -254,7 +272,7 @@ export function mountAssessmentLibrary({
   const result=await controller.retry();
   if(!result)return;
   if(pending.method==='PUT'&&pendingSave?.requestId===pending.requestId)
-   await reconcileSaved(result,pendingSave.version);
+   await reconcileSaved(result,pendingSave);
   else if(pending.method==='POST'&&pending.path==='/selections'){
    resolveStaleSelection();
    if(!controller.view().pending)selectionAttempt=null;
@@ -381,6 +399,17 @@ export function mountAssessmentLibrary({
    'A operação anterior continua pendente; alterações recentes ainda não foram salvas.':
    'Alterações ainda não salvas nesta avaliação.';
  }
+ // Capture the editor state before native onclick handlers mutate sections.
+ // Inspect after the click dispatch, including Add/Remove/Move/Restore.
+ // Do not intercept library actions, and do not change Corrigir cartões DOM.
+ const createPanel=get('criar');
+ createPanel?.addEventListener('click',event=>{
+  if(event.target?.closest?.('#savedAssessments'))return;
+  const before=editorSignature(),version=editVersion;
+  queueMicrotask(()=>{
+   if(version===editVersion&&before!==editorSignature())onEditorChanged();
+  });
+ },true);
  renderScoring();
  render();
  void connectAndList().catch(()=>{ready=false;render()});
