@@ -295,10 +295,11 @@ export function mountAssessmentLibrary({
  function scheduleRecovery(){
   const pending=controller.view().pending;
   if(!pending||!window.setTimeout||scheduledRequestId===pending.requestId)return;
-  scheduledRequestId=pending.requestId;
+  const requestId=pending.requestId;
+  scheduledRequestId=requestId;
   window.setTimeout(()=>{
    scheduledRequestId=null;
-   if(!controller.view().pending)return;
+   if(controller.view().pending?.requestId!==requestId)return;
    if(operationBusy){scheduleRecovery();return;}
    operationBusy=true;
    void recoverPending().catch(error=>{
