@@ -1,0 +1,53 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="robots" content="noindex,nofollow,noarchive">
+<meta name="referrer" content="no-referrer">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; base-uri 'none'; object-src 'none'; form-action 'none'; script-src 'self'; style-src 'self'; img-src 'self' blob:; connect-src https://salta-stats.dannyel-moises.workers.dev; font-src 'self'">
+<title>Homologação privada A/B · SALTA</title>
+<link rel="icon" href="../favicon.svg">
+<link rel="stylesheet" href="../salta-theme.css">
+<link rel="stylesheet" href="./piloto-avaliacoes.css">
+<script type="module" src="./piloto-avaliacoes.mjs"></script>
+</head>
+<body>
+<header class="pilot-header">
+ <div><p class="pilot-eyebrow">SALTA · PILOTO RESTRITO</p><h1>Homologação privada de avaliações A/B</h1>
+ <p>Exclusivamente dados sintéticos. Esta página não é o Corretor público nem o Diário.</p></div>
+ <a href="./professor.html">Área do professor</a>
+</header>
+<main>
+ <section class="pilot-panel" aria-label="Acesso à sessão">
+  <p id="pilotGate" role="status" aria-live="polite">Aguardando verificação da sessão SALTA…</p>
+  <p>O acesso depende da sessão existente e de autorização ativa no servidor. Não há login nem senha adicionais.</p>
+ </section>
+ <div id="pilotApp" hidden>
+  <section class="pilot-panel" aria-labelledby="pilotEditorTitle">
+   <h2 id="pilotEditorTitle">Planejamento sintético · 60 questões</h2>
+   <p>Informe o título de A ou B e cole as 60 alternativas correspondentes ao pacote de referência. Nenhum gabarito vem embutido nesta página nem é armazenado pelo navegador.</p>
+   <div class="pilot-fields">
+    <label>Título da avaliação <input id="pilotTitle" maxlength="160" autocomplete="off" placeholder="Avaliação A ou B · somente dados sintéticos"></label>
+    <label>Componente <input id="pilotSubject" maxlength="120" value="Matemática" autocomplete="off"></label>
+    <label>Tipo <input id="pilotKind" maxlength="80" value="Prova" autocomplete="off"></label>
+    <label>Data sintética da avaliação <input id="pilotDate" type="date" autocomplete="off"></label>
+   </div>
+   <p><strong>Bloco 1:</strong> questões 1–30 = 6,00 pontos. <strong>Bloco 2:</strong> questões 31–60 = 4,00 pontos. <strong>Total:</strong> 10,00 pontos.</p>
+   <label class="pilot-key-label" for="pilotAnswers">Gabarito temporário (A–E, 60 respostas; sequência separada por espaços ou linhas numeradas)</label>
+   <textarea id="pilotAnswers" rows="8" maxlength="700" spellcheck="false" autocapitalize="characters" autocomplete="off" placeholder="1 A&#10;2 C&#10;3 D&#10;... até 60"></textarea>
+   <div class="pilot-actions"><button type="button" id="pilotValidateDraft">Validar planejamento local, sem gravar</button></div>
+   <p id="pilotStatus" role="status" aria-live="polite">O gabarito digitado só permanece na memória desta aba.</p>
+  </section>
+  <section id="privateAssessmentsHost" class="pilot-panel" hidden aria-label="Biblioteca privada"></section>
+  <section class="pilot-panel" aria-labelledby="pilotPrintTitle">
+   <h2 id="pilotPrintTitle">Impressão A4 da revisão confirmada</h2>
+   <p id="pilotPrintLabel" role="status">Nenhuma avaliação/revisão selecionada para impressão.</p>
+   <button id="pilotPrint" type="button" disabled>Imprimir somente o cartão vinculado ao lote confirmado</button>
+   <div class="pilot-page"><img id="pilotPrintPreview" alt="Cartão A4 V2 sem respostas preenchidas" hidden></div>
+  </section>
+ </div>
+</main>
+<footer class="pilot-footer">A seleção da revisão pelo docente é obrigatória: cartões fisicamente idênticos podem ter gabaritos diferentes. Nenhuma nota é enviada ao Diário.</footer>
+</body>
+</html>
