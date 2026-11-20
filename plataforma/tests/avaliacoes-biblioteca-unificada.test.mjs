@@ -126,7 +126,7 @@ test('original v2 client handles separate accounts, scope isolation, save/reopen
   const pathname=new URL(url).pathname.slice('/assessments/v1'.length);
   if(opts.method==='GET'&&pathname==='/session')return Response.json({authenticated:true,principalId:actor,epoch:1});
   if(opts.method==='GET'&&pathname==='/grants')return Response.json({grants:[actor==='teacher-a'?scope:other]});
-  if(opts.method==='GET'&&pathname.startsWith('/assessments?')){
+  if(opts.method==='GET'&&pathname==='/assessments'){
    const q=new URL(url).searchParams,gr=actor==='teacher-a'?scope:other;
    if(q.get('classId')!==gr.classId)return Response.json({error:'scope_denied'},{status:403});
    return Response.json({assessments:[...data.values()].filter(x=>x.classId===gr.classId&&x.owner===actor).map(x=>
