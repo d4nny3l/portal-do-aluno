@@ -390,6 +390,9 @@ test('P0 race SAVE: delayed receipt confirms frozen A while edited B remains uns
  const writing=f.button('Salvar avaliação').handlers.click();
  await entered.promise;
  const pending=f.getPending();assert.ok(pending?.requestId);
+ assert.equal(f.button('Abrir avaliação').disabled,true,'cannot switch context while original PUT is in flight');
+ await f.button('Abrir avaliação').handlers.click();
+ assert.equal(f.getPending()?.requestId,pending.requestId,'no new navigation may invalidate the pending requestId');
  f.editTitle('Título posterior B');
  hold.resolve();
  await writing;
