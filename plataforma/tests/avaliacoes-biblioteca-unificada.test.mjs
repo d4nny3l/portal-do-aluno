@@ -676,7 +676,7 @@ test('UX-79B P0 privacy: 401/403 purge 13 cached assessments, metadata and edita
   const rows=ids.map((id,i)=>({id,title:'Privada '+(i+1),revision:1,state:'active',...grant}));
   const {definition}=createLibraryPlan(planArgs(m));
   const record={id:ids[0],revision:1,definition,manifestHash:definition.manifest.contentHash,
-   scoreScale:10000,totalUnits:'100000',status:'issued',archived:false,...grant};
+   scoreScale:10000,totalUnits:'60000',status:'issued',archived:false,...grant};
   let deny=false,cleared=0;
   const fetchFn=async(url,req)=>{
    const u=new URL(url),route=u.pathname.slice('/assessments/v1'.length);
@@ -734,7 +734,7 @@ test('UX-79B P0 privacy: scope change invalidates old pages and delayed GET',asy
  const {definition}=createLibraryPlan(planArgs(m));
  const entered=deferred(),release=deferred();
  const record={id:ids[0],revision:1,definition,manifestHash:definition.manifest.contentHash,
-  scoreScale:10000,totalUnits:'100000',status:'issued',archived:false,...grantA};
+  scoreScale:10000,totalUnits:'60000',status:'issued',archived:false,...grantA};
  const fetchFn=async(url,request)=>{
   const u=new URL(url),route=u.pathname.slice('/assessments/v1'.length);
   if(route==='/session')return Response.json({authenticated:true,principalId:'teacher-a',epoch:1});
