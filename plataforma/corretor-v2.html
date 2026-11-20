@@ -233,7 +233,7 @@ function activatePrivateCorrection(selection){
  if(!selection||selection.manifestHash!==selection.manifest?.contentHash)
   throw Error('O modelo e o gabarito da seleção não correspondem.');
  clearAssessmentReview();
- applyAssessmentModel({manifest:selection.manifest,title:selection.plan.metadata.title,revision:selection.revision});
+ applyAssessmentModel({manifest:selection.manifest,title:selection.plan.metadata.title,revision:selection.revision},{privateAssessment:true});
  privateSelection=selection;
  $('answerKey').value=keyTextForPlan(selection.plan);$('answerKey').readOnly=true;
  setPrivateCorrectionUi(true);
@@ -248,6 +248,8 @@ function clearPrivateCorrection(){
  const hadPrivateModel=privateModelLoaded;
  privateSelection=null;privateModelLoaded=false;
  clearAssessmentReview();
+ // Hidden score markup must also be removed, not merely concealed.
+ $('scanScore').replaceChildren();
  $('answerKey').value='';$('answerKey').readOnly=false;
  setPrivateCorrectionUi(false);
  $('scanMaxScore').readOnly=false;$('scanMaxScore').value='10';
