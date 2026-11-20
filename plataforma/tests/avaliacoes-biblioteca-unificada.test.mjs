@@ -577,7 +577,7 @@ test('UX-79B catalog labels omit missing fields and technical active states',()=
  assert.equal(assessmentLabel({title:'Prova',definition:{subject:'Ciências',manifest:{header:{className:'6º B'}}}}),'Prova · Ciências · 6º B');
 });
 
-test('UX-79B score precision is strict and never silently rounds',()=>{
+test('UX-79B score precision is strict and never silently rounds',async()=>{
  for(const value of ['10','10,1','0.05','0,00','25.99'])assert.equal(validScorePrecision(value),true,value);
  for(const value of ['1.234','2,999','3,','1.','-2.50','abc',''])assert.equal(validScorePrecision(value),false,value);
  const f=await mountedRaceFixture();
