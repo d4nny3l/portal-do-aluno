@@ -629,3 +629,40 @@ test('UX-79B manual key editor is placed in Criar, private JSON importer is hidd
  assert.match(css,/\[data-action-icon="save"\]::before/);
  assert.match(css,/\[data-action-icon="correct"\]::before/);
 });
+
+
+test('UX-79B fetches all internal catalog pages without exposing pagination controls',async()=>{
+ const m=make({counts:[2],types:['A-E']});
+ const grant={institutionId:'salta-hml-20261119',classId:'turma-sintetica-ab',periodId:'2026-11-piloto'};
+ const ids=Array.from({length:11},()=>crypto.randomUUID());
+ const rows=ids.map((id,i)=>({id,title:'Avaliação '+(i+1),revision:1,state:'active',...grant}));
+ let requests=0;
+ const fetchFn=async(url,init)=>{
+  const target=new URL(url),route=target.pathname.slice('/assessments/v1'.length);
+  if(route==='/session')return Response.json({authenticated:true,principalId:'teacher-a',epoch:1});
+  if(route==='/grants')return Response.json({grants:[grant]});
+  if(route==='/assessments'&&init.method==='GET'){
+   requests++;
+   const after=target.searchParams.get('after');
+   const offset=after?ids.indexOf(after)+1:0;
+   const items=rows.slice(offset,offset+10);
+   const nextCursor=offset+items.length<rows.length?items.at(-1).id:null;
+   return Response.json({assessments:items,nextCursor});
+  }
+  throw Error('Unexpected '+init.method+' '+route);
+ };
+ const host=new SurfaceNode('section'),doc={getElementById:id=>id==='savedAssessments'?host:null,
+  createElement:tag=>new SurfaceNode(tag)};
+ mountAssessmentLibrary({document:doc,window:{confirm:()=>true},host,fetchFn,
+  getSections:()=>m.sections,getMetadata:()=>planArgs(m).metadata,
+  getModel:()=>m.manifest,prepareModel:()=>true,snapshotEditor:()=>m.editor,
+  restoreEditor:()=>{},nominalFields:()=>({}),newEditor:()=>{},
+  activateSelection:()=>{},clearSelection:()=>{}});
+ const catalog=host.children[0].children[1].children[1].children[0];
+ for(let step=0;step<16&&catalog.options.length!==12;step++)await tick();
+ assert.equal(requests,2,'11 rows should be loaded via two pages');
+ assert.equal(catalog.options.length,12,'placeholder plus all eleven evaluation options');
+ assert.equal(catalog.options.some(x=>x.textContent.includes('active')),false);
+ for(const button of host.children[0].children[3].children.slice(1))
+  assert.equal(button.hidden,true,'internal navigation and retry are not public');
+});
