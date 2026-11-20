@@ -152,6 +152,8 @@ export function mountAssessmentLibrary({
  const create=btn('Nova avaliação',async()=>{if(!ready)throw Error('Sua biblioteca não está conectada.');controller.newDraft();resetScores();newEditor();renderScoring()});
  const save=btn('Salvar avaliação',async()=>{
   if(!ready)throw Error('Conecte sua biblioteca antes de salvar.');
+  // A new revision cannot inherit a prior correction-lot confirmation.
+  if(activeSelection){clearSelection();activeSelection=false;}
   await controller.save('issued');
   savedManifest=controller.view().record.definition.manifest;
   savedSignature=editorSignature();
