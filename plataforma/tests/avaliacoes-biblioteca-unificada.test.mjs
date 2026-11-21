@@ -292,14 +292,14 @@ test('actual Create-tab UI mounts and saves/opens/selects/duplicates without a s
 
 const deferred=()=>{let resolve,reject;const promise=new Promise((yes,no)=>{resolve=yes;reject=no});return{promise,resolve,reject}};
 const tick=()=>new Promise(resolve=>setImmediate(resolve));
-async function mountedRaceFixture({onPut=async()=>{},onSelection=async()=>{},onOpen=async()=>{},counts=[2],restoreOutOfOrder=false,windowOverrides={}}={}){
+async function mountedRaceFixture({onPut=async()=>{},onSelection=async()=>{},onOpen=async()=>{},counts=[2],restoreOutOfOrder=false,windowOverrides={},scoreFormatVersion=null}={}){
  const m=make({counts,types:counts.map(()=> 'A-E')});
  m.sections.forEach((section,i)=>{section.order=restoreOutOfOrder?counts.length-i-1:i});
  const grants={institutionId:'salta-hml-20261119',classId:'turma-sintetica-ab',periodId:'2026-11-piloto'};
  const records=new Map(),selections=new Map(),requestById=new Map(),writeCalls=[];let currentEditor=m.editor,selected=null,nominalCleared=0,appliedExact=null,modelBuilds=0,snapshotOverride=null;
  const fetchFn=async(url,init)=>{
   const route=new URL(url).pathname.slice('/assessments/v1'.length),q=new URL(url).searchParams;
-  if(route==='/session'&&init.method==='GET')return Response.json({authenticated:true,principalId:'teacher-a',epoch:1});
+  if(route==='/session'&&init.method==='GET')return Response.json({authenticated:true,principalId:'teacher-a',epoch:1,...(scoreFormatVersion?{scoreFormatVersion}:{})});
   if(route==='/grants'&&init.method==='GET')return Response.json({grants:[grants]});
   if(route==='/assessments'&&init.method==='GET'){
    assert.equal(q.get('classId'),grants.classId);
@@ -312,7 +312,7 @@ async function mountedRaceFixture({onPut=async()=>{},onSelection=async()=>{},onO
    if(requestById.has(body.requestId)){const prior=requestById.get(body.requestId);await onPut({body,record:prior,replay:true});return Response.json({ok:true,id:prior.id,revision:prior.revision,manifestHash:prior.manifestHash});}
    assert.equal(body.expectedRevision,revision-1);
    const record={id,revision,definition:body.definition,manifestHash:body.definition.manifest.contentHash,
-    scoreScale:10000,totalUnits:'100000',status:body.status,archived:false,...grants};
+    scoreScale:10000,totalUnits:body.definition.blocks.reduce((n,b)=>n+BigInt(b.valueUnits),0n).toString(),status:body.status,archived:false,...grants};
    records.set(id,record);requestById.set(body.requestId,record);
    await onPut({body,record});return Response.json({ok:true,id,revision,manifestHash:record.manifestHash});
   }
@@ -338,7 +338,9 @@ async function mountedRaceFixture({onPut=async()=>{},onSelection=async()=>{},onO
   throw Error('Unexpected route '+init.method+' '+route);
  };
  const host=new SurfaceNode('section'),createPanel=new SurfaceNode('section');
- const doc={getElementById:id=>id==='savedAssessments'?host:id==='criar'?createPanel:null,
+ const formatField=new SurfaceNode('label'),formatSelect=new SurfaceNode('select');
+ const doc={getElementById:id=>id==='savedAssessments'?host:id==='criar'?createPanel:
+  id==='scoreFormatField'?formatField:id==='scoreFormatSelect'?formatSelect:null,
   createElement:tag=>new SurfaceNode(tag)};
  const mounted=mountAssessmentLibrary({document:doc,window:{confirm:()=>true,...windowOverrides},host,fetchFn,
   getSections:()=>m.sections,getMetadata:()=>({title:m.editor.fields.assessmentTitle,subject:m.editor.fields.assessmentSubject,
@@ -388,7 +390,7 @@ async function mountedRaceFixture({onPut=async()=>{},onSelection=async()=>{},onO
   else throw Error('Unknown native button '+kind);
   await tick();
  };
- return {mounted,m,host,top,scoring,records,selections,writeCalls,button,fill,editTitle,silentClick,
+ return {mounted,m,host,top,scoring,records,selections,writeCalls,button,fill,editTitle,silentClick,formatField,formatSelect,
   freezeSnapshot:()=>{snapshotOverride=structuredClone(currentEditor)},
   getSelected:()=>selected,getEditor:()=>currentEditor,getPending:()=>mounted.controller.view().pending};
 }
@@ -1213,7 +1215,7 @@ function realReaderCallbacks(){
   importCardManifest,renderTemplateSvg:()=>'<svg id="private-model"></svg>',
   $:node,clearAssessmentReview:()=>{},
   setPrivateCorrectionUi:mode=>{privateMode=mode;},setExportAvailability:()=>{},syncScanInputs:()=>{},
-  keyTextForPlan:()=> '1 A\n2 B',formatExact:()=> '10,00',POINT_SCALE
+  keyTextForPlan:()=> '1 A\n2 B',formatScore:()=> '10,00',POINT_SCALE
  });
  return {reader,node,privateMode:()=>privateMode};
 }
@@ -1266,7 +1268,8 @@ test('P1-80-FINAL actual activation marks selection private, teardown scrubs all
  assert.equal(node('answerKey').readOnly,true);
  assert.match(node('answerKey').value,/1 A/);
  assert.equal(node('scanMaxScore').readOnly,true);
- assert.equal(node('scanMaxScore').value,'10.00');
+ assert.equal(node('scanMaxScore').value,'10,00');
+ assert.equal(node('scanMaxScore').type,'text');
  assert.equal(privateMode(),true);
  node('scanScore').innerHTML='<strong>Nota privada: 9,25</strong>';
  node('scanScore').hidden=false;
@@ -1281,8 +1284,9 @@ test('P1-80-FINAL actual activation marks selection private, teardown scrubs all
  assert.equal(node('scanScore').innerHTML,'','hidden private score must be removed from DOM');
  assert.equal(node('answerKey').value,'');
  assert.equal(node('answerKey').readOnly,false);
- assert.equal(node('scanMaxScore').value,'10');
+ assert.equal(node('scanMaxScore').value,'10.00');
  assert.equal(node('scanMaxScore').readOnly,false);
+ assert.equal(node('scanMaxScore').type,'number');
  assert.equal(privateMode(),false,'manual controls restored');
  assert.doesNotMatch(node('scanModelStatus').textContent,/Avaliação particular da professora A/);
  reader.clearPrivateCorrection(); // invalidation is idempotent
@@ -1408,4 +1412,344 @@ test('P0-80-RF-01 revoking a library session does not discard a manually importe
  assert.equal(editorResets,0,'private authentication loss must not overwrite an independent manual editor');
  assert.equal(reader.state().activeManifest,manual,'unrelated manual reader model remains available');
  assert.match(node('scanModelStatus').textContent,/Cartão manual independente/);
+});
+
+
+// UX-79C integration retains PR84 canonical enrichment tests above and PR87 academic/privacy recovery suites below.
+test('P1-85-F capability: selector is inert without authenticated score format v1',async()=>{
+ const f=await mountedRaceFixture();
+ assert.equal(f.formatField.hidden,true);
+ assert.equal(f.formatSelect.disabled,true);
+ f.formatSelect.value='0';f.formatSelect.onchange();
+ assert.equal(f.formatSelect.value,'2');
+ await f.fill();
+ await f.button('Salvar avaliação').handlers.click();
+ assert.equal(Object.hasOwn(f.mounted.controller.view().record.definition.display,'scoreDecimals'),false);
+});
+test('P1-85-F UI: 0/1/2, save, reopen and duplicate retain independent selection',async()=>{
+ const f=await mountedRaceFixture({scoreFormatVersion:'salta-score-format-v1'});
+ assert.equal(f.formatField.hidden,false);
+ assert.equal(f.formatSelect.disabled,false);
+ assert.equal(f.formatSelect.value,'2');
+ await f.fill();
+ for(const [precision,shown] of [['0','10'],['1','10,0'],['2','10,00']]){
+  f.formatSelect.value=precision;f.formatSelect.onchange();
+  assert.equal(f.scoring.children[1].children[0].children[0].value,shown);
+  assert.match(f.top.children[5].textContent,new RegExp(shown.replace(',','\\,')));
+ }
+ f.formatSelect.value='0';f.formatSelect.onchange();
+ await f.button('Salvar avaliação').handlers.click();
+ const original=f.mounted.controller.view().record;
+ assert.equal(original.definition.display.scoreDecimals,0);
+ await f.button('Abrir avaliação').handlers.click();
+ assert.equal(f.formatSelect.value,'0');
+ await f.button('Duplicar avaliação').handlers.click();
+ const duplicate=f.mounted.controller.view().record;
+ assert.notEqual(duplicate.id,original.id);
+ assert.equal(duplicate.definition.display.scoreDecimals,0);
+ f.formatSelect.value='1';f.formatSelect.onchange();
+ await f.button('Salvar avaliação').handlers.click();
+ assert.equal(f.mounted.controller.view().record.definition.display.scoreDecimals,1);
+ assert.equal(f.records.get(original.id).definition.display.scoreDecimals,0);
+});
+test('P1-85-F legacy 4 decimals stay exact on format-only changes; edited values are rejected',async()=>{
+ const f=await mountedRaceFixture({scoreFormatVersion:'salta-score-format-v1'});
+ await f.fill();await f.button('Salvar avaliação').handlers.click();
+ const legacy=f.records.get(f.mounted.controller.view().record.id);
+ legacy.definition.blocks[0].valueUnits='12345';
+ legacy.totalUnits='12345';
+ delete legacy.definition.display.scoreDecimals;
+ await f.button('Abrir avaliação').handlers.click();
+ assert.equal(f.formatSelect.value,'2');
+ assert.equal(f.scoring.children[1].children[0].children[0].value,'1,23');
+ assert.equal(f.mounted.getDraft().plan.blocks[0].valueUnits,'12345');
+ f.formatSelect.value='0';f.formatSelect.onchange();
+ assert.equal(f.scoring.children[1].children[0].children[0].value,'1');
+ assert.equal(f.mounted.getDraft().plan.blocks[0].valueUnits,'12345');
+ const amount=f.scoring.children[1].children[0].children[0];
+ amount.value='1,5';amount.oninput();
+ assert.equal(amount.value,'1','incompatible precision must not overwrite original');
+ assert.equal(f.mounted.getDraft().plan.blocks[0].valueUnits,'12345');
+ await f.button('Salvar avaliação').handlers.click();
+ assert.equal(f.mounted.controller.view().record.definition.blocks[0].valueUnits,'12345');
+ assert.equal(f.mounted.controller.view().record.definition.display.scoreDecimals,0);
+});
+
+
+// P0-87-F-01: real mounted UI + real client/controller + synthetic authenticated
+// pages. The second page is held while the principal/epoch/scope changes.
+function crossTeacherCatalogFixture({aCount=11,bCount=23,holdRetry=false}={}){
+ const m=make({counts:[2],types:['A-E']});
+ const scopeA={institutionId:'school-A',classId:'class-A',periodId:'2026-A'};
+ const scopeB={institutionId:'school-B',classId:'class-B',periodId:'2026-B'};
+ let actor='teacher-a',epoch=1,holdASecond=true,retrySecondHeld=false;
+ const arrived=deferred(),release=deferred(),retryEntered=deferred(),retryRelease=deferred(),queries=[];
+ const uuid=n=>n.toString(16).padStart(8,'0')+'-1234-4123-8123-000000000001';
+ const rowsFor=(teacher,version)=>Array.from({length:teacher==='teacher-a'?aCount:bCount},(_,i)=>({
+  id:uuid((teacher==='teacher-a'?100:1000)+i),
+  title:(teacher==='teacher-a'?'A-'+version+'-PRIVADA-':'B-'+version+'-EXCLUSIVA-')+String(i+1).padStart(2,'0'),
+  subject:'Matemática',className:'Turma sintética 7A',
+  revision:1,state:'issued',...(teacher==='teacher-a'?scopeA:scopeB)
+ }));
+ const fetchFn=async(url,request)=>{
+  const u=new URL(url),route=u.pathname.slice('/assessments/v1'.length);
+  const teacher=actor,version=epoch; // Response belongs to the initiating session.
+  if(route==='/session')return Response.json({authenticated:true,principalId:teacher,epoch:version,
+   scoreFormatVersion:'salta-score-format-v1'});
+  if(route==='/grants')return Response.json({grants:[teacher==='teacher-a'?scopeA:scopeB]});
+  if(route==='/assessments'){
+   const scope=teacher==='teacher-a'?scopeA:scopeB;
+   if(['institutionId','classId','periodId'].some(k=>u.searchParams.get(k)!==scope[k]))
+    return Response.json({error:'scope_denied'},{status:403});
+   const src=rowsFor(teacher,version),after=u.searchParams.get('after');
+   const offset=after?src.findIndex(r=>r.id===after)+1:0;
+   if(after&&offset===0)return Response.json({error:'invalid_cursor'},{status:400});
+   const part=src.slice(offset,offset+10);
+   const page={assessments:part,nextCursor:offset+part.length<src.length?part.at(-1).id:null};
+   queries.push({teacher,version,after,returned:part.length});
+   if(teacher==='teacher-a'&&after&&holdASecond){
+    holdASecond=false;
+    arrived.resolve();
+    const outcome=await release.promise;
+    if(outcome===401||outcome===403)return Response.json({error:'session_denied'},{status:outcome});
+    if(outcome===503)return Response.json({error:'temporary_unavailable'},{status:503});
+    if(outcome===400)return Response.json({error:'bad_request'},{status:400});
+    if(outcome==='network')throw Error('offline synthetic GET');
+    if(outcome==='timeout')throw Object.assign(Error('synthetic request aborted'),{name:'AbortError'});
+   }else if(teacher==='teacher-a'&&after&&holdRetry&&!retrySecondHeld){
+    retrySecondHeld=true;retryEntered.resolve();
+    const outcome=await retryRelease.promise;
+    if(outcome===401||outcome===403)return Response.json({error:'session_denied'},{status:outcome});
+    if(outcome===503)return Response.json({error:'temporary_unavailable'},{status:503});
+   }
+   return Response.json(page);
+  }
+  throw Error('Rota inesperada no teste de catálogo: '+route);
+ };
+ const host=new SurfaceNode('section'),createPanel=new SurfaceNode('section');
+ const formatField=new SurfaceNode('label'),formatSelect=new SurfaceNode('select');
+ const doc={getElementById:id=>id==='savedAssessments'?host:id==='criar'?createPanel:
+   id==='scoreFormatField'?formatField:id==='scoreFormatSelect'?formatSelect:null,
+  createElement:tag=>new SurfaceNode(tag)};
+ const mounted=mountAssessmentLibrary({document:doc,window:{confirm:()=>true},host,fetchFn,
+  getSections:()=>m.sections,getMetadata:()=>planArgs(m).metadata,
+  getModel:()=>m.manifest,prepareModel:()=>true,snapshotEditor:()=>m.editor,
+  restoreEditor:()=>{},nominalFields:()=>({}),newEditor:()=>{},
+  activateSelection:()=>{},clearSelection:()=>{}});
+ const catalog=host.children[0].children[1].children[1].children[0];
+ const refresh=host.children[0].children[3].children.find(x=>x.attrs['data-action-icon']==='refresh');
+ const scopeControl=host.children[0].children[1].children[0].children[0];
+ const titles=()=>catalog.options.map(x=>x.textContent);
+ const assertOnly=(prefix,count)=>{
+  mounted.render(); // catches stale allRows, metadataById and controller.rows fallback
+  const visible=titles();
+  assert.equal(visible.length,count+1,'catalog must publish all pages, never a partial or merged cache');
+  assert.ok(visible.slice(1).every(x=>x.includes(prefix)),visible.join(' | '));
+  assert.equal(new Set(visible).size,visible.length,'no duplicate options from page overlap');
+  assert.ok(mounted.controller.view().rows.every(x=>x.title.includes(prefix)),
+   'controller page must belong to the same authenticated principal');
+ };
+ async function reauthenticate(nextActor,nextEpoch){
+  actor=nextActor;epoch=nextEpoch;
+  assert.equal(await mounted.controller.initialize(),true);
+  const grants=mounted.controller.view().grants;
+  assert.equal(grants.length,1);
+  mounted.controller.useScope(grants[0]);
+  mounted.render();
+  assert.equal(titles().length,1,'no previous titles in intermediate authorization state');
+  await scopeControl.onchange();
+  mounted.render();
+ }
+ return {mounted,host,catalog,refresh,scopeControl,arrived,release,retryEntered,retryRelease,queries,titles,assertOnly,reauthenticate,
+  getSession:()=>mounted.controller.view().session,
+  switchIdentity:(nextActor,nextEpoch)=>{actor=nextActor;epoch=nextEpoch}};
+}
+
+test('P0-87-F-01: late A page 2 after principal B loaded must never publish A titles',async()=>{
+ const f=crossTeacherCatalogFixture({aCount:11,bCount:23});
+ await f.arrived.promise;
+ assert.equal(f.mounted.controller.view().rows.length,10,'A first page reached the controller');
+ assert.equal(f.titles().length,1,'first page not published until complete');
+ await f.reauthenticate('teacher-b',2);
+ f.assertOnly('B-2-EXCLUSIVA-',23);
+ const before=f.titles().join('||');
+ assert.deepEqual(f.queries.filter(q=>q.teacher==='teacher-b').map(q=>q.returned),[10,10,3]);
+ f.release.resolve();
+ await tick();await tick();
+ assert.equal(f.titles().join('||'),before,'late A must not overwrite already rendered B');
+ f.assertOnly('B-2-EXCLUSIVA-',23);
+ assert.equal(f.getSession().principalId,'teacher-b');
+ assert.equal(f.getSession().epoch,2);
+ assert.equal(f.titles().some(t=>t.includes('A-1-PRIVADA-')),false);
+});
+for(const httpStatus of [401,403]){
+ test('P0-87-F-01: page 2 '+httpStatus+' clears private UI; B can reconnect',async()=>{
+  const f=crossTeacherCatalogFixture();
+  await f.arrived.promise;
+  f.release.resolve(httpStatus);
+  for(let i=0;i<8&&f.getSession();i++)await tick();
+  assert.equal(f.getSession(),null,'revoked or forbidden session loses identity');
+  assert.equal(f.mounted.controller.view().scope,null);
+  assert.deepEqual(f.mounted.controller.view().rows,[]);
+  f.mounted.render();
+  assert.equal(f.titles().length,1,'cache from the first page must not survive '+httpStatus);
+  await f.reauthenticate('teacher-b',2);
+  f.assertOnly('B-2-EXCLUSIVA-',23);
+ });
+}
+test('P0-87-F-01: same principal new epoch revokes A1 and publishes only A2',async()=>{
+ const f=crossTeacherCatalogFixture({aCount:12});
+ await f.arrived.promise;
+ await f.reauthenticate('teacher-a',2);
+ f.assertOnly('A-2-PRIVADA-',12);
+ const after=f.titles().join('||');
+ f.release.resolve();
+ await tick();await tick();
+ assert.equal(f.titles().join('||'),after);
+ assert.equal(f.titles().some(x=>x.includes('A-1-PRIVADA-')),false);
+ f.assertOnly('A-2-PRIVADA-',12);
+});
+
+
+test('P1-87-F-02: one grant, 11 records, page 2 HTTP 503 then visible retry loads complete catalog',async()=>{
+ const f=crossTeacherCatalogFixture({aCount:11});
+ await f.arrived.promise;
+ assert.equal(f.host.children[0].children[1].children[0].hidden,true,'single granted class hides scope selector');
+ assert.equal(f.titles().length,1,'partial page must not be visible');
+ f.release.resolve(503);
+ for(let i=0;i<20&&f.refresh.hidden;i++)await tick();
+ assert.equal(f.getSession()?.principalId,'teacher-a','503 does not revoke the authorized session');
+ assert.equal(f.mounted.controller.view().rows.length,10,'controller may retain its last private page');
+ assert.deepEqual(f.titles().length,1,'partial titles cannot leak to the select');
+ assert.equal(f.refresh.hidden,false,'catalog retry must be visible after recoverable failure');
+ assert.equal(f.refresh.disabled,false);
+ assert.equal(f.refresh.textContent,'Tentar novamente');
+ assert.equal(f.refresh.attrs['data-action-icon'],'refresh','accessible icon remains on real control');
+ assert.match(f.host.children[0].children[4].textContent,/Não foi possível carregar suas avaliações\. Tente novamente\./);
+ const pendingRecovery=f.host.children[0].children[3].children.find(x=>x.attrs['data-action-icon']==='recover'&&x.textContent==='Tentar novamente');
+ assert.equal(pendingRecovery.hidden,true,'PUT recovery must remain independent');
+ await f.refresh.handlers.click();
+ f.assertOnly('A-1-PRIVADA-',11);
+ assert.equal(f.refresh.hidden,true,'retry is exceptional, never a routine refresh button');
+ assert.equal(f.refresh.disabled,true);
+ assert.equal(f.refresh.textContent,'Atualizar');
+ assert.deepEqual(f.queries.map(q=>q.returned),[10,1,10,1],'retry reloads from page one');
+});
+test('P1-87-F-02: no duplicate retry while a recovered page 2 is pending',async()=>{
+ const f=crossTeacherCatalogFixture({aCount:12,holdRetry:true});
+ await f.arrived.promise;f.release.resolve(503);
+ for(let i=0;i<20&&f.refresh.hidden;i++)await tick();
+ assert.equal(f.refresh.hidden,false);
+ const first=f.refresh.handlers.click();
+ await f.retryEntered.promise;
+ const count=f.queries.length;
+ assert.equal(f.refresh.hidden,true,'retry disappears while the catalog is loading');
+ assert.equal(f.refresh.disabled,true);
+ await f.refresh.handlers.click();
+ assert.equal(f.queries.length,count,'concurrent click cannot initiate a duplicate request');
+ f.retryRelease.resolve();
+ await first;
+ f.assertOnly('A-1-PRIVADA-',12);
+ assert.equal(f.refresh.hidden,true);
+});
+for(const httpStatus of [401,403]){
+ test('P1-87-F-02: retry after 503, then '+httpStatus+' revocation never leaves retry or A labels',async()=>{
+  const f=crossTeacherCatalogFixture({aCount:11,holdRetry:true});
+  await f.arrived.promise;f.release.resolve(503);
+  for(let i=0;i<20&&f.refresh.hidden;i++)await tick();
+  assert.equal(f.refresh.hidden,false);
+  const click=f.refresh.handlers.click();await f.retryEntered.promise;
+  f.retryRelease.resolve(httpStatus);await click;
+  assert.equal(f.getSession(),null);
+  assert.equal(f.mounted.controller.view().scope,null);
+  assert.equal(f.titles().length,1);
+  assert.equal(f.refresh.hidden,true);
+  assert.equal(f.refresh.disabled,true);
+  await f.reauthenticate('teacher-b',2);
+  f.assertOnly('B-2-EXCLUSIVA-',23);
+  assert.equal(f.refresh.hidden,true);
+ });
+}
+test('P1-87-F-02: stale retry response after teacher/epoch/scope changes cannot revive A error, titles or action',async()=>{
+ const f=crossTeacherCatalogFixture({aCount:11,holdRetry:true});
+ await f.arrived.promise;f.release.resolve(503);
+ for(let i=0;i<20&&f.refresh.hidden;i++)await tick();
+ const pending=f.refresh.handlers.click();
+ await f.retryEntered.promise;
+ // Re-authentication is external to the in-flight button; it invalidates the
+ // controller and the UI context while the old HTTP response is still held.
+ const controller=f.mounted.controller;
+ const stateBefore=controller.view().generation;
+ f.switchIdentity('teacher-b',2);
+ assert.equal(await controller.initialize(),true);
+ controller.useScope(controller.view().grants[0]);
+ f.mounted.render();
+ assert.equal(f.getSession().principalId,'teacher-b');
+ assert.equal(f.getSession().epoch,2);
+ assert.ok(controller.view().generation>stateBefore);
+ assert.equal(f.titles().length,1,'no A titles during B reauthentication');
+ assert.equal(f.refresh.hidden,true,'A retry must be cleared on new B context');
+ f.retryRelease.resolve(503);
+ await pending;
+ assert.equal(f.refresh.hidden,true,'late A 503 cannot show retry in B');
+ assert.equal(f.titles().length,1);
+ await f.scopeControl.onchange();
+ f.assertOnly('B-2-EXCLUSIVA-',23);
+ assert.equal(f.refresh.hidden,true);
+});
+test('P1-87-F-02: PUT retry is separate and cannot unlock catalog refresh',async()=>{
+ let failed=false;
+ const f=await mountedRaceFixture({onPut:async()=>{if(!failed){failed=true;throw Error('synthetic lost PUT response')}}});
+ await f.fill();
+ await f.button('Salvar avaliação').handlers.click();
+ const pending=f.mounted.controller.view().pending;
+ assert.ok(pending,'lost PUT response retains original requestId and pending operation');
+ const aux=f.top.children[3];
+ const catalogRetry=aux.children.find(x=>x.attrs['data-action-icon']==='refresh');
+ const putRetry=aux.children.find(x=>x.textContent==='Tentar novamente'&&x.attrs['data-action-icon']==='recover');
+ assert.equal(catalogRetry.hidden,true);
+ assert.equal(catalogRetry.disabled,true);
+ assert.equal(putRetry.hidden,false,'recovery of original PUT is still visible');
+ assert.notEqual(catalogRetry,putRetry,'catalog and PUT retry cannot share the control');
+ assert.equal(f.writeCalls.length,1);
+ await putRetry.handlers.click();
+ assert.equal(f.mounted.controller.view().pending,null);
+ assert.equal(f.writeCalls.length,2);
+ assert.equal(f.writeCalls[0].requestId,f.writeCalls[1].requestId,'idempotent PUT replays original requestId');
+ assert.equal(catalogRetry.hidden,true,'save recovery must not expose catalog refresh');
+});
+
+for(const outcome of ['network','timeout']){
+ test('P1-87-F-02: '+outcome+' during catalog page 2 shows recoverable retry only in authorized context',async()=>{
+  const f=crossTeacherCatalogFixture();
+  await f.arrived.promise;f.release.resolve(outcome);
+  for(let i=0;i<20&&f.refresh.hidden;i++)await tick();
+  assert.equal(f.getSession().principalId,'teacher-a');
+  assert.equal(f.refresh.hidden,false);
+  assert.equal(f.refresh.textContent,'Tentar novamente');
+  assert.equal(f.titles().length,1);
+  await f.refresh.handlers.click();
+  f.assertOnly('A-1-PRIVADA-',11);
+  assert.equal(f.refresh.hidden,true);
+ });
+}
+test('P1-87-F-02: unrecoverable catalog 400 never exposes retry or partial titles',async()=>{
+ const f=crossTeacherCatalogFixture();
+ await f.arrived.promise;f.release.resolve(400);
+ for(let i=0;i<20;i++)await tick();
+ assert.equal(f.getSession().principalId,'teacher-a');
+ assert.equal(f.refresh.hidden,true);
+ assert.equal(f.refresh.disabled,true);
+ assert.equal(f.titles().length,1);
+});
+test('P1-87-F-02: controller generation reset clears an old 503 retry',async()=>{
+ const f=crossTeacherCatalogFixture();
+ await f.arrived.promise;f.release.resolve(503);
+ for(let i=0;i<20&&f.refresh.hidden;i++)await tick();
+ assert.equal(f.refresh.hidden,false);
+ f.mounted.controller.newDraft();
+ f.mounted.render();
+ assert.equal(f.refresh.hidden,true,'retry is invalidated with controller generation');
+ assert.equal(f.refresh.disabled,true);
+ assert.equal(f.titles().length,1);
 });

@@ -1,5 +1,7 @@
 // Integrated assessment preview: exact scoring only. No persistence or optical changes.
 import {QUESTION_TYPES,MAX_QUESTIONS} from '../omr/assessment.mjs';
+import {scoreDecimals as validScoreDecimals,formatScore,assertScoreInputUnits} from './score-format.mjs';
+export {formatExact} from './score-format.mjs';
 export const PLAN_SCHEMA='salta-integrated-plan-local-v1';
 export const POINT_SCALE=10000n;
 export const DISPLAY_MODES=Object.freeze(['final','blocks','both']);
@@ -13,12 +15,8 @@ export function units(value){
  if(n<=0n)fail('O valor de cada bloco deve ser maior que zero.');
  return n.toString();
 }
-export function formatExact(n,d=1n,places=2){
- n=BigInt(n);d=BigInt(d);
- if(n<0n||d<=0n||!Number.isInteger(places)||places<0||places>4)fail('Valor fracionário inválido.');
- const pow=10n**BigInt(places),rounded=(n*pow*2n+d)/(2n*d);
- const value=rounded.toString().padStart(places+1,'0');
- return places?value.slice(0,-places)+','+value.slice(-places):value;
+export function scoreInputUnits(value,places=2){
+ return assertScoreInputUnits(units(value),places);
 }
 const textField=(v,name,max=160)=>{
  if(typeof v!=='string'||!v.trim()||v.length>max||/[\u0000-\u001f\u007f]/.test(v))fail('Revise '+name+'.');
@@ -68,20 +66,21 @@ export function applyKeyPaste(raw,sections,current={}){
  }
  return Object.freeze(result);
 }
-export function draftSummary({sections,values={},answers={}}){
+export function draftSummary({sections,values={},answers={},scoreDecimals}){
  const blocks=normalizeBlocks(sections),amounts=entries(values),keys=entries(answers);
  let total=0n;
  const lines=blocks.map(b=>{
   let value=null,error=null;
   try{value=BigInt(units(amounts[b.sectionId]));total+=value}catch(e){error=e.message}
   return {id:b.sectionId,label:b.label,count:b.questions.length,filled:b.questions.filter(q=>q.choices.includes(keys[q.questionId])).length,
-   amount:value===null?'—':formatExact(value,POINT_SCALE,4),error};
+   amount:value===null?'—':formatScore(value,POINT_SCALE,scoreDecimals),error};
  });
- return {blocks:lines,total:formatExact(total,POINT_SCALE,4),missing:lines.reduce((n,b)=>n+b.count-b.filled,0),invalidAmounts:lines.filter(b=>b.error).length};
+ return {blocks:lines,total:formatScore(total,POINT_SCALE,scoreDecimals),missing:lines.reduce((n,b)=>n+b.count-b.filled,0),invalidAmounts:lines.filter(b=>b.error).length};
 }
-export function createIntegratedPlan({metadata,sections,values,answers,display='both',model,revision=1}){
+export function createIntegratedPlan({metadata,sections,values,answers,display='both',model,revision=1,scoreDecimals}){
  const blocks=normalizeBlocks(sections),amounts=entries(values),key=entries(answers);
  if(!DISPLAY_MODES.includes(display))fail('Exibição inválida.');
+ if(scoreDecimals!==undefined)validScoreDecimals(scoreDecimals);
  if(!Number.isSafeInteger(revision)||revision<1)fail('Revisão inválida.');
  if(!model||typeof model.contentHash!=='string'||!model.contentHash||typeof model.templateId!=='string'||!Number.isInteger(model.revision))fail('Gere o modelo exato antes da seleção.');
  let total=0n;
@@ -98,7 +97,7 @@ export function createIntegratedPlan({metadata,sections,values,answers,display='
   metadata:Object.freeze({title:textField(metadata?.title,'o título'),subject:textField(metadata?.subject,'o componente',120),
    kind:textField(metadata?.kind,'o tipo',80),className:String(metadata?.className||'').slice(0,120),date:String(metadata?.date||'')}),
   model:Object.freeze({templateId:model.templateId,revision:model.revision,contentHash:model.contentHash}),
-  totalUnits:total.toString(),display,blocks:Object.freeze(weighted)});
+  totalUnits:total.toString(),display,...(scoreDecimals===undefined?{}:{scoreDecimals}),blocks:Object.freeze(weighted)});
 }
 export function assertPlanBinding(plan,manifest,template){
  if(!plan||plan.schema!==PLAN_SCHEMA)fail('Selecione uma avaliação da sessão.');
@@ -136,9 +135,9 @@ export function scoreIntegratedPlan(plan,observations,{manifest,template,identit
   const n=BigInt(block.valueUnits)*BigInt(correct),d=POINT_SCALE*BigInt(block.questions.length);
   sum=add(sum,{n,d});correctAll+=correct;
   blocks.push(Object.freeze({id:block.sectionId,label:block.label,correct,count:block.questions.length,
-   earned:formatExact(n,d),maximum:formatExact(BigInt(block.valueUnits),POINT_SCALE)}));
+   earned:formatScore(n,d,plan.scoreDecimals),maximum:formatScore(BigInt(block.valueUnits),POINT_SCALE,plan.scoreDecimals)}));
  }
- return Object.freeze({complete:true,total:formatExact(sum.n,sum.d),maximum:formatExact(BigInt(plan.totalUnits),POINT_SCALE),
+ return Object.freeze({complete:true,total:formatScore(sum.n,sum.d,plan.scoreDecimals),maximum:formatScore(BigInt(plan.totalUnits),POINT_SCALE,plan.scoreDecimals),
   correct:correctAll,blank:blanks,double:doubles,count:expected.length,display:plan.display,blocks:Object.freeze(blocks)});
 }
 export function keyTextForPlan(plan){
