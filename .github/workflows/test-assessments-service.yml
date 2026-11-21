@@ -3,6 +3,7 @@ on:
   pull_request:
     paths:
       - "assessments-service/**"
+      - "corretor/v2/assessments/**"
       - "docs/avaliacoes/**"
       - "auth-worker/**"
       - "assessments-lab/crypto/**"

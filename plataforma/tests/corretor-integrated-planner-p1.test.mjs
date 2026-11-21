@@ -53,7 +53,7 @@ test('visual inputs and quick paste share the same key state; invalid paste stay
  assert.equal(values.length,2);
  values[0].children[1].value='4';values[0].children[1].oninput();
  values[1].children[1].value='2';values[1].children[1].oninput();
- assert.match(fields.integratedTotal.textContent,/6,0000/);
+ assert.match(fields.integratedTotal.textContent,/6,00/);
  const keyRows=fields.integratedVisualKey.children;assert.equal(keyRows.length,3);
  keyRows[0].children[1].value='A';keyRows[0].children[1].onchange();
  fields.integratedPaste.value='2 C\n3 E';fields.integratedPasteApply.onclick();

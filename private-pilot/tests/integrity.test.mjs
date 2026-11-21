@@ -2,7 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {CATALOG_FILES,assertIntegrationPaths,assertApprovedCatalog,verifyIntegration} from '../integrity.mjs';
 import {ASSESSMENTS_REF,INTEGRATION_BASE,GATEWAY_REF,STATS_REF,git} from '../baseline.mjs';
-test('integration accepts exact #72 catalog and preserves every original commit',()=>{
+test('integration accepts declared #85 delta over #72 and preserves original commits',()=>{
  assert.equal(ASSESSMENTS_REF,'466a6780b29fe462cbf645ca6262b265a4c0c135');
  assert.equal(STATS_REF,'f4dce82716faa06720068f3228a6f890fd0f928f');
  for(const ref of [INTEGRATION_BASE,ASSESSMENTS_REF,GATEWAY_REF])git('merge-base','--is-ancestor',ref,'HEAD');
