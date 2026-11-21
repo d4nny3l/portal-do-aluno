@@ -130,7 +130,7 @@ export function mountAssessmentLibrary({
  }
  let allRows=[],selectedCatalogId='',metadataById=new Map();
  // Same generation/context contract as PR #84; never display a partial or stale catalog.
- let catalogGeneration=0,catalogBusy=false,catalogReady=false;
+ let catalogGeneration=0,catalogBusy=false,catalogReady=false,catalogLoadError=false;
  let authorizedContext='',manualRetryNeeded=false,privateEditorLoaded=false;
  // UI edit clock is separate from controller operation generation. Never
  // invalidate that generation during PUT: the original requestId must survive.
@@ -187,7 +187,7 @@ export function mountAssessmentLibrary({
  const resetScores=()=>{values={};answers={};savedManifest=null;savedSignature=null;resetScoreFormat();clearSelection();activeSelection=false};
  function wipePrivateUi(){
   // No catalog/metadata/answer key may survive revocation or a new principal.
-  catalogGeneration++;catalogBusy=false;catalogReady=false;
+  catalogGeneration++;catalogBusy=false;catalogReady=false;catalogLoadError=false;
   allRows=[];metadataById.clear();selectedCatalogId='';
   const hadPrivateEditor=privateEditorLoaded;privateEditorLoaded=false;
   resetScores();pendingSave=null;selectionAttempt=null;openAttempt=null;
@@ -550,7 +550,7 @@ export function mountAssessmentLibrary({
   const s=controller.view(),current=s.record;
   ready=Boolean(s.session&&s.scope);
    syncScoreFormatUi();
-  if(!ready&&(allRows.length||metadataById.size||selectedCatalogId||catalogBusy||catalogReady))wipePrivateUi();
+  if(!ready&&(allRows.length||metadataById.size||selectedCatalogId||catalogBusy||catalogReady||catalogLoadError))wipePrivateUi();
   const grantItems=s.grants.map((g,i)=>({value:String(i),label:'Turma autorizada '+(i+1)}));
   fillOptions(scope,grantItems);
   const grantIdx=s.grants.findIndex(g=>scopeEquals(g,s.scope));
@@ -570,7 +570,9 @@ export function mountAssessmentLibrary({
   open.disabled=operationBusy||!ready||!catalog.value||Boolean(s.pending);
   duplicate.disabled=operationBusy||!ready||!opened||current.id!==catalog.value||Boolean(s.pending);
   selectForCorrection.disabled=operationBusy||unsaved||!ready||!opened||current.status!=='issued'||current.id!==catalog.value||Boolean(s.pending);
-  refresh.disabled=operationBusy||!ready||Boolean(s.pending);
+  refresh.textContent=catalogLoadError?'Tentar novamente':'Atualizar';
+  refresh.hidden=!(ready&&catalogLoadError&&!catalogBusy&&!operationBusy&&!s.pending);
+  refresh.disabled=operationBusy||!ready||!catalogLoadError||catalogBusy||Boolean(s.pending);
   prev.disabled=operationBusy||!ready||!s.hasPrevious||Boolean(s.pending);
   next.disabled=operationBusy||!ready||!s.nextCursor||Boolean(s.pending);
   retry.disabled=operationBusy||!s.pending;
@@ -586,6 +588,7 @@ export function mountAssessmentLibrary({
     confirmedEarlierSave?'A avaliação enviada foi salva e conferida; suas alterações posteriores ainda não foram salvas.':
     selectionNeedsConfirmation?'A avaliação mudou durante a seleção. Salve as alterações e confirme novamente para corrigir.':
     unsaved?'Há alterações nesta avaliação que ainda não foram salvas.':
+    catalogLoadError?'Não foi possível carregar suas avaliações. Tente novamente.':
     s.phase==='saved'?'Avaliação salva e conferida no servidor.':
     s.phase==='selected'?'Avaliação confirmada para correção.':
     s.phase==='loading'?'Carregando suas avaliações…':
@@ -593,13 +596,17 @@ export function mountAssessmentLibrary({
     opened?'Avaliação aberta para edição.':
     'Escolha uma avaliação ou crie uma nova.';
   }
+  if(ready&&catalogLoadError&&!catalogBusy&&!s.pending){
+   status.dataset.state='error';
+   status.textContent='Não foi possível carregar suas avaliações. Tente novamente.';
+  }
   updateSummary();
  }
  async function loadCatalog(){
   const context=contextKey(),generation=++catalogGeneration,
    controllerGeneration=controller.view().generation;
-  if(!context)return [];
-  catalogBusy=true;catalogReady=false;allRows=[];
+  if(!context){catalogLoadError=false;return [];}
+  catalogBusy=true;catalogReady=false;catalogLoadError=false;allRows=[];
   render(); // Only publish complete, authorized catalogs; never show the first page in isolation.
   const isCurrent=()=>generation===catalogGeneration&&contextKey()===context&&
    controller.view().generation===controllerGeneration;
@@ -616,10 +623,14 @@ export function mountAssessmentLibrary({
     rows.push(...page);
    }
    if(!isCurrent())return [];
-   allRows=rows;catalogReady=true;
+   allRows=rows;catalogReady=true;catalogLoadError=false;
    return rows;
   }catch(error){
-   if(isCurrent()){allRows=[];catalogReady=false;}
+   if(isCurrent()){
+    allRows=[];catalogReady=false;
+    // Unauthorized/invalidated requests never enable a retry in another context.
+    catalogLoadError=Boolean(error?.retryable===true||error?.status===503||error?.status===429);
+   }
    throw error;
   }finally{
    if(isCurrent()){
@@ -627,7 +638,7 @@ export function mountAssessmentLibrary({
    }else if(generation===catalogGeneration&&contextKey()===context){
     // An in-scope controller generation change must not strand the selector
     // showing partial metadata or waiting for a cancelled request forever.
-    catalogGeneration++;catalogBusy=false;catalogReady=false;allRows=[];
+    catalogGeneration++;catalogBusy=false;catalogReady=false;catalogLoadError=false;allRows=[];
     render();
    }
   }
