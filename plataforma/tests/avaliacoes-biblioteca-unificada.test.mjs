@@ -722,6 +722,117 @@ test('UX-79C actual library never publishes private metadata when detail GET ret
  });
 });
 
+
+test('UX-79C consolidated: 13 paginated options remain locked until all private metadata is fetched',async()=>{
+ const m=make({counts:[2],types:['A-E']});
+ const grant={institutionId:'school',classId:'class-a',periodId:'2026'};
+ const rows=Array.from({length:13},(_,i)=>({id:crypto.randomUUID(),title:'Prova '+(i+1),revision:1,state:'active',...grant}));
+ const gate=deferred(),entered=deferred();let reads=0,inflight=0,peak=0,pages=0,editRestores=0;
+ const fetchFn=async(url,req)=>{
+  const u=new URL(url),route=u.pathname.slice('/assessments/v1'.length);
+  if(route==='/session')return Response.json({authenticated:true,principalId:'teacher-A',epoch:1});
+  if(route==='/grants')return Response.json({grants:[grant]});
+  if(route==='/assessments'){
+   pages++;const pos=u.searchParams.get('after')?rows.findIndex(x=>x.id===u.searchParams.get('after'))+1:0;
+   const part=rows.slice(pos,pos+10);
+   return Response.json({assessments:part,nextCursor:pos+part.length<rows.length?part.at(-1).id:null});
+  }
+  const id=route.match(/^\/assessments\/([0-9a-f-]{36})\/revisions\/1$/)?.[1];
+  if(id){
+   reads++;inflight++;peak=Math.max(peak,inflight);entered.resolve();await gate.promise;inflight--;
+   const row=rows.find(x=>x.id===id),base=catalogRecord(row,m);
+   return Response.json({record:{...base,definition:{...base.definition,subject:'História'}}});
+  }
+  throw Error('Unexpected '+req.method+' '+route);
+ };
+ const host=new SurfaceNode('section'),doc={getElementById:id=>id==='savedAssessments'?host:null,
+  createElement:tag=>new SurfaceNode(tag)};
+ const mounted=mountAssessmentLibrary({document:doc,window:{confirm:()=>true},host,fetchFn,
+  getSections:()=>m.sections,getMetadata:()=>planArgs(m).metadata,getModel:()=>m.manifest,
+  prepareModel:()=>true,snapshotEditor:()=>m.editor,restoreEditor:()=>{editRestores++},
+  newEditor:()=>{},nominalFields:()=>({}),activateSelection:()=>{},clearSelection:()=>{}});
+ const catalog=host.children[0].children[1].children[1].children[0];
+ await entered.promise;
+ assert.equal(catalog.disabled,true,'no selection until all 13 metadata responses are validated');
+ assert.equal(catalog.options.length,1,'no partial catalog exposed');
+ assert.equal(editRestores,0,'detail enrichment never opens an editor');
+ gate.resolve();
+ for(let n=0;n<80&&catalog.options.length!==14;n++)await tick();
+ assert.equal(pages,2);assert.equal(reads,13);assert.ok(peak<=2);
+ assert.equal(catalog.disabled,false);
+ assert.equal(catalog.options.length,14);
+ for(const row of rows)assert.equal(catalog.options.find(x=>x.value===row.id)?.textContent,
+  row.title+' - História - Turma sintética 7A');
+ assert.equal(mounted.controller.view().record,null);
+});
+
+test('UX-79C consolidated: 201-item catalog is not partially published and does no detail GET',async()=>{
+ const m=make({counts:[2],types:['A-E']});
+ const grant={institutionId:'school',classId:'class-a',periodId:'2026'};
+ const rows=Array.from({length:201},(_,i)=>({id:crypto.randomUUID(),revision:1,title:'Exame '+i,...grant}));
+ let pages=0,details=0;
+ const fetchFn=async(url,req)=>{
+  const u=new URL(url),route=u.pathname.slice('/assessments/v1'.length);
+  if(route==='/session')return Response.json({authenticated:true,principalId:'teacher-A',epoch:1});
+  if(route==='/grants')return Response.json({grants:[grant]});
+  if(route==='/assessments'){
+   pages++;const after=u.searchParams.get('after'),pos=after?rows.findIndex(x=>x.id===after)+1:0;
+   const part=rows.slice(pos,pos+10);
+   return Response.json({assessments:part,nextCursor:pos+part.length<rows.length?part.at(-1).id:null});
+  }
+  if(route.startsWith('/assessments/')){details++;throw Error('No detail request allowed beyond cap');}
+  throw Error('Unexpected '+req.method+' '+route);
+ };
+ const host=new SurfaceNode('section'),doc={getElementById:id=>id==='savedAssessments'?host:null,
+  createElement:tag=>new SurfaceNode(tag)};
+ mountAssessmentLibrary({document:doc,window:{confirm:()=>true},host,fetchFn,
+  getSections:()=>m.sections,getMetadata:()=>planArgs(m).metadata,getModel:()=>m.manifest,
+  prepareModel:()=>true,snapshotEditor:()=>m.editor,restoreEditor:()=>{},
+  newEditor:()=>{},nominalFields:()=>({}),activateSelection:()=>{},clearSelection:()=>{}});
+ const top=host.children[0],catalog=top.children[1].children[1].children[0],
+  refresh=top.children[3].children.find(x=>x.textContent==='Atualizar');
+ for(let n=0;n<100&&refresh.hidden;n++)await tick();
+ assert.equal(pages,21);assert.equal(details,0);
+ assert.equal(catalog.options.length,1,'no partial/incomplete 200-item catalog');
+ assert.equal(catalog.disabled,true);
+ assert.equal(refresh.hidden,false,'recoverable limit is visible');
+ assert.match(top.children[4].textContent,/200 avaliações/);
+});
+
+test('UX-79C consolidated: 429 metadata failure permits retry without releasing partial labels',async()=>{
+ const m=make({counts:[2],types:['A-E']});
+ const grant={institutionId:'school',classId:'class-a',periodId:'2026'};
+ const row={id:crypto.randomUUID(),title:'Confidencial',revision:1,...grant};
+ let fail=true,reads=0;
+ const fetchFn=async(url,req)=>{
+  const route=new URL(url).pathname.slice('/assessments/v1'.length);
+  if(route==='/session')return Response.json({authenticated:true,principalId:'teacher-A',epoch:1});
+  if(route==='/grants')return Response.json({grants:[grant]});
+  if(route==='/assessments')return Response.json({assessments:[row],nextCursor:null});
+  if(route==='/assessments/'+row.id+'/revisions/1'){
+   reads++;return fail?Response.json({code:'rate_limited'},{status:429}):
+    Response.json({record:catalogRecord(row,m)});
+  }
+  throw Error('Unexpected '+req.method+' '+route);
+ };
+ const host=new SurfaceNode('section'),doc={getElementById:id=>id==='savedAssessments'?host:null,
+  createElement:tag=>new SurfaceNode(tag)};
+ const library=mountAssessmentLibrary({document:doc,window:{confirm:()=>true},host,fetchFn,
+  getSections:()=>m.sections,getMetadata:()=>planArgs(m).metadata,getModel:()=>m.manifest,
+  prepareModel:()=>true,snapshotEditor:()=>m.editor,restoreEditor:()=>{},
+  newEditor:()=>{},nominalFields:()=>({}),activateSelection:()=>{},clearSelection:()=>{}});
+ const top=host.children[0],catalog=top.children[1].children[1].children[0],
+  refresh=top.children[3].children.find(x=>x.textContent==='Atualizar');
+ for(let n=0;n<40&&refresh.hidden;n++)await tick();
+ assert.equal(reads,1);assert.equal(catalog.options.length,1);assert.equal(catalog.disabled,true);
+ assert.equal(refresh.hidden,false);
+ assert.ok(library.controller.view().session,'rate limit does not revoke valid teacher');
+ fail=false;await refresh.handlers.click();
+ assert.equal(reads,2);assert.equal(catalog.options.length,2);
+ assert.equal(catalog.options[1].textContent,'Confidencial - Matemática - Turma sintética 7A');
+ assert.equal(catalog.disabled,false);
+});
+
 test('UX-79C uses official Lucide save and camera paths without replacing button names',()=>{
  const library=read('plataforma/avaliacoes-biblioteca.css');
  const camera=read('plataforma/corretor-v2.css');
