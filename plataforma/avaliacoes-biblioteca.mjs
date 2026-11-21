@@ -525,6 +525,8 @@ export function mountAssessmentLibrary({
     unsaved?'Há alterações nesta avaliação que ainda não foram salvas.':
     s.phase==='saved'?'Avaliação salva e conferida no servidor.':
     s.phase==='selected'?'Avaliação confirmada para correção.':
+    catalogBusy?'Conferindo avaliações e dados antes de liberar a lista…':
+    catalogLoadError?'Catálogo incompleto. Use Atualizar para consultar novamente.':
     s.phase==='loading'?'Carregando suas avaliações…':
     s.phase==='unavailable'?'Biblioteca indisponível no momento.':
     opened?'Avaliação aberta para edição.':
@@ -533,23 +535,27 @@ export function mountAssessmentLibrary({
   updateSummary();
  }
  async function loadCatalog(){
-  const context=contextKey(),generation=++catalogGeneration;
+  const context=contextKey(),generation=++catalogGeneration,
+   controllerGeneration=controller.view().generation;
   if(!context)return [];
   catalogBusy=true;catalogReady=false;catalogLoadError=false;allRows=[];
   render(); // Never display title-only or half-enriched private options as ready.
-  const isCurrent=()=>generation===catalogGeneration&&contextKey()===context;
+  const isCurrent=()=>generation===catalogGeneration&&contextKey()===context&&
+   controller.view().generation===controllerGeneration;
   try{
    const first=await controller.list();
    if(!first||!isCurrent())return [];
    const rows=[...first];let pages=0;
+   if(rows.length>200)throw new Error('Catálogo acima de 200 avaliações: consulta completa não disponível.');
    while(controller.view().nextCursor){
     if(++pages>500)throw new Error('O catálogo é muito grande para esta consulta. Nenhum registro foi alterado.');
     const page=await controller.nextPage();
     if(!page||!isCurrent())return [];
     rows.push(...page);
+    if(rows.length>200)throw new Error('Catálogo acima de 200 avaliações: consulta completa não disponível.');
    }
    const enriched=await enrichCatalogRows(rows,{
-    open:id=>client.open(id),isCurrent,cache:catalogCache,concurrency:2,
+    open:(id,revision)=>client.open(id,revision),isCurrent,cache:catalogCache,concurrency:2,
     // Controller.initialize() drops the previous teacher synchronously.
     onDenied:()=>{void controller.initialize().catch(()=>{});}
    });
@@ -557,7 +563,11 @@ export function mountAssessmentLibrary({
    allRows=enriched;catalogReady=true;
    return enriched;
   }catch(error){
-   if(isCurrent()){allRows=[];catalogReady=false;catalogLoadError=true;}
+   if(isCurrent()){
+    allRows=[];catalogReady=false;catalogLoadError=true;
+    status.dataset.state='error';
+    status.textContent=error?.message||'Não foi possível completar o catálogo.';
+   }
    throw error;
   }finally{
    if(isCurrent()){catalogBusy=false;render({preserveError:catalogLoadError});}
