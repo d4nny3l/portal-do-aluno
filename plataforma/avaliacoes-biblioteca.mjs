@@ -575,6 +575,8 @@ export function mountAssessmentLibrary({
   }catch(error){
    if(!current())return [];
    catalogError=true;catalogLoading=false;allRows=[];metadataById.clear();
+   status.textContent=error?.message||'Não foi possível completar o catálogo.';
+   status.dataset.state='error';
    if(error?.status===401||error?.status===403){
     // initialize() resets the previous identity, scope and private UI before I/O.
     void controller.initialize().catch(()=>{});
@@ -629,6 +631,6 @@ export function mountAssessmentLibrary({
  });
  renderScoring();
  render();
- void connectAndList().catch(()=>{ready=false;render()});
+ void connectAndList().catch(()=>{ready=false;render({preserveError:status.dataset.state==='error'})});
  return Object.freeze({controller,client,onEditorChanged,renderScoring,getDraft,render});
 }
