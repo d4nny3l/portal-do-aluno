@@ -75,7 +75,7 @@ test('supported torch toggles real constraint, accessible pressed state and shut
  assert.equal(b.disabled,true);
  assert.equal(b.getAttribute('aria-pressed'),'false');
  assert.equal(h.state.cameraStream,null);
- assert.equal(h.el('camera').textContent,'Abrir câmera');
+ assert.equal(h.el('cameraLabel').textContent,'Abrir câmera');
 });
 
 test('unsupported torch stays hidden and failure never simulates light or breaks camera',async()=>{
@@ -224,7 +224,7 @@ test('P1 interface contains only open/close, real lamp and import; scanner owns 
  assert.match(html,/stableFrames>=3/);
  assert.match(html,/captureQuality\(frame,detection,previousCameraFrame\)/);
  assert.match(html,/automatic:true,manualCorners:mapFramePoints\(detection.corners,frame,capture\)/);
- assert.match(html,/corretor-v2\.css\?v=20261118camstates1/);
+ assert.match(html,/corretor-v2\.css\?v=20261121ux79c1/);
  assert.match(html,/camera\.mjs\?v=20261118wide1/);
  assert.match(css,/\.camera-stage video\{object-position:center;transform:none\}/);
 });
