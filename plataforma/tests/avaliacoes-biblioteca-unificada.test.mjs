@@ -1247,3 +1247,126 @@ test('P1-85-F legacy 4 decimals stay exact on format-only changes; edited values
  assert.equal(f.mounted.controller.view().record.definition.blocks[0].valueUnits,'12345');
  assert.equal(f.mounted.controller.view().record.definition.display.scoreDecimals,0);
 });
+
+
+// P0-87-F-01: real mounted UI + real client/controller + synthetic authenticated
+// pages. The second page is held while the principal/epoch/scope changes.
+function crossTeacherCatalogFixture({aCount=11,bCount=23}={}){
+ const m=make({counts:[2],types:['A-E']});
+ const scopeA={institutionId:'school-A',classId:'class-A',periodId:'2026-A'};
+ const scopeB={institutionId:'school-B',classId:'class-B',periodId:'2026-B'};
+ let actor='teacher-a',epoch=1,holdASecond=true;
+ const arrived=deferred(),release=deferred(),queries=[];
+ const uuid=n=>n.toString(16).padStart(8,'0')+'-1234-4123-8123-000000000001';
+ const rowsFor=(teacher,version)=>Array.from({length:teacher==='teacher-a'?aCount:bCount},(_,i)=>({
+  id:uuid((teacher==='teacher-a'?100:1000)+i),
+  title:(teacher==='teacher-a'?'A-'+version+'-PRIVADA-':'B-'+version+'-EXCLUSIVA-')+String(i+1).padStart(2,'0'),
+  revision:1,state:'issued',...(teacher==='teacher-a'?scopeA:scopeB)
+ }));
+ const fetchFn=async(url,request)=>{
+  const u=new URL(url),route=u.pathname.slice('/assessments/v1'.length);
+  const teacher=actor,version=epoch; // Response belongs to the initiating session.
+  if(route==='/session')return Response.json({authenticated:true,principalId:teacher,epoch:version,
+   scoreFormatVersion:'salta-score-format-v1'});
+  if(route==='/grants')return Response.json({grants:[teacher==='teacher-a'?scopeA:scopeB]});
+  if(route==='/assessments'){
+   const scope=teacher==='teacher-a'?scopeA:scopeB;
+   if(['institutionId','classId','periodId'].some(k=>u.searchParams.get(k)!==scope[k]))
+    return Response.json({error:'scope_denied'},{status:403});
+   const src=rowsFor(teacher,version),after=u.searchParams.get('after');
+   const offset=after?src.findIndex(r=>r.id===after)+1:0;
+   if(after&&offset===0)return Response.json({error:'invalid_cursor'},{status:400});
+   const part=src.slice(offset,offset+10);
+   const page={assessments:part,nextCursor:offset+part.length<src.length?part.at(-1).id:null};
+   queries.push({teacher,version,after,returned:part.length});
+   if(teacher==='teacher-a'&&after&&holdASecond){
+    holdASecond=false;
+    arrived.resolve();
+    const outcome=await release.promise;
+    if(outcome===401||outcome===403)return Response.json({error:'session_denied'},{status:outcome});
+   }
+   return Response.json(page);
+  }
+  throw Error('Rota inesperada no teste de catálogo: '+route);
+ };
+ const host=new SurfaceNode('section'),createPanel=new SurfaceNode('section');
+ const formatField=new SurfaceNode('label'),formatSelect=new SurfaceNode('select');
+ const doc={getElementById:id=>id==='savedAssessments'?host:id==='criar'?createPanel:
+   id==='scoreFormatField'?formatField:id==='scoreFormatSelect'?formatSelect:null,
+  createElement:tag=>new SurfaceNode(tag)};
+ const mounted=mountAssessmentLibrary({document:doc,window:{confirm:()=>true},host,fetchFn,
+  getSections:()=>m.sections,getMetadata:()=>planArgs(m).metadata,
+  getModel:()=>m.manifest,prepareModel:()=>true,snapshotEditor:()=>m.editor,
+  restoreEditor:()=>{},nominalFields:()=>({}),newEditor:()=>{},
+  activateSelection:()=>{},clearSelection:()=>{}});
+ const catalog=host.children[0].children[1].children[1].children[0];
+ const refresh=host.children[0].children[3].children.find(x=>x.textContent==='Atualizar');
+ const titles=()=>catalog.options.map(x=>x.textContent);
+ const assertOnly=(prefix,count)=>{
+  mounted.render(); // catches stale allRows, metadataById and controller.rows fallback
+  const visible=titles();
+  assert.equal(visible.length,count+1,'catalog must publish all pages, never a partial or merged cache');
+  assert.ok(visible.slice(1).every(x=>x.includes(prefix)),visible.join(' | '));
+  assert.equal(new Set(visible).size,visible.length,'no duplicate options from page overlap');
+  assert.ok(mounted.controller.view().rows.every(x=>x.title.includes(prefix)),
+   'controller page must belong to the same authenticated principal');
+ };
+ async function reauthenticate(nextActor,nextEpoch){
+  actor=nextActor;epoch=nextEpoch;
+  assert.equal(await mounted.controller.initialize(),true);
+  const grants=mounted.controller.view().grants;
+  assert.equal(grants.length,1);
+  mounted.controller.useScope(grants[0]);
+  mounted.render();
+  assert.equal(titles().length,1,'no previous titles in intermediate authorization state');
+  await refresh.handlers.click();
+  mounted.render();
+ }
+ return {mounted,host,catalog,refresh,arrived,release,queries,titles,assertOnly,reauthenticate,
+  getSession:()=>mounted.controller.view().session};
+}
+
+test('P0-87-F-01: late A page 2 after principal B loaded must never publish A titles',async()=>{
+ const f=crossTeacherCatalogFixture({aCount:11,bCount:23});
+ await f.arrived.promise;
+ assert.equal(f.mounted.controller.view().rows.length,10,'A first page reached the controller');
+ assert.equal(f.titles().length,1,'first page not published until complete');
+ await f.reauthenticate('teacher-b',2);
+ f.assertOnly('B-2-EXCLUSIVA-',23);
+ const before=f.titles().join('||');
+ assert.deepEqual(f.queries.filter(q=>q.teacher==='teacher-b').map(q=>q.returned),[10,10,3]);
+ f.release.resolve();
+ await tick();await tick();
+ assert.equal(f.titles().join('||'),before,'late A must not overwrite already rendered B');
+ f.assertOnly('B-2-EXCLUSIVA-',23);
+ assert.equal(f.getSession().principalId,'teacher-b');
+ assert.equal(f.getSession().epoch,2);
+ assert.equal(f.titles().some(t=>t.includes('A-1-PRIVADA-')),false);
+});
+for(const httpStatus of [401,403]){
+ test('P0-87-F-01: page 2 '+httpStatus+' clears private UI; B can reconnect',async()=>{
+  const f=crossTeacherCatalogFixture();
+  await f.arrived.promise;
+  f.release.resolve(httpStatus);
+  for(let i=0;i<8&&f.getSession();i++)await tick();
+  assert.equal(f.getSession(),null,'revoked or forbidden session loses identity');
+  assert.equal(f.mounted.controller.view().scope,null);
+  assert.deepEqual(f.mounted.controller.view().rows,[]);
+  f.mounted.render();
+  assert.equal(f.titles().length,1,'cache from the first page must not survive '+httpStatus);
+  await f.reauthenticate('teacher-b',2);
+  f.assertOnly('B-2-EXCLUSIVA-',23);
+ });
+}
+test('P0-87-F-01: same principal new epoch revokes A1 and publishes only A2',async()=>{
+ const f=crossTeacherCatalogFixture({aCount:12});
+ await f.arrived.promise;
+ await f.reauthenticate('teacher-a',2);
+ f.assertOnly('A-2-PRIVADA-',12);
+ const after=f.titles().join('||');
+ f.release.resolve();
+ await tick();await tick();
+ assert.equal(f.titles().join('||'),after);
+ assert.equal(f.titles().some(x=>x.includes('A-1-PRIVADA-')),false);
+ f.assertOnly('A-2-PRIVADA-',12);
+});
