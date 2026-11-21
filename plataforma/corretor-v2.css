@@ -120,3 +120,7 @@
 .camera-progress span{display:inline-block;padding:5px 9px;border:1px solid rgba(255,255,255,.28);border-radius:999px;background:rgba(18,57,46,.86);color:#fff;font-size:11px;font-weight:650;box-shadow:0 1px 4px rgba(0,0,0,.2)}
 .camera-progress span[hidden]{display:none!important}
 .scan-last-reading{display:block;margin:0 0 7px;color:#766a44;font-size:12px;font-weight:700}
+
+/* UX-79C · Official Lucide camera vector; the visible label remains in all states. */
+#camera{display:inline-flex;align-items:center;justify-content:center;gap:.4em}
+#camera .salta-lucide-icon{width:1.12em;height:1.12em;flex:none;stroke:currentColor}
