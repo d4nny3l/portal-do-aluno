@@ -12,6 +12,9 @@ import {importCardManifest} from '../../corretor/v2/omr/manifest.mjs';
 import {parseAnswerKey} from '../../corretor/v2/omr/answer-key.mjs';
 import {scoreInputUnits,POINT_SCALE} from '../../corretor/v2/assessments/block-scoring.mjs';
 import {formatScore} from '../../corretor/v2/assessments/score-format.mjs';
+// Native Function-based regression harness executes the page's production handler
+// outside its ESM module; expose only the exact pure scoring helpers in this test worker.
+Object.assign(globalThis,{scoreInputUnits,POINT_SCALE,formatScore});
 
 const html=readFileSync(new URL('../../plataforma/corretor-v2.html',import.meta.url),'utf8');
 const script=html.match(/<script type="module">([\s\S]*?)<\/script>/)[1];
@@ -49,77 +52,8 @@ function provisionalScore(bundle){
   state:'read'
  }));
  const calculate=script.match(/function calculateScore\(\)[^\n]+/)[0];
- const fn=new Function('
- fn();
- assert.equal(fields.scanScore.hidden,false);
- assert.equal(fields.scanScore.dataset.review,'false');
- assert.match(fields.scanScore.innerHTML,/Nota final 5,00 \/ 10,00/);
- assert.match(fields.scanScore.innerHTML,new RegExp('\\b'+(observations.length/2)+' acerto\\(s\\) em '+observations.length+' questão'));
- return fields.scanScore.innerHTML;
-}
-
-test('PR38: save, remove, renumber, append, save another revision and reopen both keyed answer maps',async t=>{
- const h=harness();t.after(()=>h.db.close());
- const cookie=await h.login('teacher-one');
- const keys=new Map(),keyStore={getKey:async id=>keys.get(id)||null,saveScopeKey:async(id,key)=>keys.set(id,key)};
- const fetchApi=(path,options)=>h.request(path,{method:options.method,cookie,...(options.body?{data:JSON.parse(options.body)}:{})});
- const repo=await new AssessmentRepository({fetchApi,keyStore}).initialize();
- const id=crypto.randomUUID(),editor=editorFixture(),answerById=new Map();
- editor.add();editor.add();
- assert.equal(editor.sections.length,2);
- const initial=editor.sections.flatMap(s=>s.items);
- assert.deepEqual(initial.map(q=>q.number),Array.from({length:40},(_,i)=>i+1));
- initial.forEach((q,index)=>answerById.set(q.questionId,['A','B','C','D','E'][index%5]));
- const capture=revision=>{
-  const template=createTemplate(editor.sections,{revision:7+revision,identityMode:'none'});
-  const manifest=createCardManifest(template,null,{sectionFrameStyle:'content'});
-  const keyText=template.questions.map(q=>`${q.number} ${answerById.get(q.questionId)||''}`).join('\n');
-  return makeBundle({id,revision,ownerId:ALICE,classId:CLASS_A,periodId:'p2026-4',title:'Avaliação PR38 fictícia',subject:'Matemática',kind:'Prova',maxScore:10,state:'draft',
-   manifest,editor:{version:1,sections:structuredClone(editor.sections),nextQuestionNumber:editor.next()},keyText});
- };
- const first=await repo.save(capture(1));
- assert.equal(first.revision,1);
- const original=structuredClone(first);
- // Remove the first 20 questions through the actual UI event handler.
- editor.remove(1);
- assert.deepEqual(editor.sections.flatMap(s=>s.items.map(q=>q.number)),Array.from({length:20},(_,i)=>i+1));
- const surviving=editor.sections.flatMap(s=>s.items.map(q=>q.questionId));
- assert.deepEqual(surviving,initial.slice(20).map(q=>q.questionId));
- editor.fields.count.value='10';
- editor.add();
- let all=editor.sections.flatMap(s=>s.items);
- assert.deepEqual(all.map(q=>q.number),Array.from({length:30},(_,i)=>i+1));
- const newItems=all.slice(20);
- assert.ok(newItems.every(q=>!initial.some(old=>old.questionId===q.questionId)),'never reuse removed IDs');
- newItems.forEach((q,index)=>answerById.set(q.questionId,['E','D','C','B','A'][index%5]));
- const beforeMoveIds=all.map(q=>q.questionId);
- editor.click('Mover questão 1 para baixo');
- editor.click('Mover seção 1 para baixo');
- editor.click('Mover seção 2 para cima');
- all=editor.sections.flatMap(s=>s.items);
- assert.deepEqual(all.map(q=>q.number),Array.from({length:30},(_,i)=>i+1));
- assert.equal(all[0].questionId,beforeMoveIds[1],'question reorder moves IDs, not answers');
- assert.deepEqual(new Set(all.map(q=>q.questionId)),new Set(beforeMoveIds));
- const second=await repo.save(capture(2));
- assert.equal(second.revision,2);
- assert.notEqual(first.optical.contentHash,second.optical.contentHash);
- assert.deepEqual(second.answerKey.questions.map(q=>q.questionId),all.map(q=>q.questionId));
- for(const q of second.answerKey.questions)assert.equal(q.correct,answerById.get(q.questionId));
-
- // New repository instance: read the encrypted historical revision and the new one.
- const reopened=await new AssessmentRepository({fetchApi,keyStore}).initialize();
- const old=await reopened.load(id,1),current=await reopened.load(id,2);
- assert.deepEqual(old,original,'original immutable historical revision');
- assert.deepEqual(old.answerKey.questions.map(q=>q.number),Array.from({length:40},(_,i)=>i+1));
- assert.deepEqual(current.answerKey.questions.map(q=>q.number),Array.from({length:30},(_,i)=>i+1));
- assert.deepEqual(current.answerKey.questions.map(q=>[q.questionId,q.correct]),second.answerKey.questions.map(q=>[q.questionId,q.correct]));
- for(const q of old.answerKey.questions)assert.equal(q.correct,answerById.get(q.questionId));
- provisionalScore(old);
- provisionalScore(current);
- assert.equal(h.db.db.prepare('SELECT COUNT(*) AS n FROM assessment_revisions').get().n,2);
-});
-,'activeObservations','parseKey','template','activeHistoryEntry','renderHistory','scoreInputUnits','formatScore','POINT_SCALE',calculate+';return calculateScore;')(
-  id=>fields[id],observations,()=>parseAnswerKey(fields.answerKey.value,template.questions),template,null,()=>{},scoreInputUnits,formatScore,POINT_SCALE
+ const fn=new Function('$','activeObservations','parseKey','template','activeHistoryEntry','renderHistory',calculate+';return calculateScore;')(
+  id=>fields[id],observations,()=>parseAnswerKey(fields.answerKey.value,template.questions),template,null,()=>{}
  );
  fn();
  assert.equal(fields.scanScore.hidden,false);
