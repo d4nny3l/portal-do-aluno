@@ -43,15 +43,15 @@ const planArgs=m=>({metadata:{title:m.editor.fields.assessmentTitle,subject:m.ed
  kind:m.editor.fields.assessmentKind,className:m.editor.fields.assessmentClass,date:m.editor.fields.assessmentDate},
  sections:m.sections,values:m.values,answers:m.answers,manifest:m.manifest,editor:m.editor});
 
-test('new library is inside Criar avaliação; Corrigir cartões DOM and stylesheet unchanged',()=>{
+test('new library stays in Criar; Corrigir DOM changes only for approved Lucide camera icon',()=>{
  const html=read('plataforma/corretor-v2.html'),start=html.indexOf('<section class="corretor-card module-view active" id="criar">'),
   correct=html.indexOf('<section class="corretor-card module-view" id="corrigir">'),
   end=html.indexOf('</section></div></main>',correct);
  assert.ok(start>=0&&correct>start&&end>correct);
  assert.ok(html.slice(start,correct).includes('id="savedAssessments"'));
  assert.ok(!html.slice(correct,end).includes('savedAssessments'));
- assert.equal(fnv(html.slice(correct+'<section class="corretor-card module-view" id="corrigir">'.length,end)),'741a37932ee15259');
- assert.equal(gitSha('plataforma/corretor-v2.css'),'5a2daf6f482f32884a3451ddc0781ee15db597df');
+ assert.equal(fnv(html.slice(correct+'<section class="corretor-card module-view" id="corrigir">'.length,end)),'233e00bb1043b0bf');
+ assert.equal(gitSha('plataforma/corretor-v2.css'),'4ca4dd30ff4e900698cd43fefb8981f6ad3165bd');
  assert.match(html,/mountAssessmentLibrary\(/);
  assert.match(html,/privateSelection\.manifestHash/);
  assert.doesNotMatch(html.slice(start,correct),/<section[^>]+id="piloto-avaliacoes"/);
@@ -771,7 +771,7 @@ test('UX-79B P0 privacy: scope change invalidates old pages and delayed GET',asy
  mounted.render();
  assert.equal(catalog.options.some(x=>x.textContent.includes('A privada')),false,'changing grants purges old catalog');
  await mounted.controller.list();mounted.render();
- assert.ok(catalog.options.some(x=>x.textContent==='B exclusiva'));
+ assert.ok(catalog.options.some(x=>x.textContent==='B exclusiva - Matemática - 7º A'));
  release.resolve();await opening;
  mounted.render();
  assert.equal(catalog.options.some(x=>x.textContent.includes('A privada')),false,'late response cannot reinsert old principal/scope');
@@ -1235,7 +1235,8 @@ test('UX-79C preselection enrichment: 13 paginated records, authenticated detail
   snapshotEditor:()=>m.editor,restoreEditor:()=>{openedForEdit++},newEditor:()=>{},nominalFields:()=>({}),
   activateSelection:()=>{},clearSelection:()=>{}});
  const catalog=host.children[0].children[1].children[1].children[0];
- await entered.promise;
+ for(let step=0;step<80&&reads===0;step++)await tick();
+ assert.ok(reads>0,'enrichment must start; status: '+host.children[0].children[4].textContent);
  assert.equal(catalog.disabled,true,'the selector remains locked while private metadata is incomplete');
  assert.equal(catalog.options.length,1,'no title-only partial list released');
  assert.equal(openedForEdit,0,'metadata reads cannot open/change editor');
