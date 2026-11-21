@@ -330,7 +330,9 @@ async function mountedRaceFixture({onPut=async()=>{},onSelection=async()=>{},onO
   throw Error('Unexpected route '+init.method+' '+route);
  };
  const host=new SurfaceNode('section'),createPanel=new SurfaceNode('section');
- const doc={getElementById:id=>id==='savedAssessments'?host:id==='criar'?createPanel:null,
+ const formatField=new SurfaceNode('label'),formatSelect=new SurfaceNode('select');
+ const doc={getElementById:id=>id==='savedAssessments'?host:id==='criar'?createPanel:
+  id==='scoreFormatField'?formatField:id==='scoreFormatSelect'?formatSelect:null,
   createElement:tag=>new SurfaceNode(tag)};
  const mounted=mountAssessmentLibrary({document:doc,window:{confirm:()=>true,...windowOverrides},host,fetchFn,
   getSections:()=>m.sections,getMetadata:()=>({title:m.editor.fields.assessmentTitle,subject:m.editor.fields.assessmentSubject,
