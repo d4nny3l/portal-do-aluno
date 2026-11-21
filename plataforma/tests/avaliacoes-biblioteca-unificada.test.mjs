@@ -13,6 +13,7 @@ import {definitionFromLocalPlan,planFromPrivateRecord} from '../../corretor/v2/a
 import {importCardManifest} from '../../corretor/v2/omr/manifest.mjs';
 import {createPrivateAssessmentClient} from '../../corretor/v2/assessments/private-client.mjs';
 import {createPrivateLibraryController} from '../../corretor/v2/assessments/private-library.mjs';
+import {enrichCatalogRows} from '../catalogo-avaliacoes.mjs';
 
 const root=path.resolve(path.dirname(fileURLToPath(import.meta.url)),'../..');
 const read=rel=>fs.readFileSync(path.join(root,rel),'utf8');
@@ -43,6 +44,13 @@ const planArgs=m=>({metadata:{title:m.editor.fields.assessmentTitle,subject:m.ed
  kind:m.editor.fields.assessmentKind,className:m.editor.fields.assessmentClass,date:m.editor.fields.assessmentDate},
  sections:m.sections,values:m.values,answers:m.answers,manifest:m.manifest,editor:m.editor});
 
+const catalogRecord=(row,m)=>{
+ const {plan,definition}=createLibraryPlan(planArgs(m));
+ return {id:row.id,revision:row.revision??1,definition:{...definition,title:row.title},
+  manifestHash:definition.manifest.contentHash,scoreScale:10000,totalUnits:plan.totalUnits,
+  status:'issued',archived:false,institutionId:row.institutionId,classId:row.classId,periodId:row.periodId};
+};
+
 test('new library is inside Criar avaliação; Corrigir cartões DOM and stylesheet unchanged',()=>{
  const html=read('plataforma/corretor-v2.html'),start=html.indexOf('<section class="corretor-card module-view active" id="criar">'),
   correct=html.indexOf('<section class="corretor-card module-view" id="corrigir">'),
@@ -51,7 +59,7 @@ test('new library is inside Criar avaliação; Corrigir cartões DOM and stylesh
  assert.ok(html.slice(start,correct).includes('id="savedAssessments"'));
  assert.ok(!html.slice(correct,end).includes('savedAssessments'));
  assert.equal(fnv(html.slice(correct+'<section class="corretor-card module-view" id="corrigir">'.length,end)),'741a37932ee15259');
- assert.equal(gitSha('plataforma/corretor-v2.css'),'5a2daf6f482f32884a3451ddc0781ee15db597df');
+ assert.equal(gitSha('plataforma/corretor-v2.css'),'90f4ea33933388e13d148b9f4723159329c92963');
  assert.match(html,/mountAssessmentLibrary\(/);
  assert.match(html,/privateSelection\.manifestHash/);
  assert.doesNotMatch(html.slice(start,correct),/<section[^>]+id="piloto-avaliacoes"/);
@@ -572,10 +580,10 @@ test('P0 structural retry: requestId, body and CAS are unchanged after silent se
 
 
 test('UX-79B catalog labels omit missing fields and technical active states',()=>{
- assert.equal(assessmentLabel({title:'Prova',subject:'Matemática',className:'7º A'}),'Prova · Matemática · 7º A');
+ assert.equal(assessmentLabel({title:'Prova',subject:'Matemática',className:'7º A'}),'Prova - Matemática - 7º A');
  assert.equal(assessmentLabel({title:'Prova',subject:'',className:''}),'Prova');
  assert.equal(assessmentLabel({title:'Prova',state:'active'}),'Prova');
- assert.equal(assessmentLabel({title:'Prova',definition:{subject:'Ciências',manifest:{header:{className:'6º B'}}}}),'Prova · Ciências · 6º B');
+ assert.equal(assessmentLabel({title:'Prova',definition:{subject:'Ciências',manifest:{header:{className:'6º B'}}}}),'Prova - Ciências - 6º B');
 });
 
 test('UX-79B score precision is strict and never silently rounds',async()=>{
@@ -601,7 +609,7 @@ test('UX-79B automatic current-revision opening, accessible actions and hidden l
  const selectors=f.top.children[1],catalog=selectors.children[1].children[0];
  assert.equal(selectors.children[2].hidden,true,'public revision selector hidden; history remains internal');
  const option=catalog.options.find(x=>x.value===first.id);
- assert.equal(option?.textContent,'Avaliação de Matemática · Matemática · Turma sintética 7A');
+ assert.equal(option?.textContent,'Avaliação de Matemática - Matemática - Turma sintética 7A');
  assert.equal(catalog.options.some(x=>x.textContent.includes('active')),false);
  for(const name of ['Abrir avaliação','Atualizar','Anterior','Próxima','Conferir salvamento'])
   assert.equal(f.button(name).hidden,true,name+' is not visible');
