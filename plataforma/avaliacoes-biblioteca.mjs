@@ -531,9 +531,15 @@ export function mountAssessmentLibrary({
  }
  function updateSummary(){
   try{
-   const s=draftSummary({sections:getSections(),values,answers,scoreDecimals:selectedScoreDecimals});
+   const sections=getSections();
+   const s=draftSummary({sections,values,answers,scoreDecimals:selectedScoreDecimals});
+   const invalidFormat=sections.some(section=>{
+    const id=section.sectionId,value=values[id]??(sections.length===1?'10':'');
+    if(restoredUnits.has(id)&&!editedAmountIds.has(id))return false;
+    try{scoreInputUnits(value,selectedScoreDecimals);return false}catch{return true}
+   });
    summary.textContent=s.total+' pontos · '+s.missing+' alternativa(s) a preencher'+
-    (s.invalidAmounts?' · confira o valor dos blocos':'');
+    (s.invalidAmounts||invalidFormat?' · confira o valor dos blocos':'');
   }catch{summary.textContent='Adicione questões e informe os valores e gabaritos.'}
  }
  function render({preserveError=false}={}){
