@@ -762,8 +762,9 @@ test('UX-79B P0 privacy: scope change invalidates old pages and delayed GET',asy
  for(let n=0;n<8&&mounted.controller.view().grants.length!==2;n++)await tick();
  mounted.controller.useScope(grantA);
  mounted.render();
- const refresh=host.children[0].children[3].children.find(x=>x.textContent==='Atualizar');
- await refresh.handlers.click();
+ const scopeControl=host.children[0].children[1].children[0].children[0];
+ scopeControl.value='0';
+ await scopeControl.onchange();
  const catalog=host.children[0].children[1].children[1].children[0];
  assert.ok(catalog.options.some(x=>x.textContent.includes('A privada')));
  catalog.value=ids[0];
@@ -776,7 +777,8 @@ test('UX-79B P0 privacy: scope change invalidates old pages and delayed GET',asy
  assert.equal(catalog.options.some(x=>x.textContent==='B exclusiva'),false,
   'a raw controller page must not bypass the fully loaded catalog gate');
  release.resolve();await opening;
- await refresh.handlers.click();
+ scopeControl.value='1';
+ await scopeControl.onchange();
  mounted.render();
  assert.ok(catalog.options.some(x=>x.textContent==='B exclusiva'));
  assert.equal(catalog.options.some(x=>x.textContent.includes('A privada')),false,'late response cannot reinsert old principal/scope');
@@ -1251,12 +1253,12 @@ test('P1-85-F legacy 4 decimals stay exact on format-only changes; edited values
 
 // P0-87-F-01: real mounted UI + real client/controller + synthetic authenticated
 // pages. The second page is held while the principal/epoch/scope changes.
-function crossTeacherCatalogFixture({aCount=11,bCount=23}={}){
+function crossTeacherCatalogFixture({aCount=11,bCount=23,holdRetry=false}={}){
  const m=make({counts:[2],types:['A-E']});
  const scopeA={institutionId:'school-A',classId:'class-A',periodId:'2026-A'};
  const scopeB={institutionId:'school-B',classId:'class-B',periodId:'2026-B'};
- let actor='teacher-a',epoch=1,holdASecond=true;
- const arrived=deferred(),release=deferred(),queries=[];
+ let actor='teacher-a',epoch=1,holdASecond=true,retrySecondHeld=false;
+ const arrived=deferred(),release=deferred(),retryEntered=deferred(),retryRelease=deferred(),queries=[];
  const uuid=n=>n.toString(16).padStart(8,'0')+'-1234-4123-8123-000000000001';
  const rowsFor=(teacher,version)=>Array.from({length:teacher==='teacher-a'?aCount:bCount},(_,i)=>({
   id:uuid((teacher==='teacher-a'?100:1000)+i),
@@ -1284,6 +1286,12 @@ function crossTeacherCatalogFixture({aCount=11,bCount=23}={}){
     arrived.resolve();
     const outcome=await release.promise;
     if(outcome===401||outcome===403)return Response.json({error:'session_denied'},{status:outcome});
+    if(outcome===503)return Response.json({error:'temporary_unavailable'},{status:503});
+   }else if(teacher==='teacher-a'&&after&&holdRetry&&!retrySecondHeld){
+    retrySecondHeld=true;retryEntered.resolve();
+    const outcome=await retryRelease.promise;
+    if(outcome===401||outcome===403)return Response.json({error:'session_denied'},{status:outcome});
+    if(outcome===503)return Response.json({error:'temporary_unavailable'},{status:503});
    }
    return Response.json(page);
   }
@@ -1300,7 +1308,8 @@ function crossTeacherCatalogFixture({aCount=11,bCount=23}={}){
   restoreEditor:()=>{},nominalFields:()=>({}),newEditor:()=>{},
   activateSelection:()=>{},clearSelection:()=>{}});
  const catalog=host.children[0].children[1].children[1].children[0];
- const refresh=host.children[0].children[3].children.find(x=>x.textContent==='Atualizar');
+ const refresh=host.children[0].children[3].children.find(x=>x.attrs['data-action-icon']==='refresh');
+ const scopeControl=host.children[0].children[1].children[0].children[0];
  const titles=()=>catalog.options.map(x=>x.textContent);
  const assertOnly=(prefix,count)=>{
   mounted.render(); // catches stale allRows, metadataById and controller.rows fallback
@@ -1319,10 +1328,10 @@ function crossTeacherCatalogFixture({aCount=11,bCount=23}={}){
   mounted.controller.useScope(grants[0]);
   mounted.render();
   assert.equal(titles().length,1,'no previous titles in intermediate authorization state');
-  await refresh.handlers.click();
+  await scopeControl.onchange();
   mounted.render();
  }
- return {mounted,host,catalog,refresh,arrived,release,queries,titles,assertOnly,reauthenticate,
+ return {mounted,host,catalog,refresh,scopeControl,arrived,release,retryEntered,retryRelease,queries,titles,assertOnly,reauthenticate,
   getSession:()=>mounted.controller.view().session};
 }
 
