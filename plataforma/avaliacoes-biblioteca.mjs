@@ -570,7 +570,15 @@ export function mountAssessmentLibrary({
    }
    throw error;
   }finally{
-   if(isCurrent()){catalogBusy=false;render({preserveError:catalogLoadError});}
+   if(isCurrent()){
+    catalogBusy=false;render({preserveError:catalogLoadError});
+   }else if(generation===catalogGeneration&&contextKey()===context){
+    // Controller generation may change in the same authorized scope
+    // (new draft/open/invalidation). A late GET must neither publish old
+    // labels nor leave the selector indefinitely marked as loading.
+    catalogGeneration++;catalogBusy=false;catalogReady=false;allRows=[];
+    render();
+   }
   }
  }
  async function connectAndList(){
