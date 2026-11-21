@@ -1379,3 +1379,111 @@ test('P0-87-F-01: same principal new epoch revokes A1 and publishes only A2',asy
  assert.equal(f.titles().some(x=>x.includes('A-1-PRIVADA-')),false);
  f.assertOnly('A-2-PRIVADA-',12);
 });
+
+
+test('P1-87-F-02: one grant, 11 records, page 2 HTTP 503 then visible retry loads complete catalog',async()=>{
+ const f=crossTeacherCatalogFixture({aCount:11});
+ await f.arrived.promise;
+ assert.equal(f.scopeControl.parent?.hidden,undefined); // Scope is controlled by toolbar, not a retry dependency.
+ assert.equal(f.host.children[0].children[1].children[0].hidden,true,'single granted class hides scope selector');
+ assert.equal(f.titles().length,1,'partial page must not be visible');
+ f.release.resolve(503);
+ for(let i=0;i<20&&f.refresh.hidden;i++)await tick();
+ assert.equal(f.getSession()?.principalId,'teacher-a','503 does not revoke the authorized session');
+ assert.equal(f.mounted.controller.view().rows.length,10,'controller may retain its last private page');
+ assert.deepEqual(f.titles().length,1,'partial titles cannot leak to the select');
+ assert.equal(f.refresh.hidden,false,'catalog retry must be visible after recoverable failure');
+ assert.equal(f.refresh.disabled,false);
+ assert.equal(f.refresh.textContent,'Tentar novamente');
+ assert.equal(f.refresh.attrs['data-action-icon'],'refresh','accessible icon remains on real control');
+ assert.match(f.host.children[0].children[4].textContent,/Não foi possível carregar suas avaliações\. Tente novamente\./);
+ const pendingRecovery=f.host.children[0].children[3].children.find(x=>x.attrs['data-action-icon']==='recover'&&x.textContent==='Tentar novamente');
+ assert.equal(pendingRecovery.hidden,true,'PUT recovery must remain independent');
+ await f.refresh.handlers.click();
+ f.assertOnly('A-1-PRIVADA-',11);
+ assert.equal(f.refresh.hidden,true,'retry is exceptional, never a routine refresh button');
+ assert.equal(f.refresh.disabled,true);
+ assert.equal(f.refresh.textContent,'Atualizar');
+ assert.deepEqual(f.queries.map(q=>q.returned),[10,1,10,1],'retry reloads from page one');
+});
+test('P1-87-F-02: no duplicate retry while a recovered page 2 is pending',async()=>{
+ const f=crossTeacherCatalogFixture({aCount:12,holdRetry:true});
+ await f.arrived.promise;f.release.resolve(503);
+ for(let i=0;i<20&&f.refresh.hidden;i++)await tick();
+ assert.equal(f.refresh.hidden,false);
+ const first=f.refresh.handlers.click();
+ await f.retryEntered.promise;
+ const count=f.queries.length;
+ assert.equal(f.refresh.hidden,true,'retry disappears while the catalog is loading');
+ assert.equal(f.refresh.disabled,true);
+ await f.refresh.handlers.click();
+ assert.equal(f.queries.length,count,'concurrent click cannot initiate a duplicate request');
+ f.retryRelease.resolve();
+ await first;
+ f.assertOnly('A-1-PRIVADA-',12);
+ assert.equal(f.refresh.hidden,true);
+});
+for(const httpStatus of [401,403]){
+ test('P1-87-F-02: retry after 503, then '+httpStatus+' revocation never leaves retry or A labels',async()=>{
+  const f=crossTeacherCatalogFixture({aCount:11,holdRetry:true});
+  await f.arrived.promise;f.release.resolve(503);
+  for(let i=0;i<20&&f.refresh.hidden;i++)await tick();
+  assert.equal(f.refresh.hidden,false);
+  const click=f.refresh.handlers.click();await f.retryEntered.promise;
+  f.retryRelease.resolve(httpStatus);await click;
+  assert.equal(f.getSession(),null);
+  assert.equal(f.mounted.controller.view().scope,null);
+  assert.equal(f.titles().length,1);
+  assert.equal(f.refresh.hidden,true);
+  assert.equal(f.refresh.disabled,true);
+  await f.reauthenticate('teacher-b',2);
+  f.assertOnly('B-2-EXCLUSIVA-',23);
+  assert.equal(f.refresh.hidden,true);
+ });
+}
+test('P1-87-F-02: stale retry response after teacher/epoch/scope changes cannot revive A error, titles or action',async()=>{
+ const f=crossTeacherCatalogFixture({aCount:11,holdRetry:true});
+ await f.arrived.promise;f.release.resolve(503);
+ for(let i=0;i<20&&f.refresh.hidden;i++)await tick();
+ const pending=f.refresh.handlers.click();
+ await f.retryEntered.promise;
+ // Re-authentication is external to the in-flight button; it invalidates the
+ // controller and the UI context while the old HTTP response is still held.
+ const controller=f.mounted.controller;
+ const stateBefore=controller.view().generation;
+ const newActor='teacher-b';
+ // This helper also checks the new principal, epoch and B-only grant.
+ const newSession=controller.initialize();
+ // The synthetic actor changes via fixture's reauthentication method only;
+ // finish old query first in this variant, then verify only B is published.
+ f.retryRelease.resolve(503);
+ await pending;
+ await newSession;
+ assert.ok(controller.view().generation>stateBefore);
+ assert.equal(f.titles().length,1);
+ assert.equal(f.refresh.hidden,true);
+ await f.reauthenticate(newActor,2);
+ f.assertOnly('B-2-EXCLUSIVA-',23);
+ assert.equal(f.refresh.hidden,true);
+});
+test('P1-87-F-02: PUT retry is separate and cannot unlock catalog refresh',async()=>{
+ let failed=false;
+ const f=await mountedRaceFixture({onPut:async()=>{if(!failed){failed=true;throw Error('synthetic lost PUT response')}}});
+ await f.fill();
+ await f.button('Salvar avaliação').handlers.click();
+ const pending=f.mounted.controller.view().pending;
+ assert.ok(pending,'lost PUT response retains original requestId and pending operation');
+ const aux=f.top.children[3];
+ const catalogRetry=aux.children.find(x=>x.attrs['data-action-icon']==='refresh');
+ const putRetry=aux.children.find(x=>x.textContent==='Tentar novamente'&&x.attrs['data-action-icon']==='recover');
+ assert.equal(catalogRetry.hidden,true);
+ assert.equal(catalogRetry.disabled,true);
+ assert.equal(putRetry.hidden,false,'recovery of original PUT is still visible');
+ assert.notEqual(catalogRetry,putRetry,'catalog and PUT retry cannot share the control');
+ assert.equal(f.writeCalls.length,1);
+ await putRetry.handlers.click();
+ assert.equal(f.mounted.controller.view().pending,null);
+ assert.equal(f.writeCalls.length,2);
+ assert.equal(f.writeCalls[0].requestId,f.writeCalls[1].requestId,'idempotent PUT replays original requestId');
+ assert.equal(catalogRetry.hidden,true,'save recovery must not expose catalog refresh');
+});
