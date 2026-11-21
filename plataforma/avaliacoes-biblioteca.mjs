@@ -29,8 +29,10 @@ export const assessmentLabel=row=>[row?.title,row?.subject??row?.definition?.sub
  row?.className??row?.definition?.manifest?.header?.className]
  .map(value=>typeof value==='string'?value.trim():'').filter(Boolean).join(' · ');
 export const validScorePrecision=(value,places=DEFAULT_SCORE_DECIMALS)=>{
- if(!/^\d+(?:[.,]\d{1,4})?$/.test(String(value||'').trim()))return false;
- try{scoreInputUnits(value,places);return true}catch{return false}
+ const input=String(value??'').trim();
+ if(!/^\d+(?:[.,]\d{1,4})?$/.test(input))return false;
+ const fractional=input.split(/[.,]/)[1]||'';
+ return !/[1-9]/.test(fractional.slice(assertScoreDecimals(places)));
 };
 const partialScoreInput=(value,places)=>{
  if(!/^\d*(?:[.,]\d{0,4})?$/.test(value))return false;
