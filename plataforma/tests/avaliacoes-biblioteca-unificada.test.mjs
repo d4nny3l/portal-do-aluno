@@ -587,7 +587,7 @@ test('UX-79B catalog labels omit missing fields and technical active states',()=
 });
 
 test('UX-79B score precision is strict and never silently rounds',async()=>{
- assert.doesNotMatch(read('plataforma/avaliacoes-biblioteca.mjs'),/questão\\\(ões\\\) · até 2 decimais/);
+ assert.ok(!read('plataforma/avaliacoes-biblioteca.mjs').includes('· até 2 decimais'))
  for(const value of ['10','10,1','0.05','0,00','25.99'])assert.equal(validScorePrecision(value),true,value);
  for(const value of ['1.234','2,999','3,','1.','-2.50','abc',''])assert.equal(validScorePrecision(value),false,value);
  const f=await mountedRaceFixture();
