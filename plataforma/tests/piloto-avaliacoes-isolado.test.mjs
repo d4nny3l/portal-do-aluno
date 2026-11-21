@@ -14,9 +14,11 @@ import {renderTemplateSvg} from '../../corretor/v2/omr/render.mjs';
 const root=path.resolve(path.dirname(fileURLToPath(import.meta.url)),'../..');
 const text=rel=>fs.readFileSync(path.join(root,rel),'utf8');
 const gitBlob=rel=>{const body=fs.readFileSync(path.join(root,rel));return createHash('sha1').update('blob '+body.length+'\0').update(body).digest('hex')};
+// The two frontend score-format contract helpers were imported byte-for-byte from PR #86.
+// All other pinned private and optical modules retain their original hashes.
 const original={
- 'corretor/v2/assessments/block-scoring.mjs':'6abefc55e210b065d8b2080587a9038fd5f5856b',
- 'corretor/v2/assessments/private-contract-adapter.mjs':'a938f541db6019b56c6429b3ca14853005974bcd',
+ 'corretor/v2/assessments/block-scoring.mjs':'42a3ec7bfd2a10495f74c103a792bf1d65f6d264',
+ 'corretor/v2/assessments/private-contract-adapter.mjs':'fa7e11c2b9b69fe85c6b35b7601b282e947456ee',
  'corretor/v2/assessments/private-client.mjs':'d909b412f95747c4f3b1830fdcb0fd385633694b',
  'corretor/v2/assessments/private-library.mjs':'8eb63a54c83a121d58108af7066be381c7290bd2',
  'corretor/v2/assessments/private-ui.mjs':'f22f6a04ef2248bf28216d1e7764fb89741b0494',
