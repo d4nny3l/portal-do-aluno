@@ -1,0 +1,179 @@
+{
+  "schemaVersion": "salta-backend-source-matrix-v1",
+  "main": "5865dfc43efeada4effa2c8a96a3543794a6ff7f",
+  "contract": "5798112330260138ea4124cb9ea6d7f202248ddc",
+  "frontend88": "8141984e03cf43632b3313ddcb6159f0ab5a9ac2",
+  "expectedBundleSha256": "e094439ca5c0bfa3dd80307d2aa4c866846c9e05199ec8dd83c6245059b004c2",
+  "inputs": [
+    {
+      "path": "corretor/v2/omr/assessment.mjs",
+      "origin": "5798112330260138ea4124cb9ea6d7f202248ddc",
+      "mainBlob": "d58ae56ced0488c9bc1693b468efac7bdba07612",
+      "candidateBlob": "d58ae56ced0488c9bc1693b468efac7bdba07612",
+      "sha256": "5fbaa7570c170fcac8299d8af7f03fb388dbca0efeb6a43cce6e6ff3f8254d9c",
+      "identicalToMain": true,
+      "comparison": "identical",
+      "indispensable": "Tipos/limites de questão exigidos pelo manifesto."
+    },
+    {
+      "path": "corretor/v2/omr/layout-v1.mjs",
+      "origin": "5798112330260138ea4124cb9ea6d7f202248ddc",
+      "mainBlob": "4970e5e293ac95b3612aeb20e9cecbd81bebca33",
+      "candidateBlob": "4970e5e293ac95b3612aeb20e9cecbd81bebca33",
+      "sha256": "af1b3317b3de768221d89e04610e776b58d3bd443c2de80ddf64a07914bbeff2",
+      "identicalToMain": true,
+      "comparison": "identical",
+      "indispensable": "Leitura/renderização de manifestos legados V1."
+    },
+    {
+      "path": "corretor/v2/omr/artwork.mjs",
+      "origin": "5798112330260138ea4124cb9ea6d7f202248ddc",
+      "mainBlob": "ae54deee5c53bffc538075ca4ef9b19a9f081824",
+      "candidateBlob": "ae54deee5c53bffc538075ca4ef9b19a9f081824",
+      "sha256": "3d0313a3f17a2805215c11aa2705235759af2ba689d63f36db5c197a5c55efb7",
+      "identicalToMain": true,
+      "comparison": "identical",
+      "indispensable": "Arte gráfica existente usada na impressão neutra."
+    },
+    {
+      "path": "corretor/v2/omr/layout-v2.mjs",
+      "origin": "5798112330260138ea4124cb9ea6d7f202248ddc",
+      "mainBlob": "1a63c9fbac0a04bb55f792add2b202c0cc3e2d0d",
+      "candidateBlob": "1a63c9fbac0a04bb55f792add2b202c0cc3e2d0d",
+      "sha256": "c40adbb60aabe7f14cd3ee8c85305c05b2c18d6adf5b40576d0c494f82381235",
+      "identicalToMain": true,
+      "comparison": "identical",
+      "indispensable": "Geometria V2 existente."
+    },
+    {
+      "path": "corretor/v2/omr/layout.mjs",
+      "origin": "5798112330260138ea4124cb9ea6d7f202248ddc",
+      "mainBlob": "31b1901d1e2a76e9b2e134a8317c3e2378ff998b",
+      "candidateBlob": "31b1901d1e2a76e9b2e134a8317c3e2378ff998b",
+      "sha256": "4b83926105813adfd223a45d748df3853440b65384cf6f046d95370157233524",
+      "identicalToMain": true,
+      "comparison": "identical",
+      "indispensable": "Despacho das versões de geometria."
+    },
+    {
+      "path": "corretor/v2/omr/template.mjs",
+      "origin": "5798112330260138ea4124cb9ea6d7f202248ddc",
+      "mainBlob": "d0c0e0a5a061b778a4b92973f0fd3009a1683f30",
+      "candidateBlob": "d0c0e0a5a061b778a4b92973f0fd3009a1683f30",
+      "sha256": "ad77b5981d4fef578cf7b74a3e4e2196ebdfe10cbdbf054a81b74228aecd57f2",
+      "identicalToMain": true,
+      "comparison": "identical",
+      "indispensable": "Reconstrução e validação do template."
+    },
+    {
+      "path": "corretor/v2/omr/manifest.mjs",
+      "origin": "5798112330260138ea4124cb9ea6d7f202248ddc",
+      "mainBlob": "0a83331c35f467fe3e123daf1775010e5f3e9e0b",
+      "candidateBlob": "0a83331c35f467fe3e123daf1775010e5f3e9e0b",
+      "sha256": "dd28859b4c646a828aae585eb558337e9e7b3d493875678d318e7d35639c126f",
+      "identicalToMain": true,
+      "comparison": "identical",
+      "indispensable": "Importação e vínculo/hash do manifesto histórico."
+    },
+    {
+      "path": "corretor/v2/omr/render-v1.mjs",
+      "origin": "5798112330260138ea4124cb9ea6d7f202248ddc",
+      "mainBlob": "b6937214caf1a31d8bb74458e9a9445bd4f1f4a7",
+      "candidateBlob": "b6937214caf1a31d8bb74458e9a9445bd4f1f4a7",
+      "sha256": "7e207373ed42d2409167424be12050e19f4ea8348bcb1c87e5734dccf8a8e1c0",
+      "identicalToMain": true,
+      "comparison": "identical",
+      "indispensable": "Impressão de revisões V1 sem alterar o manifesto."
+    },
+    {
+      "path": "corretor/v2/omr/render.mjs",
+      "origin": "5798112330260138ea4124cb9ea6d7f202248ddc",
+      "mainBlob": "90667f4dc78ee1f6d071325f4bb3077f431f3bb5",
+      "candidateBlob": "90667f4dc78ee1f6d071325f4bb3077f431f3bb5",
+      "sha256": "70a6fb9eed933a992cd24d90f68186968154a51abee8b22be6e181ca6d342d48",
+      "identicalToMain": true,
+      "comparison": "identical",
+      "indispensable": "Impressão/validação dos modelos V1/V2 existentes."
+    },
+    {
+      "path": "corretor/v2/assessments/score-format.mjs",
+      "origin": "5798112330260138ea4124cb9ea6d7f202248ddc",
+      "mainBlob": null,
+      "candidateBlob": "6f1b34d68f5406f24f5d40a05b04916c083e54a9",
+      "sha256": "86531a0f06ea3bad834cf7c22a79d2a68f69a337a745719ea7e713be05f07466",
+      "identicalToMain": false,
+      "comparison": "absent-in-main",
+      "indispensable": "Único helper puro e versão do contrato, compartilhado com frontend #88."
+    },
+    {
+      "path": "assessments-service/definition.mjs",
+      "origin": "5798112330260138ea4124cb9ea6d7f202248ddc",
+      "mainBlob": null,
+      "candidateBlob": "f9e3ae756a076c1b09d519bf2d39da3ca34a94b8",
+      "sha256": "e35f1a92bf5cc2dfd1c5749bb963d5b05bff46ab71879f7ecc3d4df5c0ce1e66",
+      "identicalToMain": false,
+      "comparison": "absent-in-main",
+      "indispensable": "Valida definição V2, preferência opcional e projeção de impressão sem gabarito."
+    },
+    {
+      "path": "assessments-lab/crypto/crypto-format.js",
+      "origin": "5798112330260138ea4124cb9ea6d7f202248ddc",
+      "mainBlob": "51ade0e2692cdbc6708f7576130c090883ff2c58",
+      "candidateBlob": "51ade0e2692cdbc6708f7576130c090883ff2c58",
+      "sha256": "675c4a0670ee5d765ff61ba0eeae2ca12196f743b0245acb4bc3380fe30126f9",
+      "identicalToMain": true,
+      "comparison": "identical",
+      "indispensable": "Envelope e JSON canônico criptográfico existente."
+    },
+    {
+      "path": "assessments-lab/crypto/key-generation.js",
+      "origin": "5798112330260138ea4124cb9ea6d7f202248ddc",
+      "mainBlob": "673f4fbb4b2204522e88837256c9f5594c026e9a",
+      "candidateBlob": "673f4fbb4b2204522e88837256c9f5594c026e9a",
+      "sha256": "011c9aab0e59b5e3a37f0503bc79cb687fc43cddfd7c2024076bb3b9202a497f",
+      "identicalToMain": true,
+      "comparison": "identical",
+      "indispensable": "Derivação existente do material de cifra."
+    },
+    {
+      "path": "assessments-lab/crypto/encryption.js",
+      "origin": "5798112330260138ea4124cb9ea6d7f202248ddc",
+      "mainBlob": "0c82b313c9e8a3a11423463780fcf32faf2d1b06",
+      "candidateBlob": "0c82b313c9e8a3a11423463780fcf32faf2d1b06",
+      "sha256": "896d9ae006450273f5b9ae8a85749768ba3deb999dcd0adae1bd02c4c80fc9e0",
+      "identicalToMain": true,
+      "comparison": "identical",
+      "indispensable": "Cifra autenticada existente da revisão."
+    },
+    {
+      "path": "assessments-lab/crypto/decryption.js",
+      "origin": "5798112330260138ea4124cb9ea6d7f202248ddc",
+      "mainBlob": "9e2c1fe6a0c520c5342980bc8808ff1bd15d4f30",
+      "candidateBlob": "9e2c1fe6a0c520c5342980bc8808ff1bd15d4f30",
+      "sha256": "948b6fa98dcee11f2dc7fde7ccfc9df063c3e81bbfd5bdf24ae733650366a333",
+      "identicalToMain": true,
+      "comparison": "identical",
+      "indispensable": "Recuperação autenticada existente da revisão."
+    },
+    {
+      "path": "assessments-service/crypto.mjs",
+      "origin": "5798112330260138ea4124cb9ea6d7f202248ddc",
+      "mainBlob": null,
+      "candidateBlob": "29220ef7163efefe7fb01facb27e4bfa3a4a621d",
+      "sha256": "8404d30abdd9af173975a3b7edd97dcfdbed9f9763f78cee2f8fb99d65dd9763",
+      "identicalToMain": false,
+      "comparison": "absent-in-main",
+      "indispensable": "Cifra/AAD/HMAC já existentes, sem alteração de formato ou chave."
+    },
+    {
+      "path": "assessments-service/worker.mjs",
+      "origin": "5798112330260138ea4124cb9ea6d7f202248ddc",
+      "mainBlob": null,
+      "candidateBlob": "a7a2f0dbe236c338a76d3d1734edb17561bbee6b",
+      "sha256": "8f28c77d8f6d35b0641dd91f42b6d66faf4d7047215bd93c4dbc952a7728dd18",
+      "identicalToMain": false,
+      "comparison": "absent-in-main",
+      "indispensable": "Rotas privadas, autorização, catálogo, CAS/recibos/seleções e capability/guarda de downgrade aprovados."
+    }
+  ]
+}

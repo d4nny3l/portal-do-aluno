@@ -1,0 +1,39 @@
+name: SALTA minimal assessment backend candidate
+on:
+  pull_request:
+    paths:
+      - 'assessments-service/**'
+      - '.github/workflows/test-assessments-backend-minimal.yml'
+      - 'docs/avaliacoes/P1_85_B_BACKEND.md'
+permissions:
+  contents: read
+jobs:
+  local-synthetic-only:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    env:
+      WRANGLER_SEND_METRICS: 'false'
+      WRANGLER_WRITE_LOGS: 'false'
+      P1_85_DIFF_BASE: ${{ github.event.pull_request.base.sha }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          ref: ${{ github.event.pull_request.head.sha }}
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+      - run: npm ci --prefix assessments-lab --ignore-scripts --no-audit --no-fund
+      - name: Guard exact runtime and minimal backend diff
+        run: node assessments-service/integrity.mjs
+      - name: Guard and reproducible bundle tests
+        run: node --test assessments-service/tests/build.test.mjs
+      - name: Approved frontend 88 and candidate backend with local Auth and temporary D1
+        run: node assessments-service/test-composition.mjs
+      - name: Build candidate only
+        run: node assessments-service/build.mjs
+      - uses: actions/upload-artifact@v4
+        with:
+          name: minimal-backend-candidate-not-published
+          path: assessments-service/dist/
+      - run: git diff --check
