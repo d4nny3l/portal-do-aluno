@@ -79,6 +79,11 @@ for(const places of [0,1,2])test(`private API format ${places}: persisted roundt
   const dup={requestId:crypto.randomUUID(),newId:crypto.randomUUID(),sourceRevision:1};
   assert.equal((await h.request(route+'/duplicate',{method:'POST',data:dup})).status,201);
   const copy=(await(await h.request('/assessments/'+dup.newId)).json()).record;assert.equal(copy.definition.display.scoreDecimals,places);
+  const editedCopy=structuredClone(copy.definition);editedCopy.display.scoreDecimals=(places+2)%3;
+  assert.equal((await h.request('/assessments/'+dup.newId,{method:'PUT',data:packet(1,{definition:editedCopy,status:'draft'})})).status,201);
+  assert.equal((await(await h.request('/assessments/'+dup.newId)).json()).record.definition.display.scoreDecimals,(places+2)%3);
+  assert.equal((await(await h.request(route)).json()).record.definition.display.scoreDecimals,places,'Editing duplicate cannot change source format');
+  assert.equal((await(await h.request('/assessments/'+dup.newId+'/revisions/1')).json()).record.definition.display.scoreDecimals,places);
   const selection={requestId:crypto.randomUUID(),selectionId:crypto.randomUUID(),assessmentId:id,revision:1};
   assert.equal((await h.request('/selections',{method:'POST',data:selection})).status,201);
   const downgrade=packet(1,{definition:definition()});assert.equal((await h.request(route,{method:'PUT',data:downgrade})).status,409,'Old client cannot erase preference');
