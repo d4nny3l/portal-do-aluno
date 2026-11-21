@@ -1218,7 +1218,7 @@ test('UX-79C preselection enrichment: 13 paginated records, authenticated detail
    pages++;const pos=u.searchParams.get('after')?rows.findIndex(x=>x.id===u.searchParams.get('after'))+1:0,part=rows.slice(pos,pos+10);
    return Response.json({assessments:part,nextCursor:pos+part.length<rows.length?part.at(-1).id:null});
   }
-  const id=route.match(/^\/assessments\/([0-9a-f-]{36})$/)?.[1];
+  const id=route.match(/^\/assessments\/([0-9a-f-]{36})\/revisions\/1$/)?.[1];
   if(id){
    reads++;active++;maxActive=Math.max(active,maxActive);entered.resolve();
    await gate.promise;
