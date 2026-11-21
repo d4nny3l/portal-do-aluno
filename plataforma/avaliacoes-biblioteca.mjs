@@ -463,7 +463,7 @@ export function mountAssessmentLibrary({
     }
     values[section.sectionId]=input;markEdited();updateSummary();
    };
-   scoreBox.append(field(document,section.label+' · '+section.items.length+' questão(ões) · até 2 decimais',val));
+   scoreBox.append(field(document,section.label+' · '+section.items.length+' questão(ões)',val));
   }
   for(const q of sections.flatMap(s=>s.items)){
    const select=el(document,'select','',{'aria-label':'Gabarito da questão '+q.number});
