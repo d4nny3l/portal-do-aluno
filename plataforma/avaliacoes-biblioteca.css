@@ -24,7 +24,8 @@
 /* Uniform monochrome action icons; the actual button text remains accessible. */
 #savedAssessments button[data-action-icon]::before{display:inline-block;margin-right:.45em;min-width:1.15em;text-align:center;font-weight:750;line-height:1;opacity:.85}
 #savedAssessments button[data-action-icon="new"]::before{content:"＋"}
-#savedAssessments button[data-action-icon="save"]::before{content:"▣"}
+#savedAssessments button[data-action-icon="save"]::before{content:none;display:none}
+#savedAssessments .salta-lucide-icon{width:1.12em;height:1.12em;display:inline-block;vertical-align:-.17em;flex:none;margin-right:.35em;stroke:currentColor}
 #savedAssessments button[data-action-icon="open"]::before{content:"↗"}
 #savedAssessments button[data-action-icon="duplicate"]::before{content:"⧉"}
 #savedAssessments button[data-action-icon="correct"]::before{content:"✓"}
