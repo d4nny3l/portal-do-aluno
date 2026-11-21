@@ -761,9 +761,9 @@ test('UX-79B P0 privacy: scope change invalidates old pages and delayed GET',asy
   restoreEditor:()=>{},nominalFields:()=>({}),newEditor:()=>{},activateSelection:()=>{},clearSelection:()=>{}});
  for(let n=0;n<8&&mounted.controller.view().grants.length!==2;n++)await tick();
  mounted.controller.useScope(grantA);
- await mounted.controller.list();
- await mounted.controller.nextPage();
  mounted.render();
+ const refresh=host.children[0].children[3].children.find(x=>x.textContent==='Atualizar');
+ await refresh.handlers.click();
  const catalog=host.children[0].children[1].children[1].children[0];
  assert.ok(catalog.options.some(x=>x.textContent.includes('A privada')));
  catalog.value=ids[0];
@@ -773,9 +773,12 @@ test('UX-79B P0 privacy: scope change invalidates old pages and delayed GET',asy
  mounted.render();
  assert.equal(catalog.options.some(x=>x.textContent.includes('A privada')),false,'changing grants purges old catalog');
  await mounted.controller.list();mounted.render();
- assert.ok(catalog.options.some(x=>x.textContent==='B exclusiva'));
+ assert.equal(catalog.options.some(x=>x.textContent==='B exclusiva'),false,
+  'a raw controller page must not bypass the fully loaded catalog gate');
  release.resolve();await opening;
+ await refresh.handlers.click();
  mounted.render();
+ assert.ok(catalog.options.some(x=>x.textContent==='B exclusiva'));
  assert.equal(catalog.options.some(x=>x.textContent.includes('A privada')),false,'late response cannot reinsert old principal/scope');
  assert.equal(mounted.controller.view().record,null,'old GET must not replace new context');
 });
