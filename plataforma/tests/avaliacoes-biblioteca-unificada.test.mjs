@@ -1283,4 +1283,3 @@ test('UX-79C enrichment 401/403 closes private catalogue before any incomplete m
   assert.equal(catalog.disabled,true);
  });
 });
-
