@@ -736,31 +736,31 @@ test('UX-79B P0 privacy: 401/403 purge 13 cached assessments, metadata and edita
  });
 });
 
-test('UX-79B P0 privacy: scope change invalidates old pages and delayed GET',async()=>{
+test('UX-79C P0 privacy: scope switch discards hydrated catalog and late detail replies',async()=>{
  const m=make({counts:[2],types:['A-E']});
  const grantA={institutionId:'salta-hml-20261119',classId:'class-a',periodId:'2026-11-piloto'};
  const grantB={...grantA,classId:'class-b'};
  const ids=Array.from({length:13},()=>crypto.randomUUID());
  const rowsA=ids.map((id,i)=>({id,title:'A privada '+(i+1),revision:1,state:'active',...grantA}));
  const onlyB={id:crypto.randomUUID(),title:'B exclusiva',revision:1,state:'active',...grantB};
- const {definition}=createLibraryPlan(planArgs(m));
- const entered=deferred(),release=deferred();
- const record={id:ids[0],revision:1,definition,manifestHash:definition.manifest.contentHash,
-  scoreScale:10000,totalUnits:'60000',status:'issued',archived:false,...grantA};
+ const entered=deferred(),release=deferred();let opensOfA=0;
  const fetchFn=async(url,request)=>{
   const u=new URL(url),route=u.pathname.slice('/assessments/v1'.length);
   if(route==='/session')return Response.json({authenticated:true,principalId:'teacher-a',epoch:1});
   if(route==='/grants')return Response.json({grants:[grantA,grantB]});
   if(route==='/assessments'){
-   const scope=u.searchParams.get('classId'),src=scope==='class-a'?rowsA:[onlyB];
+   const src=u.searchParams.get('classId')==='class-a'?rowsA:[onlyB];
    const after=u.searchParams.get('after'),pos=after?src.findIndex(x=>x.id===after)+1:0;
    const part=src.slice(pos,pos+10);
    return Response.json({assessments:part,nextCursor:pos+part.length<src.length?part.at(-1).id:null});
   }
-  if(route==='/assessments/'+ids[0]){
-   entered.resolve();await release.promise;return Response.json({record});
+  if(/^\/assessments\/[^/]+$/.test(route)){
+   const row=[...rowsA,onlyB].find(x=>route==='/assessments/'+x.id);
+   if(!row)throw Error('Unknown detail '+route);
+   if(row.id===ids[0]&&++opensOfA===2){entered.resolve();await release.promise;}
+   return Response.json({record:catalogRecord(row,m)});
   }
-  throw Error('Unexpected '+route);
+  throw Error('Unexpected '+request.method+' '+route);
  };
  const host=new SurfaceNode('section'),doc={getElementById:id=>id==='savedAssessments'?host:null,
   createElement:tag=>new SurfaceNode(tag)};
@@ -768,25 +768,21 @@ test('UX-79B P0 privacy: scope change invalidates old pages and delayed GET',asy
   getSections:()=>m.sections,getMetadata:()=>planArgs(m).metadata,
   getModel:()=>m.manifest,prepareModel:()=>true,snapshotEditor:()=>m.editor,
   restoreEditor:()=>{},nominalFields:()=>({}),newEditor:()=>{},activateSelection:()=>{},clearSelection:()=>{}});
- for(let n=0;n<8&&mounted.controller.view().grants.length!==2;n++)await tick();
+ for(let n=0;n<12&&mounted.controller.view().grants.length!==2;n++)await tick();
  mounted.controller.useScope(grantA);
- await mounted.controller.list();
- await mounted.controller.nextPage();
- mounted.render();
+ await mounted.loadCatalog();
  const catalog=host.children[0].children[1].children[1].children[0];
- assert.ok(catalog.options.some(x=>x.textContent.includes('A privada')));
- catalog.value=ids[0];
- const opening=catalog.onchange();
- await entered.promise;
- mounted.controller.useScope(grantB);
- mounted.render();
- assert.equal(catalog.options.some(x=>x.textContent.includes('A privada')),false,'changing grants purges old catalog');
- await mounted.controller.list();mounted.render();
- assert.ok(catalog.options.some(x=>x.textContent==='B exclusiva'));
- release.resolve();await opening;
- mounted.render();
- assert.equal(catalog.options.some(x=>x.textContent.includes('A privada')),false,'late response cannot reinsert old principal/scope');
- assert.equal(mounted.controller.view().record,null,'old GET must not replace new context');
+ assert.equal(catalog.options.length,14);
+ assert.ok(catalog.options.some(x=>x.textContent==='A privada 1 - Matemática - Turma sintética 7A'));
+ catalog.value=ids[0];const opening=catalog.onchange();await entered.promise;
+ mounted.controller.useScope(grantB);mounted.render();
+ assert.equal(catalog.options.length,1,'old private catalog purged before new GET');
+ await mounted.loadCatalog();
+ assert.ok(catalog.options.some(x=>x.textContent.startsWith('B exclusiva - ')));
+ assert.equal(catalog.options.some(x=>x.textContent.includes('A privada')),false);
+ release.resolve();await opening;mounted.render();
+ assert.equal(catalog.options.some(x=>x.textContent.includes('A privada')),false,'late GET cannot repopulate old scope');
+ assert.equal(mounted.controller.view().record,null);
 });
 
 test('UX-79B P0 recovery: two failures then contextual manual retry replays identical PUT',async()=>{
