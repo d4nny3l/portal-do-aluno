@@ -1283,3 +1283,51 @@ test('UX-79C enrichment 401/403 closes private catalogue before any incomplete m
   assert.equal(catalog.disabled,true);
  });
 });
+test('UX-79C late enrichment from scope A cannot overwrite the new scope B catalogue',async()=>{
+ const m=make({counts:[2],types:['A-E']});
+ const grantA={institutionId:'school',classId:'class-a',periodId:'2026'};
+ const grantB={...grantA,classId:'class-b'};
+ const rowA={id:crypto.randomUUID(),title:'Segredo da turma A',revision:1,...grantA};
+ const rowB={id:crypto.randomUUID(),title:'Avaliação da turma B',revision:1,subject:'Artes',className:'8º B',...grantB};
+ const gate=deferred(),entered=deferred();
+ const {definition,plan}=createLibraryPlan(planArgs(m));
+ const fetchFn=async(url)=>{
+  const u=new URL(url),route=u.pathname.slice('/assessments/v1'.length);
+  if(route==='/session')return Response.json({authenticated:true,principalId:'A',epoch:1});
+  if(route==='/grants')return Response.json({grants:[grantA,grantB]});
+  if(route==='/assessments'){
+   const list=u.searchParams.get('classId')==='class-a'?[rowA]:[rowB];
+   return Response.json({assessments:list,nextCursor:null});
+  }
+  if(route==='/assessments/'+rowA.id+'/revisions/1'){
+   entered.resolve();await gate.promise;
+   return Response.json({record:{id:rowA.id,revision:1,definition,
+    manifestHash:definition.manifest.contentHash,scoreScale:10000,totalUnits:plan.totalUnits,
+    status:'issued',archived:false,...grantA}});
+  }
+  throw Error('Unexpected '+route);
+ };
+ const host=new SurfaceNode('section'),doc={getElementById:id=>id==='savedAssessments'?host:null,createElement:tag=>new SurfaceNode(tag)};
+ const mounted=mountAssessmentLibrary({document:doc,window:{confirm:()=>true},host,fetchFn,
+  getSections:()=>m.sections,getMetadata:()=>planArgs(m).metadata,getModel:()=>m.manifest,prepareModel:()=>true,
+  snapshotEditor:()=>m.editor,restoreEditor:()=>{},newEditor:()=>{},nominalFields:()=>({}),
+  activateSelection:()=>{},clearSelection:()=>{}});
+ for(let n=0;n<40&&mounted.controller.view().grants.length!==2;n++)await tick();
+ assert.equal(mounted.controller.view().grants.length,2);
+ const scope=host.children[0].children[1].children[0].children[0],
+  catalog=host.children[0].children[1].children[1].children[0];
+ scope.value='0';
+ const pending=scope.onchange();
+ await entered.promise;
+ assert.equal(catalog.disabled,true,'private A metadata pending');
+ assert.equal(catalog.options.length,1,'no incomplete A labels');
+ mounted.controller.useScope(grantB);mounted.render();
+ await mounted.controller.list();mounted.render();
+ assert.ok(catalog.options.some(x=>x.textContent==='Avaliação da turma B - Artes - 8º B'));
+ assert.equal(catalog.options.some(x=>x.textContent.includes('Segredo')),false);
+ gate.resolve();await pending;
+ mounted.render();
+ assert.equal(catalog.options.some(x=>x.textContent.includes('Segredo')),false,'old response cannot revive teacher A labels');
+ assert.ok(catalog.options.some(x=>x.textContent==='Avaliação da turma B - Artes - 8º B'));
+ assert.equal(mounted.controller.view().record,null);
+});
