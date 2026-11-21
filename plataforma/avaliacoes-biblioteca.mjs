@@ -2,7 +2,7 @@
 // client/controller. No second login, endpoint, storage or optical renderer.
 import {createPrivateAssessmentClient} from '../corretor/v2/assessments/private-client.mjs';
 import {createPrivateLibraryController} from '../corretor/v2/assessments/private-library.mjs';
-import {createIntegratedPlan,applyKeyPaste,draftSummary,formatExact,scoreInputUnits,POINT_SCALE,keyTextForPlan} from '../corretor/v2/assessments/block-scoring.mjs';
+import {createIntegratedPlan,applyKeyPaste,draftSummary,formatExact,scoreInputUnits,units,POINT_SCALE,keyTextForPlan} from '../corretor/v2/assessments/block-scoring.mjs';
 import {definitionFromLocalPlan,planFromPrivateRecord} from '../corretor/v2/assessments/private-contract-adapter.mjs';
 import {importCardManifest} from '../corretor/v2/omr/manifest.mjs';
 import {QUESTION_TYPES} from '../corretor/v2/omr/assessment.mjs';
@@ -41,6 +41,9 @@ const partialScoreInput=(value,places)=>{
 };
 const scoreForInput=units=>formatExact(BigInt(units),POINT_SCALE,4).replace(',','.')
  .replace(/(\.\d*?)0+$/,'$1').replace(/\.$/,'');
+const scoreForDraftInput=(value,precision)=>{
+ try{return formatScore(BigInt(units(value)),POINT_SCALE,precision)}catch{return String(value??'')}
+};
 
 export function assertLibraryModel({manifest,editor,nominalFields={}}){
  if(!manifest)throw new Error('Gere primeiro um cartão válido.');
@@ -499,9 +502,8 @@ export function mountAssessmentLibrary({
     const shown=restoredUnits.has(id)&&!editedAmountIds.has(id)?
      formatScore(BigInt(restoredUnits.get(id)),POINT_SCALE,selectedScoreDecimals):
      editedAmountIds.has(id)?(values[id]??''):
-     values[id]!==undefined&&validScorePrecision(values[id],4)?
-      formatScore(BigInt(scoreInputUnits(values[id],4)),POINT_SCALE,selectedScoreDecimals):
-      (values[id]??(sections.length===1?formatScore(10n,1n,selectedScoreDecimals):''));
+     values[id]!==undefined?scoreForDraftInput(values[id],selectedScoreDecimals):
+      (sections.length===1?formatScore(10n,1n,selectedScoreDecimals):'');
     const val=el(document,'input','',{type:'text',placeholder:formatScore(10n,1n,selectedScoreDecimals),value:shown});
    val.setAttribute('inputmode','decimal');
    if(values[id]===undefined&&sections.length===1)values[id]='10';
