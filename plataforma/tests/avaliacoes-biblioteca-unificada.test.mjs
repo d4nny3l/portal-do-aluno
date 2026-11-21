@@ -1041,7 +1041,8 @@ test('P1-80-FINAL actual activation marks selection private, teardown scrubs all
  assert.equal(node('answerKey').readOnly,true);
  assert.match(node('answerKey').value,/1 A/);
  assert.equal(node('scanMaxScore').readOnly,true);
- assert.equal(node('scanMaxScore').value,'10.00');
+ assert.equal(node('scanMaxScore').value,'10,00');
+ assert.equal(node('scanMaxScore').type,'text');
  assert.equal(privateMode(),true);
  node('scanScore').innerHTML='<strong>Nota privada: 9,25</strong>';
  node('scanScore').hidden=false;
@@ -1058,6 +1059,7 @@ test('P1-80-FINAL actual activation marks selection private, teardown scrubs all
  assert.equal(node('answerKey').readOnly,false);
  assert.equal(node('scanMaxScore').value,'10.00');
  assert.equal(node('scanMaxScore').readOnly,false);
+ assert.equal(node('scanMaxScore').type,'number');
  assert.equal(privateMode(),false,'manual controls restored');
  assert.doesNotMatch(node('scanModelStatus').textContent,/Avaliação particular da professora A/);
  reader.clearPrivateCorrection(); // invalidation is idempotent
