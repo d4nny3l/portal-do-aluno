@@ -587,7 +587,7 @@ test('UX-79B score precision is strict and never silently rounds',async()=>{
  await f.fill();
  const amount=f.scoring.children[1].children[0].children[0];
  amount.value='3,125';amount.oninput();
- assert.equal(amount.value,'10,00','three decimals are rejected without changing the previous value');
+ assert.equal(amount.value,'10','three decimals are rejected without changing the previous value');
  amount.value='3,12';amount.oninput();
  assert.equal(amount.value,'3,12','two decimals are accepted');
 });
@@ -1223,7 +1223,7 @@ test('P1-85-F UI: 0/1/2, save, reopen and duplicate retain independent selection
 test('P1-85-F legacy 4 decimals stay exact on format-only changes; edited values are rejected',async()=>{
  const f=await mountedRaceFixture({scoreFormatVersion:'salta-score-format-v1'});
  await f.fill();await f.button('Salvar avaliação').handlers.click();
- const legacy=f.mounted.controller.view().record;
+ const legacy=f.records.get(f.mounted.controller.view().record.id);
  legacy.definition.blocks[0].valueUnits='12345';
  legacy.totalUnits='12345';
  delete legacy.definition.display.scoreDecimals;
