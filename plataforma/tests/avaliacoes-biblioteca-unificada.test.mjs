@@ -585,7 +585,7 @@ test('UX-79B score precision is strict and never silently rounds',async()=>{
  await f.fill();
  const amount=f.scoring.children[1].children[0].children[0];
  amount.value='3,125';amount.oninput();
- assert.equal(amount.value,'10','three decimals are rejected without changing the previous value');
+ assert.equal(amount.value,'10,00','three decimals are rejected without changing the previous value');
  amount.value='3,12';amount.oninput();
  assert.equal(amount.value,'3,12','two decimals are accepted');
 });
@@ -986,7 +986,7 @@ function realReaderCallbacks(){
   importCardManifest,renderTemplateSvg:()=>'<svg id="private-model"></svg>',
   $:node,clearAssessmentReview:()=>{},
   setPrivateCorrectionUi:mode=>{privateMode=mode;},setExportAvailability:()=>{},syncScanInputs:()=>{},
-  keyTextForPlan:()=> '1 A\n2 B',formatExact:()=> '10,00',POINT_SCALE
+  keyTextForPlan:()=> '1 A\n2 B',formatScore:()=> '10,00',POINT_SCALE
  });
  return {reader,node,privateMode:()=>privateMode};
 }
@@ -1054,7 +1054,7 @@ test('P1-80-FINAL actual activation marks selection private, teardown scrubs all
  assert.equal(node('scanScore').innerHTML,'','hidden private score must be removed from DOM');
  assert.equal(node('answerKey').value,'');
  assert.equal(node('answerKey').readOnly,false);
- assert.equal(node('scanMaxScore').value,'10');
+ assert.equal(node('scanMaxScore').value,'10.00');
  assert.equal(node('scanMaxScore').readOnly,false);
  assert.equal(privateMode(),false,'manual controls restored');
  assert.doesNotMatch(node('scanModelStatus').textContent,/Avaliação particular da professora A/);
