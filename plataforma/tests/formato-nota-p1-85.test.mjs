@@ -6,7 +6,7 @@ import {createIntegratedPlan,scoreIntegratedPlan,scoreInputUnits,draftSummary,PO
 import {createTemplate} from '../../corretor/v2/omr/template.mjs';
 import {createCardManifest} from '../../corretor/v2/omr/render.mjs';
 
-const section={sectionId:'section-1',label:'Objetivas',items:[1,2,3].map(n=>({questionId:'question-'+n,number:n,type:'A-E'}))};
+const section={sectionId:'section-1',label:'Objetivas',type:'A-E',count:3,items:[1,2,3].map(n=>({questionId:'question-'+n,number:n,type:'A-E'}))};
 const sections=[section];
 const template=createTemplate(sections,{layoutVersion:'v2',revision:8,title:'Avaliação sintética',
   schoolName:'Escola sintética',identityMode:'seven-digit-code'});
