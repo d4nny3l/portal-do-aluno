@@ -69,7 +69,7 @@ test('one selector only in Criar → Questões e organização; no precision cop
  const item=html.slice(start,end);
  assert.match(item,/id="scoreFormatField" hidden/);
  assert.match(item,/id="scoreFormatSelect" disabled/);
- assert.deepEqual([...item.matchAll(/<option value="([012])">(10(?:,0{1,2})?)<\/option>/g)].map(m=>[m[1],m[2]]),
+ assert.deepEqual([...item.matchAll(/<option value="([012])"(?: selected)?>(10(?:,0{1,2})?)<\/option>/g)].map(m=>[m[1],m[2]]),
   [['0','10'],['1','10,0'],['2','10,00']]);
  assert.equal((html.match(/id="scoreFormatSelect"/g)||[]).length,1);
  assert.doesNotMatch(html.slice(html.indexOf('id="corrigir"'),html.indexOf('<script>',html.indexOf('id="corrigir"'))),/scoreFormatSelect/);
