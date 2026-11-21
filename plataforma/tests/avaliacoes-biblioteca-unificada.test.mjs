@@ -1287,6 +1287,9 @@ function crossTeacherCatalogFixture({aCount=11,bCount=23,holdRetry=false}={}){
     const outcome=await release.promise;
     if(outcome===401||outcome===403)return Response.json({error:'session_denied'},{status:outcome});
     if(outcome===503)return Response.json({error:'temporary_unavailable'},{status:503});
+    if(outcome===400)return Response.json({error:'bad_request'},{status:400});
+    if(outcome==='network')throw Error('offline synthetic GET');
+    if(outcome==='timeout')throw Object.assign(Error('synthetic request aborted'),{name:'AbortError'});
    }else if(teacher==='teacher-a'&&after&&holdRetry&&!retrySecondHeld){
     retrySecondHeld=true;retryEntered.resolve();
     const outcome=await retryRelease.promise;
@@ -1332,7 +1335,8 @@ function crossTeacherCatalogFixture({aCount=11,bCount=23,holdRetry=false}={}){
   mounted.render();
  }
  return {mounted,host,catalog,refresh,scopeControl,arrived,release,retryEntered,retryRelease,queries,titles,assertOnly,reauthenticate,
-  getSession:()=>mounted.controller.view().session};
+  getSession:()=>mounted.controller.view().session,
+  switchIdentity:(nextActor,nextEpoch)=>{actor=nextActor;epoch=nextEpoch}};
 }
 
 test('P0-87-F-01: late A page 2 after principal B loaded must never publish A titles',async()=>{
@@ -1384,7 +1388,6 @@ test('P0-87-F-01: same principal new epoch revokes A1 and publishes only A2',asy
 test('P1-87-F-02: one grant, 11 records, page 2 HTTP 503 then visible retry loads complete catalog',async()=>{
  const f=crossTeacherCatalogFixture({aCount:11});
  await f.arrived.promise;
- assert.equal(f.scopeControl.parent?.hidden,undefined); // Scope is controlled by toolbar, not a retry dependency.
  assert.equal(f.host.children[0].children[1].children[0].hidden,true,'single granted class hides scope selector');
  assert.equal(f.titles().length,1,'partial page must not be visible');
  f.release.resolve(503);
@@ -1451,18 +1454,20 @@ test('P1-87-F-02: stale retry response after teacher/epoch/scope changes cannot 
  // controller and the UI context while the old HTTP response is still held.
  const controller=f.mounted.controller;
  const stateBefore=controller.view().generation;
- const newActor='teacher-b';
- // This helper also checks the new principal, epoch and B-only grant.
- const newSession=controller.initialize();
- // The synthetic actor changes via fixture's reauthentication method only;
- // finish old query first in this variant, then verify only B is published.
+ f.switchIdentity('teacher-b',2);
+ assert.equal(await controller.initialize(),true);
+ controller.useScope(controller.view().grants[0]);
+ f.mounted.render();
+ assert.equal(f.getSession().principalId,'teacher-b');
+ assert.equal(f.getSession().epoch,2);
+ assert.ok(controller.view().generation>stateBefore);
+ assert.equal(f.titles().length,1,'no A titles during B reauthentication');
+ assert.equal(f.refresh.hidden,true,'A retry must be cleared on new B context');
  f.retryRelease.resolve(503);
  await pending;
- await newSession;
- assert.ok(controller.view().generation>stateBefore);
+ assert.equal(f.refresh.hidden,true,'late A 503 cannot show retry in B');
  assert.equal(f.titles().length,1);
- assert.equal(f.refresh.hidden,true);
- await f.reauthenticate(newActor,2);
+ await f.scopeControl.onchange();
  f.assertOnly('B-2-EXCLUSIVA-',23);
  assert.equal(f.refresh.hidden,true);
 });
@@ -1486,4 +1491,39 @@ test('P1-87-F-02: PUT retry is separate and cannot unlock catalog refresh',async
  assert.equal(f.writeCalls.length,2);
  assert.equal(f.writeCalls[0].requestId,f.writeCalls[1].requestId,'idempotent PUT replays original requestId');
  assert.equal(catalogRetry.hidden,true,'save recovery must not expose catalog refresh');
+});
+
+for(const outcome of ['network','timeout']){
+ test('P1-87-F-02: '+outcome+' during catalog page 2 shows recoverable retry only in authorized context',async()=>{
+  const f=crossTeacherCatalogFixture();
+  await f.arrived.promise;f.release.resolve(outcome);
+  for(let i=0;i<20&&f.refresh.hidden;i++)await tick();
+  assert.equal(f.getSession().principalId,'teacher-a');
+  assert.equal(f.refresh.hidden,false);
+  assert.equal(f.refresh.textContent,'Tentar novamente');
+  assert.equal(f.titles().length,1);
+  await f.refresh.handlers.click();
+  f.assertOnly('A-1-PRIVADA-',11);
+  assert.equal(f.refresh.hidden,true);
+ });
+}
+test('P1-87-F-02: unrecoverable catalog 400 never exposes retry or partial titles',async()=>{
+ const f=crossTeacherCatalogFixture();
+ await f.arrived.promise;f.release.resolve(400);
+ for(let i=0;i<20;i++)await tick();
+ assert.equal(f.getSession().principalId,'teacher-a');
+ assert.equal(f.refresh.hidden,true);
+ assert.equal(f.refresh.disabled,true);
+ assert.equal(f.titles().length,1);
+});
+test('P1-87-F-02: controller generation reset clears an old 503 retry',async()=>{
+ const f=crossTeacherCatalogFixture();
+ await f.arrived.promise;f.release.resolve(503);
+ for(let i=0;i<20&&f.refresh.hidden;i++)await tick();
+ assert.equal(f.refresh.hidden,false);
+ f.mounted.controller.newDraft();
+ f.mounted.render();
+ assert.equal(f.refresh.hidden,true,'retry is invalidated with controller generation');
+ assert.equal(f.refresh.disabled,true);
+ assert.equal(f.titles().length,1);
 });
