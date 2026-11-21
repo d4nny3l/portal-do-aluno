@@ -195,6 +195,12 @@ export function mountAssessmentLibrary({
   });
   return {plan:payload.plan,manifest:payload.manifest};
  };
+ function rememberRecordMetadata(record){
+  const meta={title:record.definition.title,subject:record.definition.subject||'',
+   className:String(record.definition.manifest?.header?.className||'')};
+  metadataById.set(record.id,{subject:meta.subject,className:meta.className});
+  catalogCache.set(record.id+'@'+record.revision,meta);
+ }
  function applyRecord(record){
   if(openAttempt&&!sameEdit(openAttempt)){
    flagUnnoticedEdit(openAttempt);
@@ -207,7 +213,7 @@ export function mountAssessmentLibrary({
   answers=Object.fromEntries(restored.plan.blocks.flatMap(b=>b.questions.map(q=>[q.questionId,q.correct])));
   // The exact immutable manifest is selected; editing creates another revision.
   savedManifest=restored.manifest;
-  metadataById.set(record.id,{subject:record.definition.subject||'',className:String(record.definition.manifest?.header?.className||'')});
+  rememberRecordMetadata(record);
   selectedCatalogId=record.id;
   savedSignature=editorSignature();
   // Clear the previous correction binding *before* installing this private
@@ -255,8 +261,7 @@ export function mountAssessmentLibrary({
   sync();
   try{
    selectedCatalogId=result.record.id;
-   metadataById.set(result.record.id,{subject:result.record.definition.subject||'',
-    className:String(result.record.definition.manifest?.header?.className||'')});
+   rememberRecordMetadata(result.record);
    await loadCatalog();
    await controller.history(result.record.id);
   }catch{
@@ -292,8 +297,7 @@ export function mountAssessmentLibrary({
   const result=await controller.duplicate();
   if(result?.record){
    selectedCatalogId=result.record.id;
-   metadataById.set(result.record.id,{subject:result.record.definition.subject||'',
-    className:String(result.record.definition.manifest?.header?.className||'')});
+   rememberRecordMetadata(result.record);
   }
   await loadCatalog();
   status.textContent='Cópia criada como avaliação independente.';
