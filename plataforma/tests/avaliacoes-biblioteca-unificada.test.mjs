@@ -284,14 +284,14 @@ test('actual Create-tab UI mounts and saves/opens/selects/duplicates without a s
 
 const deferred=()=>{let resolve,reject;const promise=new Promise((yes,no)=>{resolve=yes;reject=no});return{promise,resolve,reject}};
 const tick=()=>new Promise(resolve=>setImmediate(resolve));
-async function mountedRaceFixture({onPut=async()=>{},onSelection=async()=>{},onOpen=async()=>{},counts=[2],restoreOutOfOrder=false,windowOverrides={}}={}){
+async function mountedRaceFixture({onPut=async()=>{},onSelection=async()=>{},onOpen=async()=>{},counts=[2],restoreOutOfOrder=false,windowOverrides={},scoreFormatVersion=null}={}){
  const m=make({counts,types:counts.map(()=> 'A-E')});
  m.sections.forEach((section,i)=>{section.order=restoreOutOfOrder?counts.length-i-1:i});
  const grants={institutionId:'salta-hml-20261119',classId:'turma-sintetica-ab',periodId:'2026-11-piloto'};
  const records=new Map(),selections=new Map(),requestById=new Map(),writeCalls=[];let currentEditor=m.editor,selected=null,nominalCleared=0,appliedExact=null,modelBuilds=0,snapshotOverride=null;
  const fetchFn=async(url,init)=>{
   const route=new URL(url).pathname.slice('/assessments/v1'.length),q=new URL(url).searchParams;
-  if(route==='/session'&&init.method==='GET')return Response.json({authenticated:true,principalId:'teacher-a',epoch:1});
+  if(route==='/session'&&init.method==='GET')return Response.json({authenticated:true,principalId:'teacher-a',epoch:1,...(scoreFormatVersion?{scoreFormatVersion}:{})});
   if(route==='/grants'&&init.method==='GET')return Response.json({grants:[grants]});
   if(route==='/assessments'&&init.method==='GET'){
    assert.equal(q.get('classId'),grants.classId);
@@ -304,7 +304,7 @@ async function mountedRaceFixture({onPut=async()=>{},onSelection=async()=>{},onO
    if(requestById.has(body.requestId)){const prior=requestById.get(body.requestId);await onPut({body,record:prior,replay:true});return Response.json({ok:true,id:prior.id,revision:prior.revision,manifestHash:prior.manifestHash});}
    assert.equal(body.expectedRevision,revision-1);
    const record={id,revision,definition:body.definition,manifestHash:body.definition.manifest.contentHash,
-    scoreScale:10000,totalUnits:'100000',status:body.status,archived:false,...grants};
+    scoreScale:10000,totalUnits:body.definition.blocks.reduce((n,b)=>n+BigInt(b.valueUnits),0n).toString(),status:body.status,archived:false,...grants};
    records.set(id,record);requestById.set(body.requestId,record);
    await onPut({body,record});return Response.json({ok:true,id,revision,manifestHash:record.manifestHash});
   }
@@ -380,7 +380,7 @@ async function mountedRaceFixture({onPut=async()=>{},onSelection=async()=>{},onO
   else throw Error('Unknown native button '+kind);
   await tick();
  };
- return {mounted,m,host,top,scoring,records,selections,writeCalls,button,fill,editTitle,silentClick,
+ return {mounted,m,host,top,scoring,records,selections,writeCalls,button,fill,editTitle,silentClick,formatField,formatSelect,
   freezeSnapshot:()=>{snapshotOverride=structuredClone(currentEditor)},
   getSelected:()=>selected,getEditor:()=>currentEditor,getPending:()=>mounted.controller.view().pending};
 }
@@ -1180,4 +1180,63 @@ test('P0-80-RF-01 revoking a library session does not discard a manually importe
  assert.equal(editorResets,0,'private authentication loss must not overwrite an independent manual editor');
  assert.equal(reader.state().activeManifest,manual,'unrelated manual reader model remains available');
  assert.match(node('scanModelStatus').textContent,/Cartão manual independente/);
+});
+
+test('P1-85-F capability: selector is inert without authenticated score format v1',async()=>{
+ const f=await mountedRaceFixture();
+ assert.equal(f.formatField.hidden,true);
+ assert.equal(f.formatSelect.disabled,true);
+ f.formatSelect.value='0';f.formatSelect.onchange();
+ assert.equal(f.formatSelect.value,'2');
+ await f.fill();
+ await f.button('Salvar avaliação').handlers.click();
+ assert.equal(Object.hasOwn(f.mounted.controller.view().record.definition.display,'scoreDecimals'),false);
+});
+test('P1-85-F UI: 0/1/2, save, reopen and duplicate retain independent selection',async()=>{
+ const f=await mountedRaceFixture({scoreFormatVersion:'salta-score-format-v1'});
+ assert.equal(f.formatField.hidden,false);
+ assert.equal(f.formatSelect.disabled,false);
+ assert.equal(f.formatSelect.value,'2');
+ await f.fill();
+ for(const [precision,shown] of [['0','10'],['1','10,0'],['2','10,00']]){
+  f.formatSelect.value=precision;f.formatSelect.onchange();
+  assert.equal(f.scoring.children[1].children[0].children[0].value,shown);
+  assert.match(f.top.children[5].textContent,new RegExp(shown.replace(',','\\,')));
+ }
+ f.formatSelect.value='0';f.formatSelect.onchange();
+ await f.button('Salvar avaliação').handlers.click();
+ const original=f.mounted.controller.view().record;
+ assert.equal(original.definition.display.scoreDecimals,0);
+ await f.button('Abrir avaliação').handlers.click();
+ assert.equal(f.formatSelect.value,'0');
+ await f.button('Duplicar avaliação').handlers.click();
+ const duplicate=f.mounted.controller.view().record;
+ assert.notEqual(duplicate.id,original.id);
+ assert.equal(duplicate.definition.display.scoreDecimals,0);
+ f.formatSelect.value='1';f.formatSelect.onchange();
+ await f.button('Salvar avaliação').handlers.click();
+ assert.equal(f.mounted.controller.view().record.definition.display.scoreDecimals,1);
+ assert.equal(f.records.get(original.id).definition.display.scoreDecimals,0);
+});
+test('P1-85-F legacy 4 decimals stay exact on format-only changes; edited values are rejected',async()=>{
+ const f=await mountedRaceFixture({scoreFormatVersion:'salta-score-format-v1'});
+ await f.fill();await f.button('Salvar avaliação').handlers.click();
+ const legacy=f.mounted.controller.view().record;
+ legacy.definition.blocks[0].valueUnits='12345';
+ legacy.totalUnits='12345';
+ delete legacy.definition.display.scoreDecimals;
+ await f.button('Abrir avaliação').handlers.click();
+ assert.equal(f.formatSelect.value,'2');
+ assert.equal(f.scoring.children[1].children[0].children[0].value,'1,23');
+ assert.equal(f.mounted.getDraft().plan.blocks[0].valueUnits,'12345');
+ f.formatSelect.value='0';f.formatSelect.onchange();
+ assert.equal(f.scoring.children[1].children[0].children[0].value,'1');
+ assert.equal(f.mounted.getDraft().plan.blocks[0].valueUnits,'12345');
+ const amount=f.scoring.children[1].children[0].children[0];
+ amount.value='1,5';amount.oninput();
+ assert.equal(amount.value,'1','incompatible precision must not overwrite original');
+ assert.equal(f.mounted.getDraft().plan.blocks[0].valueUnits,'12345');
+ await f.button('Salvar avaliação').handlers.click();
+ assert.equal(f.mounted.controller.view().record.definition.blocks[0].valueUnits,'12345');
+ assert.equal(f.mounted.controller.view().record.definition.display.scoreDecimals,0);
 });
