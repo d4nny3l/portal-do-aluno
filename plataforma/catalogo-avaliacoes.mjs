@@ -17,11 +17,19 @@ export async function enrichCatalogRows(rows,{open,isCurrent,onDenied=()=>{},cac
   while(!failure&&isCurrent()){
    const i=cursor++;
    if(i>=rows.length)return;
-   const row=rows[i],key=row.id+'@'+row.revision;
+   const row=rows[i];
+   // Revisions without a stable number cannot be safely reused from cache.
+   const key=Number.isSafeInteger(row.revision)&&row.revision>=1?row.id+'@'+row.revision:null;
    try{
-    let meta=cache.get(key);
+    // A complete, authenticated listing projection needs no extra detail GET.
+    if(typeof row.title==='string'&&row.title.trim()&&
+       typeof row.subject==='string'&&row.subject.trim()&&
+       typeof row.className==='string'&&row.className.trim()){
+     hydrated[i]={...row};continue;
+    }
+    let meta=key?cache.get(key):null;
     if(!meta){
-     const record=await open(row.id);
+     const record=await open(row.id,row.revision??null);
      if(!isCurrent())return;
      if(!record||record.id!==row.id||!sameScope(record,row)||
         (row.revision!=null&&record.revision!==row.revision))
@@ -32,7 +40,7 @@ export async function enrichCatalogRows(rows,{open,isCurrent,onDenied=()=>{},cac
       className:typeof record.definition?.manifest?.header?.className==='string'?
        record.definition.manifest.header.className:''
      });
-     cache.set(key,meta);
+     if(key)cache.set(key,meta);
     }
     if(!isCurrent())return;
     hydrated[i]={...row,...meta};
