@@ -1208,9 +1208,10 @@ test('UX-79C preselection enrichment: 13 paginated records, authenticated detail
  const grant={institutionId:'school',classId:'class-a',periodId:'2026'};
  const rows=Array.from({length:13},(_,i)=>({id:crypto.randomUUID(),title:'Prova '+(i+1),revision:1,state:'active',...grant}));
  const {definition,plan}=createLibraryPlan(planArgs(m));
- const gate=deferred(),entered=deferred();let reads=0,active=0,maxActive=0,pages=0,openedForEdit=0;
+ const gate=deferred(),entered=deferred();let reads=0,active=0,maxActive=0,pages=0,openedForEdit=0;const observedRoutes=[];
  const fetchFn=async(url,req)=>{
   const u=new URL(url),route=u.pathname.slice('/assessments/v1'.length);
+  observedRoutes.push(route+' '+req?.method);
   if(route==='/session')return Response.json({authenticated:true,principalId:'A',epoch:1});
   if(route==='/grants')return Response.json({grants:[grant]});
   if(route==='/assessments'){
@@ -1236,7 +1237,7 @@ test('UX-79C preselection enrichment: 13 paginated records, authenticated detail
   activateSelection:()=>{},clearSelection:()=>{}});
  const catalog=host.children[0].children[1].children[1].children[0];
  for(let step=0;step<80&&reads===0;step++)await tick();
- assert.ok(reads>0,'enrichment must start; status: '+host.children[0].children[4].textContent);
+ assert.ok(reads>0,'enrichment must start; status: '+host.children[0].children[4].textContent+' routes='+observedRoutes.join(','));
  assert.equal(catalog.disabled,true,'the selector remains locked while private metadata is incomplete');
  assert.equal(catalog.options.length,1,'no title-only partial list released');
  assert.equal(openedForEdit,0,'metadata reads cannot open/change editor');
