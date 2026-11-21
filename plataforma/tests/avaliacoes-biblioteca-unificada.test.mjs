@@ -692,6 +692,36 @@ test('UX-79C 401/403 metadata errors clear context; stale response cannot publis
  assert.equal(cache.size,0);
 });
 
+test('UX-79C actual library never publishes private metadata when detail GET returns 401/403',async t=>{
+ for(const status of [401,403])await t.test('HTTP '+status,async()=>{
+  const m=make({counts:[2],types:['A-E']});
+  const grant={institutionId:'school',classId:'class-one',periodId:'2026'};
+  const id=crypto.randomUUID();let sessionRequests=0;
+  const fetchFn=async(url)=>{
+   const route=new URL(url).pathname.slice('/assessments/v1'.length);
+   if(route==='/session'){sessionRequests++;return Response.json({authenticated:true,principalId:'teacher-a',epoch:1});}
+   if(route==='/grants')return Response.json({grants:[grant]});
+   if(route==='/assessments')return Response.json({assessments:[{id,revision:1,title:'Avaliação sigilosa',...grant}],nextCursor:null});
+   if(route==='/assessments/'+id)return Response.json({code:'denied'},{status});
+   throw Error('Unexpected '+route);
+  };
+  const host=new SurfaceNode('section'),doc={getElementById:key=>key==='savedAssessments'?host:null,
+   createElement:tag=>new SurfaceNode(tag)};
+  const library=mountAssessmentLibrary({document:doc,window:{confirm:()=>true},host,fetchFn,
+   getSections:()=>m.sections,getMetadata:()=>planArgs(m).metadata,
+   getModel:()=>m.manifest,prepareModel:()=>true,snapshotEditor:()=>m.editor,
+   restoreEditor:()=>{},nominalFields:()=>({}),newEditor:()=>{},
+   activateSelection:()=>{},clearSelection:()=>{}});
+  const catalog=host.children[0].children[1].children[1].children[0];
+  for(let n=0;n<35&&sessionRequests<2;n++)await tick();
+  assert.ok(sessionRequests>=2,'denied metadata invalidates the session before reconnect attempt');
+  assert.equal(library.controller.view().scope,null,'no authorized scope remains after denial');
+  assert.equal(catalog.options.length,1,'private title is never published');
+  assert.ok(!catalog.options.some(o=>o.textContent.includes('sigilosa')));
+  assert.equal(catalog.disabled,true);
+ });
+});
+
 test('UX-79C uses official Lucide save and camera paths without replacing button names',()=>{
  const library=read('plataforma/avaliacoes-biblioteca.css');
  const camera=read('plataforma/corretor-v2.css');
