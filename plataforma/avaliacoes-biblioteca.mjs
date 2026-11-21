@@ -604,5 +604,5 @@ export function mountAssessmentLibrary({
  renderScoring();
  render();
  void connectAndList().catch(error=>{status.textContent=error?.message||'Não foi possível preparar o catálogo.';status.dataset.state='error';render({preserveError:true})});
- return Object.freeze({controller,client,onEditorChanged,renderScoring,getDraft,render});
+ return Object.freeze({controller,client,onEditorChanged,renderScoring,getDraft,render,loadCatalog});
 }
