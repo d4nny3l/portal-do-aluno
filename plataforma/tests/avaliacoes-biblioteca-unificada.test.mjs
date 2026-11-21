@@ -640,6 +640,82 @@ test('UX-79B manual key editor is placed in Criar, private JSON importer is hidd
 });
 
 
+test('UX-79C enriches all 13 authenticated labels with bounded GETs and a session-only cache',async()=>{
+ const grant={institutionId:'school',classId:'class-1',periodId:'2026'};
+ const rows=Array.from({length:13},(_,i)=>({id:'id-'+i,revision:1,title:'Prova '+i,state:'active',...grant}));
+ const cache=new Map();let inFlight=0,peak=0,calls=0,selected=false;
+ const fetchRecord=async id=>{
+  selected=false;calls++;inFlight++;peak=Math.max(peak,inFlight);
+  await tick();inFlight--;
+  const i=Number(id.slice(3));
+  return {id,revision:1,definition:{title:'Prova '+i,subject:i===3?'':'Matemática',
+   manifest:{header:{className:i===3?'':'7º A'}}},...grant};
+ };
+ const first=await enrichCatalogRows(rows,{open:fetchRecord,isCurrent:()=>true,cache});
+ assert.equal(calls,13,'metadata fetched before a single selection or opening');
+ assert.ok(peak<=2,'authenticated reads limited to two concurrent requests');
+ assert.equal(selected,false);
+ assert.equal(first.length,13);
+ assert.equal(assessmentLabel(first[0]),'Prova 0 - Matemática - 7º A');
+ assert.equal(assessmentLabel(first[3]),'Prova 3','only actually absent fields omitted');
+ assert.ok(first.every(x=>!assessmentLabel(x).includes(x.classId)),'opaque scope ID never becomes readable class');
+ assert.equal(cache.size,13);
+ await enrichCatalogRows(rows,{open:fetchRecord,isCurrent:()=>true,cache});
+ assert.equal(calls,13,'same session and revision uses in-memory metadata');
+ rows[0].revision=2;
+ await enrichCatalogRows(rows,{open:async id=>({id,revision:2,definition:{title:'Prova atualizada',subject:'Ciências',
+  manifest:{header:{className:'8º B'}}},...grant}),isCurrent:()=>true,cache});
+ assert.equal(cache.size,14,'new revision is not satisfied by stale metadata');
+});
+
+test('UX-79C 401/403 metadata errors clear context; stale response cannot publish options',async t=>{
+ const grant={institutionId:'school',classId:'class-1',periodId:'2026'};
+ const rows=[{id:'id-one',revision:1,title:'Privada',...grant}];
+ for(const status of [401,403])await t.test(String(status),async()=>{
+  let active=true,denied=0;const cache=new Map();
+  await assert.rejects(()=>enrichCatalogRows(rows,{
+   open:async()=>{const e=Error('forbidden');e.status=status;throw e;},
+   isCurrent:()=>active,cache,
+   onDenied:()=>{active=false;denied++;cache.clear();}
+  }),e=>e.status===status);
+  assert.equal(denied,1);
+  assert.equal(cache.size,0);
+ });
+ const pending=deferred();let started=false,active=true;const cache=new Map();
+ const loading=enrichCatalogRows(rows,{open:async()=>{started=true;return pending.promise;},
+  isCurrent:()=>active,cache,concurrency:1});
+ for(let n=0;n<10&&!started;n++)await tick();
+ assert.equal(started,true);
+ active=false;pending.resolve({id:'id-one',revision:1,definition:{title:'NÃO EXIBIR'},...grant});
+ assert.equal(await loading,null,'old response discarded after context revocation');
+ assert.equal(cache.size,0);
+});
+
+test('UX-79C uses official Lucide save and camera paths without replacing button names',()=>{
+ const library=read('plataforma/avaliacoes-biblioteca.css');
+ const camera=read('plataforma/corretor-v2.css');
+ const html=read('plataforma/corretor-v2.html');
+ const extract=(css,selector)=>{
+  const line=css.split('\n').find(x=>x.includes(selector)&&x.includes('mask:'));
+  assert.ok(line,selector+' SVG mask CSS exists');
+  const match=line.match(/url\("data:image\/svg\+xml,([^"]+)"\)/);
+  assert.ok(match);
+  return decodeURIComponent(match[1]);
+ };
+ const saveSvg=extract(library,'button[data-action-icon="save"]::before');
+ const cameraSvg=extract(camera,'#camera::before');
+ assert.match(saveSvg,/M15\.2 3a2 2 0 0 1 1\.4\.6/);
+ assert.match(saveSvg,/M17 21v-7/);
+ assert.match(cameraSvg,/M13\.997 4a2 2 0 0 1 1\.76/);
+ assert.match(cameraSvg,/<circle cx="12" cy="13" r="3"/);
+ assert.doesNotMatch(library,/content:"▣"/);
+ assert.match(html,/<button id="camera" type="button">Abrir câmera<\/button>/);
+ for(const message of ["'Abrir câmera'","'Fechar câmera'","'Cancelar abertura'"])
+  assert.ok(html.includes("$('camera').textContent="+message),'text remains visible for '+message);
+ assert.match(library,/background:currentColor/);
+ assert.match(camera,/background:currentColor/);
+});
+
 test('UX-79B fetches all internal catalog pages without exposing pagination controls',async()=>{
  const m=make({counts:[2],types:['A-E']});
  const grant={institutionId:'salta-hml-20261119',classId:'turma-sintetica-ab',periodId:'2026-11-piloto'};
@@ -673,6 +749,8 @@ test('UX-79B fetches all internal catalog pages without exposing pagination cont
  for(let step=0;step<16&&catalog.options.length!==12;step++)await tick();
  assert.equal(requests,2,'11 rows should be loaded via two pages');
  assert.equal(catalog.options.length,12,'placeholder plus all eleven evaluation options');
+ assert.ok(catalog.options.slice(1).every(x=>/^Avaliação \d+ - Matemática - Turma sintética 7A$/.test(x.textContent)),
+  'each of 11 labels is complete before first opening');
  assert.equal(catalog.options.some(x=>x.textContent.includes('active')),false);
  for(const button of host.children[0].children[3].children.slice(1))
   assert.equal(button.hidden,true,'internal navigation and retry are not public');
