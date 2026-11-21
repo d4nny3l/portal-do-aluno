@@ -6,6 +6,8 @@ import {createIntegratedPlan,applyKeyPaste,draftSummary,formatExact,POINT_SCALE,
 import {definitionFromLocalPlan,planFromPrivateRecord} from '../corretor/v2/assessments/private-contract-adapter.mjs';
 import {importCardManifest} from '../corretor/v2/omr/manifest.mjs';
 import {QUESTION_TYPES} from '../corretor/v2/omr/assessment.mjs';
+import {assessmentLabel,enrichCatalogRows} from './catalogo-avaliacoes.mjs';
+export {assessmentLabel} from './catalogo-avaliacoes.mjs';
 
 // Same authorized namespace as the original private client; server Auth and grants
 // remain the security boundary. No worker flags, tokens, credentials or secrets here.
@@ -24,9 +26,6 @@ const el=(doc,tag,label='',attrs={})=>{
 const option=(doc,value,label)=>el(doc,'option',label,{value});
 const field=(doc,title,control)=>{const node=el(doc,'label',title);node.append(control);return node};
 const scopeEquals=(a,b)=>['institutionId','classId','periodId'].every(k=>a?.[k]===b?.[k]);
-export const assessmentLabel=row=>[row?.title,row?.subject??row?.definition?.subject,
- row?.className??row?.definition?.manifest?.header?.className]
- .map(value=>typeof value==='string'?value.trim():'').filter(Boolean).join(' · ');
 export const validScorePrecision=value=>/^\d+(?:[.,]\d{1,2})?$/.test(String(value||'').trim());
 const scoreForInput=units=>formatExact(BigInt(units),POINT_SCALE,4).replace(',','.')
  .replace(/(\.\d*?)0+$/,'$1').replace(/\.$/,'');
@@ -102,6 +101,8 @@ export function mountAssessmentLibrary({
  const get=id=>document.getElementById(id);
  let values={},answers={},savedManifest=null,savedSignature=null,ready=false,activeSelection=false,lastScoringSections='';
  let allRows=[],selectedCatalogId='',metadataById=new Map();
+ const catalogCache=new Map();
+ let catalogGeneration=0,catalogBusy=false,catalogReady=false,catalogLoadError=false;
  let authorizedContext='',manualRetryNeeded=false,privateEditorLoaded=false;
  // UI edit clock is separate from controller operation generation. Never
  // invalidate that generation during PUT: the original requestId must survive.
@@ -158,7 +159,8 @@ export function mountAssessmentLibrary({
  const resetScores=()=>{values={};answers={};savedManifest=null;savedSignature=null;clearSelection();activeSelection=false};
  function wipePrivateUi(){
   // No catalog/metadata/answer key may survive revocation or a new principal.
-  allRows=[];metadataById.clear();selectedCatalogId='';
+  catalogGeneration++;catalogBusy=false;catalogReady=false;catalogLoadError=false;
+  catalogCache.clear();allRows=[];metadataById.clear();selectedCatalogId='';
   const hadPrivateEditor=privateEditorLoaded;privateEditorLoaded=false;
   resetScores();pendingSave=null;selectionAttempt=null;openAttempt=null;
   unsaved=false;confirmedEarlierSave=false;selectionNeedsConfirmation=false;
@@ -193,6 +195,12 @@ export function mountAssessmentLibrary({
   });
   return {plan:payload.plan,manifest:payload.manifest};
  };
+ function rememberRecordMetadata(record){
+  const meta={title:record.definition.title,subject:record.definition.subject||'',
+   className:String(record.definition.manifest?.header?.className||'')};
+  metadataById.set(record.id,{subject:meta.subject,className:meta.className});
+  catalogCache.set(record.id+'@'+record.revision,meta);
+ }
  function applyRecord(record){
   if(openAttempt&&!sameEdit(openAttempt)){
    flagUnnoticedEdit(openAttempt);
@@ -205,7 +213,7 @@ export function mountAssessmentLibrary({
   answers=Object.fromEntries(restored.plan.blocks.flatMap(b=>b.questions.map(q=>[q.questionId,q.correct])));
   // The exact immutable manifest is selected; editing creates another revision.
   savedManifest=restored.manifest;
-  metadataById.set(record.id,{subject:record.definition.subject||'',className:String(record.definition.manifest?.header?.className||'')});
+  rememberRecordMetadata(record);
   selectedCatalogId=record.id;
   savedSignature=editorSignature();
   // Clear the previous correction binding *before* installing this private
@@ -253,8 +261,7 @@ export function mountAssessmentLibrary({
   sync();
   try{
    selectedCatalogId=result.record.id;
-   metadataById.set(result.record.id,{subject:result.record.definition.subject||'',
-    className:String(result.record.definition.manifest?.header?.className||'')});
+   rememberRecordMetadata(result.record);
    await loadCatalog();
    await controller.history(result.record.id);
   }catch{
@@ -290,8 +297,7 @@ export function mountAssessmentLibrary({
   const result=await controller.duplicate();
   if(result?.record){
    selectedCatalogId=result.record.id;
-   metadataById.set(result.record.id,{subject:result.record.definition.subject||'',
-    className:String(result.record.definition.manifest?.header?.className||'')});
+   rememberRecordMetadata(result.record);
   }
   await loadCatalog();
   status.textContent='Cópia criada como avaliação independente.';
@@ -457,7 +463,7 @@ export function mountAssessmentLibrary({
     }
     values[section.sectionId]=input;markEdited();updateSummary();
    };
-   scoreBox.append(field(document,section.label+' · '+section.items.length+' questão(ões) · até 2 decimais',val));
+   scoreBox.append(field(document,section.label+' · '+section.items.length+' questão(ões)',val));
   }
   for(const q of sections.flatMap(s=>s.items)){
    const select=el(document,'select','',{'aria-label':'Gabarito da questão '+q.number});
@@ -480,27 +486,28 @@ export function mountAssessmentLibrary({
   syncPrivateContext();
   const s=controller.view(),current=s.record;
   ready=Boolean(s.session&&s.scope);
-  if(!ready&&(allRows.length||metadataById.size||selectedCatalogId))wipePrivateUi();
+  if(!ready&&(allRows.length||metadataById.size||selectedCatalogId||catalogBusy||catalogReady||catalogCache.size))wipePrivateUi();
   const grantItems=s.grants.map((g,i)=>({value:String(i),label:'Turma autorizada '+(i+1)}));
   fillOptions(scope,grantItems);
   const grantIdx=s.grants.findIndex(g=>scopeEquals(g,s.scope));
   if(grantIdx>=0)scope.value=String(grantIdx);
   scopeWrap.hidden=s.grants.length<=1;
-  const rows=(allRows.length?allRows:s.rows).map(x=>({value:x.id,label:assessmentLabel({...x,...metadataById.get(x.id)})||'Avaliação sem título'}));
-  fillOptions(catalog,[{value:'',label:'Selecione uma avaliação'},...rows]);
+  const rows=(catalogReady?allRows:[]).map(x=>({value:x.id,label:assessmentLabel({...x,...metadataById.get(x.id)})||'Avaliação sem título'}));
+  fillOptions(catalog,[{value:'',label:catalogBusy?'Carregando avaliações…':'Selecione uma avaliação'},...rows]);
   if(current&&rows.some(x=>x.value===current.id))selectedCatalogId=current.id;
   catalog.value=rows.some(x=>x.value===selectedCatalogId)?selectedCatalogId:'';
   fillOptions(revisions,[{value:'',label:'Atual'},...s.revisions.map(x=>({value:String(x.revision),label:'Versão '+x.revision}))]);
   const opened=Boolean(current&&s.editorMode==='opened');
   scope.disabled=operationBusy||Boolean(s.pending);
-  catalog.disabled=operationBusy||Boolean(s.pending);
+  catalog.disabled=operationBusy||catalogBusy||!catalogReady||Boolean(s.pending);
   revisions.disabled=operationBusy||Boolean(s.pending);
   create.disabled=operationBusy||!ready||Boolean(s.pending);
   save.disabled=operationBusy||!ready||(!opened&&s.editorMode!=='new')||Boolean(s.pending);
   open.disabled=operationBusy||!ready||!catalog.value||Boolean(s.pending);
   duplicate.disabled=operationBusy||!ready||!opened||current.id!==catalog.value||Boolean(s.pending);
   selectForCorrection.disabled=operationBusy||unsaved||!ready||!opened||current.status!=='issued'||current.id!==catalog.value||Boolean(s.pending);
-  refresh.disabled=operationBusy||!ready||Boolean(s.pending);
+  refresh.disabled=operationBusy||!ready||catalogBusy||Boolean(s.pending);
+  refresh.hidden=!catalogLoadError;
   prev.disabled=operationBusy||!ready||!s.hasPrevious||Boolean(s.pending);
   next.disabled=operationBusy||!ready||!s.nextCursor||Boolean(s.pending);
   retry.disabled=operationBusy||!s.pending;
@@ -518,6 +525,8 @@ export function mountAssessmentLibrary({
     unsaved?'Há alterações nesta avaliação que ainda não foram salvas.':
     s.phase==='saved'?'Avaliação salva e conferida no servidor.':
     s.phase==='selected'?'Avaliação confirmada para correção.':
+    catalogBusy?'Conferindo avaliações e dados antes de liberar a lista…':
+    catalogLoadError?'Catálogo incompleto. Use Atualizar para consultar novamente.':
     s.phase==='loading'?'Carregando suas avaliações…':
     s.phase==='unavailable'?'Biblioteca indisponível no momento.':
     opened?'Avaliação aberta para edição.':
@@ -526,18 +535,51 @@ export function mountAssessmentLibrary({
   updateSummary();
  }
  async function loadCatalog(){
-  const first=await controller.list();
-  if(!first)return [];
-  const rows=[...first];
-  let pages=0;
-  while(controller.view().nextCursor){
-   if(++pages>500)throw new Error('O catálogo é muito grande para esta consulta. Nenhum registro foi alterado.');
-   const page=await controller.nextPage();
-   if(!page)break;
-   rows.push(...page);
+  const context=contextKey(),generation=++catalogGeneration,
+   controllerGeneration=controller.view().generation;
+  if(!context)return [];
+  catalogBusy=true;catalogReady=false;catalogLoadError=false;allRows=[];
+  render(); // Never display title-only or half-enriched private options as ready.
+  const isCurrent=()=>generation===catalogGeneration&&contextKey()===context&&
+   controller.view().generation===controllerGeneration;
+  try{
+   const first=await controller.list();
+   if(!first||!isCurrent())return [];
+   const rows=[...first];let pages=0;
+   if(rows.length>200)throw new Error('Catálogo acima de 200 avaliações: consulta completa não disponível.');
+   while(controller.view().nextCursor){
+    if(++pages>500)throw new Error('O catálogo é muito grande para esta consulta. Nenhum registro foi alterado.');
+    const page=await controller.nextPage();
+    if(!page||!isCurrent())return [];
+    rows.push(...page);
+    if(rows.length>200)throw new Error('Catálogo acima de 200 avaliações: consulta completa não disponível.');
+   }
+   const enriched=await enrichCatalogRows(rows,{
+    open:(id,revision)=>client.open(id,revision),isCurrent,cache:catalogCache,concurrency:2,
+    // Controller.initialize() drops the previous teacher synchronously.
+    onDenied:()=>{void controller.initialize().catch(()=>{});}
+   });
+   if(!enriched||!isCurrent())return [];
+   allRows=enriched;catalogReady=true;
+   return enriched;
+  }catch(error){
+   if(isCurrent()){
+    allRows=[];catalogReady=false;catalogLoadError=true;
+    status.dataset.state='error';
+    status.textContent=error?.message||'Não foi possível completar o catálogo.';
+   }
+   throw error;
+  }finally{
+   if(isCurrent()){
+    catalogBusy=false;render({preserveError:catalogLoadError});
+   }else if(generation===catalogGeneration&&contextKey()===context){
+    // Controller generation may change in the same authorized scope
+    // (new draft/open/invalidation). A late GET must neither publish old
+    // labels nor leave the selector indefinitely marked as loading.
+    catalogGeneration++;catalogBusy=false;catalogReady=false;allRows=[];
+    render();
+   }
   }
-  allRows=rows;
-  return rows;
  }
  async function connectAndList(){
   await controller.initialize();
@@ -583,6 +625,6 @@ export function mountAssessmentLibrary({
  });
  renderScoring();
  render();
- void connectAndList().catch(()=>{ready=false;render()});
- return Object.freeze({controller,client,onEditorChanged,renderScoring,getDraft,render});
+ void connectAndList().catch(error=>{status.textContent=error?.message||'Não foi possível preparar o catálogo.';status.dataset.state='error';render({preserveError:true})});
+ return Object.freeze({controller,client,onEditorChanged,renderScoring,getDraft,render,loadCatalog});
 }

@@ -13,6 +13,7 @@ import {definitionFromLocalPlan,planFromPrivateRecord} from '../../corretor/v2/a
 import {importCardManifest} from '../../corretor/v2/omr/manifest.mjs';
 import {createPrivateAssessmentClient} from '../../corretor/v2/assessments/private-client.mjs';
 import {createPrivateLibraryController} from '../../corretor/v2/assessments/private-library.mjs';
+import {enrichCatalogRows} from '../catalogo-avaliacoes.mjs';
 
 const root=path.resolve(path.dirname(fileURLToPath(import.meta.url)),'../..');
 const read=rel=>fs.readFileSync(path.join(root,rel),'utf8');
@@ -43,6 +44,13 @@ const planArgs=m=>({metadata:{title:m.editor.fields.assessmentTitle,subject:m.ed
  kind:m.editor.fields.assessmentKind,className:m.editor.fields.assessmentClass,date:m.editor.fields.assessmentDate},
  sections:m.sections,values:m.values,answers:m.answers,manifest:m.manifest,editor:m.editor});
 
+const catalogRecord=(row,m)=>{
+ const {plan,definition}=createLibraryPlan(planArgs(m));
+ return {id:row.id,revision:row.revision??1,definition:{...definition,title:row.title},
+  manifestHash:definition.manifest.contentHash,scoreScale:10000,totalUnits:plan.totalUnits,
+  status:'issued',archived:false,institutionId:row.institutionId,classId:row.classId,periodId:row.periodId};
+};
+
 test('new library is inside Criar avaliação; Corrigir cartões DOM and stylesheet unchanged',()=>{
  const html=read('plataforma/corretor-v2.html'),start=html.indexOf('<section class="corretor-card module-view active" id="criar">'),
   correct=html.indexOf('<section class="corretor-card module-view" id="corrigir">'),
@@ -51,7 +59,7 @@ test('new library is inside Criar avaliação; Corrigir cartões DOM and stylesh
  assert.ok(html.slice(start,correct).includes('id="savedAssessments"'));
  assert.ok(!html.slice(correct,end).includes('savedAssessments'));
  assert.equal(fnv(html.slice(correct+'<section class="corretor-card module-view" id="corrigir">'.length,end)),'741a37932ee15259');
- assert.equal(gitSha('plataforma/corretor-v2.css'),'5a2daf6f482f32884a3451ddc0781ee15db597df');
+ assert.equal(gitSha('plataforma/corretor-v2.css'),'90f4ea33933388e13d148b9f4723159329c92963');
  assert.match(html,/mountAssessmentLibrary\(/);
  assert.match(html,/privateSelection\.manifestHash/);
  assert.doesNotMatch(html.slice(start,correct),/<section[^>]+id="piloto-avaliacoes"/);
@@ -572,13 +580,14 @@ test('P0 structural retry: requestId, body and CAS are unchanged after silent se
 
 
 test('UX-79B catalog labels omit missing fields and technical active states',()=>{
- assert.equal(assessmentLabel({title:'Prova',subject:'Matemática',className:'7º A'}),'Prova · Matemática · 7º A');
+ assert.equal(assessmentLabel({title:'Prova',subject:'Matemática',className:'7º A'}),'Prova - Matemática - 7º A');
  assert.equal(assessmentLabel({title:'Prova',subject:'',className:''}),'Prova');
  assert.equal(assessmentLabel({title:'Prova',state:'active'}),'Prova');
- assert.equal(assessmentLabel({title:'Prova',definition:{subject:'Ciências',manifest:{header:{className:'6º B'}}}}),'Prova · Ciências · 6º B');
+ assert.equal(assessmentLabel({title:'Prova',definition:{subject:'Ciências',manifest:{header:{className:'6º B'}}}}),'Prova - Ciências - 6º B');
 });
 
 test('UX-79B score precision is strict and never silently rounds',async()=>{
+ assert.ok(!read('plataforma/avaliacoes-biblioteca.mjs').includes('· até 2 decimais'))
  for(const value of ['10','10,1','0.05','0,00','25.99'])assert.equal(validScorePrecision(value),true,value);
  for(const value of ['1.234','2,999','3,','1.','-2.50','abc',''])assert.equal(validScorePrecision(value),false,value);
  const f=await mountedRaceFixture();
@@ -601,7 +610,7 @@ test('UX-79B automatic current-revision opening, accessible actions and hidden l
  const selectors=f.top.children[1],catalog=selectors.children[1].children[0];
  assert.equal(selectors.children[2].hidden,true,'public revision selector hidden; history remains internal');
  const option=catalog.options.find(x=>x.value===first.id);
- assert.equal(option?.textContent,'Avaliação de Matemática · Matemática · Turma sintética 7A');
+ assert.equal(option?.textContent,'Avaliação de Matemática - Matemática - Turma sintética 7A');
  assert.equal(catalog.options.some(x=>x.textContent.includes('active')),false);
  for(const name of ['Abrir avaliação','Atualizar','Anterior','Próxima','Conferir salvamento'])
   assert.equal(f.button(name).hidden,true,name+' is not visible');
@@ -632,6 +641,223 @@ test('UX-79B manual key editor is placed in Criar, private JSON importer is hidd
 });
 
 
+test('UX-79C enriches all 13 authenticated labels with bounded GETs and a session-only cache',async()=>{
+ const grant={institutionId:'school',classId:'class-1',periodId:'2026'};
+ const rows=Array.from({length:13},(_,i)=>({id:'id-'+i,revision:1,title:'Prova '+i,state:'active',...grant}));
+ const cache=new Map();let inFlight=0,peak=0,calls=0,selected=false;
+ const fetchRecord=async id=>{
+  selected=false;calls++;inFlight++;peak=Math.max(peak,inFlight);
+  await tick();inFlight--;
+  const i=Number(id.slice(3));
+  return {id,revision:1,definition:{title:'Prova '+i,subject:i===3?'':'Matemática',
+   manifest:{header:{className:i===3?'':'7º A'}}},...grant};
+ };
+ const first=await enrichCatalogRows(rows,{open:fetchRecord,isCurrent:()=>true,cache});
+ assert.equal(calls,13,'metadata fetched before a single selection or opening');
+ assert.ok(peak<=2,'authenticated reads limited to two concurrent requests');
+ assert.equal(selected,false);
+ assert.equal(first.length,13);
+ assert.equal(assessmentLabel(first[0]),'Prova 0 - Matemática - 7º A');
+ assert.equal(assessmentLabel(first[3]),'Prova 3','only actually absent fields omitted');
+ assert.ok(first.every(x=>!assessmentLabel(x).includes(x.classId)),'opaque scope ID never becomes readable class');
+ assert.equal(cache.size,13);
+ await enrichCatalogRows(rows,{open:fetchRecord,isCurrent:()=>true,cache});
+ assert.equal(calls,13,'same session and revision uses in-memory metadata');
+ rows[0].revision=2;
+ await enrichCatalogRows(rows,{open:async id=>({id,revision:2,definition:{title:'Prova atualizada',subject:'Ciências',
+  manifest:{header:{className:'8º B'}}},...grant}),isCurrent:()=>true,cache});
+ assert.equal(cache.size,14,'new revision is not satisfied by stale metadata');
+});
+
+test('UX-79C 401/403 metadata errors clear context; stale response cannot publish options',async t=>{
+ const grant={institutionId:'school',classId:'class-1',periodId:'2026'};
+ const rows=[{id:'id-one',revision:1,title:'Privada',...grant}];
+ for(const status of [401,403])await t.test(String(status),async()=>{
+  let active=true,denied=0;const cache=new Map();
+  await assert.rejects(()=>enrichCatalogRows(rows,{
+   open:async()=>{const e=Error('forbidden');e.status=status;throw e;},
+   isCurrent:()=>active,cache,
+   onDenied:()=>{active=false;denied++;cache.clear();}
+  }),e=>e.status===status);
+  assert.equal(denied,1);
+  assert.equal(cache.size,0);
+ });
+ const pending=deferred();let started=false,active=true;const cache=new Map();
+ const loading=enrichCatalogRows(rows,{open:async()=>{started=true;return pending.promise;},
+  isCurrent:()=>active,cache,concurrency:1});
+ for(let n=0;n<10&&!started;n++)await tick();
+ assert.equal(started,true);
+ active=false;pending.resolve({id:'id-one',revision:1,definition:{title:'NÃO EXIBIR'},...grant});
+ assert.equal(await loading,null,'old response discarded after context revocation');
+ assert.equal(cache.size,0);
+});
+
+test('UX-79C actual library never publishes private metadata when detail GET returns 401/403',async t=>{
+ for(const status of [401,403])await t.test('HTTP '+status,async()=>{
+  const m=make({counts:[2],types:['A-E']});
+  const grant={institutionId:'school',classId:'class-one',periodId:'2026'};
+  const id=crypto.randomUUID();let sessionRequests=0;
+  const fetchFn=async(url)=>{
+   const route=new URL(url).pathname.slice('/assessments/v1'.length);
+   if(route==='/session'){sessionRequests++;return Response.json({authenticated:true,principalId:'teacher-a',epoch:1});}
+   if(route==='/grants')return Response.json({grants:[grant]});
+   if(route==='/assessments')return Response.json({assessments:[{id,revision:1,title:'Avaliação sigilosa',...grant}],nextCursor:null});
+   if(route==='/assessments/'+id+'/revisions/1')return Response.json({code:'denied'},{status});
+   throw Error('Unexpected '+route);
+  };
+  const host=new SurfaceNode('section'),doc={getElementById:key=>key==='savedAssessments'?host:null,
+   createElement:tag=>new SurfaceNode(tag)};
+  const library=mountAssessmentLibrary({document:doc,window:{confirm:()=>true},host,fetchFn,
+   getSections:()=>m.sections,getMetadata:()=>planArgs(m).metadata,
+   getModel:()=>m.manifest,prepareModel:()=>true,snapshotEditor:()=>m.editor,
+   restoreEditor:()=>{},nominalFields:()=>({}),newEditor:()=>{},
+   activateSelection:()=>{},clearSelection:()=>{}});
+  const catalog=host.children[0].children[1].children[1].children[0];
+  for(let n=0;n<35&&sessionRequests<2;n++)await tick();
+  assert.ok(sessionRequests>=2,'denied metadata invalidates the session before reconnect attempt');
+  assert.equal(library.controller.view().scope,null,'no authorized scope remains after denial');
+  assert.equal(catalog.options.length,1,'private title is never published');
+  assert.ok(!catalog.options.some(o=>o.textContent.includes('sigilosa')));
+  assert.equal(catalog.disabled,true);
+ });
+});
+
+
+test('UX-79C consolidated: 13 paginated options remain locked until all private metadata is fetched',async()=>{
+ const m=make({counts:[2],types:['A-E']});
+ const grant={institutionId:'school',classId:'class-a',periodId:'2026'};
+ const rows=Array.from({length:13},(_,i)=>({id:crypto.randomUUID(),title:'Prova '+(i+1),revision:1,state:'active',...grant}));
+ const gate=deferred(),entered=deferred();let reads=0,inflight=0,peak=0,pages=0,editRestores=0;
+ const fetchFn=async(url,req)=>{
+  const u=new URL(url),route=u.pathname.slice('/assessments/v1'.length);
+  if(route==='/session')return Response.json({authenticated:true,principalId:'teacher-A',epoch:1});
+  if(route==='/grants')return Response.json({grants:[grant]});
+  if(route==='/assessments'){
+   pages++;const pos=u.searchParams.get('after')?rows.findIndex(x=>x.id===u.searchParams.get('after'))+1:0;
+   const part=rows.slice(pos,pos+10);
+   return Response.json({assessments:part,nextCursor:pos+part.length<rows.length?part.at(-1).id:null});
+  }
+  const id=route.match(/^\/assessments\/([0-9a-f-]{36})\/revisions\/1$/)?.[1];
+  if(id){
+   reads++;inflight++;peak=Math.max(peak,inflight);entered.resolve();await gate.promise;inflight--;
+   const row=rows.find(x=>x.id===id),base=catalogRecord(row,m);
+   return Response.json({record:{...base,definition:{...base.definition,subject:'História'}}});
+  }
+  throw Error('Unexpected '+req.method+' '+route);
+ };
+ const host=new SurfaceNode('section'),doc={getElementById:id=>id==='savedAssessments'?host:null,
+  createElement:tag=>new SurfaceNode(tag)};
+ const mounted=mountAssessmentLibrary({document:doc,window:{confirm:()=>true},host,fetchFn,
+  getSections:()=>m.sections,getMetadata:()=>planArgs(m).metadata,getModel:()=>m.manifest,
+  prepareModel:()=>true,snapshotEditor:()=>m.editor,restoreEditor:()=>{editRestores++},
+  newEditor:()=>{},nominalFields:()=>({}),activateSelection:()=>{},clearSelection:()=>{}});
+ const catalog=host.children[0].children[1].children[1].children[0];
+ await entered.promise;
+ assert.equal(catalog.disabled,true,'no selection until all 13 metadata responses are validated');
+ assert.equal(catalog.options.length,1,'no partial catalog exposed');
+ assert.equal(editRestores,0,'detail enrichment never opens an editor');
+ gate.resolve();
+ for(let n=0;n<80&&catalog.options.length!==14;n++)await tick();
+ assert.equal(pages,2);assert.equal(reads,13);assert.ok(peak<=2);
+ assert.equal(catalog.disabled,false);
+ assert.equal(catalog.options.length,14);
+ for(const row of rows)assert.equal(catalog.options.find(x=>x.value===row.id)?.textContent,
+  row.title+' - História - Turma sintética 7A');
+ assert.equal(mounted.controller.view().record,null);
+});
+
+test('UX-79C consolidated: 201-item catalog is not partially published and does no detail GET',async()=>{
+ const m=make({counts:[2],types:['A-E']});
+ const grant={institutionId:'school',classId:'class-a',periodId:'2026'};
+ const rows=Array.from({length:201},(_,i)=>({id:crypto.randomUUID(),revision:1,title:'Exame '+i,...grant}));
+ let pages=0,details=0;
+ const fetchFn=async(url,req)=>{
+  const u=new URL(url),route=u.pathname.slice('/assessments/v1'.length);
+  if(route==='/session')return Response.json({authenticated:true,principalId:'teacher-A',epoch:1});
+  if(route==='/grants')return Response.json({grants:[grant]});
+  if(route==='/assessments'){
+   pages++;const after=u.searchParams.get('after'),pos=after?rows.findIndex(x=>x.id===after)+1:0;
+   const part=rows.slice(pos,pos+10);
+   return Response.json({assessments:part,nextCursor:pos+part.length<rows.length?part.at(-1).id:null});
+  }
+  if(route.startsWith('/assessments/')){details++;throw Error('No detail request allowed beyond cap');}
+  throw Error('Unexpected '+req.method+' '+route);
+ };
+ const host=new SurfaceNode('section'),doc={getElementById:id=>id==='savedAssessments'?host:null,
+  createElement:tag=>new SurfaceNode(tag)};
+ mountAssessmentLibrary({document:doc,window:{confirm:()=>true},host,fetchFn,
+  getSections:()=>m.sections,getMetadata:()=>planArgs(m).metadata,getModel:()=>m.manifest,
+  prepareModel:()=>true,snapshotEditor:()=>m.editor,restoreEditor:()=>{},
+  newEditor:()=>{},nominalFields:()=>({}),activateSelection:()=>{},clearSelection:()=>{}});
+ const top=host.children[0],catalog=top.children[1].children[1].children[0],
+  refresh=top.children[3].children.find(x=>x.textContent==='Atualizar');
+ for(let n=0;n<100&&refresh.hidden;n++)await tick();
+ assert.equal(pages,21);assert.equal(details,0);
+ assert.equal(catalog.options.length,1,'no partial/incomplete 200-item catalog');
+ assert.equal(catalog.disabled,true);
+ assert.equal(refresh.hidden,false,'recoverable limit is visible');
+ assert.match(top.children[4].textContent,/200 avaliações/);
+});
+
+test('UX-79C consolidated: 429 metadata failure permits retry without releasing partial labels',async()=>{
+ const m=make({counts:[2],types:['A-E']});
+ const grant={institutionId:'school',classId:'class-a',periodId:'2026'};
+ const row={id:crypto.randomUUID(),title:'Confidencial',revision:1,...grant};
+ let fail=true,reads=0;
+ const fetchFn=async(url,req)=>{
+  const route=new URL(url).pathname.slice('/assessments/v1'.length);
+  if(route==='/session')return Response.json({authenticated:true,principalId:'teacher-A',epoch:1});
+  if(route==='/grants')return Response.json({grants:[grant]});
+  if(route==='/assessments')return Response.json({assessments:[row],nextCursor:null});
+  if(route==='/assessments/'+row.id+'/revisions/1'){
+   reads++;return fail?Response.json({code:'rate_limited'},{status:429}):
+    Response.json({record:catalogRecord(row,m)});
+  }
+  throw Error('Unexpected '+req.method+' '+route);
+ };
+ const host=new SurfaceNode('section'),doc={getElementById:id=>id==='savedAssessments'?host:null,
+  createElement:tag=>new SurfaceNode(tag)};
+ const library=mountAssessmentLibrary({document:doc,window:{confirm:()=>true},host,fetchFn,
+  getSections:()=>m.sections,getMetadata:()=>planArgs(m).metadata,getModel:()=>m.manifest,
+  prepareModel:()=>true,snapshotEditor:()=>m.editor,restoreEditor:()=>{},
+  newEditor:()=>{},nominalFields:()=>({}),activateSelection:()=>{},clearSelection:()=>{}});
+ const top=host.children[0],catalog=top.children[1].children[1].children[0],
+  refresh=top.children[3].children.find(x=>x.textContent==='Atualizar');
+ for(let n=0;n<40&&refresh.hidden;n++)await tick();
+ assert.equal(reads,1);assert.equal(catalog.options.length,1);assert.equal(catalog.disabled,true);
+ assert.equal(refresh.hidden,false);
+ assert.ok(library.controller.view().session,'rate limit does not revoke valid teacher');
+ fail=false;await refresh.handlers.click();
+ assert.equal(reads,2);assert.equal(catalog.options.length,2);
+ assert.equal(catalog.options[1].textContent,'Confidencial - Matemática - Turma sintética 7A');
+ assert.equal(catalog.disabled,false);
+});
+
+test('UX-79C uses official Lucide save and camera paths without replacing button names',()=>{
+ const library=read('plataforma/avaliacoes-biblioteca.css');
+ const camera=read('plataforma/corretor-v2.css');
+ const html=read('plataforma/corretor-v2.html');
+ const extract=(css,selector)=>{
+  const line=css.split('\n').find(x=>x.includes(selector)&&x.includes('mask:'));
+  assert.ok(line,selector+' SVG mask CSS exists');
+  const match=line.match(/url\("data:image\/svg\+xml,([^"]+)"\)/);
+  assert.ok(match);
+  return decodeURIComponent(match[1]);
+ };
+ const saveSvg=extract(library,'button[data-action-icon="save"]::before');
+ const cameraSvg=extract(camera,'#camera::before');
+ assert.match(saveSvg,/M15\.2 3a2 2 0 0 1 1\.4\.6/);
+ assert.match(saveSvg,/M17 21v-7/);
+ assert.match(cameraSvg,/M13\.997 4a2 2 0 0 1 1\.76/);
+ assert.match(cameraSvg,/<circle cx="12" cy="13" r="3"/);
+ assert.doesNotMatch(library,/content:"▣"/);
+ assert.match(html,/<button id="camera" type="button">Abrir câmera<\/button>/);
+ for(const message of ["'Abrir câmera'","'Fechar câmera'","'Cancelar abertura'"])
+  assert.ok(html.includes("$('camera').textContent="+message),'text remains visible for '+message);
+ assert.match(library,/background:currentColor/);
+ assert.match(camera,/background:currentColor/);
+});
+
 test('UX-79B fetches all internal catalog pages without exposing pagination controls',async()=>{
  const m=make({counts:[2],types:['A-E']});
  const grant={institutionId:'salta-hml-20261119',classId:'turma-sintetica-ab',periodId:'2026-11-piloto'};
@@ -650,6 +876,8 @@ test('UX-79B fetches all internal catalog pages without exposing pagination cont
    const nextCursor=offset+items.length<rows.length?items.at(-1).id:null;
    return Response.json({assessments:items,nextCursor});
   }
+  if(/^\/assessments\/[^/]+\/revisions\/1$/.test(route)&&init.method==='GET')
+   return Response.json({record:catalogRecord(rows.find(x=>route==='/assessments/'+x.id+'/revisions/1'),m)});
   throw Error('Unexpected '+init.method+' '+route);
  };
  const host=new SurfaceNode('section'),doc={getElementById:id=>id==='savedAssessments'?host:null,
@@ -663,6 +891,8 @@ test('UX-79B fetches all internal catalog pages without exposing pagination cont
  for(let step=0;step<16&&catalog.options.length!==12;step++)await tick();
  assert.equal(requests,2,'11 rows should be loaded via two pages');
  assert.equal(catalog.options.length,12,'placeholder plus all eleven evaluation options');
+ assert.ok(catalog.options.slice(1).every(x=>/^Avaliação \d+ - Matemática - Turma sintética 7A$/.test(x.textContent)),
+  'each of 11 labels is complete before first opening');
  assert.equal(catalog.options.some(x=>x.textContent.includes('active')),false);
  for(const button of host.children[0].children[3].children.slice(1))
   assert.equal(button.hidden,true,'internal navigation and retry are not public');
@@ -692,6 +922,7 @@ test('UX-79B P0 privacy: 401/403 purge 13 cached assessments, metadata and edita
    if(route.startsWith('/assessments/')&&req.method==='GET'){
     if(deny&&trigger==='open')return Response.json({code:'denied'},{status:code});
     if(route==='/assessments/'+ids[0])return Response.json({record});
+    if(/^\/assessments\/[^/]+\/revisions\/1$/.test(route))return Response.json({record:catalogRecord(rows.find(x=>route==='/assessments/'+x.id+'/revisions/1'),m)});
     if(route==='/assessments/'+ids[0]+'/revisions')return Response.json({revisions:[{revision:1,status:'issued'}]});
    }
    throw Error('Unexpected '+route);
@@ -725,31 +956,31 @@ test('UX-79B P0 privacy: 401/403 purge 13 cached assessments, metadata and edita
  });
 });
 
-test('UX-79B P0 privacy: scope change invalidates old pages and delayed GET',async()=>{
+test('UX-79C P0 privacy: scope switch discards hydrated catalog and late detail replies',async()=>{
  const m=make({counts:[2],types:['A-E']});
  const grantA={institutionId:'salta-hml-20261119',classId:'class-a',periodId:'2026-11-piloto'};
  const grantB={...grantA,classId:'class-b'};
  const ids=Array.from({length:13},()=>crypto.randomUUID());
  const rowsA=ids.map((id,i)=>({id,title:'A privada '+(i+1),revision:1,state:'active',...grantA}));
  const onlyB={id:crypto.randomUUID(),title:'B exclusiva',revision:1,state:'active',...grantB};
- const {definition}=createLibraryPlan(planArgs(m));
- const entered=deferred(),release=deferred();
- const record={id:ids[0],revision:1,definition,manifestHash:definition.manifest.contentHash,
-  scoreScale:10000,totalUnits:'60000',status:'issued',archived:false,...grantA};
+ const entered=deferred(),release=deferred();let opensOfA=0;
  const fetchFn=async(url,request)=>{
   const u=new URL(url),route=u.pathname.slice('/assessments/v1'.length);
   if(route==='/session')return Response.json({authenticated:true,principalId:'teacher-a',epoch:1});
   if(route==='/grants')return Response.json({grants:[grantA,grantB]});
   if(route==='/assessments'){
-   const scope=u.searchParams.get('classId'),src=scope==='class-a'?rowsA:[onlyB];
+   const src=u.searchParams.get('classId')==='class-a'?rowsA:[onlyB];
    const after=u.searchParams.get('after'),pos=after?src.findIndex(x=>x.id===after)+1:0;
    const part=src.slice(pos,pos+10);
    return Response.json({assessments:part,nextCursor:pos+part.length<src.length?part.at(-1).id:null});
   }
-  if(route==='/assessments/'+ids[0]){
-   entered.resolve();await release.promise;return Response.json({record});
+  if(/^\/assessments\/[^/]+(?:\/revisions\/1)?$/.test(route)){
+   const row=[...rowsA,onlyB].find(x=>route==='/assessments/'+x.id||route==='/assessments/'+x.id+'/revisions/1');
+   if(!row)throw Error('Unknown detail '+route);
+   if(row.id===ids[0]&&++opensOfA===2){entered.resolve();await release.promise;}
+   return Response.json({record:catalogRecord(row,m)});
   }
-  throw Error('Unexpected '+route);
+  throw Error('Unexpected '+request.method+' '+route);
  };
  const host=new SurfaceNode('section'),doc={getElementById:id=>id==='savedAssessments'?host:null,
   createElement:tag=>new SurfaceNode(tag)};
@@ -757,25 +988,21 @@ test('UX-79B P0 privacy: scope change invalidates old pages and delayed GET',asy
   getSections:()=>m.sections,getMetadata:()=>planArgs(m).metadata,
   getModel:()=>m.manifest,prepareModel:()=>true,snapshotEditor:()=>m.editor,
   restoreEditor:()=>{},nominalFields:()=>({}),newEditor:()=>{},activateSelection:()=>{},clearSelection:()=>{}});
- for(let n=0;n<8&&mounted.controller.view().grants.length!==2;n++)await tick();
+ for(let n=0;n<12&&mounted.controller.view().grants.length!==2;n++)await tick();
  mounted.controller.useScope(grantA);
- await mounted.controller.list();
- await mounted.controller.nextPage();
- mounted.render();
+ await mounted.loadCatalog();
  const catalog=host.children[0].children[1].children[1].children[0];
- assert.ok(catalog.options.some(x=>x.textContent.includes('A privada')));
- catalog.value=ids[0];
- const opening=catalog.onchange();
- await entered.promise;
- mounted.controller.useScope(grantB);
- mounted.render();
- assert.equal(catalog.options.some(x=>x.textContent.includes('A privada')),false,'changing grants purges old catalog');
- await mounted.controller.list();mounted.render();
- assert.ok(catalog.options.some(x=>x.textContent==='B exclusiva'));
- release.resolve();await opening;
- mounted.render();
- assert.equal(catalog.options.some(x=>x.textContent.includes('A privada')),false,'late response cannot reinsert old principal/scope');
- assert.equal(mounted.controller.view().record,null,'old GET must not replace new context');
+ assert.equal(catalog.options.length,14);
+ assert.ok(catalog.options.some(x=>x.textContent==='A privada 1 - Matemática - Turma sintética 7A'));
+ catalog.value=ids[0];const opening=catalog.onchange();await entered.promise;
+ mounted.controller.useScope(grantB);mounted.render();
+ assert.equal(catalog.options.length,1,'old private catalog purged before new GET');
+ await mounted.loadCatalog();
+ assert.ok(catalog.options.some(x=>x.textContent.startsWith('B exclusiva - ')));
+ assert.equal(catalog.options.some(x=>x.textContent.includes('A privada')),false);
+ release.resolve();await opening;mounted.render();
+ assert.equal(catalog.options.some(x=>x.textContent.includes('A privada')),false,'late GET cannot repopulate old scope');
+ assert.equal(mounted.controller.view().record,null);
 });
 
 test('UX-79B P0 recovery: two failures then contextual manual retry replays identical PUT',async()=>{
@@ -1089,6 +1316,7 @@ test('P0-80-RF-01 actual adapter + Corretor callback clears private reader on 40
     return Response.json({assessments:part,nextCursor:pos+part.length<rows.length?part.at(-1).id:null});
    }
    if(route==='/assessments/'+id)return Response.json({record});
+   if(/^\/assessments\/[^/]+\/revisions\/1$/.test(route))return Response.json({record:catalogRecord(rows.find(x=>route==='/assessments/'+x.id+'/revisions/1'),m)});
    if(route==='/assessments/'+id+'/revisions')return Response.json({revisions:[{revision:1,status:'issued'}]});
    throw Error('Unexpected '+req.method+' '+route);
   };
