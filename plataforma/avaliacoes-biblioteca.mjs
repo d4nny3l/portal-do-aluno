@@ -498,7 +498,10 @@ export function mountAssessmentLibrary({
    const id=section.sectionId;
     const shown=restoredUnits.has(id)&&!editedAmountIds.has(id)?
      formatScore(BigInt(restoredUnits.get(id)),POINT_SCALE,selectedScoreDecimals):
-     (values[id]??(sections.length===1?formatScore(10n,1n,selectedScoreDecimals):''));
+     editedAmountIds.has(id)?(values[id]??''):
+     values[id]!==undefined&&validScorePrecision(values[id],4)?
+      formatScore(BigInt(scoreInputUnits(values[id],4)),POINT_SCALE,selectedScoreDecimals):
+      (values[id]??(sections.length===1?formatScore(10n,1n,selectedScoreDecimals):''));
     const val=el(document,'input','',{type:'text',placeholder:formatScore(10n,1n,selectedScoreDecimals),value:shown});
    val.setAttribute('inputmode','decimal');
    if(values[id]===undefined&&sections.length===1)values[id]='10';
