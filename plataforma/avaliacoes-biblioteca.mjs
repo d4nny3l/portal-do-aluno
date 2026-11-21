@@ -2,10 +2,11 @@
 // client/controller. No second login, endpoint, storage or optical renderer.
 import {createPrivateAssessmentClient} from '../corretor/v2/assessments/private-client.mjs';
 import {createPrivateLibraryController} from '../corretor/v2/assessments/private-library.mjs';
-import {createIntegratedPlan,applyKeyPaste,draftSummary,formatExact,POINT_SCALE,keyTextForPlan} from '../corretor/v2/assessments/block-scoring.mjs';
+import {createIntegratedPlan,applyKeyPaste,draftSummary,formatExact,scoreInputUnits,units,POINT_SCALE,keyTextForPlan} from '../corretor/v2/assessments/block-scoring.mjs';
 import {definitionFromLocalPlan,planFromPrivateRecord} from '../corretor/v2/assessments/private-contract-adapter.mjs';
 import {importCardManifest} from '../corretor/v2/omr/manifest.mjs';
 import {QUESTION_TYPES} from '../corretor/v2/omr/assessment.mjs';
+import {SCORE_FORMAT_VERSION,DEFAULT_SCORE_DECIMALS,scoreDecimals as assertScoreDecimals,formatScore} from '../corretor/v2/assessments/score-format.mjs';
 
 // Same authorized namespace as the original private client; server Auth and grants
 // remain the security boundary. No worker flags, tokens, credentials or secrets here.
@@ -27,9 +28,22 @@ const scopeEquals=(a,b)=>['institutionId','classId','periodId'].every(k=>a?.[k]=
 export const assessmentLabel=row=>[row?.title,row?.subject??row?.definition?.subject,
  row?.className??row?.definition?.manifest?.header?.className]
  .map(value=>typeof value==='string'?value.trim():'').filter(Boolean).join(' · ');
-export const validScorePrecision=value=>/^\d+(?:[.,]\d{1,2})?$/.test(String(value||'').trim());
+export const validScorePrecision=(value,places=DEFAULT_SCORE_DECIMALS)=>{
+ const input=String(value??'').trim();
+ if(!/^\d+(?:[.,]\d{1,4})?$/.test(input))return false;
+ const fractional=input.split(/[.,]/)[1]||'';
+ return !/[1-9]/.test(fractional.slice(assertScoreDecimals(places)));
+};
+const partialScoreInput=(value,places)=>{
+ if(!/^\d*(?:[.,]\d{0,4})?$/.test(value))return false;
+ const fractional=value.split(/[.,]/)[1]||'';
+ return !/[1-9]/.test(fractional.slice(places));
+};
 const scoreForInput=units=>formatExact(BigInt(units),POINT_SCALE,4).replace(',','.')
  .replace(/(\.\d*?)0+$/,'$1').replace(/\.$/,'');
+const scoreForDraftInput=(value,precision)=>{
+ try{return formatScore(BigInt(units(value)),POINT_SCALE,precision)}catch{return String(value??'')}
+};
 
 export function assertLibraryModel({manifest,editor,nominalFields={}}){
  if(!manifest)throw new Error('Gere primeiro um cartão válido.');
@@ -82,9 +96,9 @@ export function editorFromPrivateRecord(record,previousEditor){
  return {editor,plan,manifest,template};
 }
 
-export function createLibraryPlan({metadata,sections,values,answers,manifest,editor,nominalFields}){
+export function createLibraryPlan({metadata,sections,values,answers,manifest,editor,nominalFields,scoreDecimals}){
  assertLibraryModel({manifest,editor,nominalFields});
- const plan=createIntegratedPlan({metadata,sections,values,answers,model:manifest,display:'both'});
+ const plan=createIntegratedPlan({metadata,sections,values,answers,model:manifest,display:'both',scoreDecimals});
  // Verify strict v2 allowlist before transmitting, never silently drop fields.
  const definition=definitionFromLocalPlan(plan,manifest);
  if(definition.manifest.contentHash!==manifest.contentHash)
@@ -101,7 +115,23 @@ export function mountAssessmentLibrary({
  const client=createPrivateAssessmentClient({enabled:true,baseUrl:LIBRARY_GATEWAY,fetchFn});
  const get=id=>document.getElementById(id);
  let values={},answers={},savedManifest=null,savedSignature=null,ready=false,activeSelection=false,lastScoringSections='';
+ let selectedScoreDecimals=DEFAULT_SCORE_DECIMALS,scoreFormatExplicit=false;
+ const restoredUnits=new Map(),editedAmountIds=new Set();
+ const scoreFormatField=get('scoreFormatField'),scoreFormatSelect=get('scoreFormatSelect');
+ const hasScoreFormat=()=>controller.view().session?.scoreFormatVersion===SCORE_FORMAT_VERSION;
+ function syncScoreFormatUi(){
+  const enabled=Boolean(ready&&hasScoreFormat());
+  if(scoreFormatField){scoreFormatField.hidden=!enabled;scoreFormatField.style.display=enabled?'':'none';}
+  if(scoreFormatSelect){scoreFormatSelect.disabled=!enabled;scoreFormatSelect.value=String(selectedScoreDecimals);}
+ }
+ function resetScoreFormat(){
+  selectedScoreDecimals=DEFAULT_SCORE_DECIMALS;scoreFormatExplicit=false;
+  restoredUnits.clear();editedAmountIds.clear();syncScoreFormatUi();
+ }
  let allRows=[],selectedCatalogId='',metadataById=new Map();
+ // Same generation/context contract as PR #84; never display a partial or stale catalog.
+ let catalogGeneration=0,catalogBusy=false,catalogReady=false,catalogLoadError=false;
+ let catalogErrorContext='',catalogErrorGeneration=-1;
  let authorizedContext='',manualRetryNeeded=false,privateEditorLoaded=false;
  // UI edit clock is separate from controller operation generation. Never
  // invalidate that generation during PUT: the original requestId must survive.
@@ -114,7 +144,7 @@ export function mountAssessmentLibrary({
  // Snapshot both the real section model and all editable academic inputs.
  // Button-driven section changes do not necessarily emit input/change events.
  const editorSignature=()=>JSON.stringify({
-  editor:snapshotEditor(),sections:getSections(),metadata:getMetadata(),values,answers
+  editor:snapshotEditor(),sections:getSections(),metadata:getMetadata(),values,answers,selectedScoreDecimals,scoreFormatExplicit
  });
  const editSnapshot=()=>({editVersion,signature:editorSignature()});
  const sameEdit=attempt=>Boolean(attempt&&attempt.editVersion===editVersion&&attempt.signature===editorSignature());
@@ -155,9 +185,11 @@ export function mountAssessmentLibrary({
   });
   return item;
  };
- const resetScores=()=>{values={};answers={};savedManifest=null;savedSignature=null;clearSelection();activeSelection=false};
+ const resetScores=()=>{values={};answers={};savedManifest=null;savedSignature=null;resetScoreFormat();clearSelection();activeSelection=false};
  function wipePrivateUi(){
   // No catalog/metadata/answer key may survive revocation or a new principal.
+  catalogGeneration++;catalogBusy=false;catalogReady=false;catalogLoadError=false;
+  catalogErrorContext='';catalogErrorGeneration=-1;
   allRows=[];metadataById.clear();selectedCatalogId='';
   const hadPrivateEditor=privateEditorLoaded;privateEditorLoaded=false;
   resetScores();pendingSave=null;selectionAttempt=null;openAttempt=null;
@@ -182,14 +214,22 @@ export function mountAssessmentLibrary({
   // The default new-draft scope may be saved without clicking "Nova avaliação".
   // Once prepared for private persistence, its editor must be scrubbed on 401/403.
   privateEditorLoaded=true;
-  if(Object.values(values).some(value=>!validScorePrecision(value)))throw new Error('A pontuação de cada bloco deve ter no máximo duas casas decimais.');
+  if(scoreFormatExplicit&&!hasScoreFormat())
+    throw new Error('O servidor ainda não confirma o formato da nota. Nada foi salvo.');
+   const currentSections=getSections();
+   for(const section of currentSections){
+    const id=section.sectionId;
+    const value=values[id]??(currentSections.length===1?'10':'');
+    if(!restoredUnits.has(id)||editedAmountIds.has(id))scoreInputUnits(value,selectedScoreDecimals);
+   }
   const unchanged=Boolean(savedManifest&&savedSignature===editorSignature());
   if(!unchanged&&!prepareModel())throw new Error('Não foi possível montar o cartão. Revise a composição.');
   const m=unchanged?savedManifest:getModel(),editor=snapshotEditor();
   const payload=createLibraryPlan({
    sections:getSections(),metadata:getMetadata(),values,answers,
    manifest:m,
-   editor,nominalFields:nominalFields()
+   editor,nominalFields:nominalFields(),
+    scoreDecimals:hasScoreFormat()&&scoreFormatExplicit?selectedScoreDecimals:undefined
   });
   return {plan:payload.plan,manifest:payload.manifest};
  };
@@ -200,8 +240,15 @@ export function mountAssessmentLibrary({
   }
   privateEditorLoaded=true; // Also covers partially restored private editor on failure.
   const restored=editorFromPrivateRecord(record,snapshotEditor());
+   if(Object.hasOwn(restored.plan,'scoreDecimals')&&!hasScoreFormat())
+    throw new Error('A sessão não confirma o formato da nota desta avaliação. Conecte-se a um servidor compatível.');
+   resetScoreFormat();
+   scoreFormatExplicit=Object.hasOwn(restored.plan,'scoreDecimals');
+   selectedScoreDecimals=assertScoreDecimals(restored.plan.scoreDecimals);
   restoreEditor(restored.editor);
   values=Object.fromEntries(restored.plan.blocks.map(b=>[b.sectionId,scoreForInput(b.valueUnits)]));
+   for(const block of restored.plan.blocks)restoredUnits.set(block.sectionId,block.valueUnits);
+   syncScoreFormatUi();
   answers=Object.fromEntries(restored.plan.blocks.flatMap(b=>b.questions.map(q=>[q.questionId,q.correct])));
   // The exact immutable manifest is selected; editing creates another revision.
   savedManifest=restored.manifest;
@@ -244,7 +291,10 @@ export function mountAssessmentLibrary({
    if(sameEdit(attempt)){
     unsaved=false;confirmedEarlierSave=false;selectionNeedsConfirmation=false;
     savedManifest=result.record.definition.manifest;
+    restoredUnits.clear();editedAmountIds.clear();
+    for(const block of result.record.definition.blocks)restoredUnits.set(block.blockId,block.valueUnits);
     savedSignature=editorSignature();
+    renderScoring();
    }else{
     flagUnnoticedEdit(attempt);
     unsaved=true;confirmedEarlierSave=true;savedManifest=null;savedSignature=null;
@@ -400,7 +450,15 @@ export function mountAssessmentLibrary({
  manualRetry.hidden=true;
  aux.append(connect,refresh,prev,next,retry,manualRetry);
  top.append(title,choose,actions,aux,status,summary);
- const scoring=el(document,'details','',{class:'library-answers'});
+ if(scoreFormatSelect)scoreFormatSelect.onchange=event=>{
+   event?.stopPropagation?.();
+   if(!ready||!hasScoreFormat()){syncScoreFormatUi();return;}
+   const next=assertScoreDecimals(Number(scoreFormatSelect.value));
+   if(next===selectedScoreDecimals&&scoreFormatExplicit)return;
+   selectedScoreDecimals=next;scoreFormatExplicit=true;
+   markEdited();renderScoring();render();
+  };
+  const scoring=el(document,'details','',{class:'library-answers'});
  const scoringTitle=el(document,'summary','Gabarito e valor dos blocos');
  const pasteLabel=field(document,'Colar alternativas na ordem das questões ou numeradas',paste);
  scoring.append(scoringTitle,scoreBox,pasteLabel,apply,choicesBox);
@@ -427,7 +485,7 @@ export function mountAssessmentLibrary({
   }
   operationBusy=true;
   try{
-   if(!id){controller.invalidateOpenedRecord();selectedCatalogId='';return;}
+   if(!id){controller.invalidateOpenedRecord();selectedCatalogId='';resetScores();newEditor();renderScoring();return;}
    selectedCatalogId=id;
    await openSelected(id);
   }catch(error){status.textContent=error.message;status.dataset.state='error'}
@@ -445,19 +503,26 @@ export function mountAssessmentLibrary({
   for(const id of Object.keys(answers))if(!existing.has(id))delete answers[id];
   scoreBox.replaceChildren();choicesBox.replaceChildren();
   for(const section of sections){
-   const val=el(document,'input','',{type:'text',placeholder:'Ex.: 10,00',value:values[section.sectionId]??(sections.length===1?'10':'')});
+   const id=section.sectionId;
+    const shown=restoredUnits.has(id)&&!editedAmountIds.has(id)?
+     formatScore(BigInt(restoredUnits.get(id)),POINT_SCALE,selectedScoreDecimals):
+     editedAmountIds.has(id)?(values[id]??''):
+     values[id]!==undefined?scoreForDraftInput(values[id],selectedScoreDecimals):
+      (sections.length===1?formatScore(10n,1n,selectedScoreDecimals):'');
+    const val=el(document,'input','',{type:'text',placeholder:formatScore(10n,1n,selectedScoreDecimals),value:shown});
    val.setAttribute('inputmode','decimal');
-   if(values[section.sectionId]===undefined&&sections.length===1)values[section.sectionId]='10';
+   if(values[id]===undefined&&sections.length===1)values[id]='10';
    val.oninput=()=>{
     const input=String(val.value);
-    if(input&&!/^\d*(?:[.,]\d{0,2})?$/.test(input)){
-     val.value=values[section.sectionId]??'';
-     status.textContent='Use no máximo duas casas decimais na pontuação.';
+    if(input&&!partialScoreInput(input,selectedScoreDecimals)){
+     val.value=restoredUnits.has(id)&&!editedAmountIds.has(id)?
+      formatScore(BigInt(restoredUnits.get(id)),POINT_SCALE,selectedScoreDecimals):(values[id]??'');
+     status.textContent='Valor incompatível com o formato da nota.';
      status.dataset.state='error';return;
     }
-    values[section.sectionId]=input;markEdited();updateSummary();
+    values[id]=input;editedAmountIds.add(id);markEdited();updateSummary();
    };
-   scoreBox.append(field(document,section.label+' · '+section.items.length+' questão(ões) · até 2 decimais',val));
+   scoreBox.append(field(document,section.label+' · '+section.items.length+' questão(ões)',val));
   }
   for(const q of sections.flatMap(s=>s.items)){
    const select=el(document,'select','',{'aria-label':'Gabarito da questão '+q.number});
@@ -471,36 +536,48 @@ export function mountAssessmentLibrary({
  }
  function updateSummary(){
   try{
-   const s=draftSummary({sections:getSections(),values,answers});
+   const sections=getSections();
+   const s=draftSummary({sections,values,answers,scoreDecimals:selectedScoreDecimals});
+   const invalidFormat=sections.some(section=>{
+    const id=section.sectionId,value=values[id]??(sections.length===1?'10':'');
+    if(restoredUnits.has(id)&&!editedAmountIds.has(id))return false;
+    try{scoreInputUnits(value,selectedScoreDecimals);return false}catch{return true}
+   });
    summary.textContent=s.total+' pontos · '+s.missing+' alternativa(s) a preencher'+
-    (s.invalidAmounts?' · confira o valor dos blocos':'');
+    (s.invalidAmounts||invalidFormat?' · confira o valor dos blocos':'');
   }catch{summary.textContent='Adicione questões e informe os valores e gabaritos.'}
  }
  function render({preserveError=false}={}){
   syncPrivateContext();
   const s=controller.view(),current=s.record;
+  if(catalogLoadError&&(catalogErrorContext!==contextKey()||catalogErrorGeneration!==s.generation)){
+   catalogLoadError=false;catalogErrorContext='';catalogErrorGeneration=-1;
+  }
   ready=Boolean(s.session&&s.scope);
-  if(!ready&&(allRows.length||metadataById.size||selectedCatalogId))wipePrivateUi();
+   syncScoreFormatUi();
+  if(!ready&&(allRows.length||metadataById.size||selectedCatalogId||catalogBusy||catalogReady||catalogLoadError))wipePrivateUi();
   const grantItems=s.grants.map((g,i)=>({value:String(i),label:'Turma autorizada '+(i+1)}));
   fillOptions(scope,grantItems);
   const grantIdx=s.grants.findIndex(g=>scopeEquals(g,s.scope));
   if(grantIdx>=0)scope.value=String(grantIdx);
   scopeWrap.hidden=s.grants.length<=1;
-  const rows=(allRows.length?allRows:s.rows).map(x=>({value:x.id,label:assessmentLabel({...x,...metadataById.get(x.id)})||'Avaliação sem título'}));
-  fillOptions(catalog,[{value:'',label:'Selecione uma avaliação'},...rows]);
+  const rows=(ready&&catalogReady?allRows:[]).map(x=>({value:x.id,label:assessmentLabel({...x,...metadataById.get(x.id)})||'Avaliação sem título'}));
+  fillOptions(catalog,[{value:'',label:catalogBusy?'Carregando avaliações…':'Selecione uma avaliação'},...rows]);
   if(current&&rows.some(x=>x.value===current.id))selectedCatalogId=current.id;
   catalog.value=rows.some(x=>x.value===selectedCatalogId)?selectedCatalogId:'';
   fillOptions(revisions,[{value:'',label:'Atual'},...s.revisions.map(x=>({value:String(x.revision),label:'Versão '+x.revision}))]);
   const opened=Boolean(current&&s.editorMode==='opened');
   scope.disabled=operationBusy||Boolean(s.pending);
-  catalog.disabled=operationBusy||Boolean(s.pending);
+  catalog.disabled=operationBusy||catalogBusy||!catalogReady||Boolean(s.pending);
   revisions.disabled=operationBusy||Boolean(s.pending);
   create.disabled=operationBusy||!ready||Boolean(s.pending);
   save.disabled=operationBusy||!ready||(!opened&&s.editorMode!=='new')||Boolean(s.pending);
   open.disabled=operationBusy||!ready||!catalog.value||Boolean(s.pending);
   duplicate.disabled=operationBusy||!ready||!opened||current.id!==catalog.value||Boolean(s.pending);
   selectForCorrection.disabled=operationBusy||unsaved||!ready||!opened||current.status!=='issued'||current.id!==catalog.value||Boolean(s.pending);
-  refresh.disabled=operationBusy||!ready||Boolean(s.pending);
+  refresh.textContent=catalogLoadError?'Tentar novamente':'Atualizar';
+  refresh.hidden=!(ready&&catalogLoadError&&!catalogBusy&&!operationBusy&&!s.pending);
+  refresh.disabled=operationBusy||!ready||!catalogLoadError||catalogBusy||Boolean(s.pending);
   prev.disabled=operationBusy||!ready||!s.hasPrevious||Boolean(s.pending);
   next.disabled=operationBusy||!ready||!s.nextCursor||Boolean(s.pending);
   retry.disabled=operationBusy||!s.pending;
@@ -516,6 +593,7 @@ export function mountAssessmentLibrary({
     confirmedEarlierSave?'A avaliação enviada foi salva e conferida; suas alterações posteriores ainda não foram salvas.':
     selectionNeedsConfirmation?'A avaliação mudou durante a seleção. Salve as alterações e confirme novamente para corrigir.':
     unsaved?'Há alterações nesta avaliação que ainda não foram salvas.':
+    catalogLoadError?'Não foi possível carregar suas avaliações. Tente novamente.':
     s.phase==='saved'?'Avaliação salva e conferida no servidor.':
     s.phase==='selected'?'Avaliação confirmada para correção.':
     s.phase==='loading'?'Carregando suas avaliações…':
@@ -523,21 +601,57 @@ export function mountAssessmentLibrary({
     opened?'Avaliação aberta para edição.':
     'Escolha uma avaliação ou crie uma nova.';
   }
+  if(ready&&catalogLoadError&&!catalogBusy&&!s.pending){
+   status.dataset.state='error';
+   status.textContent='Não foi possível carregar suas avaliações. Tente novamente.';
+  }
   updateSummary();
  }
  async function loadCatalog(){
-  const first=await controller.list();
-  if(!first)return [];
-  const rows=[...first];
-  let pages=0;
-  while(controller.view().nextCursor){
-   if(++pages>500)throw new Error('O catálogo é muito grande para esta consulta. Nenhum registro foi alterado.');
-   const page=await controller.nextPage();
-   if(!page)break;
-   rows.push(...page);
+  const context=contextKey(),generation=++catalogGeneration,
+   controllerGeneration=controller.view().generation;
+  if(!context){catalogLoadError=false;catalogErrorContext='';catalogErrorGeneration=-1;return [];}
+  catalogBusy=true;catalogReady=false;catalogLoadError=false;allRows=[];
+  catalogErrorContext='';catalogErrorGeneration=-1;
+  render(); // Only publish complete, authorized catalogs; never show the first page in isolation.
+  const isCurrent=()=>generation===catalogGeneration&&contextKey()===context&&
+   controller.view().generation===controllerGeneration;
+  try{
+   const first=await controller.list();
+   if(!first||!isCurrent())return [];
+   const rows=[...first];let pages=0;
+   while(controller.view().nextCursor){
+    if(!isCurrent())return [];
+    if(++pages>500)throw new Error('O catálogo é muito grande para esta consulta. Nenhum registro foi alterado.');
+    const page=await controller.nextPage();
+    // null means a revoked or invalidated request, never successful pagination.
+    if(!page||!isCurrent())return [];
+    rows.push(...page);
+   }
+   if(!isCurrent())return [];
+   allRows=rows;catalogReady=true;catalogLoadError=false;
+   catalogErrorContext='';catalogErrorGeneration=-1;
+   return rows;
+  }catch(error){
+   if(isCurrent()){
+    allRows=[];catalogReady=false;
+    // Unauthorized/invalidated requests never enable a retry in another context.
+    catalogLoadError=Boolean(error?.retryable===true||error?.status===503||error?.status===429);
+    catalogErrorContext=catalogLoadError?context:'';
+    catalogErrorGeneration=catalogLoadError?controllerGeneration:-1;
+   }
+   throw error;
+  }finally{
+   if(isCurrent()){
+    catalogBusy=false;render();
+   }else if(generation===catalogGeneration&&contextKey()===context){
+    // An in-scope controller generation change must not strand the selector
+    // showing partial metadata or waiting for a cancelled request forever.
+    catalogGeneration++;catalogBusy=false;catalogReady=false;catalogLoadError=false;allRows=[];
+    catalogErrorContext='';catalogErrorGeneration=-1;
+    render();
+   }
   }
-  allRows=rows;
-  return rows;
  }
  async function connectAndList(){
   await controller.initialize();

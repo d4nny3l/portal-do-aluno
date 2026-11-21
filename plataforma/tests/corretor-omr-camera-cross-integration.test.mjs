@@ -2,6 +2,8 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
 import vm from 'node:vm';
+import {scoreInputUnits,POINT_SCALE} from '../../corretor/v2/assessments/block-scoring.mjs';
+import {formatScore} from '../../corretor/v2/assessments/score-format.mjs';
 
 const html=readFileSync(new URL('../corretor-v2.html',import.meta.url),'utf8');
 const reader=readFileSync(new URL('../../corretor/v2/omr/reader.mjs',import.meta.url),'utf8');
@@ -64,6 +66,7 @@ function integrationHarness(){
  $('read').disabled=true;
  const state={
   $,document:{createElement:tag=>new Element(tag)},template,
+  scoreInputUnits,formatScore,POINT_SCALE,
   activeManifest:{templateId:'synthetic-only'},normalizedRaster:{pixels:new Uint8Array(100).fill(220),width:10,height:10},
   headerState:{showStudentCode:true},currentPage:1,activeObservations:[],scanHistory:[],
   replaceLastCapture:false,activeHistoryEntry:null,
