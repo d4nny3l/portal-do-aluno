@@ -497,7 +497,7 @@ export function mountAssessmentLibrary({
   fillOptions(revisions,[{value:'',label:'Atual'},...s.revisions.map(x=>({value:String(x.revision),label:'Versão '+x.revision}))]);
   const opened=Boolean(current&&s.editorMode==='opened');
   scope.disabled=operationBusy||Boolean(s.pending);
-  catalog.disabled=operationBusy||catalogLoading||catalogError||Boolean(s.pending);
+  catalog.disabled=operationBusy||!ready||catalogLoading||catalogError||Boolean(s.pending);
   revisions.disabled=operationBusy||Boolean(s.pending);
   create.disabled=operationBusy||!ready||Boolean(s.pending);
   save.disabled=operationBusy||!ready||(!opened&&s.editorMode!=='new')||Boolean(s.pending);
@@ -574,7 +574,8 @@ export function mountAssessmentLibrary({
    allRows=rows;catalogLoading=false;render();return rows;
   }catch(error){
    if(!current())return [];
-   catalogError=true;catalogLoading=false;allRows=[];metadataById.clear();
+   // Invalidate concurrent metadata reads before any late reply can repopulate private labels.
+   catalogLoadSequence++;catalogError=true;catalogLoading=false;allRows=[];metadataById.clear();
    status.textContent=error?.message||'Não foi possível completar o catálogo.';
    status.dataset.state='error';
    if(error?.status===401||error?.status===403){
