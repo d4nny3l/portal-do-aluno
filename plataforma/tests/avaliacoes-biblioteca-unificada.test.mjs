@@ -793,11 +793,11 @@ test('UX-79C consolidated: 201-item catalog is not partially published and does 
   newEditor:()=>{},nominalFields:()=>({}),activateSelection:()=>{},clearSelection:()=>{}});
  const top=host.children[0],catalog=top.children[1].children[1].children[0],
   refresh=top.children[3].children.find(x=>x.textContent==='Atualizar');
- for(let n=0;n<100&&refresh.hidden;n++)await tick();
+ for(let n=0;n<100&&pages<21;n++)await tick();
  assert.equal(pages,21);assert.equal(details,0);
  assert.equal(catalog.options.length,1,'no partial/incomplete 200-item catalog');
  assert.equal(catalog.disabled,true);
- assert.equal(refresh.hidden,false,'recoverable limit is visible');
+ assert.equal(refresh.hidden,true,'201-item hard cap is not a transient/HTTP recoverable failure');
  assert.match(top.children[4].textContent,/200 avaliações/);
 });
 
@@ -1752,4 +1752,29 @@ test('P1-87-F-02: controller generation reset clears an old 503 retry',async()=>
  assert.equal(f.refresh.hidden,true,'retry is invalidated with controller generation');
  assert.equal(f.refresh.disabled,true);
  assert.equal(f.titles().length,1);
+});
+
+
+test('UX-79C joint: enriched private label, authenticated format 0/1/2, opened revision and correction binding',async()=>{
+ const f=await mountedRaceFixture({scoreFormatVersion:'salta-score-format-v1'});
+ const catalog=f.top.children[1].children[1].children[0];
+ assert.equal(f.formatField.hidden,false,'authenticated feature gate');
+ assert.equal(f.refresh?.hidden,undefined); // only the fixture's existing controls are inspected below
+ await f.fill();
+ for(const [precision,display] of [['0','10'],['1','10,0'],['2','10,00']]){
+  f.formatSelect.value=precision;f.formatSelect.onchange();
+  assert.equal(f.scoring.children[1].children[0].children[0].value,display);
+ }
+ f.formatSelect.value='0';f.formatSelect.onchange();
+ await f.button('Salvar avaliação').handlers.click();
+ const saved=f.mounted.controller.view().record;
+ assert.equal(saved.definition.display.scoreDecimals,0);
+ assert.equal(catalog.options.length,2,'one full private item plus placeholder');
+ assert.equal(catalog.options[1].textContent,
+  'Avaliação de Matemática - Matemática - Turma sintética 7A','canonical PR84 label with PR87 format');
+ await f.button('Abrir avaliação').handlers.click();
+ assert.equal(f.formatSelect.value,'0','display preference persists per revision');
+ await f.button('Usar na correção').handlers.click();
+ assert.ok(f.getSelected(),'approved immutable revision remains selectable after label enrichment');
+ assert.equal(f.getSelected().plan.scoreDecimals,0);
 });
