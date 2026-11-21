@@ -82,3 +82,15 @@ test('one selector only in Criar → Questões e organização; no precision cop
  assert.match(html,/formatScore\(maxUnits\*BigInt\(correct\),POINT_SCALE\*BigInt\(template\.questions\.length\)\)/);
  assert.doesNotMatch(html,/const grade=\([^\n]*\)\.toFixed/);
 });
+
+test('private reader shows per-block notes, pinned scanMaxScore and session history',()=>{
+ const html=readFileSync(new URL('../corretor-v2.html',import.meta.url),'utf8');
+ const privateReader=html.slice(html.indexOf('calculateScore=function(){'),html.indexOf('function renderHistory(){'));
+ assert.match(privateReader,/scoreIntegratedPlan\(privateSelection\.plan,activeObservations/);
+ assert.match(privateReader,/const details=document\.createElement\('dl'\)/);
+ assert.match(privateReader,/name\.textContent=block\.label;grade\.textContent=block\.earned\+' \/ '\+block\.maximum/);
+ assert.match(privateReader,/activeHistoryEntry\.grade=result\.total/);
+ assert.match(html,/\$\('scanMaxScore'\)\.type='text'/);
+ assert.match(html,/\$\('scanMaxScore'\)\.type='number'/);
+ assert.match(html,/formatScore\(BigInt\(selection\.plan\.totalUnits\),POINT_SCALE,selection\.plan\.scoreDecimals\)/);
+});
