@@ -17,11 +17,11 @@ import {createPrivateAssessmentClient} from '../../corretor/v2/assessments/priva
 import {createPrivateLibraryController} from '../../corretor/v2/assessments/private-library.mjs';
 const require=createRequire(new URL('../../assessments-lab/package.json',import.meta.url));
 const {Miniflare,convertV4MiniflareOptions}=require('miniflare');
-function assessment({title='Piloto sintético de 60 questões A',answer='A'}={}){
+function assessment({title='Piloto sintético de 60 questões A',answer='A',scoreDecimals}={}){
  const sections=['a','b'].map((name,s)=>({sectionId:'synthetic-'+name,label:'Bloco '+name,type:'A-E',items:Array.from({length:30},(_,i)=>({questionId:name+'-q'+(i+1),number:s*30+i+1,type:'A-E'}))}));
  const template=createTemplate(sections),manifest=createCardManifest(template);
  const answers=Object.fromEntries(template.questions.map(q=>[q.questionId,answer]));
- const plan=createIntegratedPlan({metadata:{title,subject:'Matemática',kind:'Prova',date:'2026-11-18'},sections,values:{'synthetic-a':'6','synthetic-b':'4'},answers,display:'both',model:manifest});
+ const plan=createIntegratedPlan({metadata:{title,subject:'Matemática',kind:'Prova',date:'2026-11-18'},sections,values:{'synthetic-a':'6','synthetic-b':'4'},answers,display:'both',model:manifest,scoreDecimals});
  return {plan,manifest};
 }
 test('real local consolidated pilot: two 60-question assessments → scoped catalog/gateway/Auth/D1, recovery and isolation',async()=>{
@@ -49,8 +49,9 @@ test('real local consolidated pilot: two 60-question assessments → scoped cata
   // Existing Stats /auth/session continues using the unchanged production proxy.
   assert.equal((await http('/auth/session')).status,200);
   const a=client('a'),b=client('b');assert.equal((await a.session()).principalId,'synthetic-teacher-a');
+  assert.equal((await a.session()).scoreFormatVersion,'salta-score-format-v1');
   await a.list();await a.grants();assert.deepEqual(await counts(),{roots:0,revisions:0,receipts:0});
-  const {plan,manifest}=assessment(),op=a.prepareSave({plan,manifest,scope,status:'issued'});
+  const {plan,manifest}=assessment({scoreDecimals:0}),op=a.prepareSave({plan,manifest,scope,status:'issued'});
   let loseReceipt=true;
   const flaky=createPrivateAssessmentClient({enabled:true,baseUrl:'https://stats.example/assessments/v1',fetchFn:async(url,init)=>{
    const response=await browser('a')(url,init);
@@ -61,7 +62,7 @@ test('real local consolidated pilot: two 60-question assessments → scoped cata
   assert.deepEqual(await counts(),{roots:1,revisions:1,receipts:1},'Lost response does not undo the committed operation');
   const confirmed=await a.saveAndVerify(op);assert.equal(confirmed.receipt.replayed,true);assert.equal(confirmed.record.definition.answers.length,60);assert.equal(confirmed.record.totalUnits,'100000');
   const replay=await a.saveAndVerify(op);assert.equal(replay.receipt.replayed,true);assert.deepEqual(await counts(),{roots:1,revisions:1,receipts:1});
-  const secondAssessment=assessment({title:'Piloto sintético de 60 questões B',answer:'B'});
+  const secondAssessment=assessment({title:'Piloto sintético de 60 questões B',answer:'B',scoreDecimals:1});
   const secondRecord=(await a.saveAndVerify(a.prepareSave({...secondAssessment,scope,status:'issued'}))).record;
   assert.notEqual(secondRecord.id,confirmed.record.id);assert.equal(secondRecord.definition.answers.length,60);
   assert.ok(secondRecord.definition.answers.every(row=>row.correct==='B'));
@@ -83,8 +84,8 @@ test('real local consolidated pilot: two 60-question assessments → scoped cata
   await assert.rejects(b.open(confirmed.record.id),e=>e.status===404);
   const denied=a.prepareSave({plan,manifest,scope:{...scope,classId:'not-granted'},status:'issued'});await assert.rejects(a.saveAndVerify(denied),e=>e.status===403);
   const selected=await a.selectAndVerify(a.prepareSelection(confirmed.record.id,1));
-  assert.equal(selected.selection.revision,1);
-  const updates=[1,2].map(()=>a.prepareSave({plan,manifest,scope,assessmentId:confirmed.record.id,expectedRevision:1,status:'issued'}));
+  assert.equal(selected.selection.revision,1);assert.equal(selected.selection.plan.scoreDecimals,0);
+  const updates=[1,2].map(()=>a.prepareSave({plan:{...plan,scoreDecimals:2},manifest,scope,assessmentId:confirmed.record.id,expectedRevision:1,status:'issued'}));
   const race=await Promise.allSettled(updates.map(p=>a.saveAndVerify(p)));
   assert.equal(race.filter(r=>r.status==='fulfilled').length,1);assert.equal(race.filter(r=>r.status==='rejected'&&r.reason.status===409).length,1);
   assert.equal((await a.resumeSelection(selected.selection.selectionId)).revision,1,'New revision cannot change the selected key');
@@ -94,6 +95,8 @@ test('real local consolidated pilot: two 60-question assessments → scoped cata
   assert.equal((await a.open(secondRecord.id,1)).definition.title,secondRecord.definition.title,'Editing A never changes B');
   const printed=await a.request('GET','/assessments/'+confirmed.record.id+'/revisions/1/print');
   assert.ok(printed.data.svg.includes('width="210mm" height="297mm"'));assert.ok(printed.data.svg.includes('data-assessment-revision="1"'));assert.ok(!JSON.stringify(printed.data).includes('"correct"'));
+  assert.equal((await a.open(confirmed.record.id,2)).definition.display.scoreDecimals,2);
+  assert.equal((await a.resumeSelection(selected.selection.selectionId)).plan.scoreDecimals,0);
   const beforeRevocation=await counts();
   await db.prepare("UPDATE av_grants SET enabled=0,epoch=epoch+1 WHERE principal_id='synthetic-teacher-a'").run();
   await assert.rejects(a.open(confirmed.record.id,1),e=>e.status===403);assert.deepEqual(await counts(),beforeRevocation);
@@ -106,6 +109,10 @@ test('real local consolidated pilot: two 60-question assessments → scoped cata
   assert.equal((await client('second').open(confirmed.record.id,1)).definition.answers.length,60,'Persisted D1/Auth state survives local restart');
   assert.equal((await client('second').open(secondRecord.id,1)).definition.answers.length,60);
   assert.equal((await client('second').list(null,scope)).assessments.length,2);
+  assert.equal((await client('second').open(confirmed.record.id,1)).definition.display.scoreDecimals,0);
+  assert.equal((await client('second').open(confirmed.record.id,2)).definition.display.scoreDecimals,2);
+  assert.equal((await client('second').open(secondRecord.id,1)).definition.display.scoreDecimals,1);
+  assert.equal((await client('second').resumeSelection(selected.selection.selectionId)).plan.scoreDecimals,0);
   assert.equal((await http('/diario/frequencia','a')).status,401,'Revoked cookie is still rejected on unchanged legacy diary route');
  }finally{await mf.dispose();await rm(state,{recursive:true,force:true})}
 });

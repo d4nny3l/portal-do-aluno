@@ -7,13 +7,14 @@ import {buildPilot} from '../build.mjs';
 import {preparePilot,validateMetadata} from '../prepare.mjs';
 import {STATS_REF,STATS_SHA256,ASSESSMENTS_REF,git,sha256} from '../baseline.mjs';
 export const metadata=()=>({workerName:'salta-assessments-private-synthetic',databaseName:'salta-assessments-private-synthetic',databaseId:crypto.randomUUID(),activeKeyVersion:1,limiterNamespaces:{ip:'999901',account:'999902',write:'999903',print:'999904'}});
-test('artifact freezes production Stats source and exact audited backend, excluding unapproved attendance contract',async()=>{
+test('artifact freezes Stats and identifies the unaudited #85 backend candidate, excluding D-04',async()=>{
  const dir=await mkdtemp(path.join(tmpdir(),'salta-pilot-build-'));try{
   const b=await buildPilot(dir);assert.equal(b.manifest.stats.ref,STATS_REF);assert.equal(b.manifest.stats.sourceSha256,STATS_SHA256);assert.equal(b.manifest.assessments.ref,ASSESSMENTS_REF);
   assert.equal(sha256(await readFile(path.join(dir,'stats-gateway.mjs'))),b.manifest.stats.artifactSha256);
   assert.ok(!b.gatewayCode.includes('d04-v1'));assert.ok(!b.gatewayCode.includes('salta_diario_attendance_commits'));
   assert.ok(b.gatewayCode.includes('INSERT INTO salta_diario_lesson_records (session_id,student_id,present) VALUES (?,?,1)'),'The old production contract is preserved, not silently corrected');
-  for(const input of b.manifest.assessments.inputs)assert.equal(sha256(git('show',ASSESSMENTS_REF+':'+input.path)),input.sha256);
+  assert.deepEqual(b.manifest.assessments.contractCandidate,{issue:85,base:'7080d2de0b5a01bbe417b71732221a869e7a4d42',audited:false});
+  for(const input of b.manifest.assessments.inputs)assert.equal(sha256(input.contractCandidate===85?await readFile(new URL('../../'+input.path,import.meta.url)):git('show',ASSESSMENTS_REF+':'+input.path)),input.sha256);
  }finally{await rm(dir,{recursive:true,force:true})}
 });
 test('preparation only writes closed local configs; preserves legacy bindings and rejects academic D1/credentials',async()=>{

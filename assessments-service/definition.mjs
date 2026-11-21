@@ -1,5 +1,6 @@
 import {importCardManifest} from '../corretor/v2/omr/manifest.mjs';
 import {renderTemplateSvg} from '../corretor/v2/omr/render.mjs';
+import {validateScoreDisplay} from '../corretor/v2/assessments/score-format.mjs';
 
 const fail = message => { throw new TypeError(message); };
 export const opaqueId = value => typeof value === 'string' && /^[A-Za-z0-9][A-Za-z0-9._-]{1,63}$/.test(value);
@@ -20,8 +21,7 @@ export function validateDefinition(input) {
  if (template.mode !== 'full-page' || template.questions.some(q => !['A-D','A-E','C-E'].includes(q.type))) fail('Modelo objetivo A4 não suportado.');
  if (input.manifest.identityCode?.student && Object.values(input.manifest.identityCode.student).some(Boolean)) fail('Não cadastrar dados nominais no modelo reutilizável.');
  for (const logo of input.manifest.panels?.header?.logos||[]) if (!/^data:image\/(?:png|jpeg|webp);base64,[A-Za-z0-9+/=]+$/.test(logo.href)) fail('Use logotipo incorporado, sem referência externa.');
- exact(input.display,['score']);
- if (!['final','blocks','both'].includes(input.display.score)) fail('Exibição de pontuação inválida.');
+ validateScoreDisplay(input.display);
  if (!Array.isArray(input.blocks) || !input.blocks.length || input.blocks.length > 32 || input.blocks.length > template.questions.length) fail('Blocos inválidos.');
  const questions = new Map(template.questions.map(q => [q.questionId,q])), seen = new Set(), blockIds = new Set();
  let totalUnits = 0;

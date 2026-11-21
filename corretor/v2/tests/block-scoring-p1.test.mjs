@@ -43,7 +43,7 @@ test('fractional sums are exact: three 1-point blocks at 1/3 each yield 1.00, no
 test('four-place decimal block values preserve numeric exactness and comma decimals',()=>{
  assert.equal(units('0,0001'),'1');assert.equal(units('12.3456'),'123456');
  assert.equal(formatExact(123456n,10000n,4),'12,3456');
- assert.equal(draftSummary({sections,values,answers}).total,'6,5000');
+ assert.equal(draftSummary({sections,values,answers}).total,'6,50');
  for(const v of ['0','-1','1.12345','1e3','NaN','10000'])assert.throws(()=>units(v));
 });
 test('visual key and numbered/sequence paste are a single question-ID state, with atomic rejection',()=>{
