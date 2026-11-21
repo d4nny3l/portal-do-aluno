@@ -145,6 +145,15 @@ calculateScore=function(){
  box.innerHTML=oldReading+'<strong>'+(stale?'Nota da última leitura':'Nota final')+' '+
   result.total+' / '+result.maximum+'</strong><span>'+result.correct+' acerto(s) em '+
   result.count+' questão(ões). Branco, dupla e erro valem zero. Nota não registrada no Diário.</span>';
+ if(result.display!=='final'){
+  const details=document.createElement('dl');details.setAttribute('aria-label','Notas por bloco');
+  for(const block of result.blocks){
+   const name=document.createElement('dt'),grade=document.createElement('dd');
+   name.textContent=block.label;grade.textContent=block.earned+' / '+block.maximum;
+   details.append(name,grade);
+  }
+  box.append(details);
+ }
  if(activeHistoryEntry){
   activeHistoryEntry.grade=result.total;activeHistoryEntry.correct=result.correct;
   activeHistoryEntry.count=result.count;renderHistory();
@@ -239,7 +248,8 @@ function activatePrivateCorrection(selection){
  privateSelection=selection;
  $('answerKey').value=keyTextForPlan(selection.plan);$('answerKey').readOnly=true;
  setPrivateCorrectionUi(true);
- $('scanMaxScore').value=formatScore(BigInt(selection.plan.totalUnits),POINT_SCALE,selection.plan.scoreDecimals).replace(',','.');
+ $('scanMaxScore').type='text';
+ $('scanMaxScore').value=formatScore(BigInt(selection.plan.totalUnits),POINT_SCALE,selection.plan.scoreDecimals);
  $('scanMaxScore').readOnly=true;
  $('scanModelStatus').textContent=selection.plan.metadata.title+' · avaliação confirmada para correção. Confira o lote físico.';
 }
@@ -254,7 +264,7 @@ function clearPrivateCorrection(){
  $('scanScore').replaceChildren();
  $('answerKey').value='';$('answerKey').readOnly=false;
  setPrivateCorrectionUi(false);
- $('scanMaxScore').readOnly=false;$('scanMaxScore').value=formatScore(10n).replace(',','.');
+ $('scanMaxScore').readOnly=false;$('scanMaxScore').type='number';$('scanMaxScore').value=formatScore(10n).replace(',','.');
  if(hadPrivateModel){
   template=null;activeManifest=null;activeSvg='';exactScanModel=false;
   $('preview').replaceChildren();syncScanInputs();
