@@ -658,6 +658,8 @@ test('UX-79B fetches all internal catalog pages without exposing pagination cont
    const nextCursor=offset+items.length<rows.length?items.at(-1).id:null;
    return Response.json({assessments:items,nextCursor});
   }
+  if(/^\/assessments\/[^/]+$/.test(route)&&init.method==='GET')
+   return Response.json({record:catalogRecord(rows.find(x=>route==='/assessments/'+x.id),m)});
   throw Error('Unexpected '+init.method+' '+route);
  };
  const host=new SurfaceNode('section'),doc={getElementById:id=>id==='savedAssessments'?host:null,
@@ -700,6 +702,7 @@ test('UX-79B P0 privacy: 401/403 purge 13 cached assessments, metadata and edita
    if(route.startsWith('/assessments/')&&req.method==='GET'){
     if(deny&&trigger==='open')return Response.json({code:'denied'},{status:code});
     if(route==='/assessments/'+ids[0])return Response.json({record});
+    if(/^\/assessments\/[^/]+$/.test(route))return Response.json({record:catalogRecord(rows.find(x=>route==='/assessments/'+x.id),m)});
     if(route==='/assessments/'+ids[0]+'/revisions')return Response.json({revisions:[{revision:1,status:'issued'}]});
    }
    throw Error('Unexpected '+route);
@@ -1097,6 +1100,7 @@ test('P0-80-RF-01 actual adapter + Corretor callback clears private reader on 40
     return Response.json({assessments:part,nextCursor:pos+part.length<rows.length?part.at(-1).id:null});
    }
    if(route==='/assessments/'+id)return Response.json({record});
+   if(/^\/assessments\/[^/]+$/.test(route))return Response.json({record:catalogRecord(rows.find(x=>route==='/assessments/'+x.id),m)});
    if(route==='/assessments/'+id+'/revisions')return Response.json({revisions:[{revision:1,status:'issued'}]});
    throw Error('Unexpected '+req.method+' '+route);
   };
