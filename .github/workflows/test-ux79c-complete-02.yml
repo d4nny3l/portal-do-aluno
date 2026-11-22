@@ -1,0 +1,94 @@
+name: SALTA UX-79C COMPLETE-02 native zoom and delayed scope (synthetic)
+on:
+  pull_request:
+    branches:
+      - integration/ux-79c-final-20261121
+    paths:
+      - '.github/workflows/test-ux79c-complete-02.yml'
+      - 'plataforma/tests/browser-qa/qa_complete_02.py'
+permissions:
+  contents: read
+jobs:
+  chromium-complementary:
+    if: github.event.pull_request.head.ref == 'test/ux79c-complete-02-integrated-20261122'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 25
+    env:
+      PYTHONDONTWRITEBYTECODE: '1'
+      PIP_DISABLE_PIP_VERSION_CHECK: '1'
+      CI: 'true'
+    steps:
+      - name: Checkout exact PR HEAD, no credentials and full ancestry
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+          persist-credentials: false
+          fetch-depth: 0
+      - name: Freeze source scope and mock blob
+        shell: bash
+        env:
+          PR_HEAD: ${{ github.event.pull_request.head.sha }}
+        run: |
+          set -euo pipefail
+          BASE=3b1fd8df600d7c9fbc4f688cc36d4fd9f03fc7b8
+          test "$(git rev-parse HEAD)" = "$PR_HEAD"
+          git cat-file -e "$BASE^{commit}"
+          test "$(git rev-parse HEAD:plataforma/tests/browser-qa/qa_synthetic_gateway.js)" = "03067245ca9cb60897a3b172e62fc759f3bdbc2f"
+          test "$(git rev-parse "$BASE:plataforma/tests/browser-qa/qa_synthetic_gateway.js")" = "03067245ca9cb60897a3b172e62fc759f3bdbc2f"
+          git diff --name-only "$BASE" HEAD > "$RUNNER_TEMP/changed-qa-files.txt"
+          python3 - <<'PY'
+          import pathlib,os
+          a=set(pathlib.Path(os.environ['RUNNER_TEMP'],'changed-qa-files.txt').read_text().splitlines())
+          e={'.github/workflows/test-ux79c-complete-02.yml',
+             'plataforma/tests/browser-qa/qa_complete_02.py'}
+          assert a==e, f'Unexpected changes relative PR96: {sorted(a^e)}'
+          PY
+          git diff --check "$BASE" HEAD
+          git diff --exit-code "$BASE" HEAD -- \
+            plataforma/corretor-v2.html plataforma/avaliacoes-biblioteca.mjs \
+            plataforma/corretor-v2.css plataforma/avaliacoes-biblioteca.css \
+            plataforma/tests/browser-qa/qa_integrada.py \
+            plataforma/tests/browser-qa/qa_synthetic_gateway.js \
+            corretor/v2 stats-worker auth-worker assessments-lab
+          git status --porcelain
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12.8'
+      - name: Install fixed Playwright, Chromium and Xvfb dependencies for CI
+        run: |
+          python -m pip install --disable-pip-version-check --no-input playwright==1.56.0
+          python -m playwright install --with-deps chromium
+          command -v xvfb-run
+          test -e /usr/lib/x86_64-linux-gnu/libXtst.so.6
+          python -m py_compile plataforma/tests/browser-qa/qa_complete_02.py
+      - name: Run complete-02 on REAL app localhost in headed Chromium under Xvfb
+        shell: bash
+        env:
+          PR_HEAD: ${{ github.event.pull_request.head.sha }}
+        run: |
+          set -euo pipefail
+          xvfb-run -a -s '-screen 0 1920x1200x24' \
+            python plataforma/tests/browser-qa/qa_complete_02.py \
+              --repo "$GITHUB_WORKSPACE" \
+              --out "$RUNNER_TEMP/salta-ux79c-complete-02" \
+              --expected-head "$PR_HEAD"
+      - name: Re-run unchanged 19 approved Chromium scenarios on exact PR96 HEAD
+        shell: bash
+        run: |
+          set -euo pipefail
+          BASE=3b1fd8df600d7c9fbc4f688cc36d4fd9f03fc7b8
+          git worktree add --detach "$RUNNER_TEMP/salta-pr96-approved" "$BASE"
+          python "$RUNNER_TEMP/salta-pr96-approved/plataforma/tests/browser-qa/qa_integrada.py" \
+             --repo "$RUNNER_TEMP/salta-pr96-approved" \
+             --out "$RUNNER_TEMP/salta-ux79c-original-19" \
+             --expected-head "$BASE"
+      - name: Upload real browser synthetic evidence (short retention)
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: salta-ux79c-complete-02-hermetic
+          path: |
+            ${{ runner.temp }}/salta-ux79c-complete-02/
+            ${{ runner.temp }}/salta-ux79c-original-19/
+          if-no-files-found: warn
+          retention-days: 7
