@@ -31,7 +31,7 @@ class Element{
  }
 }
 const script=[
- production('function calculateScore('),production('function renderHistory('),
+ production('function markLastReadingPending('),production('function calculateScore('),production('function renderHistory('),
  production('function renderAnswers('),production('function readNormalized('),
  production('async function loadPhoto('),production("$('file').onchange=")
 ].join('\n');
@@ -173,4 +173,50 @@ test('P1 adversarial and historical coverage remains in combined source',()=>{
  assert.match(html,/createCardManifest/);
  assert.match(html,/readRaster\(template,normalizedRaster\.pixels/);
  assert.doesNotMatch(html,/document\.body\.append\(.+scanScore/);
+});
+
+
+test('UX-LEITURA-01: comparison follows answers and grade is only near the camera',()=>{
+ const corretor=html.slice(html.indexOf('<section class="corretor-card module-view" id="corrigir"'),html.indexOf('</main>'));
+ const pos=needle=>corretor.indexOf(needle);
+ assert.ok(pos('id="scanFeedback"')<pos('id="scanScore"'));
+ assert.ok(pos('id="scanScore"')<pos('id="answerKey"'));
+ assert.ok(pos('id="answers"')<pos('id="captureComparison"'));
+ assert.ok(pos('id="captureComparison"')<pos('id="captureHistory"'));
+ for(const id of ['scanScore','captureComparison','originalCapture','normalizedCapture'])
+  assert.equal([...corretor.matchAll(new RegExp('id="'+id+'"','g'))].length,1,id);
+ assert.match(html,/#corrigir #scanScore\[data-stale="true"\]\{display:none!important\}/);
+});
+
+test('UX-LEITURA-01: failed next capture keeps prior grade only in session history',()=>{
+ const h=integrationHarness(),s=h.state;
+ h.$('read').disabled=false;
+ assert.ok(s.readNormalized());
+ assert.match(h.$('scanScore').innerHTML,/Nota final 10,00/);
+ assert.equal(h.$('captureHistory').children.length,1);
+ s.markLastReadingPending();
+ assert.equal(h.$('scanScore').dataset.stale,'true');
+ assert.match(h.$('scanScore').innerHTML,/Última leitura bem-sucedida/);
+ s.normalizedRaster=null;
+ assert.equal(s.readNormalized(),null);
+ s.calculateScore();
+ assert.equal(h.$('scanScore').dataset.stale,'true');
+ assert.match(h.$('scanScore').innerHTML,/Nota da última leitura 10,00/);
+ assert.match(h.$('captureHistory').children[0].textContent,/nota final 10,00/);
+});
+
+test('UX-LEITURA-01: pending review has no grade until manually confirmed',()=>{
+ const h=integrationHarness(),s=h.state;
+ h.$('read').disabled=false;
+ s.readNormalized();
+ s.markLastReadingPending();
+ s.readRaster=()=>({page:1,pageCount:1,identity:{state:'read',code:'0001123'},
+  observations:[{number:1,questionId:'q1',state:'review',answer:null,marks:[]}]});
+ s.readNormalized();
+ assert.equal(h.$('scanScore').dataset.review,'true');
+ assert.doesNotMatch(h.$('scanScore').innerHTML,/Nota final 10,00/);
+ const select=h.$('answers').children[0].children[1];
+ select.value='A';select.onchange();
+ assert.equal(h.$('scanScore').dataset.review,'false');
+ assert.match(h.$('scanScore').innerHTML,/Nota final 10,00/);
 });
