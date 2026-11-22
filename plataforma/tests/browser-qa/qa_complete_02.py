@@ -292,7 +292,9 @@ def main():
                 p.locator('#savedAssessments button[data-action-icon="save"]').click()
                 p.wait_for_function("""() => window.__SALTA_QA__?.records.size===2 &&
                   [...window.__SALTA_QA__.records.values()].some(
-                    r=>r.classId==='turma-qa-b'&&r.status==='issued'&&r.revision===1)
+                    r=>r.classId==='turma-qa-b'&&r.status==='issued'&&r.revision===1) &&
+                  window.__SALTA_QA__.events.some(e=>e.method==='GET'&&/\/revisions\/1$/.test(e.path)) &&
+                  !document.querySelector('#savedAssessments select[aria-label="Turma autorizada"]').disabled
                 """,timeout=20000)
                 seeded=p.evaluate("""() => {
                   const qa=window.__SALTA_QA__;
