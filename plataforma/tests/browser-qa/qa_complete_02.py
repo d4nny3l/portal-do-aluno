@@ -257,7 +257,6 @@ def main():
                       r.id=makeId(n);r.classId=scope;
                       r.definition.title=letter+'-PRIVADA-'+String(i).padStart(2,'0');
                       r.definition.subject='Matemática';
-                      r.definition.manifest.header.className=scope;
                       qa.records.set(r.id,r);
                     }
                   }
@@ -310,6 +309,74 @@ def main():
                     {'source':'full real app, canonical mock, extra test-only delay wrapper',
                      'fixture':seeded,'Aheld':pending,'Alabels':a_titles,
                      'Blabels':b_titles,'noAinB':True})
+                # Supplement: real catalog module imported into the same loaded
+                # browser, with deterministic deferred A GET after B acceptance.
+                # This is NOT represented as a full controller/UI race.
+                late=p.evaluate("""async () => {
+                  const {enrichCatalogRows}=await import('./catalogo-avaliacoes.mjs');
+                  const original=[...document.querySelector(
+                     '#savedAssessments select[aria-label="Minhas avaliações"]').options]
+                     .map(x=>x.textContent);
+                  const scopeA={institutionId:'inst-qa-2026',classId:'turma-qa-a',
+                    periodId:'2026-11-qa'};
+                  const scopeB={...scopeA,classId:'turma-qa-b'};
+                  const results=[];
+                  const row=(suffix,scope)=>({id:'00000000-0000-4000-8000-'+
+                     String(suffix).padStart(12,'0'),revision:1,...scope,
+                     title:suffix===5?'A-PRIVADA-MODULO':'B-EXCLUSIVA-MODULO'});
+                  for(const httpStatus of [401,403]){
+                    let actor='A',rejectA=null,denied=0,started=false;
+                    const cacheA=new Map();
+                    const pendingA=enrichCatalogRows([row(5,scopeA)],{
+                      open:async()=>{started=true;return await new Promise((resolve,reject)=>{
+                        rejectA=()=>reject(Object.assign(new Error('A delayed synthetic rejection'),
+                          {status:httpStatus}));
+                      })},
+                      isCurrent:()=>actor==='A',cache:cacheA,onDenied:()=>{denied++}
+                    });
+                    for(let i=0;i<20&&!started;i++)await Promise.resolve();
+                    if(!started||!rejectA)throw Error('Negative control: A was not held');
+                    actor='B';
+                    const fromB=await enrichCatalogRows([row(6,scopeB)],{
+                      open:async()=>({id:row(6,scopeB).id,revision:1,...scopeB,
+                        definition:{title:'B-EXCLUSIVA-MODULO',
+                          subject:'Matemática',manifest:{header:{className:'B'}}}}),
+                      isCurrent:()=>actor==='B',cache:new Map()
+                    });
+                    rejectA();
+                    const arrivedA=await pendingA;
+                    if(arrivedA!==null||denied!==0||cacheA.size!==0||
+                       fromB.length!==1||fromB[0].title!=='B-EXCLUSIVA-MODULO')
+                      throw Error('Late A '+httpStatus+' corrupted B or triggered stale denial');
+                    const now=[...document.querySelector(
+                     '#savedAssessments select[aria-label="Minhas avaliações"]').options]
+                     .map(x=>x.textContent);
+                    if(JSON.stringify(now)!==JSON.stringify(original))
+                      throw Error('Module test changed real B catalog DOM');
+                    // Active 401/403 MUST be observable, or this test could pass
+                    // even with a completely disconnected onDenied callback.
+                    let activeDenial=0;
+                    try{
+                      await enrichCatalogRows([row(5,scopeA)],{
+                        open:async()=>{throw Object.assign(new Error('active denied'),{status:httpStatus})},
+                        isCurrent:()=>true,onDenied:()=>{activeDenial++},cache:new Map()
+                      });
+                      throw Error('Negative control: active '+httpStatus+' not rejected');
+                    }catch(e){
+                      if(e.status!==httpStatus)throw e;
+                    }
+                    if(activeDenial!==1)throw Error('Negative control: active denial lost');
+                    results.push({httpStatus,lateAReturnedNull:true,lateDenied:denied,
+                      staleCacheEntries:cacheA.size,Btitle:fromB[0].title,
+                      originalDomPreserved:true,activeDeniedControl:activeDenial,
+                      dateUTC:new Date().toISOString()});
+                  }
+                  return results;
+                }""")
+                add('A-B-LATE-401-403-MODULO-NO-CHROMIUM','PASSOU',{
+                    'source':'actual catalogo-avaliacoes.mjs imported in real app Chromium',
+                    'scope':'module only; NOT same controller/UI in-flight scope switch',
+                    'statuses':late})
                 # A completion after B cannot be produced via this native UI
                 # because the scope control remains disabled during A's GET.
                 add('A-B-RESPOSTA-TARDIA-APOS-B-NA-MESMA-INSTANCIA','NÃO EXECUTÁVEL',
