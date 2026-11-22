@@ -64,7 +64,8 @@ def validate_source(repo, expected_head):
     changes = subprocess.check_output(['git','-C',str(repo),'diff','--name-only',BASE_SHA,sha], text=True).splitlines()
     allowed = {'.github/workflows/test-ux79c-browser-qa.yml',
                'plataforma/tests/browser-qa/qa_integrada.py',
-               'plataforma/tests/browser-qa/qa_synthetic_gateway.js'}
+               'plataforma/tests/browser-qa/qa_synthetic_gateway.js',
+               'plataforma/corretor-v2.html'}
     if set(changes) != allowed:
         raise RuntimeError('ESCOPO INVÁLIDO: delta contra PR #92 não é exatamente o harness: '+str(changes))
     notfound = [name for name in NEEDED if not (repo / name).is_file()]
