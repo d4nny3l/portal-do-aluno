@@ -60,7 +60,7 @@ jobs:
           python -m playwright install --with-deps chromium
           command -v xvfb-run
           test -e /usr/lib/x86_64-linux-gnu/libXtst.so.6
-          python -m py_compile plataforma/tests/browser-qa/qa_complete_02.py
+          python -c "import ast,pathlib; ast.parse(pathlib.Path('plataforma/tests/browser-qa/qa_complete_02.py').read_text())"
       - name: Run complete-02 on REAL app localhost in headed Chromium under Xvfb
         shell: bash
         env:
