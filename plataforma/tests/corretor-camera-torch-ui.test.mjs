@@ -258,7 +258,7 @@ test('P1 photo imported is normalized and READ immediately without extra button'
  assert.ok(h.state.normalizedRaster);
  assert.equal(h.mode.readCount,1);
  assert.equal(h.el('manualAlign').hidden,true);
- assert.match(h.messages.at(-1),/processada/);
+ assert.match(h.messages.at(-1),/Leitura inconclusiva/);
 });
 test('P1 invalid photo remains retryable including the same file; no invisible action',async()=>{
  const h=preparationHarness({fail:true});

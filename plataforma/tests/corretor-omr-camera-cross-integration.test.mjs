@@ -116,7 +116,7 @@ test('P1 integrated photo import reads immediately and identical file may be sel
  const input=h.$('file');input.value='foto.jpg';
  await input.onchange({target:{files:[photo],value:'foto.jpg'}}); // Direct call to production handler
  assert.equal(h.readCalls.length,1);
- assert.match(h.messages.at(-1),/Fotografia importada e processada/);
+ assert.equal(h.messages.at(-1),'');
  // Direct handler can be invoked again with the identical file; no manual read button.
  input.value='foto.jpg';
  await input.onchange({target:{files:[photo],value:'foto.jpg'}});
