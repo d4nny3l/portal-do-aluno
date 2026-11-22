@@ -185,7 +185,7 @@ test('UX-LEITURA-01: comparison follows answers and grade is only near the camer
  assert.ok(pos('id="captureComparison"')<pos('id="captureHistory"'));
  for(const id of ['scanScore','captureComparison','originalCapture','normalizedCapture'])
   assert.equal([...corretor.matchAll(new RegExp('id="'+id+'"','g'))].length,1,id);
- assert.match(html,/if\(box\.dataset\.stale==='true'\|\|!activeObservations\.length\)/);
+ assert.match(html,/#corrigir #scanScore\[data-stale="true"\]\{display:none!important\}/);
 });
 
 test('UX-LEITURA-01: failed next capture keeps prior grade only in session history',()=>{
@@ -195,12 +195,13 @@ test('UX-LEITURA-01: failed next capture keeps prior grade only in session histo
  assert.match(h.$('scanScore').innerHTML,/Nota final 10,00/);
  assert.equal(h.$('captureHistory').children.length,1);
  s.markLastReadingPending();
- assert.equal(h.$('scanScore').hidden,true);
  assert.equal(h.$('scanScore').dataset.stale,'true');
+ assert.match(h.$('scanScore').innerHTML,/Última leitura bem-sucedida/);
  s.normalizedRaster=null;
  assert.equal(s.readNormalized(),null);
  s.calculateScore();
- assert.equal(h.$('scanScore').hidden,true);
+ assert.equal(h.$('scanScore').dataset.stale,'true');
+ assert.match(h.$('scanScore').innerHTML,/Nota da última leitura 10,00/);
  assert.match(h.$('captureHistory').children[0].textContent,/nota final 10,00/);
 });
 
