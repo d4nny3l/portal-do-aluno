@@ -260,13 +260,27 @@ def main():
 
                 def save():
                     page.locator('#savedAssessments button[data-action-icon="save"]').click()
-                    page.wait_for_function('''() => window.__SALTA_QA__?.records.size===1 &&
-                      (document.querySelector('#savedAssessments p[role="status"]')?.textContent||'').includes('salva e conferida')''',timeout=20000)
-                    record=qa_eval('''() => {const r=[...window.__SALTA_QA__.records.values()][0];
+                    # Verify exactly what a real client requires: the PUT receipt
+                    # followed by authenticated GET of the immutable revision.
+                    # The UI may change its status to 'opened' after history GET;
+                    # that must be reported but cannot invalidate a verified receipt.
+                    page.wait_for_function('''() => {
+                      const qa=window.__SALTA_QA__;
+                      const events=qa?.events || [];
+                      return qa?.records.size===1 &&
+                        events.some(e=>e.method==='PUT' && /\/assessments\/v1\/assessments\//.test(e.path)) &&
+                        events.some(e=>e.method==='GET' && /\/revisions\/1$/.test(e.path));
+                    }''',timeout=20000)
+                    record=qa_eval('''() => {const qa=window.__SALTA_QA__;
+                      const r=[...qa.records.values()][0],ev=qa.events;
                       return {id:r.id,revision:r.revision,status:r.status,totalUnits:r.totalUnits,
-                        display:r.definition.display,answers:r.definition.answers.length}}''')
-                    if record['totalUnits']!='100000' or record['status']!='issued':
-                        raise AssertionError('Recibo-modelo sintético incoerente: '+str(record))
+                        display:r.definition.display,answers:r.definition.answers.length,
+                        receiptVerified:ev.some(e=>e.method==='GET' && /\/revisions\/1$/.test(e.path)),
+                        statusMessage:document.querySelector('#savedAssessments p[role="status"]')?.textContent,
+                        requestSequence:ev.filter(e=>e.method==='PUT'||/\/revisions\/1$/.test(e.path)).map(e=>e.method+' '+e.path)};
+                    }''')
+                    if record['totalUnits']!='100000' or record['status']!='issued' or not record['receiptVerified']:
+                        raise AssertionError('Recibo/reabertura sintéticos incoerentes: '+str(record))
                     evidence('salta_real_salvo_sintetico')
                     return record
                 # The actual form may still save valid data when a format-display test fails.
