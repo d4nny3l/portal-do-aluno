@@ -265,25 +265,61 @@ def main():
                 p.wait_for_function("""() => window.__SALTA_QA__?.records.size===1 &&
                    window.__SALTA_QA__.events.some(x=>x.method==='GET'&&/\/revisions\/1$/.test(x.path))""",
                    timeout=20000)
+                # Obtain TWO distinct valid manifests through the authentic UI,
+                # one for each scope. A fake B title with an A header is unsafe
+                # as evidence of privacy; do not clone A's manifest into B.
+                p.evaluate('window.__SALTA_QA__.addGrantB()')
+                p.reload(wait_until='domcontentloaded',timeout=30000)
+                p.wait_for_function("""() => document.querySelector(
+                  '#savedAssessments select[aria-label="Turma autorizada"]')?.options.length===2
+                """,timeout=20000)
+                p.locator('#savedAssessments select[aria-label="Turma autorizada"]').select_option('1')
+                p.wait_for_function("""() => {
+                   const s=document.querySelector('#savedAssessments select[aria-label="Turma autorizada"]');
+                   const c=document.querySelector('#savedAssessments select[aria-label="Minhas avaliações"]');
+                   return s?.value==='1'&&!s.disabled&&c?.options.length===1;
+                }""",timeout=20000)
+                p.locator('#assessmentTitle').fill('QA completa — avaliação B independente')
+                p.locator('#assessmentSubject').fill('Matemática')
+                p.locator('#assessmentClass').fill('Turma QA B')
+                p.locator('#assessmentDate').fill('2026-11-22')
+                p.locator('#type').select_option('A-E')
+                p.locator('#count').fill('3')
+                p.locator('#add').click()
+                p.locator('#savedAssessments details.library-answers summary').click()
+                p.locator('#savedAssessments textarea').fill('1 A\n2 B\n3 C')
+                p.get_by_role('button',name='Aplicar gabarito').click()
+                p.locator('#savedAssessments button[data-action-icon="save"]').click()
+                p.wait_for_function("""() => window.__SALTA_QA__?.records.size===2 &&
+                  [...window.__SALTA_QA__.records.values()].some(
+                    r=>r.classId==='turma-qa-b'&&r.status==='issued'&&r.revision===1)
+                """,timeout=20000)
                 seeded=p.evaluate("""() => {
-                  const qa=window.__SALTA_QA__,first=[...qa.records.values()][0];
-                  if(first.status!=='issued'||first.revision!==1)throw Error('Not issued by UI');
+                  const qa=window.__SALTA_QA__;
+                  const snapshots=[...qa.records.values()];
+                  const firstA=snapshots.find(r=>r.classId==='turma-qa-a');
+                  const firstB=snapshots.find(r=>r.classId==='turma-qa-b');
+                  if(!firstA||!firstB||firstA.status!=='issued'||firstB.status!=='issued'||
+                     firstA.definition.manifest.header.className!=='Turma QA A'||
+                     firstB.definition.manifest.header.className!=='Turma QA B')
+                    throw Error('Negative control: independently saved A/B headers absent');
                   qa.records.clear();
                   const makeId=n=>'00000000-0000-4000-8000-'+String(n).padStart(12,'0');
                   for(let i=1;i<=13;i++){
-                    for(const [letter,n,scope] of [['A',i,'turma-qa-a'],['B',100+i,'turma-qa-b']]){
-                      const r=structuredClone(first);
-                      r.id=makeId(n);r.classId=scope;
+                    for(const [letter,n,base] of [['A',i,firstA],['B',100+i,firstB]]){
+                      const r=structuredClone(base);
+                      r.id=makeId(n);
                       r.definition.title=letter+'-PRIVADA-'+String(i).padStart(2,'0');
-                      r.definition.subject='Matemática';
                       qa.records.set(r.id,r);
                     }
                   }
-                  qa.save();qa.addGrantB();
-                  return {mockRecords:qa.records.size,grants:qa.fixture.grants.length};
+                  qa.save();
+                  return {mockRecords:qa.records.size,grants:qa.fixture.grants.length,
+                    headersVerified:true,recordSource:'two independent UI saves'};
                 }""")
-                if seeded!={'mockRecords':26,'grants':2}:
-                    raise AssertionError('Fixture seeding did not produce 13 A + 13 B: '+str(seeded))
+                if seeded!={'mockRecords':26,'grants':2,'headersVerified':True,
+                           'recordSource':'two independent UI saves'}:
+                    raise AssertionError('Fixture A/B origins were not independent: '+str(seeded))
                 p.reload(wait_until='domcontentloaded',timeout=30000)
                 p.wait_for_function("""() =>
                   document.querySelector('#savedAssessments select[aria-label="Turma autorizada"]')?.options.length===2
@@ -319,10 +355,10 @@ def main():
                    '#savedAssessments select[aria-label="Minhas avaliações"]').options].map(x=>x.textContent)""")
                 if not all('A-PRIVADA' in x for x in a_titles[1:]):
                     raise AssertionError('A titles incomplete')
-                if not all('B-PRIVADA' in x for x in b_titles[1:]):
-                    raise AssertionError('B titles missing or polluted by A: '+str(b_titles))
-                if any('A-PRIVADA' in x for x in b_titles):
-                    raise AssertionError('Private A label leaked into B')
+                if not all('B-PRIVADA' in x and 'Turma QA B' in x for x in b_titles[1:]):
+                    raise AssertionError('B titles or B headers missing: '+str(b_titles))
+                if any('A-PRIVADA' in x or 'Turma QA A' in x for x in b_titles):
+                    raise AssertionError('Private A label OR class header leaked into B')
                 p.screenshot(path=str(out/'ab_B_after_A_release.png'),full_page=True)
                 add('A-B-UI-SEGURA-SEM-SOBREPOSICAO','PASSOU',
                     {'source':'full real app, canonical mock, extra test-only delay wrapper',
