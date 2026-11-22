@@ -338,6 +338,17 @@ body.admin-mode :is(table td,table th) { border-color: #ececf6; }
   .teacher-shell-brand-copy small { font-size: 7px; }
   .teacher-shell-home svg { display: none; }
 }
+/* Extra-narrow viewport: keep menu, SALTA brand and platform return link fully operable. */
+@media (max-width: 300px) {
+  .teacher-shell-brandzone { min-width: 0; gap: 5px; padding: 0 7px; }
+  .teacher-shell-brand { min-width: 0; gap: 0; }
+  .teacher-shell-brand-copy { display: none; } /* The link retains its aria-label. */
+  .teacher-shell-brand-mark { width: 28px; height: 28px; flex-basis: 28px; }
+  .teacher-shell-toggle { width: 32px; height: 32px; flex-basis: 32px; }
+  .teacher-shell-actions { flex: 0 0 auto; min-width: 0; padding: 0 7px; }
+  .teacher-shell-home { white-space: nowrap; padding: 8px 6px; }
+}
+
 @media (prefers-reduced-motion: reduce) {
   .teacher-shell-sidebar,.teacher-shell-link,.teacher-shell-home { transition: none !important; }
 }
