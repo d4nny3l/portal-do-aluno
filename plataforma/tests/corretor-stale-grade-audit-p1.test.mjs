@@ -25,7 +25,7 @@ class Node {
 }
 function fixture(){
  const fields={
-  answers:new Node('div'),status:new Node('p'),scanScore:new Node('div'),
+  answers:new Node('div'),status:new Node('p'),scanScore:new Node('div'),cameraGrade:new Node('div'),cameraProgress:new Node('div'),cameraLiveBadge:new Node('span'),
   scanMaxScore:{value:'10'},canvas:new Node('canvas'),manualAlign:new Node('button'),manualHelp:new Node('p')
  };
  const $=id=>{assert.ok(fields[id],id);return fields[id]};
@@ -33,7 +33,7 @@ function fixture(){
  let key=new Map([['q1','A'],['q2','A'],['q3','A']]),valid=true;
  const build=new Function('$','document','template','parseKey','renderHistory','toPageRaster','updateCaptureComparison','paintGray','setScanMessage',
   'let activeObservations=[],activeHistoryEntry=null,rawRaster=null,normalizedRaster=null,manualMode=false,manualPoints=[];'+
-  ['markLastReadingPending','calculateScore','renderAnswers','prepareImage'].map(production).join(';')+
+  ['showCameraGrade','markLastReadingPending','calculateScore','renderAnswers','prepareImage'].map(production).join(';')+
   ';return {render:renderAnswers,normalize:prepareImage,score:calculateScore,observations:()=>activeObservations}');
  const editor=build($,{createElement:tag=>new Node(tag)},template,
   ()=>valid?{valid:true,answers:key}:{valid:false,error:'Gabarito incompleto'},
@@ -50,6 +50,7 @@ test('P1-01: failed recapture keeps old score identified through max, key and ma
  const h=fixture(),{fields,editor}=h;
  editor.render(h.page());
  assert.match(fields.scanScore.innerHTML,/Nota final 3,33 \/ 10,00/);
+ assert.equal(fields.cameraGrade.textContent,'Nota 3,33');
  assert.equal(fields.scanScore.dataset.stale,'false');
 
  const invalid=editor.normalize(new Uint8Array(9).fill(245),3,3,{source:'import'});
@@ -83,6 +84,7 @@ test('P1-01: failed recapture keeps old score identified through max, key and ma
 
  editor.render(h.page(['B','B','C']));
  assert.equal(fields.scanScore.dataset.stale,'false','only a processed new card clears stale');
+ assert.equal(fields.cameraGrade.textContent,'Nota 6,67');
  assert.doesNotMatch(fields.scanScore.innerHTML,/Última leitura bem-sucedida/);
  assert.match(fields.scanScore.innerHTML,/Nota final 6,67 \/ 20,00/);
 });
@@ -94,6 +96,7 @@ test('P1-01: a failed camera normalization cannot relabel a previous grade as cu
  assert.equal(editor.normalize(new Uint8Array(9),3,3,{automatic:true,source:'camera'}),null);
  fields.scanMaxScore.value='12';editor.score();
  assert.equal(fields.scanScore.dataset.stale,'true');
+ assert.equal(fields.cameraGrade.hidden,true);
  assert.match(fields.scanScore.innerHTML,/Última leitura bem-sucedida/);
  assert.match(fields.scanScore.innerHTML,/Nota da última leitura/);
  assert.doesNotMatch(fields.scanScore.innerHTML,/Nota final/);

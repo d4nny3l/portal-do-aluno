@@ -31,7 +31,7 @@ class Element{
  }
 }
 const script=[
- production('function markLastReadingPending('),production('function calculateScore('),production('function renderHistory('),
+ production('function showCameraGrade('),production('function markLastReadingPending('),production('function calculateScore('),production('function renderHistory('),
  production('function renderAnswers('),production('function readNormalized('),
  production('async function loadPhoto('),production("$('file').onchange=")
 ].join('\n');
@@ -179,13 +179,15 @@ test('P1 adversarial and historical coverage remains in combined source',()=>{
 test('UX-LEITURA-01: comparison follows answers and grade is only near the camera',()=>{
  const corretor=html.slice(html.indexOf('<section class="corretor-card module-view" id="corrigir"'),html.indexOf('</main>'));
  const pos=needle=>corretor.indexOf(needle);
- assert.ok(pos('id="scanFeedback"')<pos('id="scanScore"'));
- assert.ok(pos('id="scanScore"')<pos('id="answerKey"'));
+ assert.ok(pos('id="cameraStage"')<pos('id="cameraGrade"'));
+ assert.ok(pos('id="cameraGrade"')<pos('id="scanScore"'));
+ assert.ok(pos('id="scanScore"')<pos('id="scanFeedback"'));
  assert.ok(pos('id="answers"')<pos('id="captureComparison"'));
  assert.ok(pos('id="captureComparison"')<pos('id="captureHistory"'));
  for(const id of ['scanScore','captureComparison','originalCapture','normalizedCapture'])
   assert.equal([...corretor.matchAll(new RegExp('id="'+id+'"','g'))].length,1,id);
- assert.match(html,/#corrigir #scanScore\[data-stale="true"\]\{display:none!important\}/);
+ assert.match(html,/#corrigir #scanScore\{display:none!important\}/);
+ assert.match(html,/#corrigir #cameraGrade\[hidden\]/);
 });
 
 test('UX-LEITURA-01: failed next capture keeps prior grade only in session history',()=>{
@@ -193,8 +195,11 @@ test('UX-LEITURA-01: failed next capture keeps prior grade only in session histo
  h.$('read').disabled=false;
  assert.ok(s.readNormalized());
  assert.match(h.$('scanScore').innerHTML,/Nota final 10,00/);
+ assert.equal(h.$('cameraGrade').textContent,'Nota 10,00');
+ assert.equal(h.$('cameraGrade').hidden,false);
  assert.equal(h.$('captureHistory').children.length,1);
  s.markLastReadingPending();
+ assert.equal(h.$('cameraGrade').hidden,true);
  assert.equal(h.$('scanScore').dataset.stale,'true');
  assert.match(h.$('scanScore').innerHTML,/Última leitura bem-sucedida/);
  s.normalizedRaster=null;
@@ -214,9 +219,25 @@ test('UX-LEITURA-01: pending review has no grade until manually confirmed',()=>{
   observations:[{number:1,questionId:'q1',state:'review',answer:null,marks:[]}]});
  s.readNormalized();
  assert.equal(h.$('scanScore').dataset.review,'true');
+ assert.equal(h.$('cameraGrade').hidden,true);
  assert.doesNotMatch(h.$('scanScore').innerHTML,/Nota final 10,00/);
  const select=h.$('answers').children[0].children[1];
  select.value='A';select.onchange();
  assert.equal(h.$('scanScore').dataset.review,'false');
+ assert.equal(h.$('cameraGrade').textContent,'Nota 10,00');
  assert.match(h.$('scanScore').innerHTML,/Nota final 10,00/);
+});
+
+
+test('UX-LEITURA-02: only the existing grade is overlaid after success, zero retains configured precision',()=>{
+ const h=integrationHarness(),s=h.state;
+ h.$('read').disabled=false;s.readNormalized({automatic:true});
+ assert.equal(h.$('cameraGrade').textContent,'Nota 10,00');
+ assert.equal(h.$('cameraGrade').hidden,false);
+ assert.equal(h.$('cameraProgress').hidden,true);
+ assert.equal(h.$('cameraLiveBadge').hidden,true);
+ const select=h.$('answers').children[0].children[1];select.value='B';select.onchange();
+ assert.equal(h.$('cameraGrade').textContent,'Nota 0,00');
+ assert.match(html,/#corrigir #cameraReadStatus\{display:none!important\}/);
+ assert.doesNotMatch(html,/Cartão reconhecido e leitura atualizada\.|Cartão reconhecido\. Nota final disponível\./);
 });

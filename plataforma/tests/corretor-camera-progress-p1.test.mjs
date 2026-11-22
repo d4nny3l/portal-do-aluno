@@ -6,7 +6,7 @@ import vm from 'node:vm';
 const html=readFileSync(new URL('../corretor-v2.html',import.meta.url),'utf8');
 const lines=html.split('\n');
 function one(prefix){const found=lines.filter(l=>l.startsWith(prefix));assert.equal(found.length,1,prefix);return found[0]}
-const code=[one('function setCameraProgress('),one('function markLastReadingPending('),
+const code=[one('function setCameraProgress('),one('function showCameraGrade('),one('function markLastReadingPending('),
  html.slice(html.indexOf('function scanCameraFrame(){'),html.indexOf('function updateCameraInfo(){'))].join('\n');
 
 function setup({fail=false,inconclusive=false}={}){
@@ -54,6 +54,7 @@ test('failed normalization cannot claim consolidated or recognized; stale score 
  assert.equal(h.$('cameraReadStatus').hidden,true);
  assert.match(h.$('scanScore').innerHTML,/Última leitura bem-sucedida/);
  assert.equal(h.$('scanScore').dataset.stale,'true');
+ assert.equal(h.$('cameraGrade').hidden,true);
  h.fail(false);s.lastCaptureAt=0;
  s.scanCameraFrame();s.scanCameraFrame();s.scanCameraFrame();
  assert.equal(h.count(),2);
