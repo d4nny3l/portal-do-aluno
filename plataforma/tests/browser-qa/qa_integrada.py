@@ -21,6 +21,7 @@ from urllib.parse import urlsplit
 
 BASE_SHA = 'd2d67eb4dd96a1431a9440f341406700d601a602'
 HOTFIX_SHA = 'c6372e8d7d4c062bb4c2c1529423fcb02b48900f'
+APPROVED_QA_SHA = '1c42a0ad41bd0d2a22ebaf8d379ce5698543bc9d'
 MOCK_BLOB_SHA = '03067245ca9cb60897a3b172e62fc759f3bdbc2f'
 NEEDED = [
     'plataforma/corretor-v2.html',
@@ -65,6 +66,7 @@ def validate_source(repo, expected_head):
         raise RuntimeError(f'CHECKOUT INCORRETO: HEAD={sha}; exigido={expected_head}. Interrompido antes de iniciar navegador.')
     changes = subprocess.check_output(['git','-C',str(repo),'diff','--name-only',BASE_SHA,sha], text=True).splitlines()
     allowed = {'.github/workflows/test-ux79c-browser-qa.yml',
+               '.github/workflows/test-avaliacoes-biblioteca.yml',
                'plataforma/tests/browser-qa/qa_integrada.py',
                'plataforma/tests/browser-qa/qa_synthetic_gateway.js',
                'plataforma/corretor-v2.html'}
@@ -73,9 +75,16 @@ def validate_source(repo, expected_head):
     # QA-only branch must not modify any approved runtime file or the mock gateway.
     delta = subprocess.check_output(['git','-C',str(repo),'diff','--name-only',HOTFIX_SHA,sha], text=True).splitlines()
     qa_only = {'.github/workflows/test-ux79c-browser-qa.yml',
+               '.github/workflows/test-avaliacoes-biblioteca.yml',
                'plataforma/tests/browser-qa/qa_integrada.py'}
     if set(delta) != qa_only:
         raise RuntimeError('HOTFIX ALTERADO: delta contra PR #94 não é exclusivamente harness: '+str(delta))
+    # Provenance check for the immutable audited #95: no production changes.
+    final_diff = subprocess.check_output(
+        ['git','-C',str(repo),'diff','--name-only',APPROVED_QA_SHA,sha],
+        text=True).splitlines()
+    if set(final_diff) != qa_only:
+        raise RuntimeError('CONSOLIDAÇÃO FORA DE ESCOPO: '+str(final_diff))
     mock_sha = subprocess.check_output(['git','-C',str(repo),'rev-parse',
         'HEAD:plataforma/tests/browser-qa/qa_synthetic_gateway.js'],text=True).strip()
     if mock_sha != MOCK_BLOB_SHA:
@@ -88,8 +97,10 @@ def validate_source(repo, expected_head):
         raise RuntimeError('CHECKOUT NÃO LIMPO. Use cópia temporária limpa e mantenha scripts/saídas fora do repositório.')
     files = subprocess.check_output(['git', '-C', str(repo), 'ls-files'], text=True).splitlines()
     return {'sha':sha,'approved_pr92_base_sha':BASE_SHA,'approved_pr94_hotfix_sha':HOTFIX_SHA,
+            'approved_pr95_qa_sha':APPROVED_QA_SHA,
             'tracked_files':len(files),'mandatory_modules':NEEDED,
-            'changed_test_files':changes,'qa_only_changes_from_pr94':delta,'unchanged_mock_blob':mock_sha}
+            'changed_test_files':changes,'qa_only_changes_from_pr94':delta,
+            'only_three_ci_files_from_pr95':final_diff,'unchanged_mock_blob':mock_sha}
 
 
 def main():
