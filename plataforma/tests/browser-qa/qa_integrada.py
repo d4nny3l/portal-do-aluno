@@ -20,6 +20,8 @@ from pathlib import Path
 from urllib.parse import urlsplit
 
 BASE_SHA = 'd2d67eb4dd96a1431a9440f341406700d601a602'
+HOTFIX_SHA = 'c6372e8d7d4c062bb4c2c1529423fcb02b48900f'
+MOCK_BLOB_SHA = '03067245ca9cb60897a3b172e62fc759f3bdbc2f'
 NEEDED = [
     'plataforma/corretor-v2.html',
     'plataforma/avaliacoes-biblioteca.mjs',
@@ -68,6 +70,16 @@ def validate_source(repo, expected_head):
                'plataforma/corretor-v2.html'}
     if set(changes) != allowed:
         raise RuntimeError('ESCOPO INVÁLIDO: delta contra PR #92 não é exatamente o harness: '+str(changes))
+    # QA-only branch must not modify any approved runtime file or the mock gateway.
+    delta = subprocess.check_output(['git','-C',str(repo),'diff','--name-only',HOTFIX_SHA,sha], text=True).splitlines()
+    qa_only = {'.github/workflows/test-ux79c-browser-qa.yml',
+               'plataforma/tests/browser-qa/qa_integrada.py'}
+    if set(delta) != qa_only:
+        raise RuntimeError('HOTFIX ALTERADO: delta contra PR #94 não é exclusivamente harness: '+str(delta))
+    mock_sha = subprocess.check_output(['git','-C',str(repo),'rev-parse',
+        'HEAD:plataforma/tests/browser-qa/qa_synthetic_gateway.js'],text=True).strip()
+    if mock_sha != MOCK_BLOB_SHA:
+        raise RuntimeError('MOCK ALTERADO: integridade do gateway sintético divergente.')
     notfound = [name for name in NEEDED if not (repo / name).is_file()]
     if notfound:
         raise RuntimeError('CHECKOUT INCOMPLETO: '+', '.join(notfound))
@@ -75,7 +87,9 @@ def validate_source(repo, expected_head):
     if changed.strip():
         raise RuntimeError('CHECKOUT NÃO LIMPO. Use cópia temporária limpa e mantenha scripts/saídas fora do repositório.')
     files = subprocess.check_output(['git', '-C', str(repo), 'ls-files'], text=True).splitlines()
-    return {'sha':sha,'approved_pr92_base_sha':BASE_SHA,'tracked_files':len(files),'mandatory_modules':NEEDED,'changed_test_files':changes}
+    return {'sha':sha,'approved_pr92_base_sha':BASE_SHA,'approved_pr94_hotfix_sha':HOTFIX_SHA,
+            'tracked_files':len(files),'mandatory_modules':NEEDED,
+            'changed_test_files':changes,'qa_only_changes_from_pr94':delta,'unchanged_mock_blob':mock_sha}
 
 
 def main():
@@ -97,7 +111,7 @@ def main():
     from playwright.sync_api import sync_playwright
     server=create_server(repo)
     origin=f'http://127.0.0.1:{server.server_address[1]}'
-    report={'task':'UX-79C-QA-CI-03','source':source,'origin':origin,
+    report={'task':'QA79C-PERSIST-00/01','source':source,'origin':origin,
             'date_utc':datetime.now(timezone.utc).isoformat(),
             'environment':{'browser':'Playwright Chromium local','authorization':'interceptada, sintética',
                            'network':'somente 127.0.0.1 porta local','real_safari_iphone':'NÃO TESTADO',
@@ -400,6 +414,268 @@ def main():
                 mark('Recursos reais HTML/JS/CSS carregados por HTTP localhost',
                      'PASSOU' if not missing else 'FALHOU',
                      data={'required':required_paths,'missing':missing,'loaded':len(assets_seen)})
+
+                # Complementary cases use two isolated browser contexts.  The
+                # original 17 checks above are intentionally unchanged.
+                def persist_precision(decimals):
+                    label=f'QA79C-PERSIST-{decimals:02d}'
+                    title=f'Avaliação sintética — {label}'
+                    expected_text={0:'10',1:'10,0'}[decimals]
+                    invalid_text={0:'10.5',1:'10.55'}[decimals]
+                    case_context=browser.new_context(
+                        viewport={'width':1440,'height':900},locale='pt-BR',
+                        service_workers='block',permissions=[])
+                    case_page=None
+                    case_context.add_init_script(path=str(mock_file))
+                    case_context.route('**/*',route_only_local)
+                    case_context.route_web_socket('**/*',lambda ws:ws.close())
+                    try:
+                        assert not case_context.cookies(), 'Contexto persistência iniciou com cookies.'
+                        case_page=case_context.new_page()
+                        case_page.on('pageerror',lambda error:report['page_errors'].append(
+                            f'{label}: '+str(error)[:300]))
+                        case_page.on('console',lambda msg:report['console_errors'].append(
+                            f'{label}: '+msg.text[:300]) if msg.type=='error' else None)
+                        def on_case_response(response):
+                            u=urlsplit(response.url)
+                            if u.hostname in ('127.0.0.1','localhost') and u.port==server.server_address[1]:
+                                assets_seen.add(u.path)
+                                if response.status>=400:
+                                    report['page_errors'].append(
+                                        f'{label}: recurso local HTTP {response.status} {u.path}')
+                        case_page.on('response',on_case_response)
+                        case_page.on('dialog',lambda dialog:dialog.accept())
+                        case_page.goto(app,wait_until='domcontentloaded',timeout=30000)
+                        case_page.locator('#savedAssessments:not([hidden])').wait_for(timeout=20000)
+                        case_page.wait_for_function("""() => {
+                           const select=document.querySelector(
+                              '#savedAssessments select[aria-label="Minhas avaliações"]');
+                           const format=document.getElementById('scoreFormatField');
+                           return select && !select.disabled && format && !format.hidden;
+                        }""",timeout=20000)
+                        fresh=case_page.evaluate("""() => ({
+                           records:window.__SALTA_QA__.records.size,
+                           events:window.__SALTA_QA__.events.length,
+                           keys:Object.keys(sessionStorage),
+                           principal:window.__SALTA_QA__.fixture.principalId,
+                           epoch:window.__SALTA_QA__.fixture.epoch,
+                           scoreFormatVersion:window.__SALTA_QA__.fixture.scoreFormatVersion
+                        })""")
+                        if fresh['records']!=0 or fresh['keys'] or fresh['epoch']!=1 or (
+                            fresh['scoreFormatVersion']!='salta-score-format-v1'):
+                            raise AssertionError('Sessão sintética não começou limpa: '+str(fresh))
+
+                        # Only a passive network probe: no application state or
+                        # synthetic fixture is injected.  Responses are cloned.
+                        case_page.evaluate("""() => {
+                          const original=window.fetch,trace=[];
+                          window.__SALTA_PERSIST_TRACE__=trace;
+                          window.fetch=async(input,opts={})=>{
+                            const raw=typeof input==='string'?input:input?.url;
+                            const url=new URL(raw,location.href);
+                            const method=String(opts?.method||input?.method||'GET').toUpperCase();
+                            const relevant=url.pathname.startsWith(
+                              '/assessments/v1/assessments/') &&
+                              (method==='GET'||method==='PUT');
+                            const payload=relevant && method==='PUT' ?
+                              JSON.parse(opts.body):null;
+                            const response=await original(input,opts);
+                            if(relevant){
+                              const data=await response.clone().json().catch(()=>null);
+                              trace.push({time:new Date().toISOString(),
+                                method,path:url.pathname,url:url.href,httpStatus:response.status,
+                                payload,data});
+                            }
+                            return response;
+                          };
+                        }""")
+                        case_page.locator('#assessmentTitle').fill(title)
+                        case_page.locator('#assessmentSubject').fill('Matemática')
+                        case_page.locator('#assessmentClass').fill('Turma QA A')
+                        case_page.locator('#assessmentDate').fill('2026-11-21')
+                        case_page.locator('#type').select_option('A-E')
+                        case_page.locator('#count').fill('3')
+                        case_page.locator('#add').click()
+                        case_page.locator('#savedAssessments details.library-answers summary').click()
+                        case_page.locator('#scoreFormatSelect').select_option(str(decimals))
+                        amount=case_page.locator('#savedAssessments .library-scoring input').first
+                        selected=case_page.locator('#scoreFormatSelect').input_value()
+                        shown=amount.input_value()
+                        if selected!=str(decimals) or shown!=expected_text:
+                            raise AssertionError(f'{label}: seletor/valor antes da gravação: '
+                                                 f'{selected} / {shown}')
+                        amount.fill(invalid_text)
+                        rejected=amount.input_value()
+                        if rejected!=expected_text:
+                            raise AssertionError(f'{label}: precisão inválida não rejeitada sem '
+                                                 f'truncamento: {invalid_text} -> {rejected}')
+                        amount.fill(expected_text)
+                        case_page.locator('#savedAssessments textarea').fill('1 A\n2 B\n3 C')
+                        case_page.get_by_role('button',name='Aplicar gabarito').click()
+                        before_file=out/f'salta_real_persist_{decimals:02d}_antes.png'
+                        case_page.screenshot(path=str(before_file),full_page=True,animations='disabled')
+                        if case_page.locator('#scoreFormatSelect').input_value()!=str(decimals):
+                            raise AssertionError(f'{label}: perdeu o formato antes de salvar.')
+
+                        # Save with the app's real button, not a direct service API call.
+                        case_page.locator('#savedAssessments button[data-action-icon="save"]').click()
+                        case_page.wait_for_function("""() => {
+                          const qa=window.__SALTA_QA__,trace=window.__SALTA_PERSIST_TRACE__;
+                          return qa?.records.size===1 &&
+                            trace?.some(t=>t.method==='PUT' && t.httpStatus===200) &&
+                            trace?.some(t=>t.method==='GET' &&
+                              /\/revisions\/1$/.test(t.path) && t.httpStatus===200);
+                        }""",timeout=20000)
+                        saved=case_page.evaluate("""() => {
+                          const qa=window.__SALTA_QA__,trace=window.__SALTA_PERSIST_TRACE__;
+                          const record=[...qa.records.values()][0];
+                          const put=trace.find(t=>t.method==='PUT');
+                          const get=trace.find(t=>t.method==='GET' &&
+                            /\/revisions\/1$/.test(t.path));
+                          const responseRecord=get?.data?.record;
+                          return {
+                            record:{id:record.id,revision:record.revision,
+                              status:record.status,totalUnits:record.totalUnits,
+                              manifestHash:record.manifestHash,
+                              definition:record.definition},
+                            put:{time:put?.time,method:put?.method,path:put?.path,
+                              url:put?.url,httpStatus:put?.httpStatus,
+                              requestId:put?.payload?.requestId,
+                              expectedRevision:put?.payload?.expectedRevision,
+                              status:put?.payload?.status,
+                              display:put?.payload?.definition?.display,
+                              blocks:put?.payload?.definition?.blocks,
+                              receipt:put?.data},
+                            verification:{time:get?.time,method:get?.method,
+                              path:get?.path,httpStatus:get?.httpStatus,
+                              recordId:responseRecord?.id,
+                              revision:responseRecord?.revision,
+                              manifestHash:responseRecord?.manifestHash,
+                              totalUnits:responseRecord?.totalUnits,
+                              display:responseRecord?.definition?.display,
+                              sameDefinition:JSON.stringify(responseRecord?.definition)===
+                                JSON.stringify(put?.payload?.definition)},
+                            requestCount:trace.length
+                          };
+                        }""")
+                        record=saved['record'];put=saved['put'];verification=saved['verification']
+                        blocks=record['definition']['blocks']
+                        if (record['status']!='issued' or record['revision']!=1 or
+                            record['totalUnits']!='100000' or
+                            record['definition']['display'].get('scoreDecimals')!=decimals or
+                            record['manifestHash']!=record['definition']['manifest']['contentHash'] or
+                            len(blocks)!=1 or blocks[0]['valueUnits']!='100000' or
+                            len(record['definition']['answers'])!=3):
+                            raise AssertionError(f'{label}: plano/unidades/revisão divergente: '+str(saved))
+                        if (not put['requestId'] or put['expectedRevision']!=0 or
+                            put['status']!='issued' or put['receipt']!={'ok':True,
+                                'id':record['id'],'revision':1,
+                                'manifestHash':record['manifestHash']} or
+                            put['display'].get('scoreDecimals')!=decimals or
+                            verification['recordId']!=record['id'] or
+                            verification['revision']!=1 or
+                            verification['manifestHash']!=record['manifestHash'] or
+                            verification['totalUnits']!='100000' or
+                            verification['display'].get('scoreDecimals')!=decimals or
+                            not verification['sameDefinition'] or
+                            verification['time']<put['time']):
+                            raise AssertionError(f'{label}: PUT/recibo/GET inconsistente: '+str(saved))
+
+                        after_save=out/f'salta_real_persist_{decimals:02d}_salvo.png'
+                        case_page.screenshot(path=str(after_save),full_page=True,animations='disabled')
+
+                        # A test-only exact retry of the same synthetic receipt
+                        # proves mock idempotence. The *first* PUT was from real UI.
+                        retry=case_page.evaluate("""async() => {
+                           const trace=window.__SALTA_PERSIST_TRACE__,
+                                 first=trace.find(t=>t.method==='PUT');
+                           const before=window.__SALTA_QA__.records.get(first.data.id);
+                           const response=await fetch(first.url,{method:'PUT',
+                             headers:{'Content-Type':'application/json'},
+                             body:JSON.stringify(first.payload)});
+                           const receipt=await response.json();
+                           const after=window.__SALTA_QA__.records.get(first.data.id);
+                           return {sameReceipt:JSON.stringify(receipt)===
+                               JSON.stringify(first.data),httpStatus:response.status,
+                             originalRequestId:first.payload.requestId,
+                             recordCount:window.__SALTA_QA__.records.size,
+                             beforeRevision:before.revision,afterRevision:after.revision};
+                        }""")
+                        if (not retry['sameReceipt'] or retry['httpStatus']!=200 or
+                            retry['recordCount']!=1 or retry['beforeRevision']!=1 or
+                            retry['afterRevision']!=1 or
+                            retry['originalRequestId']!=put['requestId']):
+                            raise AssertionError(f'{label}: recibo sintético não idempotente: '+str(retry))
+
+                        # Leave the editor then restore through the actual catalog UI.
+                        case_page.locator('#savedAssessments button[data-action-icon="new"]').click()
+                        case_page.wait_for_function("""() =>
+                          document.getElementById('assessmentTitle')?.value===''""")
+                        if case_page.locator('#assessmentTitle').input_value()==title:
+                            raise AssertionError(f'{label}: editor não foi abandonado.')
+                        case_page.locator(
+                            '#savedAssessments select[aria-label="Minhas avaliações"]'
+                        ).select_option(record['id'])
+                        case_page.wait_for_function("""(title) =>
+                           document.getElementById('assessmentTitle')?.value===title &&
+                           document.querySelector('#scoreFormatSelect')?.value!==undefined
+                        """,arg=title,timeout=20000)
+                        reopened=case_page.evaluate("""() => ({
+                          title:document.getElementById('assessmentTitle')?.value,
+                          selectedFormat:document.getElementById('scoreFormatSelect')?.value,
+                          displayedValue:document.querySelector(
+                            '#savedAssessments .library-scoring input')?.value,
+                          selectedCatalog:document.querySelector(
+                            '#savedAssessments select[aria-label="Minhas avaliações"]')?.value,
+                          trace:window.__SALTA_PERSIST_TRACE__
+                            .map(t=>({time:t.time,method:t.method,path:t.path,
+                              httpStatus:t.httpStatus,
+                              receiptRevision:t.data?.revision,
+                              recordRevision:t.data?.record?.revision}))
+                        })""")
+                        if (reopened['title']!=title or
+                            reopened['selectedFormat']!=str(decimals) or
+                            reopened['displayedValue']!=expected_text or
+                            reopened['selectedCatalog']!=record['id']):
+                            raise AssertionError(f'{label}: precisão perdida ao reabrir: '+str(reopened))
+                        opened= [x for x in reopened['trace'] if x['method']=='GET' and
+                                 x['path'].endswith('/'+record['id'])]
+                        if not opened or opened[-1]['time']<verification['time'] or (
+                            opened[-1]['recordRevision']!=1):
+                            raise AssertionError(f'{label}: reabertura não consultou o registro: '+str(reopened))
+                        reloaded_record=case_page.evaluate("""(id) =>
+                          window.__SALTA_QA__.records.get(id)""",record['id'])
+                        if reloaded_record['definition']!=record['definition']:
+                            raise AssertionError(f'{label}: definição/restauração mudou o manifesto.')
+                        screenshot=out/f'salta_real_persist_{decimals:02d}_reaberto.png'
+                        case_page.screenshot(path=str(screenshot),full_page=True,animations='disabled')
+                        health=case_page.evaluate("""() => window.__SALTA_QA__.getSummary()""")
+                        if health['unknownRequests']!=0 or report['blocked_external_attempts'] or (
+                            report['page_errors']):
+                            raise AssertionError(f'{label}: rede ou erro de aplicação: '+str(health))
+                        return {'context':'fresh new_context, no cookies or sessionStorage inherited',
+                            'fresh':fresh,'assessment':{'title':title,'id':record['id']},
+                            'scoreDecimals':decimals,'display':expected_text,
+                            'rejectedInput':invalid_text,'rejectedTo':rejected,
+                            'totalUnits':record['totalUnits'],'blockUnits':blocks[0]['valueUnits'],
+                            'manifestHashMatches':True,
+                            'put':put,'immutableGet':verification,'idempotentSyntheticRetry':retry,
+                            'reopened':reopened,'mockUnknownRequests':health['unknownRequests'],
+                            'screenshots':[str(before_file),str(after_save),str(screenshot)]}
+                    except Exception:
+                        if case_page:
+                            try:case_page.screenshot(
+                                path=str(out/f'FALHA_{label}.png'),full_page=True)
+                            except Exception:pass
+                        raise
+                    finally:
+                        case_context.close()
+
+                trial('QA79C-PERSIST-00: 10 → PUT/recibo/GET → reabrir em sessão limpa',
+                      lambda:persist_precision(0))
+                trial('QA79C-PERSIST-01: 10,0 → PUT/recibo/GET → reabrir em sessão limpa',
+                      lambda:persist_precision(1))
+
                 integrity=qa_eval('''() => window.__SALTA_QA__?.getSummary()''')
                 safe=not report['blocked_external_attempts'] and not report['page_errors'] and integrity['unknownRequests']==0
                 mark('Nenhuma requisição externa / nenhum erro JS não tratado',
