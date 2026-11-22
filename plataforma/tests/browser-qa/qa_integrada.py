@@ -154,7 +154,7 @@ def main():
           mock:window.__SALTA_QA__?.getSummary()})''')
 
     def count_options(n):
-        page.wait_for_function('n => document.querySelectorAll("#savedAssessments select[aria-label=\"Minhas avaliações\"] option").length===n',arg=n,timeout=25000)
+        page.wait_for_function("""n => document.querySelectorAll('#savedAssessments select[aria-label="Minhas avaliações"] option').length===n""",arg=n,timeout=25000)
         return qa_eval('''() => [...document.querySelectorAll('#savedAssessments select[aria-label="Minhas avaliações"] option')].map(x=>x.textContent)''')
 
     try:
