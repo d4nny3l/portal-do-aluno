@@ -19,6 +19,7 @@ jobs:
       - uses: actions/checkout@v4
         with:
           fetch-depth: 0
+          persist-credentials: false
           ref: ${{ github.event.pull_request.head.sha }}
       - uses: actions/setup-node@v4
         with:
@@ -30,6 +31,16 @@ jobs:
         run: node --test assessments-service/tests/build.test.mjs
       - name: Approved frontend 88 and candidate backend with local Auth and temporary D1
         run: node assessments-service/test-composition.mjs
+      - name: Pinned #101 frontend plus candidate #90 backend — synthetic Auth/D1 only
+        env:
+          P1_85_FRONTEND_HEAD: '4f088f5a6bdd256bef20ef2ad9ac1f4e60d8b0df'
+        shell: bash
+        run: |
+          set -euo pipefail
+          git fetch --no-tags origin refs/heads/integration/ux-release-01-20261122
+          test "$(git rev-parse FETCH_HEAD)" = "$P1_85_FRONTEND_HEAD"
+          git cat-file -e "$P1_85_FRONTEND_HEAD^{commit}"
+          node assessments-service/test-composition.mjs "$RUNNER_TEMP/salta-101-backend90"
       - name: Build candidate only
         run: node assessments-service/build.mjs
       - uses: actions/upload-artifact@v4
