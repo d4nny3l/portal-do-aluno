@@ -107,6 +107,25 @@ def native_keys(steps):
         T.XTestFakeKeyEvent(d,equals,0,0);X.XFlush(d);time.sleep(.04)
         T.XTestFakeKeyEvent(d,ctrl,0,0);X.XFlush(d);time.sleep(.14)
 
+def native_reset():
+    """Reset browser site zoom by the same real X11 accelerator mechanism."""
+    X=CDLL('libX11.so.6')
+    T=CDLL('libXtst.so.6')
+    X.XOpenDisplay.restype=c_void_p
+    X.XOpenDisplay.argtypes=[c_void_p]
+    X.XKeysymToKeycode.restype=c_uint
+    X.XKeysymToKeycode.argtypes=[c_void_p,c_ulong]
+    X.XFlush.argtypes=[c_void_p]
+    T.XTestFakeKeyEvent.argtypes=[c_void_p,c_uint,c_int,c_ulong]
+    d=X.XOpenDisplay(None)
+    if not d: raise RuntimeError('X11 unavailable for native 100% reset')
+    ctrl=X.XKeysymToKeycode(d,0xffe3)
+    zero=X.XKeysymToKeycode(d,0x30)
+    T.XTestFakeKeyEvent(d,ctrl,1,0);X.XFlush(d);time.sleep(.05)
+    T.XTestFakeKeyEvent(d,zero,1,0);X.XFlush(d);time.sleep(.05)
+    T.XTestFakeKeyEvent(d,zero,0,0);X.XFlush(d);time.sleep(.05)
+    T.XTestFakeKeyEvent(d,ctrl,0,0);X.XFlush(d);time.sleep(.15)
+
 def metrics(page):
     return page.evaluate("""() => {
       const d=document.documentElement,h=document.querySelector('#savedAssessments');
@@ -209,8 +228,8 @@ def main():
                         raise AssertionError('Horizontal overflow at native 200%: '+str(after))
                     if not after['appReady'] or not after['libraryShown'] or len(after['controlsVisible'])<3:
                         raise AssertionError('Real app not rendered at zoom 200%')
-                    p.keyboard.press('Control+0')
-                    p.wait_for_timeout(250)
+                    native_reset()
+                    p.wait_for_timeout(350)
                     reset=metrics(p)
                     if abs(reset['devicePixelRatio']-baseline['devicePixelRatio'])>0.06:
                         raise AssertionError('Negative control: native reset to 100% failed')
