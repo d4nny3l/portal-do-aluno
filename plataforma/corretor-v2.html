@@ -302,6 +302,7 @@ privateLibrary=mountAssessmentLibrary({
  clearSelection:clearPrivateCorrection
 });
 $('criar').addEventListener('input',event=>{
+ if(event.target===$('scoreFormatSelect'))return;
  if(!event.target.closest('#savedAssessments'))privateLibrary?.onEditorChanged();
 });
 $('criar').addEventListener('change',event=>{
