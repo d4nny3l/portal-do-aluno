@@ -2,7 +2,7 @@ name: SALTA UX-79C real-browser QA (synthetic, isolated)
 on:
   pull_request:
     branches:
-      - fix/ux-79c-format-select-event-20261121
+      - main
     paths:
       - '.github/workflows/test-ux79c-browser-qa.yml'
       - 'plataforma/tests/browser-qa/**'
@@ -10,7 +10,7 @@ permissions:
   contents: read
 jobs:
   chromium-real-app:
-    if: github.event.pull_request.head.ref == 'test/ux79c-persist-0-1-20261121'
+    if: github.event.pull_request.head.ref == 'integration/ux-79c-final-20261121'
     runs-on: ubuntu-24.04
     timeout-minutes: 18
     env:
@@ -40,7 +40,7 @@ jobs:
           python3 - <<'PY'
           import pathlib
           actual=set(pathlib.Path(__import__('os').environ['RUNNER_TEMP'],'qa-changed-files.txt').read_text().splitlines())
-          allowed={'.github/workflows/test-ux79c-browser-qa.yml','plataforma/tests/browser-qa/qa_integrada.py','plataforma/tests/browser-qa/qa_synthetic_gateway.js','plataforma/corretor-v2.html'}
+          allowed={'.github/workflows/test-ux79c-browser-qa.yml','.github/workflows/test-avaliacoes-biblioteca.yml','plataforma/tests/browser-qa/qa_integrada.py','plataforma/tests/browser-qa/qa_synthetic_gateway.js','plataforma/corretor-v2.html'}
           assert actual == allowed, f'Unauthorized or incomplete QA diff: {sorted(actual ^ allowed)}'
           PY
           PR94=c6372e8d7d4c062bb4c2c1529423fcb02b48900f
@@ -50,12 +50,31 @@ jobs:
           from pathlib import Path
           import os
           names=set(Path(os.environ['RUNNER_TEMP'],'persist-changed-files.txt').read_text().splitlines())
-          expected={'.github/workflows/test-ux79c-browser-qa.yml','plataforma/tests/browser-qa/qa_integrada.py'}
+          expected={'.github/workflows/test-ux79c-browser-qa.yml','.github/workflows/test-avaliacoes-biblioteca.yml','plataforma/tests/browser-qa/qa_integrada.py'}
           assert names==expected, f'Persist QA altered unauthorized files: {sorted(names^expected)}'
           PY
           test "$(git rev-parse "$PR94:plataforma/tests/browser-qa/qa_synthetic_gateway.js")" = "03067245ca9cb60897a3b172e62fc759f3bdbc2f"
           test "$(git rev-parse HEAD:plataforma/tests/browser-qa/qa_synthetic_gateway.js)" = "03067245ca9cb60897a3b172e62fc759f3bdbc2f"
           git diff --exit-code "$PR94" HEAD -- plataforma/corretor-v2.html plataforma/avaliacoes-biblioteca.mjs plataforma/corretor-v2.css plataforma/avaliacoes-biblioteca.css corretor/v2
+          # Final composition may alter ONLY the three validation paths vs audited PR #95.
+          PR95=1c42a0ad41bd0d2a22ebaf8d379ce5698543bc9d
+          git cat-file -e "$PR95^{commit}"
+          git diff --name-only "$PR95" HEAD > "$RUNNER_TEMP/ux79c-final-diff.txt"
+          python3 - <<'PY'
+          from pathlib import Path
+          import os
+          actual=set(Path(os.environ['RUNNER_TEMP'],'ux79c-final-diff.txt').read_text().splitlines())
+          expected={'.github/workflows/test-avaliacoes-biblioteca.yml',
+                    '.github/workflows/test-ux79c-browser-qa.yml',
+                    'plataforma/tests/browser-qa/qa_integrada.py'}
+          assert actual==expected, f'Unauthorized final composition diff: {sorted(actual ^ expected)}'
+          PY
+          test "$(git rev-parse "$PR95:plataforma/corretor-v2.css")" = "176dbecdf3abaf4680b7dfef2e97cca92acf738d"
+          test "$(git rev-parse HEAD:plataforma/corretor-v2.css)" = "176dbecdf3abaf4680b7dfef2e97cca92acf738d"
+          test "$(git rev-parse "$PR95:plataforma/avaliacoes-biblioteca.css")" = "d56766dd552bc92d7173ac29ebb3ffb7b5a26da9"
+          test "$(git rev-parse HEAD:plataforma/avaliacoes-biblioteca.css)" = "d56766dd552bc92d7173ac29ebb3ffb7b5a26da9"
+          git diff --exit-code "$PR95" HEAD -- plataforma/corretor-v2.html plataforma/avaliacoes-biblioteca.mjs plataforma/corretor-v2.css plataforma/avaliacoes-biblioteca.css corretor/v2
+          git diff --check "$PR95" HEAD
           git diff --check "$PR94" HEAD
           git diff --check "$BASE" HEAD
           git status --porcelain
