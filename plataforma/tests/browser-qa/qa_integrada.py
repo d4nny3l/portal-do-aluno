@@ -232,6 +232,17 @@ def main():
                     options=qa_eval('''() => [...document.querySelector('#scoreFormatSelect').options].map(o=>({text:o.textContent,value:o.value}))''')
                     if [x['text'].strip() for x in options]!=['10','10,0','10,00']:
                         raise AssertionError('Opções da nota divergentes: '+str(options))
+                    # Passive event-timeline probe: records the browser's input/change
+                    # phases without changing values, stopping propagation or touching app code.
+                    page.evaluate("""() => {
+                      const sel=document.getElementById('scoreFormatSelect'),events=[];
+                      window.__SALTA_QA_EVENT_TRACE__=events;
+                      sel.addEventListener('input',()=>events.push({event:'input-target',value:sel.value}),true);
+                      document.addEventListener('input',e=>{
+                        if(e.target===sel)events.push({event:'input-document-after-bubble',value:sel.value});
+                      },false);
+                      sel.addEventListener('change',()=>events.push({event:'change-target',value:sel.value}),true);
+                    }""")
                     values=[]; format_states=[]
                     for decimals in ('0','1','2'):
                         page.locator('#scoreFormatSelect').select_option(decimals)
@@ -240,7 +251,8 @@ def main():
                           formatVisible: !document.getElementById('scoreFormatField').hidden,
                           inputValue: document.querySelector('#savedAssessments .library-scoring input')?.value,
                           summary: document.querySelector('#savedAssessments .library-toolbar p[aria-live="polite"]')?.textContent,
-                          status: document.querySelector('#savedAssessments p[role="status"]')?.textContent
+                          status: document.querySelector('#savedAssessments p[role="status"]')?.textContent,
+                          eventTrace: window.__SALTA_QA_EVENT_TRACE__?.slice(-5)
                         })''')
                         values.append(state['inputValue']);format_states.append(state)
                     format_mismatch=values!=['10','10,0','10,00']
