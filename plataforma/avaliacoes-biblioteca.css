@@ -6,16 +6,17 @@
 #savedAssessments .library-selectors label{display:flex;flex-direction:column;gap:5px;font-weight:650;min-width:0}
 #savedAssessments select,#savedAssessments textarea,#savedAssessments input{width:100%;box-sizing:border-box}
 #savedAssessments .library-actions{display:flex;gap:7px;flex-wrap:wrap}
-#savedAssessments .library-actions button{flex:1 1 auto;min-width:115px}
+#savedAssessments .library-actions button{flex:1 1 auto;min-width:min(100%,115px);overflow-wrap:anywhere}
 #savedAssessments .library-aux{display:flex;gap:7px;flex-wrap:wrap}
 #savedAssessments .library-aux button{font-size:.9rem}
-#savedAssessments .library-scoring{display:grid;grid-template-columns:repeat(auto-fit,minmax(190px,1fr));gap:8px;margin:12px 0}
+#savedAssessments .library-scoring{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,190px),1fr));gap:8px;margin:12px 0}
 #savedAssessments .library-scoring label{display:block;font-weight:600}
 #savedAssessments .library-scoring input{margin:3px 0}
 #savedAssessments .library-answers{margin-top:10px}
 #savedAssessments .library-answers>summary{cursor:pointer;font-weight:700}
+#savedAssessments .library-answers>summary:focus-visible{outline:3px solid #5b5bd6;outline-offset:3px;border-radius:5px}
 #savedAssessments .library-answers textarea{display:block;margin:5px 0 8px;min-height:80px}
-#savedAssessments .library-choices{display:grid;grid-template-columns:repeat(auto-fit,minmax(110px,1fr));gap:8px;max-height:340px;overflow-y:auto;margin:14px 0}
+#savedAssessments .library-choices{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,110px),1fr));gap:8px;max-height:340px;overflow-y:auto;margin:14px 0}
 #savedAssessments .library-choices label{display:flex;flex-direction:column;gap:5px;font-size:.86rem}
 #savedAssessments [data-state="error"],#savedAssessments [data-state="forbidden"],#savedAssessments [data-state="session"],#savedAssessments [data-state="unavailable"]{color:#9b3030}
 #savedAssessments [hidden]{display:none!important}
@@ -24,7 +25,8 @@
 /* Uniform monochrome action icons; the actual button text remains accessible. */
 #savedAssessments button[data-action-icon]::before{display:inline-block;margin-right:.45em;min-width:1.15em;text-align:center;font-weight:750;line-height:1;opacity:.85}
 #savedAssessments button[data-action-icon="new"]::before{content:"＋"}
-#savedAssessments button[data-action-icon="save"]::before{content:"▣"}
+/* Official Lucide save SVG; mask inherits currentColor and never replaces the accessible text. */
+#savedAssessments button[data-action-icon="save"]::before{content:"";width:1.15em;height:1.15em;vertical-align:-.19em;background:currentColor;-webkit-mask:url("data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%2224%22%20height%3D%2224%22%20viewBox%3D%220%200%2024%2024%22%20fill%3D%22none%22%20stroke%3D%22currentColor%22%20stroke-width%3D%222%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%20%3E%3Cpath%20d%3D%22M15.2%203a2%202%200%200%201%201.4.6l3.8%203.8a2%202%200%200%201%20.6%201.4V19a2%202%200%200%201-2%202H5a2%202%200%200%201-2-2V5a2%202%200%200%201%202-2z%22%20%2F%3E%3Cpath%20d%3D%22M17%2021v-7a1%201%200%200%200-1-1H8a1%201%200%200%200-1%201v7%22%20%2F%3E%3Cpath%20d%3D%22M7%203v4a1%201%200%200%200%201%201h7%22%20%2F%3E%3C%2Fsvg%3E") center/contain no-repeat;mask:url("data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%2224%22%20height%3D%2224%22%20viewBox%3D%220%200%2024%2024%22%20fill%3D%22none%22%20stroke%3D%22currentColor%22%20stroke-width%3D%222%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%20%3E%3Cpath%20d%3D%22M15.2%203a2%202%200%200%201%201.4.6l3.8%203.8a2%202%200%200%201%20.6%201.4V19a2%202%200%200%201-2%202H5a2%202%200%200%201-2-2V5a2%202%200%200%201%202-2z%22%20%2F%3E%3Cpath%20d%3D%22M17%2021v-7a1%201%200%200%200-1-1H8a1%201%200%200%200-1%201v7%22%20%2F%3E%3Cpath%20d%3D%22M7%203v4a1%201%200%200%200%201%201h7%22%20%2F%3E%3C%2Fsvg%3E") center/contain no-repeat}
 #savedAssessments button[data-action-icon="open"]::before{content:"↗"}
 #savedAssessments button[data-action-icon="duplicate"]::before{content:"⧉"}
 #savedAssessments button[data-action-icon="correct"]::before{content:"✓"}

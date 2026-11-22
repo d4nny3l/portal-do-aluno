@@ -2,6 +2,7 @@
 // No transport, storage, optical recognition or student data in this module.
 import {importCardManifest} from '../omr/manifest.mjs';
 import {PLAN_SCHEMA,assertPlanBinding} from './block-scoring.mjs';
+import {validateScoreDisplay} from './score-format.mjs';
 
 export const PRIVATE_DEFINITION_SCHEMA='salta-assessment-definition-v2';
 const fail=message=>{throw new TypeError(message)};
@@ -15,6 +16,8 @@ const canonicalManifest=manifest=>{
 };
 export function definitionFromLocalPlan(plan,sourceManifest){
  if(plan?.schema!==PLAN_SCHEMA)fail('Planejamento transitório incompatível.');
+ const display={score:plan.display,...(Object.hasOwn(plan,'scoreDecimals')?{scoreDecimals:plan.scoreDecimals}:{})};
+ validateScoreDisplay(display);
  const {template,manifest}=canonicalManifest(sourceManifest);
  assertPlanBinding(plan,manifest,template);
  const byId=new Map(template.questions.map(q=>[q.questionId,q])),seen=new Set(),answerIds=new Set();
@@ -39,14 +42,14 @@ export function definitionFromLocalPlan(plan,sourceManifest){
  // Backend expects complete answer map, ordered by the exact manifest.
  const answers=template.questions.map(q=>({questionId:q.questionId,correct:byQuestion.get(q.questionId)}));
  return {schemaVersion:PRIVATE_DEFINITION_SCHEMA,title:plan.metadata.title,subject:plan.metadata.subject,
-  kind:plan.metadata.kind,date:plan.metadata.date||'',manifest,blocks,answers,display:{score:plan.display}};
+  kind:plan.metadata.kind,date:plan.metadata.date||'',manifest,blocks,answers,display};
 }
 export function planFromPrivateRecord(record){
  if(!record||!Number.isSafeInteger(record.revision)||record.revision<1||!record.definition||
     record.definition.schemaVersion!==PRIVATE_DEFINITION_SCHEMA)fail('Revisão privada inválida.');
  const definition=record.definition,{template,manifest}=canonicalManifest(definition.manifest);
  if(record.manifestHash!==manifest.contentHash||record.scoreScale!==10000)fail('Hash ou escala da revisão não conferem.');
- if(!['final','blocks','both'].includes(definition.display?.score))fail('Modo de nota inválido.');
+ validateScoreDisplay(definition.display);
  const byId=new Map(template.questions.map(q=>[q.questionId,q])),key=new Map(),seen=new Set();
  if(!Array.isArray(definition.answers)||definition.answers.length!==byId.size)fail('Gabarito privado incompleto.');
  for(const item of definition.answers){
@@ -74,7 +77,7 @@ export function planFromPrivateRecord(record){
   metadata:freeze({title:definition.title,subject:definition.subject,kind:definition.kind,
     className:'',date:definition.date}),model:freeze({templateId:manifest.templateId,
     revision:manifest.revision,contentHash:manifest.contentHash}),totalUnits:total.toString(),
-  display:definition.display.score,blocks:freeze(blocks)});
+  display:definition.display.score,...(Object.hasOwn(definition.display,'scoreDecimals')?{scoreDecimals:definition.display.scoreDecimals}:{}),blocks:freeze(blocks)});
  assertPlanBinding(plan,manifest,template);
  return freeze({plan,manifest,template});
 }

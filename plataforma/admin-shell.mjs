@@ -44,18 +44,32 @@ export function mountAdminShell(documentRef = document) {
   mount.innerHTML = renderAdminShell();
   const toggle = mount.querySelector("#teacherShellToggle");
   const overlay = mount.querySelector("#teacherShellOverlay");
+  const sidebar = mount.querySelector("#teacherShellSidebar");
+  const mobile = documentRef.defaultView?.matchMedia?.("(max-width: 760px)");
+  const syncSidebar = () => {
+    const hidden = !!mobile?.matches && !documentRef.body.classList.contains("teacher-nav-open");
+    if (hidden && sidebar?.contains(documentRef.activeElement)) toggle?.focus();
+    if (sidebar) {
+      sidebar.inert = hidden;
+      sidebar.setAttribute("aria-hidden", String(hidden));
+    }
+  };
   const close = ({ returnFocus = false } = {}) => {
     documentRef.body.classList.remove("teacher-nav-open");
     toggle?.setAttribute("aria-expanded", "false");
     if (returnFocus) toggle?.focus();
+    syncSidebar();
   };
   toggle?.addEventListener("click", () => {
     const open = documentRef.body.classList.toggle("teacher-nav-open");
     toggle.setAttribute("aria-expanded", String(open));
+    syncSidebar();
   });
   overlay?.addEventListener("click", () => close({ returnFocus: true }));
   mount.querySelectorAll(".teacher-shell-sidebar a").forEach(link => link.addEventListener("click", () => close()));
   documentRef.addEventListener("keydown", event => { if (event.key === "Escape" && documentRef.body.classList.contains("teacher-nav-open")) close({ returnFocus: true }); });
+  mobile?.addEventListener?.("change", () => close());
+  syncSidebar();
   return true;
 }
 

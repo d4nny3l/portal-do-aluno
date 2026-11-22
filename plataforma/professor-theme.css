@@ -6,7 +6,7 @@
   --teacher-primary: #5b5bd6;
   --teacher-primary-dark: #4d4dc2;
   --teacher-ink: #252744;
-  --teacher-muted: #747995;
+  --teacher-muted: #626783;
   --teacher-line: #e9eafa;
   --teacher-surface: rgba(255,255,255,.94);
   --teacher-shadow: 0 14px 36px rgba(72,75,145,.08);
@@ -147,7 +147,7 @@ body.admin-mode .teacher-shell-topbar {
 .teacher-shell-context {
   padding-right: 14px;
   border-right: 1px solid var(--teacher-line);
-  color: #8b8fac;
+  color: var(--teacher-muted);
   font-size: 12px;
   font-weight: 850;
   letter-spacing: .8px;
@@ -186,7 +186,7 @@ body.admin-mode .teacher-shell-sidebar {
 }
 .teacher-shell-caption {
   padding: 8px 12px 10px;
-  color: #989bb8;
+  color: var(--teacher-muted);
   font-size: 12px;
   font-weight: 850;
   letter-spacing: 1.05px;
@@ -220,7 +220,7 @@ body.admin-mode .teacher-shell-sidebar {
 .teacher-shell-link:focus-visible,
 .teacher-shell-toggle:focus-visible,
 .teacher-shell-home:focus-visible {
-  outline: 3px solid rgba(91,91,214,.3);
+  outline: 3px solid #5b5bd6;
   outline-offset: 2px;
 }
 .teacher-shell-link svg {
@@ -338,6 +338,17 @@ body.admin-mode :is(table td,table th) { border-color: #ececf6; }
   .teacher-shell-brand-copy small { font-size: 7px; }
   .teacher-shell-home svg { display: none; }
 }
+/* Extra-narrow viewport: keep menu, SALTA brand and platform return link fully operable. */
+@media (max-width: 300px) {
+  .teacher-shell-brandzone { min-width: 0; gap: 5px; padding: 0 7px; }
+  .teacher-shell-brand { min-width: 0; gap: 0; }
+  .teacher-shell-brand-copy { display: none; } /* The link retains its aria-label. */
+  .teacher-shell-brand-mark { width: 28px; height: 28px; flex-basis: 28px; }
+  .teacher-shell-toggle { width: 32px; height: 32px; flex-basis: 32px; }
+  .teacher-shell-actions { flex: 0 0 auto; min-width: 0; padding: 0 7px; }
+  .teacher-shell-home { white-space: nowrap; padding: 8px 6px; }
+}
+
 @media (prefers-reduced-motion: reduce) {
   .teacher-shell-sidebar,.teacher-shell-link,.teacher-shell-home { transition: none !important; }
 }

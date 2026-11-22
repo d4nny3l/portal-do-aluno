@@ -1,7 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
-import { activeAdminModule, ADMIN_MODULES, renderAdminShell } from "../admin-shell.mjs";
+import { activeAdminModule, ADMIN_MODULES, renderAdminShell, mountAdminShell } from "../admin-shell.mjs";
 
 test("menu central lista rotas administrativas com labels e grupos únicos", () => {
   assert.equal(ADMIN_MODULES.length, 8);
@@ -75,4 +75,81 @@ test("integração preserva a saída da Central de avisos e o retorno público d
   assert.equal((notices.match(/id="logoutButton"/g) || []).length, 1);
   const show = await readFile(new URL("../../mostra-cultural.html", import.meta.url), "utf8");
   assert.match(show, /<header class="topbar">[\s\S]*?href="\.\/plataforma\/"[\s\S]*?Plataforma principal[\s\S]*?<\/header>/);
+});
+
+test("sidebar móvel fechada é inerte e reabre corretamente ao alternar o menu e a largura", () => {
+  const classes = new Set();
+  const events = {};
+  const toggleAttributes = {};
+  const sidebarAttributes = {};
+  let doc;
+  const media = { matches: true, addEventListener(type, callback) { assert.equal(type, "change"); this.changed = callback; } };
+  const toggle = {
+    addEventListener(type, callback) { events["toggle:" + type] = callback; },
+    setAttribute(name, value) { toggleAttributes[name] = value; },
+    focus() { doc.activeElement = toggle; }
+  };
+  const overlay = { addEventListener(type, callback) { events["overlay:" + type] = callback; } };
+  const link = { addEventListener(type, callback) { events["link:" + type] = callback; } };
+  const sidebar = {
+    inert: false,
+    contains(node) { return node === link; },
+    setAttribute(name, value) { sidebarAttributes[name] = value; }
+  };
+  const mount = {
+    innerHTML: "",
+    querySelector(selector) {
+      return ({
+        "#teacherShellToggle": toggle,
+        "#teacherShellOverlay": overlay,
+        "#teacherShellSidebar": sidebar
+      })[selector] ?? null;
+    },
+    querySelectorAll(selector) { return selector === ".teacher-shell-sidebar a" ? [link] : []; }
+  };
+  doc = {
+    defaultView: { matchMedia(query) { assert.equal(query, "(max-width: 760px)"); return media; } },
+    activeElement: null,
+    body: {
+      classList: {
+        contains(value) { return classes.has(value); },
+        remove(value) { classes.delete(value); },
+        toggle(value) {
+          if (classes.has(value)) { classes.delete(value); return false; }
+          classes.add(value);
+          return true;
+        }
+      }
+    },
+    querySelector(selector) { return selector === "[data-salta-admin-shell]" ? mount : null; },
+    addEventListener(type, callback) { events["document:" + type] = callback; }
+  };
+
+  assert.equal(mountAdminShell(doc), true);
+  assert.equal(sidebar.inert, true, "a navegação fechada não pode receber Tab no mobile");
+  assert.equal(sidebarAttributes["aria-hidden"], "true");
+
+  events["toggle:click"]();
+  assert.equal(sidebar.inert, false);
+  assert.equal(sidebarAttributes["aria-hidden"], "false");
+  assert.equal(toggleAttributes["aria-expanded"], "true");
+
+  doc.activeElement = link;
+  events["document:keydown"]({ key: "Escape" });
+  assert.equal(sidebar.inert, true);
+  assert.equal(toggleAttributes["aria-expanded"], "false");
+  assert.equal(doc.activeElement, toggle, "ao fechar, o foco retorna ao controle visível");
+
+  events["toggle:click"]();
+  events["overlay:click"]();
+  assert.equal(sidebar.inert, true);
+  assert.equal(doc.activeElement, toggle);
+
+  media.matches = false;
+  media.changed();
+  assert.equal(sidebar.inert, false, "no desktop a navegação é acessível");
+
+  media.matches = true;
+  media.changed();
+  assert.equal(sidebar.inert, true, "voltar ao mobile fecha a navegação");
 });

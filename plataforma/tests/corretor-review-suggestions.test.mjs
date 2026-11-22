@@ -1,6 +1,11 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
+import {scoreInputUnits,POINT_SCALE} from '../../corretor/v2/assessments/block-scoring.mjs';
+import {formatScore} from '../../corretor/v2/assessments/score-format.mjs';
+// Native Function-based regression harness executes the page's production handler
+// outside its ESM module; expose only the exact pure scoring helpers in this test worker.
+Object.assign(globalThis,{scoreInputUnits,POINT_SCALE,formatScore});
 
 // Execute the production renderAnswers, calculateScore and select.onchange.
 const html=readFileSync(new URL('../corretor-v2.html',import.meta.url),'utf8');
