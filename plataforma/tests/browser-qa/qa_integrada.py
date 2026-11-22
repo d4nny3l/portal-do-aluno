@@ -426,7 +426,12 @@ def main():
                         viewport={'width':1440,'height':900},locale='pt-BR',
                         service_workers='block',permissions=[])
                     case_page=None
-                    case_context.add_init_script(path=str(mock_file))
+                    # The application captures fetch at module initialization.
+                    # Install the passive observer immediately after the unchanged
+                    # synthetic mock, BEFORE any real HTML or JS is evaluated.
+                    capture_js="(() => {\n  const original=window.fetch,trace=[];\n  window.__SALTA_PERSIST_TRACE__=trace;\n  window.fetch=async(input,opts={})=>{\n    const raw=typeof input==='string'?input:input?.url;\n    const url=new URL(raw,location.href);\n    const method=String(opts?.method||input?.method||'GET').toUpperCase();\n    const relevant=url.pathname.startsWith('/assessments/v1/assessments/') &&\n      (method==='GET'||method==='PUT');\n    const payload=relevant && method==='PUT' ? JSON.parse(opts.body):null;\n    const response=await original(input,opts);\n    if(relevant){\n      const data=await response.clone().json().catch(()=>null);\n      trace.push({time:new Date().toISOString(),method,path:url.pathname,\n        url:url.href,httpStatus:response.status,payload,data});\n    }\n    return response;\n  };\n})();"
+                    case_context.add_init_script(
+                        script=mock_file.read_text(encoding='utf-8')+'\n;'+capture_js)
                     case_context.route('**/*',route_only_local)
                     case_context.route_web_socket('**/*',lambda ws:ws.close())
                     try:
@@ -465,30 +470,6 @@ def main():
                             fresh['scoreFormatVersion']!='salta-score-format-v1'):
                             raise AssertionError('Sessão sintética não começou limpa: '+str(fresh))
 
-                        # Only a passive network probe: no application state or
-                        # synthetic fixture is injected.  Responses are cloned.
-                        case_page.evaluate("""() => {
-                          const original=window.fetch,trace=[];
-                          window.__SALTA_PERSIST_TRACE__=trace;
-                          window.fetch=async(input,opts={})=>{
-                            const raw=typeof input==='string'?input:input?.url;
-                            const url=new URL(raw,location.href);
-                            const method=String(opts?.method||input?.method||'GET').toUpperCase();
-                            const relevant=url.pathname.startsWith(
-                              '/assessments/v1/assessments/') &&
-                              (method==='GET'||method==='PUT');
-                            const payload=relevant && method==='PUT' ?
-                              JSON.parse(opts.body):null;
-                            const response=await original(input,opts);
-                            if(relevant){
-                              const data=await response.clone().json().catch(()=>null);
-                              trace.push({time:new Date().toISOString(),
-                                method,path:url.pathname,url:url.href,httpStatus:response.status,
-                                payload,data});
-                            }
-                            return response;
-                          };
-                        }""")
                         case_page.locator('#assessmentTitle').fill(title)
                         case_page.locator('#assessmentSubject').fill('Matemática')
                         case_page.locator('#assessmentClass').fill('Turma QA A')
@@ -504,6 +485,11 @@ def main():
                         if selected!=str(decimals) or shown!=expected_text:
                             raise AssertionError(f'{label}: seletor/valor antes da gravação: '
                                                  f'{selected} / {shown}')
+                        # Prime the draft with the exact valid representation.
+                        # An invalid edit must restore this value unchanged.
+                        amount.fill(expected_text)
+                        if amount.input_value()!=expected_text:
+                            raise AssertionError(f'{label}: valor válido não estabilizou no editor.')
                         amount.fill(invalid_text)
                         rejected=amount.input_value()
                         if rejected!=expected_text:
