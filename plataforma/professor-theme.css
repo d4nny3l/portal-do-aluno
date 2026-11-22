@@ -6,7 +6,7 @@
   --teacher-primary: #5b5bd6;
   --teacher-primary-dark: #4d4dc2;
   --teacher-ink: #252744;
-  --teacher-muted: #747995;
+  --teacher-muted: #626783;
   --teacher-line: #e9eafa;
   --teacher-surface: rgba(255,255,255,.94);
   --teacher-shadow: 0 14px 36px rgba(72,75,145,.08);
@@ -147,7 +147,7 @@ body.admin-mode .teacher-shell-topbar {
 .teacher-shell-context {
   padding-right: 14px;
   border-right: 1px solid var(--teacher-line);
-  color: #8b8fac;
+  color: var(--teacher-muted);
   font-size: 12px;
   font-weight: 850;
   letter-spacing: .8px;
@@ -186,7 +186,7 @@ body.admin-mode .teacher-shell-sidebar {
 }
 .teacher-shell-caption {
   padding: 8px 12px 10px;
-  color: #989bb8;
+  color: var(--teacher-muted);
   font-size: 12px;
   font-weight: 850;
   letter-spacing: 1.05px;
@@ -220,7 +220,7 @@ body.admin-mode .teacher-shell-sidebar {
 .teacher-shell-link:focus-visible,
 .teacher-shell-toggle:focus-visible,
 .teacher-shell-home:focus-visible {
-  outline: 3px solid rgba(91,91,214,.3);
+  outline: 3px solid #5b5bd6;
   outline-offset: 2px;
 }
 .teacher-shell-link svg {
