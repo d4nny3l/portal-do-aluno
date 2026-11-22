@@ -2,7 +2,7 @@ name: SALTA UX-79C real-browser QA (synthetic, isolated)
 on:
   pull_request:
     branches:
-      - fix/ux-79c-vis-02-ci-composed-20261121
+      - fix/ux-79c-format-select-event-20261121
     paths:
       - '.github/workflows/test-ux79c-browser-qa.yml'
       - 'plataforma/tests/browser-qa/**'
@@ -10,7 +10,7 @@ permissions:
   contents: read
 jobs:
   chromium-real-app:
-    if: github.event.pull_request.head.ref == 'fix/ux-79c-format-select-event-20261121'
+    if: github.event.pull_request.head.ref == 'test/ux79c-persist-0-1-20261121'
     runs-on: ubuntu-24.04
     timeout-minutes: 18
     env:
@@ -43,6 +43,20 @@ jobs:
           allowed={'.github/workflows/test-ux79c-browser-qa.yml','plataforma/tests/browser-qa/qa_integrada.py','plataforma/tests/browser-qa/qa_synthetic_gateway.js','plataforma/corretor-v2.html'}
           assert actual == allowed, f'Unauthorized or incomplete QA diff: {sorted(actual ^ allowed)}'
           PY
+          PR94=c6372e8d7d4c062bb4c2c1529423fcb02b48900f
+          git cat-file -e "$PR94^{commit}"
+          git diff --name-only "$PR94" HEAD > "$RUNNER_TEMP/persist-changed-files.txt"
+          python3 - <<'PY'
+          from pathlib import Path
+          import os
+          names=set(Path(os.environ['RUNNER_TEMP'],'persist-changed-files.txt').read_text().splitlines())
+          expected={'.github/workflows/test-ux79c-browser-qa.yml','plataforma/tests/browser-qa/qa_integrada.py'}
+          assert names==expected, f'Persist QA altered unauthorized files: {sorted(names^expected)}'
+          PY
+          test "$(git rev-parse "$PR94:plataforma/tests/browser-qa/qa_synthetic_gateway.js")" = "03067245ca9cb60897a3b172e62fc759f3bdbc2f"
+          test "$(git rev-parse HEAD:plataforma/tests/browser-qa/qa_synthetic_gateway.js)" = "03067245ca9cb60897a3b172e62fc759f3bdbc2f"
+          git diff --exit-code "$PR94" HEAD -- plataforma/corretor-v2.html plataforma/avaliacoes-biblioteca.mjs plataforma/corretor-v2.css plataforma/avaliacoes-biblioteca.css corretor/v2
+          git diff --check "$PR94" HEAD
           git diff --check "$BASE" HEAD
           git status --porcelain
       - uses: actions/setup-python@v5
