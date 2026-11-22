@@ -232,12 +232,18 @@ def main():
                     options=qa_eval('''() => [...document.querySelector('#scoreFormatSelect').options].map(o=>({text:o.textContent,value:o.value}))''')
                     if [x['text'].strip() for x in options]!=['10','10,0','10,00']:
                         raise AssertionError('Opções da nota divergentes: '+str(options))
-                    values=[]
+                    values=[]; format_states=[]
                     for decimals in ('0','1','2'):
                         page.locator('#scoreFormatSelect').select_option(decimals)
-                        values.append(page.locator('#savedAssessments .library-scoring input').first.input_value())
-                    if values!=['10','10,0','10,00']:
-                        raise AssertionError('Zeros finais ou formato divergentes: '+str(values))
+                        state=qa_eval('''() => ({
+                          selectValue: document.getElementById('scoreFormatSelect').value,
+                          formatVisible: !document.getElementById('scoreFormatField').hidden,
+                          inputValue: document.querySelector('#savedAssessments .library-scoring input')?.value,
+                          summary: document.querySelector('#savedAssessments .library-toolbar p[aria-live="polite"]')?.textContent,
+                          status: document.querySelector('#savedAssessments p[role="status"]')?.textContent
+                        })''')
+                        values.append(state['inputValue']);format_states.append(state)
+                    format_mismatch=values!=['10','10,0','10,00']
                     box=page.locator('#savedAssessments .library-scoring input').first
                     box.fill('0.3333')
                     rejected=box.input_value()!='0.3333'
@@ -246,7 +252,10 @@ def main():
                     page.locator('#savedAssessments textarea').fill('1 A\n2 B\n3 C')
                     page.get_by_role('button',name='Aplicar gabarito').click()
                     evidence('salta_real_formato_pontuacao')
-                    return {'options':options,'display_values':values,'precision_rejected':rejected}
+                    if format_mismatch:
+                        raise AssertionError('Formato não reflete o seletor: '+str(format_states))
+                    return {'options':options,'display_values':values,'precision_rejected':rejected,
+                            'formatStates':format_states}
                 composed=trial('Três formatos de nota + formulário real + rejeição de 4 casas',format_and_create)
 
                 def save():
@@ -260,7 +269,9 @@ def main():
                         raise AssertionError('Recibo-modelo sintético incoerente: '+str(record))
                     evidence('salta_real_salvo_sintetico')
                     return record
-                saved=composed and trial('Salvar: recibo + GET sintéticos e valor interno exato',save)
+                # The actual form may still save valid data when a format-display test fails.
+                # Do not hide independent flows behind a previous QA assertion.
+                saved=trial('Salvar: recibo + GET sintéticos e valor interno exato',save)
 
                 def reopen_duplicate_correct():
                     first_id=qa_eval('''() => [...window.__SALTA_QA__.records.values()][0].id''')
