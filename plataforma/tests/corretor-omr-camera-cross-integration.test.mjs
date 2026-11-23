@@ -205,7 +205,7 @@ test('UX-LEITURA-01: failed next capture keeps prior grade only in session histo
  h.$('read').disabled=false;
  assert.ok(s.readNormalized());
  assert.match(h.$('scanScore').innerHTML,/Nota final 10,00/);
- assert.equal(h.$('cameraGrade').textContent,'Nota 10,00');
+ assert.equal(h.$('cameraGradeValue').textContent,'10,00');
  assert.equal(h.$('cameraGrade').hidden,false);
  assert.equal(h.$('captureHistory').children.length,1);
  s.markLastReadingPending();
@@ -234,7 +234,7 @@ test('UX-LEITURA-01: pending review has no grade until manually confirmed',()=>{
  const select=h.$('answers').children[0].children[1];
  select.value='A';select.onchange();
  assert.equal(h.$('scanScore').dataset.review,'false');
- assert.equal(h.$('cameraGrade').textContent,'Nota 10,00');
+ assert.equal(h.$('cameraGradeValue').textContent,'10,00');
  assert.match(h.$('scanScore').innerHTML,/Nota final 10,00/);
 });
 
@@ -242,12 +242,12 @@ test('UX-LEITURA-01: pending review has no grade until manually confirmed',()=>{
 test('UX-LEITURA-02: only the existing grade is overlaid after success, zero retains configured precision',()=>{
  const h=integrationHarness(),s=h.state;
  h.$('read').disabled=false;s.readNormalized({automatic:true});
- assert.equal(h.$('cameraGrade').textContent,'Nota 10,00');
+ assert.equal(h.$('cameraGradeValue').textContent,'10,00');
  assert.equal(h.$('cameraGrade').hidden,false);
  assert.equal(h.$('cameraProgress').hidden,true);
  assert.equal(h.$('cameraLiveBadge').hidden,true);
  const select=h.$('answers').children[0].children[1];select.value='B';select.onchange();
- assert.equal(h.$('cameraGrade').textContent,'Nota 0,00');
+ assert.equal(h.$('cameraGradeValue').textContent,'0,00');
  assert.match(html,/#corrigir #cameraReadStatus\{display:none!important\}/);
  assert.doesNotMatch(html,/Cartão reconhecido e leitura atualizada\.|Cartão reconhecido\. Nota final disponível\./);
 });
@@ -270,6 +270,14 @@ test('UX-LEITURA-02 final: imported photo shows only formatted note in old posit
  assert.equal(h.$('cameraGrade').hidden,true);
  s.rawRaster={source:'camera'};
  s.readNormalized();
- assert.equal(h.$('cameraGrade').textContent,'Nota 10,00');
+ assert.equal(h.$('cameraGradeValue').textContent,'10,00');
  assert.equal(h.$('photoGrade').hidden,true);
+});
+
+
+test('UX-VISOR-03: marcador de enquadramento e dados ao vivo ficam sobre a prévia, sem crop artificial',()=>{
+ assert.match(html,/id="cameraOverlayInfo"/);
+ assert.match(html,/id="cameraGradeValue"/);
+ assert.match(html,/--camera-ratio/);
+ assert.match(camera,/constraints\.height=\{ideal:Math\.min\(1440/);
 });
