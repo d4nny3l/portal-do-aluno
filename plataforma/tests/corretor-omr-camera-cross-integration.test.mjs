@@ -184,11 +184,18 @@ test('P1 adversarial and historical coverage remains in combined source',()=>{
 });
 
 
-test('UX-SAFARI-111: camera sem moldura escura e video na proporcao intrinseca sem recorte',()=>{
- assert.match(html,/#corrigir \.camera-stage\{[^}]*aspect-ratio:auto;height:auto;min-height:0;border:0;border-radius:0;background:transparent;box-shadow:none\}/);
- assert.match(html,/#corrigir \.camera-stage video\{display:block;width:100%;height:auto;aspect-ratio:auto;object-fit:contain;background:transparent\}/);
+test('UX-SAFARI-112: visor estavel e recuperacao da superficie WebKit sem reabrir MediaStream',()=>{
+ assert.match(html,/#corrigir \.camera-stage\{width:min\(100%,660px\);aspect-ratio:auto;height:auto;min-height:0;border:0;border-radius:0;background:transparent;box-shadow:none\}/);
+ assert.match(html,/#corrigir \.camera-stage video\{display:block;width:100%;height:auto;aspect-ratio:auto;object-fit:fill;background:transparent\}/);
+ assert.doesNotMatch(html,/#corrigir \.camera-stage\{[^}]*\bvh\b/);
+ assert.doesNotMatch(html,/--camera-ratio/);
  assert.doesNotMatch(html,/#corrigir \.camera-stage video\{[^}]*object-fit:cover/);
- assert.match(html,/stage\.style\?\.setProperty\?\.\('--camera-ratio',String\(vw\/vh\)\)/);
+ assert.match(html,/function replaceCameraVideo\(stream\)\{[\s\S]*?old\.cloneNode\(false\);[\s\S]*?old\.replaceWith\(video\);video\.srcObject=stream;/);
+ assert.match(html,/const video=replaceCameraVideo\(stream\);\$\('cameraStage'\)\.hidden=false;await video\.play\(\)/);
+ assert.match(html,/function cameraViewportSize\(\)\{return \{width:innerWidth,height:window\.visualViewport\?\.height\?\?innerHeight\}\}/);
+ assert.match(html,/function watchSafariCameraViewport\(\)\{[\s\S]*?Math\.abs\(current\.width-previous\.width\)>8[\s\S]*?Math\.abs\(current\.height-previous\.height\)<20/);
+ assert.match(html,/window\.visualViewport\?\.addEventListener\?\.\('resize',watchSafariCameraViewport\)/);
+ assert.match(html,/function stopCamera\(\)\{cameraUiGeneration\+\+;clearTimeout\(safariCameraResyncTimer\)/);
  assert.match(html,/#corrigir #cameraGuides\{display:none!important\}/);
  assert.match(html,/id="video" playsinline autoplay muted/);
 });
@@ -291,6 +298,75 @@ test('UX-LEITURA-02 final: imported photo shows only formatted note in old posit
 test('UX-VISOR-03: visor e marcadores permanecem sobre a prévia, sem telemetria de câmera',()=>{
  assert.doesNotMatch(html,/id="cameraOverlayInfo"|class="camera-overlay-info"/);
  assert.match(html,/id="cameraGradeValue"/);
- assert.match(html,/--camera-ratio/);
+ assert.match(html,/#corrigir \.camera-stage\{width:min\(100%,660px\)/);
  assert.match(camera,/constraints\.height=\{ideal:Math\.min\(1440/);
+});
+
+test('UX-SAFARI-112 runtime: acumula passos de 10 px da visualViewport e remonta uma unica superficie sem perder track',async()=>{
+ const start=html.indexOf('function onCameraVideoResize(){');
+ const end=html.indexOf('function stopCamera(){',start);
+ assert.ok(start>0&&end>start,'production recovery helpers must be present');
+ const source=html.slice(start,end);
+ const stream={tracksStopped:0,getVideoTracks(){return [{stop(){stream.tracksStopped++}}]}};
+ let current=null,replacements=0,scheduled=null,scheduledMs=null,updates=0;
+ const makeVideo=()=>{
+  const video={srcObject:null,paused:false,played:false,videoWidth:1440,videoHeight:1920,
+   pause(){this.paused=true},
+   cloneNode(){return makeVideo()},
+   replaceWith(next){current=next;replacements++},
+   addEventListener(){},
+   async play(){this.played=true}
+  };
+  return video;
+ };
+ current=makeVideo();current.srcObject=stream;
+ const initial=current;
+ const stage={clientHeight:448,style:{minHeight:'',removeProperty(k){if(k==='min-height')delete this.minHeight;else delete this[k]}}};
+ const s={
+  $:id=>id==='video'?current:stage,
+  cameraStream:stream,cameraOpening:false,captureBusy:false,cameraUiGeneration:3,
+  safariCameraResyncBusy:false,safariCameraResyncAt:0,safariCameraResyncTimer:null,
+  safariCameraViewport:{width:402,height:754},
+  stableFrames:3,previousCorners:{},previousCameraFrame:{},cameraFrameDimensions:'1440x1920',
+  innerWidth:402,innerHeight:754,window:{visualViewport:{height:754}},navigator:{userAgent:'iPhone'},
+  Date:{now:()=>3000},
+  setTimeout(fn,ms){scheduled=fn;scheduledMs=ms;return 12},clearTimeout(){scheduled=null},
+  positionGuides(){},updateCameraInfo(){updates++},setScanMessage(){}
+ };
+ vm.createContext(s);vm.runInContext(source,s,{timeout:2500});
+ for(const h of [744,734,724,714]){
+  s.window.visualViewport.height=h;s.watchSafariCameraViewport();
+  if(h===744)assert.equal(scheduled,null,'one 10 px step must not remount');
+ }
+ assert.equal(scheduledMs,350,'cumulative 40 px must debounce after viewport settles');
+ assert.equal(replacements,0,'do not change camera before debounce');
+ const fire=scheduled;scheduled=null;fire();await new Promise(resolve=>setImmediate(resolve));
+ assert.equal(replacements,1,'one video node is replaced');
+ assert.equal(initial.paused,true);
+ assert.equal(current.srcObject,stream,'the exact MediaStream is kept');
+ assert.equal(current.played,true);
+ assert.equal(stream.tracksStopped,0,'no native camera restart');
+ assert.equal(s.cameraStream,stream);
+ assert.equal(s.stableFrames,0,'optical stability is reset after presentation remount');
+ assert.equal(s.cameraFrameDimensions,'');
+ assert.equal(stage.style.minHeight,undefined,'no persistent layout spacer');
+ assert.ok(updates>0);
+ // Minor subsequent movement and returning to the previous viewport must not remount.
+ s.window.visualViewport.height=704;s.watchSafariCameraViewport();
+ assert.equal(replacements,1);
+ assert.equal(scheduled,null);
+ s.window.visualViewport.height=754;s.watchSafariCameraViewport();
+ assert.equal(scheduledMs,2500,'cooldown defers rather than loses the update');
+ s.window.visualViewport.height=714;s.watchSafariCameraViewport();
+ assert.equal(scheduled,null,'returning to the settled baseline cancels the remount');
+ // The keyboard causes a much larger viewport reduction; do not blink during input.
+ s.window.visualViewport.height=390;s.watchSafariCameraViewport();
+ assert.equal(scheduled,null,'keyboard opening must not remount video');
+ s.window.visualViewport.height=714;s.watchSafariCameraViewport();
+ assert.equal(scheduled,null,'keyboard closing must not remount video');
+ // Pinch zoom modifies the visual viewport without a change in the native camera.
+ s.window.visualViewport.scale=1.5;s.window.visualViewport.height=470;s.watchSafariCameraViewport();
+ assert.equal(scheduled,null,'page pinch-zoom must not remount video');
+ s.window.visualViewport.scale=1;s.window.visualViewport.height=714;s.watchSafariCameraViewport();
+ assert.equal(replacements,1,'only the actual toolbar resize remounts video');
 });
