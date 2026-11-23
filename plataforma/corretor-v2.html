@@ -229,8 +229,15 @@ function cameraViewportSize(){return {width:innerWidth,height:window.visualViewp
 function watchSafariCameraViewport(){
  const current=cameraViewportSize(),previous=safariCameraViewport;
  if(!/iPhone|iPad|iPod/i.test(navigator.userAgent)||!previous||!cameraStream||cameraOpening){safariCameraViewport=current;return}
+ // Pinch-zoom e teclado virtual não devem desmontar o vídeo durante a leitura.
+ if(Math.abs((window.visualViewport?.scale??1)-1)>.05){
+  clearTimeout(safariCameraResyncTimer);safariCameraResyncTimer=null;return;
+ }
  // Acompanhar a variação acumulada da barra do Safari; não reiniciar o vídeo a cada quadro da animação.
  if(Math.abs(current.width-previous.width)>8){
+  clearTimeout(safariCameraResyncTimer);safariCameraResyncTimer=null;safariCameraViewport=current;return;
+ }
+ if(Math.abs(current.height-previous.height)>160){
   clearTimeout(safariCameraResyncTimer);safariCameraResyncTimer=null;safariCameraViewport=current;return;
  }
  if(Math.abs(current.height-previous.height)<20){
