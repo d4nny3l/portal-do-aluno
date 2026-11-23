@@ -320,7 +320,7 @@ test('UX-SAFARI-112 runtime: muda 40 px de viewport e remonta somente o video, p
  };
  current=makeVideo();current.srcObject=stream;
  const initial=current;
- const stage={clientHeight:448,style:{minHeight:'',removeProperty(k){delete this[k]}}};
+ const stage={clientHeight:448,style:{minHeight:'',removeProperty(k){if(k==='min-height')delete this.minHeight;else delete this[k]}}};
  const s={
   $:id=>id==='video'?current:stage,
   cameraStream:stream,cameraOpening:false,captureBusy:false,cameraUiGeneration:3,
@@ -336,7 +336,7 @@ test('UX-SAFARI-112 runtime: muda 40 px de viewport e remonta somente o video, p
  s.watchSafariCameraViewport();
  assert.equal(scheduledMs,350,'recovery must wait for viewport to stabilize');
  assert.equal(replacements,0,'do not change camera before debounce');
- await scheduled();
+ const fire=scheduled;scheduled=null;await fire();await Promise.resolve();
  assert.equal(replacements,1,'one video node is replaced');
  assert.equal(initial.paused,true);
  assert.equal(current.srcObject,stream,'the exact MediaStream is kept');
