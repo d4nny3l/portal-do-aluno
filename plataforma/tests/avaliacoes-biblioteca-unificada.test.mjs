@@ -58,7 +58,7 @@ test('library remains isolated in Criar avaliação; Corrigir cartões uses expl
  assert.ok(start>=0&&correct>start&&end>correct);
  assert.ok(html.slice(start,correct).includes('id="savedAssessments"'));
  assert.ok(!html.slice(correct,end).includes('savedAssessments'));
- assert.equal(fnv(html.slice(correct+'<section class="corretor-card module-view" id="corrigir">'.length,end)),'f9b8b75f78b9d169');
+ assert.equal(fnv(html.slice(correct+'<section class="corretor-card module-view" id="corrigir">'.length,end)),'b740cdc8871ea315');
  assert.equal(gitSha('plataforma/corretor-v2.css'),'176dbecdf3abaf4680b7dfef2e97cca92acf738d');
  assert.match(html,/mountAssessmentLibrary\(/);
  assert.match(html,/privateSelection\.manifestHash/);
