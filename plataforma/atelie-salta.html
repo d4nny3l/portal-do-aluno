@@ -52,7 +52,7 @@ svg{width:20px;height:20px;flex:none;stroke:currentColor;stroke-width:1.7;stroke
 .section-intro{display:flex;align-items:center;justify-content:space-between;gap:12px;margin:0 0 16px}
 .section-intro strong{font-size:14px}
 .section-intro span{font-size:12px;color:var(--secondary)}
-.tabs{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:8px;padding:7px;background:white;border:1px solid var(--line);border-radius:20px;box-shadow:0 4px 14px rgba(23,50,77,.025)}
+.tabs{display:grid;grid-template-columns:repeat(6,minmax(0,1fr));gap:8px;padding:7px;background:white;border:1px solid var(--line);border-radius:20px;box-shadow:0 4px 14px rgba(23,50,77,.025)}
 .tab{display:flex;align-items:center;justify-content:center;gap:9px;min-width:0;min-height:52px;border:0;border-radius:14px;background:transparent;color:var(--secondary);font-weight:700;font-size:13px;line-height:1.2;padding:9px 11px;transition:background .16s,color .16s,box-shadow .16s}
 .tab svg{width:19px;height:19px}
 .tab[aria-selected=true]{background:var(--navy);color:white;box-shadow:0 5px 14px rgba(23,50,77,.14)}
@@ -127,9 +127,43 @@ svg{width:20px;height:20px;flex:none;stroke:currentColor;stroke-width:1.7;stroke
 footer{display:flex;justify-content:space-between;align-items:center;gap:10px;padding:0 0 26px;color:var(--secondary);font-size:12px}
 footer strong{color:var(--navy)}
 .sr-only{position:absolute!important;width:1px!important;height:1px!important;padding:0!important;margin:-1px!important;overflow:hidden!important;clip:rect(0,0,0,0)!important;white-space:nowrap!important;border:0!important}
-@media(max-width:1000px){.icon-card{grid-column:span 4}.hero{padding:37px}.preview-card{grid-column:span 6}}
-@media(max-width:700px){.container{width:min(100% - 28px,1152px)}.topbar{height:76px}.hero{grid-template-columns:1fr;min-height:0;padding:29px 25px;border-radius:26px}.hero-art{display:none}.hero h1{font-size:clamp(30px,7vw,42px)}.main{padding-top:23px}.tabs{grid-template-columns:repeat(2,minmax(0,1fr));gap:6px}.tab{min-height:50px;justify-content:flex-start}.tab:last-child{grid-column:1/-1;justify-content:center}.tab svg{width:18px;height:18px}.panel-heading{align-items:flex-start}.panel-heading .pill{display:none}.swatch{grid-column:span 6}.contrast-example,.button-card,.component-card,.component-wide{grid-column:span 12}.icon-card{grid-column:span 6}.preview-card{grid-column:span 12}.section-intro span{display:none}}
+@media(max-width:1000px){.tabs{grid-template-columns:repeat(3,minmax(0,1fr))}.icon-card{grid-column:span 4}.hero{padding:37px}.preview-card{grid-column:span 6}}
+@media(max-width:700px){.container{width:min(100% - 28px,1152px)}.topbar{height:76px}.hero{grid-template-columns:1fr;min-height:0;padding:29px 25px;border-radius:26px}.hero-art{display:none}.hero h1{font-size:clamp(30px,7vw,42px)}.main{padding-top:23px}.tabs{grid-template-columns:repeat(2,minmax(0,1fr));gap:6px}.tab{min-height:50px;justify-content:flex-start}.tab svg{width:18px;height:18px}.panel-heading{align-items:flex-start}.panel-heading .pill{display:none}.swatch{grid-column:span 6}.contrast-example,.button-card,.component-card,.component-wide{grid-column:span 12}.icon-card{grid-column:span 6}.preview-card{grid-column:span 12}.section-intro span{display:none}}
 @media(max-width:380px){.container{width:calc(100% - 24px)}.version{font-size:10px;padding:8px 9px}.brand-sub{font-size:10px}.mark{width:38px;height:38px}.hero{padding:25px 19px}.hero p{font-size:13px}.tab{gap:6px;padding:10px 9px;font-size:12px}.tab svg{width:17px;height:17px}.card{padding:17px}.swatch{padding:0}.swatch-color{height:104px;padding:12px}.swatch-desc{padding:13px}.swatch-color strong{font-size:14px}.icon-card{padding:12px;gap:9px}.icon-disc{width:42px;height:42px;border-radius:12px}.icon-disc svg{width:21px;height:21px}.icon-card h3{font-size:12px}.contrast-pair{padding:13px}.contrast-pair b,.contrast-pair span{font-size:11px}.panel-heading h2{font-size:25px}}
+
+/* Ateliê · Movimentos: tokens discretos inspirados em conceitos CSS nativos.
+   Nenhum pacote de terceiros é carregado; lista usa FLIP local quando permitido. */
+.panel:not([hidden]){animation:atelie-panel-in .22s ease-out both}
+@keyframes atelie-panel-in{from{opacity:.35;transform:translateY(7px)}to{opacity:1;transform:translateY(0)}}
+.motion-card{grid-column:span 6;min-height:270px}
+.motion-card-wide{grid-column:span 12}
+.motion-demo{display:grid;gap:13px;margin-top:17px}
+.motion-copy{font-size:12px;line-height:1.5;color:var(--secondary);min-height:18px;margin:0}
+.motion-control-row{display:flex;gap:9px;flex-wrap:wrap;align-items:center}
+.motion-control-row>.btn{flex:0 1 auto}
+.motion-stage{min-height:111px;padding:15px;border:1px solid #CDDBE8;border-radius:16px;background:var(--ice)}
+.motion-scene{display:flex;align-items:center;gap:14px;min-height:78px}
+.motion-scene[hidden],.motion-confirmation[hidden]{display:none!important}
+.motion-scene:not([hidden]){animation:atelie-scene-in .22s ease-out both}
+@keyframes atelie-scene-in{from{opacity:.2;transform:translateY(6px)}to{opacity:1;transform:translateY(0)}}
+.motion-scene .icon-disc{background:#fff;flex:none}
+.motion-scene strong{display:block;font-size:14px}
+.motion-scene p{font-size:12px}
+.motion-toggle[aria-pressed=true]{background:var(--navy);color:white}
+.motion-toggle:active{transform:scale(.97)}
+.motion-lift{width:100%;text-align:left;display:flex;align-items:center;gap:12px;min-height:102px;padding:16px;border:1px solid #BDCEDD;background:white;color:var(--navy);border-radius:17px;box-shadow:0 2px 6px rgba(23,50,77,.055);transition:transform .2s ease,box-shadow .2s ease,border-color .2s ease}
+.motion-lift strong{display:block;font-size:15px}.motion-lift small{display:block;font-size:12px;line-height:1.5;color:var(--secondary);margin-top:5px}
+.motion-lift .icon-disc{flex:none}
+.motion-lift:hover,.motion-lift:focus-visible,.motion-lift[aria-pressed=true]{transform:translateY(-4px);border-color:#80ABCA;box-shadow:0 14px 27px rgba(23,50,77,.14)}
+.motion-lift:active{transform:translateY(-2px)}
+.motion-list{display:grid;gap:8px;list-style:none;padding:0;margin:0}
+.motion-item{min-width:0;display:flex;align-items:center;justify-content:space-between;gap:8px;padding:12px 13px;border:1px solid var(--line);border-radius:12px;background:var(--ice);font-size:13px;font-weight:750}
+.motion-item span{min-width:0;overflow-wrap:anywhere}
+.motion-item small{flex:none;font-size:11px;color:var(--secondary)}
+.motion-item.is-new{animation:atelie-scene-in .24s ease-out both}
+.motion-confirmation{display:flex;align-items:center;gap:12px;padding:16px;background:#E9F6ED;color:#275E40;border:1px solid #B9DCC4;border-radius:15px;font-size:13px;font-weight:750;line-height:1.5;animation:atelie-scene-in .22s ease-out both}
+.motion-confirmation svg{width:22px;height:22px;flex:none}
+@media(max-width:700px){.motion-card,.motion-card-wide{grid-column:span 12}.motion-card{min-height:0}.motion-stage{min-height:100px}}
 @media(prefers-reduced-motion:reduce){html{scroll-behavior:auto}*,*::before,*::after{animation-duration:.01ms!important;animation-iteration-count:1!important;transition-duration:.01ms!important}}
 </style>
 </head>
@@ -170,6 +204,7 @@ footer strong{color:var(--navy)}
  <button type="button" class="tab" id="tab-botoes" role="tab" aria-controls="painel-botoes" aria-selected="false" tabindex="-1"><svg aria-hidden="true"><use href="#i-cursor"/></svg>Botões</button>
  <button type="button" class="tab" id="tab-componentes" role="tab" aria-controls="painel-componentes" aria-selected="false" tabindex="-1"><svg aria-hidden="true"><use href="#i-components"/></svg>Componentes</button>
  <button type="button" class="tab" id="tab-telas" role="tab" aria-controls="painel-telas" aria-selected="false" tabindex="-1"><svg aria-hidden="true"><use href="#i-layout"/></svg>Exemplos de telas</button>
+ <button type="button" class="tab" id="tab-movimentos" role="tab" aria-controls="painel-movimentos" aria-selected="false" tabindex="-1"><svg aria-hidden="true"><use href="#i-spark"/></svg>Movimentos</button>
  </div>
  <section class="panel" id="painel-cores" role="tabpanel" aria-labelledby="tab-cores" tabindex="0"><div class="panel-heading"><div><p class="eyebrow" style="color:var(--blue)">01 · Essência</p><h2>Cores e contrastes</h2><p>Uma paleta com funções claras, sem depender da percepção de uma cor isolada.</p></div><span class="pill">Leitura primeiro</span></div>
  <div class="grid"><article class="card swatch"><div class="swatch-color navy"><strong>Azul profundo</strong></div><div class="swatch-desc"><p>Identidade, estrutura e títulos.</p></div></article><article class="card swatch"><div class="swatch-color blue"><strong>Azul vivo</strong></div><div class="swatch-desc"><p>Ações, seleção e navegação.</p></div></article><article class="card swatch"><div class="swatch-color amber"><strong>Âmbar</strong></div><div class="swatch-desc"><p>Destaques breves, com texto escuro.</p></div></article><article class="card swatch"><div class="swatch-color ice"><strong>Branco gelo</strong></div><div class="swatch-desc"><p>Respiro e fundos confortáveis.</p></div></article><article class="card swatch"><div class="swatch-color silver"><strong>Prata</strong></div><div class="swatch-desc"><p>Divisórias e elementos de apoio.</p></div></article><article class="card swatch"><span class="kicker">Acessibilidade</span><h3>Não é só cor.</h3><p>Mensagens usam palavras, formas e ícones. O prata não aparece como texto sobre branco, pois não oferece leitura suficiente.</p><div class="status success" style="margin-top:14px"><svg aria-hidden="true"><use href="#i-check"/></svg> Aprovado — informação clara</div></article>
@@ -206,6 +241,15 @@ footer strong{color:var(--navy)}
  <article class="card preview-card"><div class="preview-frame"><div class="preview-top"><b><i>S</i> Diário</b><svg aria-hidden="true" style="width:16px"><use href="#i-book"/></svg></div><div class="preview-body"><h4>Minhas aulas</h4><small>Semana atual · exemplo fictício</small><div class="preview-row"><span>Segunda · Matemática</span><em>Registrada ✓</em></div><div class="preview-row"><span>Quarta · Matemática</span><span>Planejada</span></div><div class="preview-row"><span>Sexta · Matemática</span><span>Planejada</span></div></div></div><p class="preview-caption">Diário · status com palavras e marcações.</p></article>
  <article class="card preview-card"><div class="preview-frame"><div class="preview-top"><b><i>S</i> Avaliações</b><svg aria-hidden="true" style="width:16px"><use href="#i-checklist"/></svg></div><div class="preview-body"><h4>Minhas avaliações</h4><small>Organização simplificada</small><div class="preview-row"><span>Funções · 9º A</span><em>Pronta ✓</em></div><div class="preview-row"><span>Estatística · 8º B</span><span>Rascunho</span></div><div class="preview-nav"><span style="background:var(--blue)">Criar avaliação</span></div></div></div><p class="preview-caption">Avaliações / Corretor · ações em primeiro plano.</p></article>
  </div></section>
+ <section class="panel" id="painel-movimentos" role="tabpanel" aria-labelledby="tab-movimentos" tabindex="0" hidden>
+ <div class="panel-heading"><div><p class="eyebrow" style="color:var(--blue)">06 · Fluidez</p><h2>Movimentos</h2><p>Pequenos gestos que orientam sem distrair. Toque, clique ou use o teclado: tudo aqui é apenas uma demonstração.</p></div><span class="pill">Leve e reversível</span></div>
+ <div class="grid">
+ <article class="card motion-card"><span class="kicker">01 · Coleções</span><h3>Trocar de contexto</h3><p>Conteúdos entram com discrição, sem retirar a orientação do usuário.</p><div class="motion-demo"><div class="motion-control-row" role="group" aria-label="Escolha uma coleção de exemplo"><button type="button" class="btn secondary motion-toggle" id="motion-collection-a" aria-pressed="true">Visão Geral</button><button type="button" class="btn secondary motion-toggle" id="motion-collection-b" aria-pressed="false">Diário</button></div><div class="motion-stage"><div class="motion-scene" id="motion-scene-a"><div class="icon-disc"><svg aria-hidden="true"><use href="#i-home"/></svg></div><div><strong>Painel do professor</strong><p>Um resumo organizado para começar.</p></div></div><div class="motion-scene" id="motion-scene-b" hidden><div class="icon-disc"><svg aria-hidden="true"><use href="#i-book"/></svg></div><div><strong>Registro de aulas</strong><p>Uma visão clara da rotina escolar.</p></div></div></div><p class="motion-copy" id="motion-collection-feedback" role="status" aria-live="polite">Coleção exibida: Visão Geral.</p></div></article>
+ <article class="card motion-card"><span class="kicker">02 · Toque e foco</span><h3>Resposta ao gesto</h3><p>Uma resposta curta confirma o toque; seleção também aparece em texto.</p><div class="motion-demo"><div class="motion-control-row"><button type="button" class="btn primary motion-toggle" id="motion-touch" aria-pressed="false"><svg aria-hidden="true"><use href="#i-check"/></svg><span>Ativar exemplo</span></button></div><p class="motion-copy" id="motion-touch-feedback" role="status" aria-live="polite">Exemplo desativado. Use o botão para alternar.</p></div></article>
+ <article class="card motion-card"><span class="kicker">03 · Profundidade</span><h3>Cartão que se destaca</h3><p>Elevação suave no ponteiro, no foco e também por toque.</p><div class="motion-demo"><button type="button" class="motion-lift" id="motion-lift" aria-pressed="false"><span class="icon-disc"><svg aria-hidden="true"><use href="#i-file"/></svg></span><span><strong>Atividade de exemplo</strong><small>Toque para elevar; toque outra vez para voltar.</small></span></button><p class="motion-copy" id="motion-lift-feedback" role="status" aria-live="polite">Cartão em repouso.</p></div></article>
+ <article class="card motion-card"><span class="kicker">04 · Lista</span><h3>Itens que se reorganizam</h3><p>Uma ordem nova é mostrada com movimento curto e pode ser desfeita.</p><div class="motion-demo"><ol class="motion-list" id="motion-list"><li class="motion-item" data-key="a"><span>Frações</span><small>01</small></li><li class="motion-item" data-key="b"><span>Geometria</span><small>02</small></li><li class="motion-item" data-key="c"><span>Funções</span><small>03</small></li></ol><div class="motion-control-row"><button type="button" class="btn secondary" id="motion-reorder" aria-pressed="false"><svg aria-hidden="true"><use href="#i-arrow"/></svg>Inverter ordem</button><button type="button" class="btn ghost" id="motion-item-toggle" aria-pressed="false">Adicionar exemplo</button></div><p class="motion-copy" id="motion-list-feedback" role="status" aria-live="polite">Três itens ilustrativos na ordem inicial.</p></div></article>
+ <article class="card motion-card motion-card-wide"><span class="kicker">05 · Confirmação</span><h3>Resultado claro e breve</h3><p>Um retorno visual com símbolo e texto, nunca apenas cor. Não há salvamento de dados.</p><div class="motion-demo"><div class="motion-control-row"><button type="button" class="btn primary" id="motion-confirm"><svg aria-hidden="true"><use href="#i-check"/></svg><span>Simular confirmação</span></button></div><div class="motion-confirmation" id="motion-confirmation" hidden><svg aria-hidden="true"><use href="#i-check"/></svg><span>Exemplo concluído. Nenhuma informação foi enviada.</span></div><p class="motion-copy" id="motion-confirm-feedback" role="status" aria-live="polite">Pronto para simular.</p></div></article>
+ </div></section>
  </div>
 </main>
 <footer class="container"><span><strong>Ateliê SALTA</strong> · proposta independente de interface</span><span>V1 · Sem dados reais</span></footer>
@@ -232,6 +276,74 @@ footer strong{color:var(--navy)}
   clearTimeout(resetTimer);resetTimer=setTimeout(()=>{loading.disabled=false;loading.removeAttribute('aria-busy');loading.innerHTML='<svg aria-hidden="true"><use href="#i-save"/></svg><span>Simular salvamento</span>';feedback.textContent='Simulação concluída. Nenhum dado foi salvo.';},1100);
  });
  const form=document.getElementById('demo-form');form.addEventListener('submit',event=>{event.preventDefault();const name=document.getElementById('demo-title').value.trim();if(!name)return;document.getElementById('form-feedback').textContent=`Prévia de “${name}” — ${document.getElementById('demo-subject').value}. Nada foi enviado.`});
+
+ // Os exemplos desta aba não efetuam operações nem acessam dados da plataforma.
+ const collectionA=document.getElementById('motion-collection-a'),collectionB=document.getElementById('motion-collection-b');
+ function showCollection(which){
+  const a=which==='a';
+  collectionA.setAttribute('aria-pressed',String(a));collectionB.setAttribute('aria-pressed',String(!a));
+  document.getElementById('motion-scene-a').hidden=!a;
+  document.getElementById('motion-scene-b').hidden=a;
+  document.getElementById('motion-collection-feedback').textContent='Coleção exibida: '+(a?'Visão Geral.':'Diário.');
+ }
+ collectionA.addEventListener('click',()=>showCollection('a'));
+ collectionB.addEventListener('click',()=>showCollection('b'));
+ const touch=document.getElementById('motion-touch');
+ touch.addEventListener('click',()=>{
+  const selected=touch.getAttribute('aria-pressed')!=='true';
+  touch.setAttribute('aria-pressed',String(selected));
+  touch.querySelector('span').textContent=selected?'Exemplo ativado ✓':'Ativar exemplo';
+  document.getElementById('motion-touch-feedback').textContent=selected?'Toque reconhecido. Exemplo ativado.':'Exemplo desativado novamente.';
+ });
+ const lift=document.getElementById('motion-lift');
+ lift.addEventListener('click',()=>{
+  const raised=lift.getAttribute('aria-pressed')!=='true';
+  lift.setAttribute('aria-pressed',String(raised));
+  document.getElementById('motion-lift-feedback').textContent=raised?'Cartão destacado. Toque novamente para baixar.':'Cartão em repouso.';
+ });
+ const list=document.getElementById('motion-list');
+ const reorder=document.getElementById('motion-reorder');
+ const listFeedback=document.getElementById('motion-list-feedback');
+ // FLIP local: anima apenas a mudança de posição, sem biblioteca ou observador contínuo.
+ function moveList(){
+  const items=[...list.children];
+  const before=new Map(items.map(item=>[item,item.getBoundingClientRect().top]));
+  list.append(...items.reverse());
+  const reduced=window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  if(!reduced){
+   items.forEach(item=>{
+    const delta=before.get(item)-item.getBoundingClientRect().top;
+    if(delta&&typeof item.animate==='function')item.animate([{transform:`translateY(${delta}px)`},{transform:'translateY(0)'}],{duration:240,easing:'ease-out'});
+   });
+  }
+ }
+ reorder.addEventListener('click',()=>{
+  const reversed=reorder.getAttribute('aria-pressed')!=='true';
+  moveList();reorder.setAttribute('aria-pressed',String(reversed));
+  reorder.lastChild.textContent=reversed?' Restaurar ordem':' Inverter ordem';
+  listFeedback.textContent=reversed?'Ordem invertida. É possível restaurar.':'Ordem original restaurada.';
+ });
+ const addItem=document.getElementById('motion-item-toggle');
+ addItem.addEventListener('click',()=>{
+  const hasExtra=addItem.getAttribute('aria-pressed')==='true';
+  if(hasExtra){list.querySelector('[data-key="d"]')?.remove();}
+  else{
+   const item=document.createElement('li');item.className='motion-item is-new';item.dataset.key='d';
+   const name=document.createElement('span');name.textContent='Estatística';
+   const count=document.createElement('small');count.textContent='04';
+   item.append(name,count);list.append(item);
+  }
+  addItem.setAttribute('aria-pressed',String(!hasExtra));
+  addItem.textContent=hasExtra?'Adicionar exemplo':'Remover exemplo';
+  listFeedback.textContent=hasExtra?'Item ilustrativo removido.':'Item ilustrativo adicionado.';
+ });
+ const confirmButton=document.getElementById('motion-confirm');
+ const confirmation=document.getElementById('motion-confirmation');
+ confirmButton.addEventListener('click',()=>{
+  const show=confirmation.hidden;confirmation.hidden=!show;
+  confirmButton.querySelector('span').textContent=show?'Reiniciar demonstração':'Simular confirmação';
+  document.getElementById('motion-confirm-feedback').textContent=show?'Confirmação demonstrativa exibida.':'Demonstração reiniciada.';
+ });
 })();
 </script>
 </body>
