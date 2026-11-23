@@ -301,7 +301,7 @@ test('UX-VISOR-03: visor e marcadores permanecem sobre a prévia, sem telemetria
  assert.match(camera,/constraints\.height=\{ideal:Math\.min\(1440/);
 });
 
-test('UX-SAFARI-112 runtime: muda 40 px de viewport e remonta somente o video, preservando a track OMR',async()=>{
+test('UX-SAFARI-112 runtime: acumula passos de 10 px da visualViewport e remonta uma unica superficie sem perder track',async()=>{
  const start=html.indexOf('function onCameraVideoResize(){');
  const end=html.indexOf('function stopCamera(){',start);
  assert.ok(start>0&&end>start,'production recovery helpers must be present');
@@ -327,14 +327,17 @@ test('UX-SAFARI-112 runtime: muda 40 px de viewport e remonta somente o video, p
   safariCameraResyncBusy:false,safariCameraResyncAt:0,safariCameraResyncTimer:null,
   safariCameraViewport:{width:402,height:754},
   stableFrames:3,previousCorners:{},previousCameraFrame:{},cameraFrameDimensions:'1440x1920',
-  innerWidth:402,innerHeight:714,navigator:{userAgent:'iPhone'},
+  innerWidth:402,innerHeight:754,window:{visualViewport:{height:754}},navigator:{userAgent:'iPhone'},
   Date:{now:()=>3000},
   setTimeout(fn,ms){scheduled=fn;scheduledMs=ms;return 12},clearTimeout(){scheduled=null},
   positionGuides(){},updateCameraInfo(){updates++},setScanMessage(){}
  };
  vm.createContext(s);vm.runInContext(source,s,{timeout:2500});
- s.watchSafariCameraViewport();
- assert.equal(scheduledMs,350,'recovery must wait for viewport to stabilize');
+ for(const h of [744,734,724,714]){
+  s.window.visualViewport.height=h;s.watchSafariCameraViewport();
+  if(h===744)assert.equal(scheduled,null,'one 10 px step must not remount');
+ }
+ assert.equal(scheduledMs,350,'cumulative 40 px must debounce after viewport settles');
  assert.equal(replacements,0,'do not change camera before debounce');
  const fire=scheduled;scheduled=null;fire();await new Promise(resolve=>setImmediate(resolve));
  assert.equal(replacements,1,'one video node is replaced');
@@ -347,8 +350,12 @@ test('UX-SAFARI-112 runtime: muda 40 px de viewport e remonta somente o video, p
  assert.equal(s.cameraFrameDimensions,'');
  assert.equal(stage.style.minHeight,undefined,'no persistent layout spacer');
  assert.ok(updates>0);
- // A 10 px change is not enough to cause another remount.
- s.innerHeight=704;s.watchSafariCameraViewport();
+ // Minor subsequent movement and returning to the previous viewport must not remount.
+ s.window.visualViewport.height=704;s.watchSafariCameraViewport();
  assert.equal(replacements,1);
  assert.equal(scheduled,null);
+ s.window.visualViewport.height=754;s.watchSafariCameraViewport();
+ assert.equal(scheduledMs,2500,'cooldown defers rather than loses the update');
+ s.window.visualViewport.height=714;s.watchSafariCameraViewport();
+ assert.equal(scheduled,null,'returning to the settled baseline cancels the remount');
 });
