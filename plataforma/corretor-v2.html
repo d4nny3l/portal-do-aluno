@@ -225,19 +225,25 @@ async function recoverSafariVideo(){
   safariCameraResyncBusy=false;
  }
 }
+function cameraViewportSize(){return {width:innerWidth,height:window.visualViewport?.height??innerHeight}}
 function watchSafariCameraViewport(){
- const current={width:innerWidth,height:innerHeight},previous=safariCameraViewport;
- safariCameraViewport=current;
- if(!/iPhone|iPad|iPod/i.test(navigator.userAgent)||!previous||!cameraStream||cameraOpening)return;
- // No Safari a barra dinâmica muda somente a altura; não reagir a rotações nem a redimensionamentos pequenos.
- if(Math.abs(current.width-previous.width)>8||Math.abs(current.height-previous.height)<20)return;
- if(Date.now()-safariCameraResyncAt<2500)return;
+ const current=cameraViewportSize(),previous=safariCameraViewport;
+ if(!/iPhone|iPad|iPod/i.test(navigator.userAgent)||!previous||!cameraStream||cameraOpening){safariCameraViewport=current;return}
+ // Acompanhar a variação acumulada da barra do Safari; não reiniciar o vídeo a cada quadro da animação.
+ if(Math.abs(current.width-previous.width)>8){
+  clearTimeout(safariCameraResyncTimer);safariCameraResyncTimer=null;safariCameraViewport=current;return;
+ }
+ if(Math.abs(current.height-previous.height)<20){
+  clearTimeout(safariCameraResyncTimer);safariCameraResyncTimer=null;return;
+ }
  clearTimeout(safariCameraResyncTimer);
  safariCameraResyncTimer=setTimeout(()=>{
   safariCameraResyncTimer=null;
   if(!cameraStream||captureBusy||safariCameraResyncBusy)return;
-  safariCameraResyncAt=Date.now();void recoverSafariVideo();
- },350);
+  const settled=cameraViewportSize();
+  if(Math.abs(settled.width-previous.width)>8||Math.abs(settled.height-previous.height)<20)return;
+  safariCameraViewport=settled;safariCameraResyncAt=Date.now();void recoverSafariVideo();
+ },Math.max(350,2500-(Date.now()-safariCameraResyncAt)));
 }
 function stopCamera(){cameraUiGeneration++;clearTimeout(safariCameraResyncTimer);safariCameraResyncTimer=null;safariCameraViewport=null;$('cameraStage').style.removeProperty('min-height');typeof setCameraProgress==='function'&&setCameraProgress();const previousTrack=cameraStream?.getVideoTracks()[0];if(previousTrack&&$('cameraTorchButton').getAttribute('aria-pressed')==='true')void applyCameraControl(previousTrack,'torch',false);cameraSession.stop();syncTorchButton();if(cameraTimer){clearInterval(cameraTimer);cameraTimer=null}cameraStream=null;cameraOpening=false;const video=$('video');video.pause();video.srcObject=null;$('cameraStage').hidden=true;$('camera').textContent='Abrir câmera';stableFrames=0;previousCorners=null;previousCameraFrame=null;cameraFrameDimensions='';waitingForRemoval=false;absentFrames=0;for(const id of ['Zoom','Exposure','Focus','Torch'])$('camera'+id+'Label').hidden=true;clearGuides();$('cameraLiveBadge').dataset.found='false';updateCameraInfo();setScanMessage('Câmera fechada.')}
 async function startCamera(deviceId=''){
@@ -245,7 +251,7 @@ async function startCamera(deviceId=''){
  try{
   const {stream,track,devices,capabilities,zoom}=await cameraSession.open(deviceId);if(request!==cameraUiGeneration||cameraSession.stream!==stream)return;cameraStream=stream;
   const video=replaceCameraVideo(stream);$('cameraStage').hidden=false;await video.play();if(request!==cameraUiGeneration||cameraSession.stream!==stream)return;
-  cameraOpening=false;safariCameraViewport={width:innerWidth,height:innerHeight};$('camera').textContent='Fechar câmera';cameraScratch=document.createElement('canvas');
+  cameraOpening=false;safariCameraViewport=cameraViewportSize();$('camera').textContent='Fechar câmera';cameraScratch=document.createElement('canvas');
   const controls=cameraControls(capabilities),settings=track.getSettings?.()||{};
   for(const [name,id] of [['zoom','Zoom'],['exposureCompensation','Exposure']]){const range=controls[name],input=$('camera'+id);$('camera'+id+'Label').hidden=!range;if(range){input.min=range.min;input.max=range.max;input.step=range.step||.1;input.value=settings[name]??range.min;}}
   $('cameraFocusLabel').hidden=!controls.focusMode;$('cameraTorchLabel').hidden=!controls.torch;$('cameraTorch').checked=Boolean(settings.torch);syncTorchButton(Boolean(controls.torch),Boolean(settings.torch));
