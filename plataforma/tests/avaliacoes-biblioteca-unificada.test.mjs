@@ -51,14 +51,14 @@ const catalogRecord=(row,m)=>{
   status:'issued',archived:false,institutionId:row.institutionId,classId:row.classId,periodId:row.periodId};
 };
 
-test('new library is inside Criar avaliação; DOM de Corrigir cartões preservado e CSS no snapshot candidato aprovado',()=>{
+test('library remains isolated in Criar avaliação; Corrigir cartões uses explicitly approved camera overlay snapshot',()=>{
  const html=read('plataforma/corretor-v2.html'),start=html.indexOf('<section class="corretor-card module-view active" id="criar">'),
   correct=html.indexOf('<section class="corretor-card module-view" id="corrigir">'),
   end=html.indexOf('</section></div></main>',correct);
  assert.ok(start>=0&&correct>start&&end>correct);
  assert.ok(html.slice(start,correct).includes('id="savedAssessments"'));
  assert.ok(!html.slice(correct,end).includes('savedAssessments'));
- assert.equal(fnv(html.slice(correct+'<section class="corretor-card module-view" id="corrigir">'.length,end)),'23293fec36e8ed66');
+ assert.equal(fnv(html.slice(correct+'<section class="corretor-card module-view" id="corrigir">'.length,end)),'f9b8b75f78b9d169');
  assert.equal(gitSha('plataforma/corretor-v2.css'),'176dbecdf3abaf4680b7dfef2e97cca92acf738d');
  assert.match(html,/mountAssessmentLibrary\(/);
  assert.match(html,/privateSelection\.manifestHash/);

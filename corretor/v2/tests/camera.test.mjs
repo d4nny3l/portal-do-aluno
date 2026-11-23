@@ -32,7 +32,7 @@ test('camera selection prefers labeled rear main to ultrawide, negotiates native
  const ultra=fakeTrack('Back Ultra Wide Camera',{deviceId:'ultra'}),main=fakeTrack('Back Camera',undefined,{width:{max:4032},height:{max:3024},resizeMode:['none','crop-and-scale']});let calls=[];
  const session=new CameraSession({async getUserMedia(options){calls.push(options);return streamFor(calls.length===1?ultra:main)},async enumerateDevices(){return [{kind:'videoinput',deviceId:'ultra',label:ultra.label},{kind:'videoinput',deviceId:'main',label:main.label}]}});
  const result=await session.open();assert.equal(result.track,main);assert.equal(ultra.stopped,1);assert.equal(calls[0].audio,false);assert.equal(calls[0].video.width,undefined);assert.deepEqual(calls[1].video,{deviceId:{exact:'main'}});
- assert.deepEqual(main.constraints[0],{width:{ideal:2560},height:{ideal:2560},resizeMode:{exact:'none'}});
+ assert.deepEqual(main.constraints[0],{width:{ideal:1920},height:{ideal:1440},resizeMode:{exact:'none'}});
  session.stop();assert.equal(main.stopped,1);assert.equal(session.stream,null);assert.ok(cameraRank('rear ultra wide')<cameraRank('Back Wide Angle Camera'));assert.ok(cameraRank('Back Triple Camera')<cameraRank('Back Camera'));assert.ok(cameraRank('Câmera grande-angular traseira')>cameraRank('Câmera ultra-angular traseira'));
 });
 test('denied permission and unavailable APIs fail explicitly; unsupported capabilities still open; restart releases prior track',async()=>{

@@ -25,7 +25,7 @@ class Node {
 }
 function fixture(){
  const fields={
-  answers:new Node('div'),status:new Node('p'),scanScore:new Node('div'),cameraGrade:new Node('div'),photoGrade:new Node('div'),cameraProgress:new Node('div'),cameraLiveBadge:new Node('span'),
+  answers:new Node('div'),status:new Node('p'),scanScore:new Node('div'),cameraGrade:new Node('div'),cameraGradeValue:new Node('strong'),photoGrade:new Node('div'),cameraProgress:new Node('div'),cameraLiveBadge:new Node('span'),
   scanMaxScore:{value:'10'},canvas:new Node('canvas'),manualAlign:new Node('button'),manualHelp:new Node('p')
  };
  const $=id=>{assert.ok(fields[id],id);return fields[id]};
@@ -50,7 +50,7 @@ test('P1-01: failed recapture keeps old score identified through max, key and ma
  const h=fixture(),{fields,editor}=h;
  editor.render(h.page());
  assert.match(fields.scanScore.innerHTML,/Nota final 3,33 \/ 10,00/);
- assert.equal(fields.cameraGrade.textContent,'Nota 3,33');
+ assert.equal(fields.cameraGradeValue.textContent,'3,33');
  assert.equal(fields.scanScore.dataset.stale,'false');
 
  const invalid=editor.normalize(new Uint8Array(9).fill(245),3,3,{source:'import'});
