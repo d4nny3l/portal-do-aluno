@@ -172,7 +172,7 @@ test('P1 auto rear: one camera starts without picker, torch still available and 
  assert.equal(h.requested[0].video.facingMode.exact,'environment');
  assert.equal(h.state.cameraStream.getVideoTracks()[0],h.tracks.get('main'));
  assert.equal(h.el('cameraTorchButton').hidden,false);
- assert.match(h.messages.at(-1),/não informa zoom nativo/,'limitação do navegador é comunicada sem alegar zoom corrigido');
+ assert.match(h.messages.at(-1),/Centralize o cartão/,'instrução de enquadramento sem telemetria');
  assert.doesNotMatch(html,/id="cameraDevice"|id="cameraDeviceLabel"/);
  h.state.stopCamera();assert.equal(h.tracks.get('main').stopped,1);
 });
