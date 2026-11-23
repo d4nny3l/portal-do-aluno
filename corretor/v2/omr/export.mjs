@@ -1,5 +1,5 @@
-import { PAGE_HEIGHT_MM, PAGE_WIDTH_MM } from "./template.mjs?v=20261114v2final";
-import { createCardManifest, renderTemplateSvg, DEFAULT_CARD_HEADER } from "./render.mjs?v=20261123cont110";
+import { PAGE_HEIGHT_MM, PAGE_WIDTH_MM } from "./template.mjs?v=20261123embedalign01";
+import { createCardManifest, renderTemplateSvg, DEFAULT_CARD_HEADER } from "./render.mjs?v=20261123embedalign01";
 
 export const EXPORT_VERSION = "salta-omr-export-v1";
 

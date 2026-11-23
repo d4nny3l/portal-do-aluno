@@ -1,5 +1,5 @@
-import { createLayoutManifest, validateLayoutManifest, PAGE_WIDTH_MM, PAGE_HEIGHT_MM } from './layout.mjs?v=20261114v2final';
-import { createTemplate } from './template.mjs?v=20261114v2final';
+import { createLayoutManifest, validateLayoutManifest, PAGE_WIDTH_MM, PAGE_HEIGHT_MM } from './layout.mjs?v=20261123embedalign01';
+import { createTemplate } from './template.mjs?v=20261123embedalign01';
 import { createCardManifest as legacyManifest, renderTemplateSvg as legacyRender, renderHeaderPreviewSvg as legacyHeader, DEFAULT_CARD_HEADER as LEGACY_HEADER } from './render-v1.mjs?v=20261114v2final';
 import { wrapText, textWidth } from './artwork.mjs?v=20261114v1';
 export { createAssessmentDefinition } from './assessment.mjs?v=20261114v2final';
