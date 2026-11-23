@@ -30,7 +30,7 @@ function harness(){
  const stream={getVideoTracks:()=>[track]};
  let stopped=0;
  const state={
-  $:el,cameraStream:stream,cameraUiGeneration:0,cameraOpening:false,cameraTimer:null,
+  $:el,cameraStream:stream,cameraUiGeneration:0,cameraOpening:false,cameraTimer:null,safariCameraResyncTimer:null,safariCameraViewport:null,
   stableFrames:2,previousCameraFrame:{},previousCorners:{},waitingForRemoval:true,absentFrames:1,
   cameraFrameDimensions:'portrait',captureBusy:false,cameraSession:{stop(){stopped++}},
   clearGuides(){},updateCameraInfo(){},setScanMessage(m){messages.push(m)},
@@ -152,7 +152,7 @@ function uiHarness({available=[{kind:'videoinput',deviceId:'main',label:'Back Ca
  const state={
   $:el,CameraSession,cameraControls,applyCameraControl,
   cameraSession:new CameraSession(media),
-  cameraStream:null,cameraUiGeneration:0,cameraOpening:false,cameraTimer:null,
+  cameraStream:null,cameraUiGeneration:0,cameraOpening:false,cameraTimer:null,safariCameraResyncTimer:null,safariCameraViewport:null,
   stableFrames:0,previousCorners:null,previousCameraFrame:null,cameraFrameDimensions:'',
   waitingForRemoval:false,absentFrames:0,cameraScratch:null,
   clearGuides(){},positionGuides(){},updateCameraInfo(){},
