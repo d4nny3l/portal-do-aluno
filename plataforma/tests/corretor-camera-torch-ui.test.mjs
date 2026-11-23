@@ -34,7 +34,7 @@ function harness(){
   stableFrames:2,previousCameraFrame:{},previousCorners:{},waitingForRemoval:true,absentFrames:1,
   cameraFrameDimensions:'portrait',captureBusy:false,cameraSession:{stop(){stopped++}},
   clearGuides(){},updateCameraInfo(){},setScanMessage(m){messages.push(m)},
-  clearInterval(){},applyCameraControl:async(t,name,value)=>{calls.push({track:t,name,value});return true}
+  clearInterval(){},clearTimeout(){},applyCameraControl:async(t,name,value)=>{calls.push({track:t,name,value});return true}
  };
  vm.createContext(state);
  vm.runInContext(source,state,{timeout:2000});
@@ -141,7 +141,7 @@ function uiHarness({available=[{kind:'videoinput',deviceId:'main',label:'Back Ca
   if(!els.has(id)){
    const attrs=new Map();
    const x={id,hidden:false,disabled:false,checked:false,value:'',textContent:'',dataset:{},options:[],
-    classList:{add(){},remove(){},toggle(){}},style:{},
+    classList:{add(){},remove(){},toggle(){}},style:{removeProperty(){}},
     setAttribute(k,v){attrs.set(k,String(v))},getAttribute(k){return attrs.get(k)??null},
     removeAttribute(k){attrs.delete(k)},pause(){this.paused=true},
     async play(){this.played=true},addEventListener(){}};
@@ -157,7 +157,9 @@ function uiHarness({available=[{kind:'videoinput',deviceId:'main',label:'Back Ca
   waitingForRemoval:false,absentFrames:0,cameraScratch:null,
   clearGuides(){},positionGuides(){},updateCameraInfo(){},
   setScanMessage(msg){messages.push(msg)},scanCameraFrame(){},
-  document:{createElement(){return {width:0,height:0}}},clearInterval(){},
+  replaceCameraVideo(stream){const video=el('video');video.srcObject=stream;return video},
+  innerWidth:402,innerHeight:754,
+  document:{createElement(){return {width:0,height:0}}},clearInterval(){},clearTimeout(){},
   setInterval(){return 123}
  };
  vm.createContext(state);
