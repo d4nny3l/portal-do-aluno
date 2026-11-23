@@ -25,7 +25,7 @@ class Node {
 }
 function fixture(){
  const fields={
-  answers:new Node('div'),status:new Node('p'),scanScore:new Node('div'),cameraGrade:new Node('div'),cameraProgress:new Node('div'),cameraLiveBadge:new Node('span'),
+  answers:new Node('div'),status:new Node('p'),scanScore:new Node('div'),cameraGrade:new Node('div'),photoGrade:new Node('div'),cameraProgress:new Node('div'),cameraLiveBadge:new Node('span'),
   scanMaxScore:{value:'10'},canvas:new Node('canvas'),manualAlign:new Node('button'),manualHelp:new Node('p')
  };
  const $=id=>{assert.ok(fields[id],id);return fields[id]};
