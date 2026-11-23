@@ -145,7 +145,10 @@ export class CameraSession {
         throw new Error('A câmera traseira não está disponível neste navegador. Importe uma fotografia para continuar.');
       }
       const caps = safeCapabilities(track), constraints = {};
-      for (const dim of ['width','height']) if (caps[dim]?.max) constraints[dim]={ideal:Math.min(2560,caps[dim].max)};
+      // Prefer a common 4:3 pair; independent equal maxima may request a square stream.
+       if (caps.width?.max) constraints.width={ideal:Math.min(1920,caps.width.max)};
+       if (caps.height?.max) constraints.height={ideal:Math.min(1440,caps.height.max)};
+       if (caps.aspectRatio) constraints.aspectRatio={ideal:4/3};
       if (caps.resizeMode?.includes('none')) constraints.resizeMode={exact:'none'};
       if (track.applyConstraints && Object.keys(constraints).length) {
         try {await track.applyConstraints(constraints)} catch { /* Keep usable native video. */ }
