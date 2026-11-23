@@ -15,7 +15,7 @@ const root=path.resolve(path.dirname(fileURLToPath(import.meta.url)),'../..');
 const text=rel=>fs.readFileSync(path.join(root,rel),'utf8');
 const gitBlob=rel=>{const body=fs.readFileSync(path.join(root,rel));return createHash('sha1').update('blob '+body.length+'\0').update(body).digest('hex')};
 // The two frontend score-format contract helpers were imported byte-for-byte from PR #86.
-// All other pinned private and optical modules retain their original hashes.
+// Only the printed-title renderer has the user-approved visual change; other pinned private and optical modules retain their original hashes.
 const original={
  'corretor/v2/assessments/block-scoring.mjs':'42a3ec7bfd2a10495f74c103a792bf1d65f6d264',
  'corretor/v2/assessments/private-contract-adapter.mjs':'fa7e11c2b9b69fe85c6b35b7601b282e947456ee',
@@ -23,12 +23,12 @@ const original={
  'corretor/v2/assessments/private-library.mjs':'8eb63a54c83a121d58108af7066be381c7290bd2',
  'corretor/v2/assessments/private-ui.mjs':'f22f6a04ef2248bf28216d1e7764fb89741b0494',
  'corretor/v2/omr/template.mjs':'d0c0e0a5a061b778a4b92973f0fd3009a1683f30',
- 'corretor/v2/omr/render.mjs':'90667f4dc78ee1f6d071325f4bb3077f431f3bb5',
+ 'corretor/v2/omr/render.mjs':'8e3f53ce7cd9670f00e4a9471499f1917a449ae4',
  'corretor/v2/omr/manifest.mjs':'0a83331c35f467fe3e123daf1775010e5f3e9e0b'
 };
 const fakeKey=letter=>Array(60).fill(letter).join(' ');
 
-test('P0-08B-03: V2/OMR and private contracts stay pinned; approved frontend reauth controller stays protected',()=>{
+test('P0-08B-03: V2/OMR pins include approved printed-title renderer; private controller stays protected',()=>{
  for(const [file,expected]of Object.entries(original))assert.equal(gitBlob(file),expected,file);
  const controller=text('corretor/v2/assessments/private-library.mjs');
  assert.match(controller,/resetContext\(\);\s*s\.session=null;s\.grants=\[\];s\.scope=null;s\.pending=null;/,

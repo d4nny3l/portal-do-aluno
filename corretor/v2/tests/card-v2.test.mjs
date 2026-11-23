@@ -49,6 +49,19 @@ test('V2: unequal sections fill vertical gaps in uniform-width columns without d
  for(let i=0;i<m.sections.length;i++)for(let j=i+1;j<m.sections.length;j++)assert.ok(!overlap(m.sections[i],m.sections[j]));
 });
 
+test('V2: continuation title omits cont. only in printed SVG, retaining manifest and optical geometry',()=>{
+ const template=createTemplate([{type:'A-E',count:150,label:'BLOCO'}],{identityMode:'none',columnCount:5});
+ const manifest=createCardManifest(template),snapshot=structuredClone(manifest);
+ const continuations=manifest.sections.filter(f=>f.label.endsWith(' (cont.)'));
+ assert.ok(continuations.length>0,'fixture must cross columns');
+ const svg=renderTemplateSvg(template,{manifest});
+ assert.doesNotMatch(svg,/\(cont\.\)/i,'continuation suffix is absent from printed card');
+ assert.equal((svg.match(/>BLOCO<\/text>/g)||[]).length,manifest.sections.length,'block name remains visible in every column');
+ assert.deepEqual(manifest,snapshot,'rendering must not mutate manifest or hash');
+ assert.equal((svg.match(/class="omr-question"/g)||[]).length,150,'all questions remain on printed card');
+ assert.equal((svg.match(/class="omr-fiducial"/g)||[]).length,4,'OMR markers are untouched');
+});
+
 test('V2: conventional black letters, rounded inner frames and square outside/fiducials',()=>{
  const svg=renderTemplateSvg(create());assert.doesNotMatch(svg,/>MODELO|paint-order|fill="#fff" stroke="#000" stroke-width="0.16"/);
  assert.match(svg,/omr-header-frame[^>]*rx="1" ry="1"/);assert.match(svg,/omr-name-frame[^>]*rx="1" ry="1"/);assert.match(svg,/omr-code-frame[^>]*rx="1" ry="1"/);assert.match(svg,/omr-section-border[^>]*rx="1" ry="1"/);

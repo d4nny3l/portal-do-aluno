@@ -12,11 +12,14 @@ const fixture=name=>JSON.parse(readFileSync(new URL(`./fixtures/${name}`,import.
 const sha=value=>createHash('sha256').update(value).digest('hex');
 const card=opts=>createTemplate([{type:'A-E',count:20,label:'Questões'}],opts);
 
-test('maintenance: all 15 manifests are byte-equivalent to the approved baseline; SVG differs only in code title',()=>{
+test('maintenance: all 15 manifests retain baseline geometry and SVG differs only by hidden continuation suffix',()=>{
  for(const old of fixture('maintenance-16113b6-golden.json').records){
   const t=createTemplate([{type:old.type,count:old.count,label:'Questões'}]),m=createCardManifest(t),svg=renderTemplateSvg(t,{manifest:m});
   assert.equal(sha(JSON.stringify(m)),old.manifestSha256,`${old.type}/${old.count}: manifest changed`);
-  assert.equal(sha(svg),old.svgSha256AfterTitleChange,`${old.type}/${old.count}: unexpected SVG change`);
+  // Reconstruct the prior printed label using a temporary manifest copy; compare every other SVG byte to the historic baseline.
+  const priorVisualManifest={...m,sections:m.sections.map(f=>f.label.endsWith(' (cont.)')?{...f,label:f.label+' '}:f)};
+  assert.equal(sha(renderTemplateSvg(t,{manifest:priorVisualManifest})),old.svgSha256AfterTitleChange,`${old.type}/${old.count}: unrelated SVG change`);
+  assert.doesNotMatch(svg,/\(cont\.\)/i,'continuation suffix must not be printed');
   assert.equal(m.identityCode.columns.length,7);assert.equal(m.identityBubbles.length,70);
   assert.match(svg,/>CÓDIGO DO ALUNO<\/text>/);assert.doesNotMatch(svg,/CÓDIGO SALTA/);
  }
