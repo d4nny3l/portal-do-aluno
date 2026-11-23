@@ -84,7 +84,8 @@ test('P1-01: failed recapture keeps old score identified through max, key and ma
 
  editor.render(h.page(['B','B','C']));
  assert.equal(fields.scanScore.dataset.stale,'false','only a processed new card clears stale');
- assert.equal(fields.cameraGrade.textContent,'Nota 6,67');
+ assert.equal(fields.cameraGrade.hidden,true);
+ assert.equal(fields.photoGrade.textContent,'Nota 6,67');
  assert.doesNotMatch(fields.scanScore.innerHTML,/Última leitura bem-sucedida/);
  assert.match(fields.scanScore.innerHTML,/Nota final 6,67 \/ 20,00/);
 });
