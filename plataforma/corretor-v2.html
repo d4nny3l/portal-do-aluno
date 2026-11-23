@@ -219,34 +219,34 @@ function sampleScanFrame(preview,detection,dimensions,video){
 function scanCameraFrame(){
  const video=$('video');if(!cameraStream||!cameraScratch||!video.videoWidth||video.readyState<2)return;
  const dimensions=`${video.videoWidth}x${video.videoHeight}`;
- if(dimensions!==cameraFrameDimensions){clearScanFrameChoice();cameraFrameDimensions=dimensions;previousCameraFrame=null;stableFrames=0;previousCorners=null;typeof setCameraProgress==='function'&&setCameraProgress();updateCameraInfo();}
+ if(dimensions!==cameraFrameDimensions){typeof clearScanFrameChoice==='function'&&clearScanFrameChoice();cameraFrameDimensions=dimensions;previousCameraFrame=null;stableFrames=0;previousCorners=null;typeof setCameraProgress==='function'&&setCameraProgress();updateCameraInfo();}
  const frame=drawVideoFrame(video,cameraScratch,900),{gray,width,height}=frame;let detection;
  try{detection=detectFiducials(gray,width,height)}catch{detection={found:false,corners:[]}}
- if(!detection.found||detection.confidence<.7){clearScanFrameChoice();stableFrames=0;previousCameraFrame=null;absentFrames++;if(absentFrames>=2){previousCorners=null;positionGuides(null,false)}$('cameraLiveBadge').dataset.found='false';$('cameraLiveBadge').textContent=waitingForRemoval?'Aguardando retirada da folha':'Aguardando a folha';if(waitingForRemoval&&absentFrames>=3){waitingForRemoval=false;absentFrames=0;typeof setCameraProgress==='function'&&setCameraProgress();setScanMessage('Folha retirada. Enquadre o próximo cartão.')}else if(!waitingForRemoval){typeof setCameraProgress==='function'&&setCameraProgress();setScanMessage('Centralize o cartão.')}return}
+ if(!detection.found||detection.confidence<.7){typeof clearScanFrameChoice==='function'&&clearScanFrameChoice();stableFrames=0;previousCameraFrame=null;absentFrames++;if(absentFrames>=2){previousCorners=null;positionGuides(null,false)}$('cameraLiveBadge').dataset.found='false';$('cameraLiveBadge').textContent=waitingForRemoval?'Aguardando retirada da folha':'Aguardando a folha';if(waitingForRemoval&&absentFrames>=3){waitingForRemoval=false;absentFrames=0;typeof setCameraProgress==='function'&&setCameraProgress();setScanMessage('Folha retirada. Enquadre o próximo cartão.')}else if(!waitingForRemoval){typeof setCameraProgress==='function'&&setCameraProgress();setScanMessage('Centralize o cartão.')}return}
  absentFrames=0;positionGuides(detection.corners.map(p=>({x:p.x*video.videoWidth/width,y:p.y*video.videoHeight/height})),true);
  const quality=captureQuality(frame,detection,previousCameraFrame);previousCameraFrame=frame;
  $('cameraLiveBadge').dataset.found=String(quality.ok);$('cameraLiveBadge').textContent=waitingForRemoval?'Aguardando retirada da folha':quality.message;
  if(waitingForRemoval||captureBusy)return;
- if($('cameraCalibrationMode').checked){clearScanFrameChoice();stableFrames=0;typeof setCameraProgress==='function'&&setCameraProgress();setScanMessage('Modo de diagnóstico ativo.');return}
+ if($('cameraCalibrationMode').checked){typeof clearScanFrameChoice==='function'&&clearScanFrameChoice();stableFrames=0;typeof setCameraProgress==='function'&&setCameraProgress();setScanMessage('Modo de diagnóstico ativo.');return}
  if((!$('cameraGrade').hidden||!$('photoGrade').hidden)&&typeof markLastReadingPending==='function')markLastReadingPending();
  if(quality.ok){if($('cameraGuideStatus').textContent)setScanMessage('')}else if($('cameraGuideStatus').textContent!==quality.message)setScanMessage(quality.message);
  stableFrames=quality.ok&&samePosition(detection,previousCorners,width,height)?stableFrames+1:0;previousCorners=detection;
- if(!stableFrames)clearScanFrameChoice();
- if(stableFrames===2&&Date.now()-lastCaptureAt>=2000)sampleScanFrame(frame,detection,dimensions,video);
+ if(!stableFrames)typeof clearScanFrameChoice==='function'&&clearScanFrameChoice();
+ if(stableFrames===2&&Date.now()-lastCaptureAt>=2000)typeof sampleScanFrame==='function'&&sampleScanFrame(frame,detection,dimensions,video);
  typeof setCameraProgress==='function'&&setCameraProgress(stableFrames>=3,false,false);
  if(stableFrames>=3&&Date.now()-lastCaptureAt>=2000){lastCaptureAt=Date.now();captureBusy=true;try{typeof markLastReadingPending==='function'&&markLastReadingPending();const capture=captureFrameGray(),projected=mapFramePoints(detection.corners,frame,capture),actual=detectFiducials(capture.gray,capture.width,capture.height);if(!actual.found||actual.confidence<.7||actual.corners?.length!==4)throw new Error('Marcadores instáveis na captura. Segure a folha e tente novamente.');const tolerance=Math.hypot(capture.width,capture.height)*.012;if(actual.corners.some((point,i)=>Math.hypot(point.x-projected[i].x,point.y-projected[i].y)>tolerance))throw new Error('A folha se moveu durante a captura. Segure-a e tente novamente.');
- const nowScore=scanSelectionEnabled?scanOpticalRank(capture,actual):null;
- const prior=scanBestFrame;
+ const nowScore=typeof scanSelectionEnabled!=='undefined'&&scanSelectionEnabled&&typeof scanOpticalRank==='function'?scanOpticalRank(capture,actual):null;
+ const prior=typeof scanBestFrame!=='undefined'?scanBestFrame:null;
  const chosen=prior&&nowScore!==null&&prior.score>nowScore+2&&
    prior.dimensions===dimensions&&prior.video===video&&prior.model===activeManifest&&
    prior.template===template&&Date.now()-prior.at<1500?prior:{capture,actual};
- clearScanFrameChoice();
- const normalized=prepareImage(chosen.capture.gray,chosen.capture.width,chosen.capture.height,{automatic:true,manualCorners:chosen.actual.corners});waitingForRemoval=Boolean(normalized);if(normalized){typeof setCameraProgress==='function'&&setCameraProgress(true,true,$('scanScore').dataset.review==='false');$('cameraLiveBadge').textContent='Aguardando retirada da folha'}else{stableFrames=0;previousCorners=null;setCameraProgress()}}catch(error){stableFrames=0;previousCorners=null;typeof setCameraProgress==='function'&&setCameraProgress();setScanMessage(error.message||'Reenquadre a folha.')}finally{clearScanFrameChoice();captureBusy=false}}
+ typeof clearScanFrameChoice==='function'&&clearScanFrameChoice();
+ const normalized=prepareImage(chosen.capture.gray,chosen.capture.width,chosen.capture.height,{automatic:true,manualCorners:chosen.actual.corners});waitingForRemoval=Boolean(normalized);if(normalized){typeof setCameraProgress==='function'&&setCameraProgress(true,true,$('scanScore').dataset.review==='false');$('cameraLiveBadge').textContent='Aguardando retirada da folha'}else{stableFrames=0;previousCorners=null;setCameraProgress()}}catch(error){stableFrames=0;previousCorners=null;typeof setCameraProgress==='function'&&setCameraProgress();setScanMessage(error.message||'Reenquadre a folha.')}finally{typeof clearScanFrameChoice==='function'&&clearScanFrameChoice();captureBusy=false}}
 }
 function updateCameraInfo(){const track=cameraStream?.getVideoTracks()[0],settings=track?.getSettings?.()||{},video=$('video'),zoom=track&&typeof cameraZoomSnapshot==='function'?cameraZoomSnapshot(track):null;const nativeNote=!zoom?.supported?'Campo de visão nativo não controlável neste navegador; afaste a folha ou importe foto se necessário.':`Zoom nativo ${zoom.current??'?'}; mínimo reportado ${zoom.min}. A lente física escolhida depende do navegador.`;$('cameraInfo').textContent=track?`${track.label||'Câmera'} · vídeo ${video.videoWidth} × ${video.videoHeight} · configurado ${settings.width||'?'} × ${settings.height||'?'} · ${settings.facingMode||'orientação não informada'} · ${settings.resizeMode||'recorte do navegador não informado'}. ${nativeNote} Sem correção artificial de lente.`:'Abra a câmera para consultar resolução e controles disponíveis.';}
 function syncTorchButton(supported=false,enabled=false){const button=$('cameraTorchButton'),isOn=Boolean(enabled);button.hidden=!supported;button.disabled=!supported;button.setAttribute('aria-pressed',String(isOn));button.setAttribute('aria-label',isOn?'Desligar iluminação da câmera':'Ligar iluminação da câmera');button.title=isOn?'Desligar iluminação da câmera':'Ligar iluminação da câmera';$('cameraTorch').checked=isOn}
 // Recria somente a superfície visual: mantém a MESMA MediaStreamTrack, sem reabrir a câmera nem alterar pixels OMR.
-function onCameraVideoResize(){if(cameraStream){clearScanFrameChoice();stableFrames=0;previousCorners=null;previousCameraFrame=null;positionGuides(null,false);updateCameraInfo()}}
+function onCameraVideoResize(){if(cameraStream){typeof clearScanFrameChoice==='function'&&clearScanFrameChoice();stableFrames=0;previousCorners=null;previousCameraFrame=null;positionGuides(null,false);updateCameraInfo()}}
 function replaceCameraVideo(stream){
  const old=$('video'),video=old.cloneNode(false);
  old.pause();old.srcObject=null;old.replaceWith(video);video.srcObject=stream;
@@ -261,7 +261,7 @@ async function recoverSafariVideo(){
  try{
   const video=replaceCameraVideo(stream);await video.play();
   if(stream!==cameraStream||request!==cameraUiGeneration)return;
-  clearScanFrameChoice();stableFrames=0;previousCorners=null;previousCameraFrame=null;cameraFrameDimensions='';
+  typeof clearScanFrameChoice==='function'&&clearScanFrameChoice();stableFrames=0;previousCorners=null;previousCameraFrame=null;cameraFrameDimensions='';
   positionGuides(null,false);updateCameraInfo();
  }catch(error){
   if(stream===cameraStream&&request===cameraUiGeneration)setScanMessage('Não foi possível restaurar a prévia. Feche e abra a câmera novamente.');
@@ -297,7 +297,7 @@ function watchSafariCameraViewport(){
   safariCameraViewport=settled;safariCameraResyncAt=Date.now();void recoverSafariVideo();
  },Math.max(350,2500-(Date.now()-safariCameraResyncAt)));
 }
-function stopCamera(){clearScanFrameChoice();scanSelectionEnabled=true;cameraUiGeneration++;clearTimeout(safariCameraResyncTimer);safariCameraResyncTimer=null;safariCameraViewport=null;$('cameraStage').style.removeProperty('min-height');typeof setCameraProgress==='function'&&setCameraProgress();const previousTrack=cameraStream?.getVideoTracks()[0];if(previousTrack&&$('cameraTorchButton').getAttribute('aria-pressed')==='true')void applyCameraControl(previousTrack,'torch',false);cameraSession.stop();syncTorchButton();if(cameraTimer){clearInterval(cameraTimer);cameraTimer=null}cameraStream=null;cameraOpening=false;const video=$('video');video.pause();video.srcObject=null;$('cameraStage').hidden=true;$('camera').textContent='Abrir câmera';stableFrames=0;previousCorners=null;previousCameraFrame=null;cameraFrameDimensions='';waitingForRemoval=false;absentFrames=0;for(const id of ['Zoom','Exposure','Focus','Torch'])$('camera'+id+'Label').hidden=true;clearGuides();$('cameraLiveBadge').dataset.found='false';updateCameraInfo();setScanMessage('Câmera fechada.')}
+function stopCamera(){if(typeof clearScanFrameChoice==='function')clearScanFrameChoice();if(typeof scanSelectionEnabled!=='undefined')scanSelectionEnabled=true;cameraUiGeneration++;clearTimeout(safariCameraResyncTimer);safariCameraResyncTimer=null;safariCameraViewport=null;$('cameraStage').style.removeProperty('min-height');typeof setCameraProgress==='function'&&setCameraProgress();const previousTrack=cameraStream?.getVideoTracks()[0];if(previousTrack&&$('cameraTorchButton').getAttribute('aria-pressed')==='true')void applyCameraControl(previousTrack,'torch',false);cameraSession.stop();syncTorchButton();if(cameraTimer){clearInterval(cameraTimer);cameraTimer=null}cameraStream=null;cameraOpening=false;const video=$('video');video.pause();video.srcObject=null;$('cameraStage').hidden=true;$('camera').textContent='Abrir câmera';stableFrames=0;previousCorners=null;previousCameraFrame=null;cameraFrameDimensions='';waitingForRemoval=false;absentFrames=0;for(const id of ['Zoom','Exposure','Focus','Torch'])$('camera'+id+'Label').hidden=true;clearGuides();$('cameraLiveBadge').dataset.found='false';updateCameraInfo();setScanMessage('Câmera fechada.')}
 async function startCamera(deviceId=''){
  stopCamera();const request=cameraUiGeneration;cameraOpening=true;$('camera').textContent='Cancelar abertura';
  try{
