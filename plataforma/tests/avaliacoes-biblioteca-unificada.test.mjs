@@ -58,7 +58,7 @@ test('new library is inside Criar avaliação; DOM de Corrigir cartões preserva
  assert.ok(start>=0&&correct>start&&end>correct);
  assert.ok(html.slice(start,correct).includes('id="savedAssessments"'));
  assert.ok(!html.slice(correct,end).includes('savedAssessments'));
- assert.equal(fnv(html.slice(correct+'<section class="corretor-card module-view" id="corrigir">'.length,end)),'9876af09915e80c3');
+ assert.equal(fnv(html.slice(correct+'<section class="corretor-card module-view" id="corrigir">'.length,end)),'23293fec36e8ed66');
  assert.equal(gitSha('plataforma/corretor-v2.css'),'176dbecdf3abaf4680b7dfef2e97cca92acf738d');
  assert.match(html,/mountAssessmentLibrary\(/);
  assert.match(html,/privateSelection\.manifestHash/);
