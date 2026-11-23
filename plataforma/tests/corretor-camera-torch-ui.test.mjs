@@ -20,7 +20,7 @@ function harness(){
  function el(id){
   if(!els.has(id)){
    const attrs=new Map();
-   els.set(id,{id,hidden:false,disabled:false,checked:false,dataset:{},
+   els.set(id,{id,hidden:false,disabled:false,checked:false,dataset:{},style:{removeProperty(){}},
     setAttribute(k,v){attrs.set(k,String(v))},getAttribute(k){return attrs.get(k)??null},
     pause(){this.paused=true}});
   }
