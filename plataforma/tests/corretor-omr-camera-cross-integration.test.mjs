@@ -184,12 +184,13 @@ test('P1 adversarial and historical coverage remains in combined source',()=>{
 });
 
 
-test('UX-SAFARI-109: o video dimensiona a altura do palco sem letterbox ou crop digital',()=>{
- assert.match(html,/#corrigir \.camera-stage\{[^}]*aspect-ratio:auto;height:auto;min-height:0\}/);
- assert.match(html,/#corrigir \.camera-stage video\{display:block;width:100%;height:auto;aspect-ratio:var\(--camera-ratio\);object-fit:contain\}/);
+test('UX-SAFARI-111: camera sem moldura escura e video na proporcao intrinseca sem recorte',()=>{
+ assert.match(html,/#corrigir \.camera-stage\{[^}]*aspect-ratio:auto;height:auto;min-height:0;border:0;border-radius:0;background:transparent;box-shadow:none\}/);
+ assert.match(html,/#corrigir \.camera-stage video\{display:block;width:100%;height:auto;aspect-ratio:auto;object-fit:contain;background:transparent\}/);
  assert.doesNotMatch(html,/#corrigir \.camera-stage video\{[^}]*object-fit:cover/);
  assert.match(html,/stage\.style\?\.setProperty\?\.\('--camera-ratio',String\(vw\/vh\)\)/);
  assert.match(html,/#corrigir #cameraGuides\{display:none!important\}/);
+ assert.match(html,/id="video" playsinline autoplay muted/);
 });
 
 test('UX-LEITURA-01: comparison follows answers and grade is only near the camera',()=>{
