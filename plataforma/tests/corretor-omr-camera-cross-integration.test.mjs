@@ -194,6 +194,10 @@ test('UX-LEITURA-01: comparison follows answers and grade is only near the camer
  assert.ok(pos('id="photoGrade"')<pos('id="answers"'));
  assert.ok(pos('id="answers"')<pos('id="captureComparison"'));
  assert.ok(pos('id="captureComparison"')<pos('id="captureHistory"'));
+ assert.ok(pos('id="captureComparison"')<pos('id="canvas"'));
+ assert.ok(pos('id="canvas"')<pos('id="captureHistory"'));
+ assert.equal([...corretor.matchAll(/id="canvas"/g)].length,1,'canvas stays singular');
+ assert.match(html,/#corrigir #cameraGuides\{display:none!important\}/);
  for(const id of ['scanScore','photoGrade','cameraGrade','captureComparison','originalCapture','normalizedCapture'])
   assert.equal([...corretor.matchAll(new RegExp('id="'+id+'"','g'))].length,1,id);
  assert.match(html,/#corrigir #scanScore\{display:none!important\}/);
