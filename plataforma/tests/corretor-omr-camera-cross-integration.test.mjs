@@ -64,6 +64,7 @@ function integrationHarness(){
  const template={pageCount:1,questions:[{questionId:'q1',choices:['A','B','C','D']}]};
  $('scanMaxScore').value='10';
  $('read').disabled=true;
+ $('cameraStage').hidden=true;
  const state={
   $,document:{createElement:tag=>new Element(tag)},template,
   scoreInputUnits,formatScore,POINT_SCALE,

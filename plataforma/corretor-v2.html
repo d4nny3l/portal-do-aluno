@@ -181,7 +181,7 @@ function scanCameraFrame(){
  $('cameraLiveBadge').dataset.found=String(quality.ok);$('cameraLiveBadge').textContent=waitingForRemoval?'Aguardando retirada da folha':quality.message;
  if(waitingForRemoval||captureBusy)return;
  if($('cameraCalibrationMode').checked){stableFrames=0;typeof setCameraProgress==='function'&&setCameraProgress();setScanMessage('Modo de diagnóstico ativo.');return}
- if(!$('cameraGrade').hidden&&typeof markLastReadingPending==='function')markLastReadingPending();
+ if((!$('cameraGrade').hidden||!$('photoGrade').hidden)&&typeof markLastReadingPending==='function')markLastReadingPending();
  setScanMessage(quality.message+' Aguarde a captura automática.');
  stableFrames=quality.ok&&samePosition(detection,previousCorners,width,height)?stableFrames+1:0;previousCorners=detection;typeof setCameraProgress==='function'&&setCameraProgress(stableFrames>=3,false,false);
  if(stableFrames>=3&&Date.now()-lastCaptureAt>=2000){lastCaptureAt=Date.now();captureBusy=true;try{typeof markLastReadingPending==='function'&&markLastReadingPending();const capture=captureFrameGray();const normalized=prepareImage(capture.gray,capture.width,capture.height,{automatic:true,manualCorners:mapFramePoints(detection.corners,frame,capture)});waitingForRemoval=Boolean(normalized);if(normalized){typeof setCameraProgress==='function'&&setCameraProgress(true,true,$('scanScore').dataset.review==='false');$('cameraLiveBadge').textContent='Aguardando retirada da folha'}else{stableFrames=0;previousCorners=null;setCameraProgress()}}catch(error){stableFrames=0;previousCorners=null;typeof setCameraProgress==='function'&&setCameraProgress();setScanMessage(error.message||'Reenquadre a folha.')}finally{captureBusy=false}}
