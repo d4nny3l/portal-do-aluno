@@ -356,11 +356,11 @@ test("browser modules pin generator assets and keep the legacy route intact", as
     readFile(new URL("../omr/export.mjs", import.meta.url), "utf8"),
   ]);
   assert.match(renderSource, /from ["']\.\/template\.mjs\?v=20261114v2final["']/);
-  assert.match(readerSource, /from ["']\.\/template\.mjs\?v=20261115assess1["']/);
-  assert.match(pageSource, /omr\/render\.mjs\?v=20261123cont110/);
-  assert.match(pageSource, /omr\/export\.mjs\?v=20261123cont110/);
-  assert.match(exportSource, /\.\/render\.mjs\?v=20261123cont110/);
-  assert.match(pageSource, /omr\/manifest\.mjs\?v=20261114v2final/);
+  assert.match(readerSource, /from ["']\.\/template\.mjs\?v=20261123embedalign01["']/);
+  assert.match(pageSource, /omr\/render\.mjs\?v=20261123embedalign01/);
+  assert.match(pageSource, /omr\/export\.mjs\?v=20261123embedalign01/);
+  assert.match(exportSource, /\.\/render\.mjs\?v=20261123embedalign01/);
+  assert.match(pageSource, /omr\/manifest\.mjs\?v=20261123embedalign01/);
   assert.doesNotMatch(pageSource, /omr\/(?:render|export)\.mjs\?v=20261114v2final/);
   assert.match(teacherSource, /corretor-v2\.html\?v=20261115assess2/g);
   assert.match(teacherSource, /professor-theme\.css\?v=20261110ux1/);
