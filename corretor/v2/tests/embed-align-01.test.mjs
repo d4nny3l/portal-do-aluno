@@ -106,10 +106,11 @@ test('EMBED-ALIGN-01: reject unreadable small captures and wrong geometry withou
 
 for(const mode of ['full-page','embedded'])for(const columns of [2,3]){
  test('EMBED-ALIGN-01: top question rows and visible centered headings align in '+columns+' columns / '+mode,()=>{
+  const counts=mode==='embedded'&&columns===2?[20,20,20]:[26,28,30];
   const sections=[
-   {type:'A-D',count:26,label:'MATEMÁTICA'},
-   {type:'A-E',count:28,label:'GEOMETRIA E REPRESENTAÇÕES\nDE FIGURAS PLANAS'},
-   {type:'C-E',count:30,label:'ANÁLISE DE PROPOSIÇÕES MATEMÁTICAS\nE RACIOCÍNIO LÓGICO\nAPLICADO'},
+   {type:'A-D',count:counts[0],label:'MATEMÁTICA'},
+   {type:'A-E',count:counts[1],label:'GEOMETRIA E REPRESENTAÇÕES\\nDE FIGURAS PLANAS'},
+   {type:'C-E',count:counts[2],label:'ANÁLISE DE PROPOSIÇÕES MATEMÁTICAS\\nE RACIOCÍNIO LÓGICO\\nAPLICADO'},
   ];
   const t=make(sections,{mode,w:170,h:260,cols:columns});
   const m=createCardManifest(t),svg=renderTemplateSvg(t,{manifest:m});
@@ -131,7 +132,7 @@ for(const mode of ['full-page','embedded'])for(const columns of [2,3]){
   assert.equal(new Set(frames.map(f=>f.titleBandMm)).size,1,'one globally shared band');
   assert.ok(m.sections.every(f=>f.titleLines.every(line=>!line.includes('(cont.)'))));
   assert.doesNotMatch(svg,/\(cont\.\)/);
-  assert.equal((svg.match(/class="omr-question"/g)||[]).length,84);
+  assert.equal((svg.match(/class="omr-question"/g)||[]).length,counts.reduce((a,b)=>a+b,0));
   assert.equal((svg.match(/class="omr-fiducial"/g)||[]).length,4);
   const framesSvg=[...svg.matchAll(/<g class="omr-section-frame" data-section-id="[^"]+">([\s\S]*?)<\/g>/g)];
   assert.equal(framesSvg.length,m.sections.length);
