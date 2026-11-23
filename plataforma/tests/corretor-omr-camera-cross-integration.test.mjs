@@ -192,7 +192,8 @@ test('UX-SAFARI-112: visor estavel e recuperacao da superficie WebKit sem reabri
  assert.doesNotMatch(html,/#corrigir \.camera-stage video\{[^}]*object-fit:cover/);
  assert.match(html,/function replaceCameraVideo\(stream\)\{[\s\S]*?old\.cloneNode\(false\);[\s\S]*?old\.replaceWith\(video\);video\.srcObject=stream;/);
  assert.match(html,/const video=replaceCameraVideo\(stream\);\$\('cameraStage'\)\.hidden=false;await video\.play\(\)/);
- assert.match(html,/function watchSafariCameraViewport\(\)\{[\s\S]*?Math\.abs\(current\.width-previous\.width\)>8\|\|Math\.abs\(current\.height-previous\.height\)<20/);
+ assert.match(html,/function cameraViewportSize\(\)\{return \{width:innerWidth,height:window\.visualViewport\?\.height\?\?innerHeight\}\}/);
+ assert.match(html,/function watchSafariCameraViewport\(\)\{[\s\S]*?Math\.abs\(current\.width-previous\.width\)>8[\s\S]*?Math\.abs\(current\.height-previous\.height\)<20/);
  assert.match(html,/window\.visualViewport\?\.addEventListener\?\.\('resize',watchSafariCameraViewport\)/);
  assert.match(html,/function stopCamera\(\)\{cameraUiGeneration\+\+;clearTimeout\(safariCameraResyncTimer\)/);
  assert.match(html,/#corrigir #cameraGuides\{display:none!important\}/);
