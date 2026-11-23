@@ -184,6 +184,14 @@ test('P1 adversarial and historical coverage remains in combined source',()=>{
 });
 
 
+test('UX-SAFARI-109: o video dimensiona a altura do palco sem letterbox ou crop digital',()=>{
+ assert.match(html,/#corrigir \.camera-stage\{[^}]*aspect-ratio:auto;height:auto;min-height:0\}/);
+ assert.match(html,/#corrigir \.camera-stage video\{display:block;width:100%;height:auto;aspect-ratio:var\(--camera-ratio\);object-fit:contain\}/);
+ assert.doesNotMatch(html,/#corrigir \.camera-stage video\{[^}]*object-fit:cover/);
+ assert.match(html,/stage\.style\?\.setProperty\?\.\('--camera-ratio',String\(vw\/vh\)\)/);
+ assert.match(html,/#corrigir #cameraGuides\{display:none!important\}/);
+});
+
 test('UX-LEITURA-01: comparison follows answers and grade is only near the camera',()=>{
  const corretor=html.slice(html.indexOf('<section class="corretor-card module-view" id="corrigir"'),html.indexOf('</main>'));
  const pos=needle=>corretor.indexOf(needle);
