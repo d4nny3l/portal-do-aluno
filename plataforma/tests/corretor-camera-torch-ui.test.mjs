@@ -158,12 +158,12 @@ function uiHarness({available=[{kind:'videoinput',deviceId:'main',label:'Back Ca
   clearGuides(){},positionGuides(){},updateCameraInfo(){},
   setScanMessage(msg){messages.push(msg)},scanCameraFrame(){},
   replaceCameraVideo(stream){const video=el('video');video.srcObject=stream;return video},
-  innerWidth:402,innerHeight:754,
+  innerWidth:402,innerHeight:754,window:{visualViewport:{height:754}},
   document:{createElement(){return {width:0,height:0}}},clearInterval(){},clearTimeout(){},
   setInterval(){return 123}
  };
  vm.createContext(state);
- vm.runInContext([productionLine('function syncTorchButton('),productionLine('function stopCamera(){'),openingSource,
+ vm.runInContext([productionLine('function syncTorchButton('),productionLine('function cameraViewportSize()'),productionLine('function stopCamera(){'),openingSource,
   productionLine("$('cameraTorchButton').onclick=")].join('\n'),state,{timeout:2000});
  return {state,el,tracks,requested,messages};
 }
