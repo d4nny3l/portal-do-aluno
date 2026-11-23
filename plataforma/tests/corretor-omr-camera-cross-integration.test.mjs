@@ -336,7 +336,7 @@ test('UX-SAFARI-112 runtime: muda 40 px de viewport e remonta somente o video, p
  s.watchSafariCameraViewport();
  assert.equal(scheduledMs,350,'recovery must wait for viewport to stabilize');
  assert.equal(replacements,0,'do not change camera before debounce');
- const fire=scheduled;scheduled=null;await fire();await Promise.resolve();
+ const fire=scheduled;scheduled=null;fire();await new Promise(resolve=>setImmediate(resolve));
  assert.equal(replacements,1,'one video node is replaced');
  assert.equal(initial.paused,true);
  assert.equal(current.srcObject,stream,'the exact MediaStream is kept');
