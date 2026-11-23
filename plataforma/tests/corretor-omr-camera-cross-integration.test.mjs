@@ -297,6 +297,6 @@ test('UX-LEITURA-02 final: imported photo shows only formatted note in old posit
 test('UX-VISOR-03: visor e marcadores permanecem sobre a prévia, sem telemetria de câmera',()=>{
  assert.doesNotMatch(html,/id="cameraOverlayInfo"|class="camera-overlay-info"/);
  assert.match(html,/id="cameraGradeValue"/);
- assert.match(html,/--camera-ratio/);
+ assert.match(html,/#corrigir \.camera-stage\{width:min\(100%,660px\)/);
  assert.match(camera,/constraints\.height=\{ideal:Math\.min\(1440/);
 });
