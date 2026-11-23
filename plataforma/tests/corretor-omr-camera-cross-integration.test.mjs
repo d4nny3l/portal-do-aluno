@@ -82,7 +82,7 @@ function integrationHarness(){
   grayFromRgba(rgba){return new Uint8Array(rgba.length/4).fill(220)},
   createImageBitmap:async()=>({width:4,height:5,close(){}}),
  };
- state.prepareImage=(gray,width,height)=>{state.normalizedRaster={pixels:gray,width,height};return state.normalizedRaster};
+ state.prepareImage=(gray,width,height,{source='camera'}={})=>{state.rawRaster={gray,width,height,source};state.normalizedRaster={pixels:gray,width,height};return state.normalizedRaster};
  vm.createContext(state);
  vm.runInContext(script,state,{timeout:2500});
  return {state,$,messages,readCalls,bankChecks};
@@ -117,10 +117,17 @@ test('P1 integrated photo import reads immediately and identical file may be sel
  await input.onchange({target:{files:[photo],value:'foto.jpg'}}); // Direct call to production handler
  assert.equal(h.readCalls.length,1);
  assert.equal(h.messages.at(-1),'');
+ assert.equal(h.$('cameraStage').hidden,true);
+ assert.equal(h.$('cameraGrade').hidden,true);
+ assert.equal(h.$('photoGrade').hidden,false);
+ assert.equal(h.$('photoGrade').textContent,'Nota 10,00');
  // Direct handler can be invoked again with the identical file; no manual read button.
  input.value='foto.jpg';
  await input.onchange({target:{files:[photo],value:'foto.jpg'}});
  assert.equal(h.readCalls.length,2);
+ assert.equal(h.$('photoGrade').textContent,'Nota 10,00');
+ assert.equal(h.$('cameraGrade').hidden,true);
+ assert.equal(h.$('cameraStage').hidden,true);
 });
 
 test('P1 integrated scanner triggers partial grade, avoids duplicate sheet and accepts next sheet',()=>{
@@ -182,9 +189,11 @@ test('UX-LEITURA-01: comparison follows answers and grade is only near the camer
  assert.ok(pos('id="cameraStage"')<pos('id="cameraGrade"'));
  assert.ok(pos('id="cameraGrade"')<pos('id="scanScore"'));
  assert.ok(pos('id="scanScore"')<pos('id="scanFeedback"'));
+ assert.ok(pos('id="scanFeedback"')<pos('id="photoGrade"'));
+ assert.ok(pos('id="photoGrade"')<pos('id="answers"'));
  assert.ok(pos('id="answers"')<pos('id="captureComparison"'));
  assert.ok(pos('id="captureComparison"')<pos('id="captureHistory"'));
- for(const id of ['scanScore','captureComparison','originalCapture','normalizedCapture'])
+ for(const id of ['scanScore','photoGrade','cameraGrade','captureComparison','originalCapture','normalizedCapture'])
   assert.equal([...corretor.matchAll(new RegExp('id="'+id+'"','g'))].length,1,id);
  assert.match(html,/#corrigir #scanScore\{display:none!important\}/);
  assert.match(html,/#corrigir #cameraGrade\[hidden\]/);
@@ -240,4 +249,26 @@ test('UX-LEITURA-02: only the existing grade is overlaid after success, zero ret
  assert.equal(h.$('cameraGrade').textContent,'Nota 0,00');
  assert.match(html,/#corrigir #cameraReadStatus\{display:none!important\}/);
  assert.doesNotMatch(html,/Cartão reconhecido e leitura atualizada\.|Cartão reconhecido\. Nota final disponível\./);
+});
+
+
+test('UX-LEITURA-02 final: imported photo shows only formatted note in old position; new read clears stale note',()=>{
+ const h=integrationHarness(),s=h.state;
+ h.$('read').disabled=false;
+ s.rawRaster={source:'import'};
+ s.readNormalized();
+ for(const value of ['8','8,5','8,50']){
+  s.showCameraGrade(value);
+  // The scorer approves final grades; the direct helper preserves strings without reformatting.
+  assert.equal(h.$('photoGrade').textContent,'Nota '+value);
+  assert.equal(h.$('photoGrade').hidden,false);
+  assert.equal(h.$('cameraGrade').hidden,true);
+ }
+ s.markLastReadingPending();
+ assert.equal(h.$('photoGrade').hidden,true);
+ assert.equal(h.$('cameraGrade').hidden,true);
+ s.rawRaster={source:'camera'};
+ s.readNormalized();
+ assert.equal(h.$('cameraGrade').textContent,'Nota 10,00');
+ assert.equal(h.$('photoGrade').hidden,true);
 });
