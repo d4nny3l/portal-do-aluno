@@ -300,3 +300,55 @@ test('UX-VISOR-03: visor e marcadores permanecem sobre a prévia, sem telemetria
  assert.match(html,/#corrigir \.camera-stage\{width:min\(100%,660px\)/);
  assert.match(camera,/constraints\.height=\{ideal:Math\.min\(1440/);
 });
+
+test('UX-SAFARI-112 runtime: muda 40 px de viewport e remonta somente o video, preservando a track OMR',async()=>{
+ const start=html.indexOf('function onCameraVideoResize(){');
+ const end=html.indexOf('function stopCamera(){',start);
+ assert.ok(start>0&&end>start,'production recovery helpers must be present');
+ const source=html.slice(start,end);
+ const stream={tracksStopped:0,getVideoTracks(){return [{stop(){stream.tracksStopped++}}]}};
+ let current=null,replacements=0,scheduled=null,scheduledMs=null,updates=0;
+ const makeVideo=()=>{
+  const video={srcObject:null,paused:false,played:false,videoWidth:1440,videoHeight:1920,
+   pause(){this.paused=true},
+   cloneNode(){return makeVideo()},
+   replaceWith(next){current=next;replacements++},
+   addEventListener(){},
+   async play(){this.played=true}
+  };
+  return video;
+ };
+ current=makeVideo();current.srcObject=stream;
+ const initial=current;
+ const stage={clientHeight:448,style:{minHeight:'',removeProperty(k){delete this[k]}}};
+ const s={
+  $:id=>id==='video'?current:stage,
+  cameraStream:stream,cameraOpening:false,captureBusy:false,cameraUiGeneration:3,
+  safariCameraResyncBusy:false,safariCameraResyncAt:0,safariCameraResyncTimer:null,
+  safariCameraViewport:{width:402,height:754},
+  stableFrames:3,previousCorners:{},previousCameraFrame:{},cameraFrameDimensions:'1440x1920',
+  innerWidth:402,innerHeight:714,navigator:{userAgent:'iPhone'},
+  Date:{now:()=>3000},
+  setTimeout(fn,ms){scheduled=fn;scheduledMs=ms;return 12},clearTimeout(){scheduled=null},
+  positionGuides(){},updateCameraInfo(){updates++},setScanMessage(){}
+ };
+ vm.createContext(s);vm.runInContext(source,s,{timeout:2500});
+ s.watchSafariCameraViewport();
+ assert.equal(scheduledMs,350,'recovery must wait for viewport to stabilize');
+ assert.equal(replacements,0,'do not change camera before debounce');
+ await scheduled();
+ assert.equal(replacements,1,'one video node is replaced');
+ assert.equal(initial.paused,true);
+ assert.equal(current.srcObject,stream,'the exact MediaStream is kept');
+ assert.equal(current.played,true);
+ assert.equal(stream.tracksStopped,0,'no native camera restart');
+ assert.equal(s.cameraStream,stream);
+ assert.equal(s.stableFrames,0,'optical stability is reset after presentation remount');
+ assert.equal(s.cameraFrameDimensions,'');
+ assert.equal(stage.style.minHeight,undefined,'no persistent layout spacer');
+ assert.ok(updates>0);
+ // A 10 px change is not enough to cause another remount.
+ s.innerHeight=704;s.watchSafariCameraViewport();
+ assert.equal(replacements,1);
+ assert.equal(scheduled,null);
+});
