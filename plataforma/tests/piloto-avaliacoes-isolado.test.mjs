@@ -22,9 +22,9 @@ const original={
  'corretor/v2/assessments/private-client.mjs':'d909b412f95747c4f3b1830fdcb0fd385633694b',
  'corretor/v2/assessments/private-library.mjs':'8eb63a54c83a121d58108af7066be381c7290bd2',
  'corretor/v2/assessments/private-ui.mjs':'f22f6a04ef2248bf28216d1e7764fb89741b0494',
- 'corretor/v2/omr/template.mjs':'d0c0e0a5a061b778a4b92973f0fd3009a1683f30',
- 'corretor/v2/omr/render.mjs':'1f327f712c6dd2249b3623c5a045f3f3640e34e2',
- 'corretor/v2/omr/manifest.mjs':'0a83331c35f467fe3e123daf1775010e5f3e9e0b'
+ 'corretor/v2/omr/template.mjs':'eba6d671b26ba921de134bf36a9b619ba10de20f',
+ 'corretor/v2/omr/render.mjs':'2de7f98193a8b89a53990c3d14b26de8fa55b083',
+ 'corretor/v2/omr/manifest.mjs':'67c2035c6c70fc49b73e0bdecf0d934b31e575e3'
 };
 const fakeKey=letter=>Array(60).fill(letter).join(' ');
 
