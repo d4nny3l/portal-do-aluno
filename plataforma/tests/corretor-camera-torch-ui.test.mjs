@@ -225,7 +225,9 @@ test('P1 interface contains only open/close, real lamp and import; scanner owns 
  assert.match(html,/function scanCameraFrame\(\)/);
  assert.match(html,/stableFrames>=3/);
  assert.match(html,/captureQuality\(frame,detection,previousCameraFrame\)/);
- assert.match(html,/automatic:true,manualCorners:mapFramePoints\(detection.corners,frame,capture\)/);
+ assert.match(html,/projected=mapFramePoints\(detection.corners,frame,capture\)/);
+ assert.match(html,/actual=detectFiducials\(capture.gray,capture.width,capture.height\)/);
+ assert.match(html,/automatic:true,manualCorners:actual.corners/);
  assert.match(html,/corretor-v2\.css\?v=20261121ux79c1/);
  assert.match(html,/camera\.mjs\?v=20261118wide1/);
  assert.match(css,/\.camera-stage video\{object-position:center;transform:none\}/);
@@ -305,6 +307,8 @@ test('P1 stable frames capture automatically once, wait for removal and then acc
  for(let n=0;n<4;n++)state.scanCameraFrame();
  assert.equal(h.scans,1,'one photo per sheet');
  h.found=false;state.scanCameraFrame();state.scanCameraFrame();
+ assert.equal(state.waitingForRemoval,true);
+ state.scanCameraFrame();
  assert.equal(state.waitingForRemoval,false);
  h.found=true;state.lastCaptureAt=0;
  state.scanCameraFrame();state.scanCameraFrame();state.scanCameraFrame();

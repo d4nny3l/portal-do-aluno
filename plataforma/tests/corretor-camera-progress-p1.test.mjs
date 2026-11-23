@@ -41,6 +41,8 @@ test('camera indicators reflect stable, real consolidation and recognized card; 
  s.scanCameraFrame();s.scanCameraFrame();
  assert.equal(h.count(),1,'no duplicate while sheet present');
  h.hide();s.scanCameraFrame();s.scanCameraFrame();
+ assert.equal(s.waitingForRemoval,true,'two missing markers must not release the previous sheet');
+ s.scanCameraFrame();
  for(const id of ['cameraStableStatus','cameraCaptureStatus','cameraReadStatus'])assert.equal(h.$(id).hidden,true,id);
  h.show();s.lastCaptureAt=0;
  s.scanCameraFrame();s.scanCameraFrame();s.scanCameraFrame();
@@ -66,4 +68,74 @@ test('optically inconclusive read cannot claim card recognized even when normali
  assert.equal(h.$('cameraStableStatus').hidden,false);
  assert.equal(h.$('cameraCaptureStatus').hidden,false);
  assert.equal(h.$('cameraReadStatus').hidden,true);
+});
+
+
+test('CAM-114: one missing fiducial frame does not erase stable corner reference or permit capture',()=>{
+ const h=setup(),s=h.state;
+ s.scanCameraFrame();s.scanCameraFrame();
+ assert.equal(s.stableFrames,2);
+ h.hide();s.scanCameraFrame();
+ assert.equal(s.stableFrames,0);
+ assert.equal(s.previousCorners?.corners.length,4,'preserve reference through one optical dropout');
+ assert.equal(h.count(),0);
+ h.show();s.scanCameraFrame();s.scanCameraFrame();s.scanCameraFrame();
+ assert.equal(h.count(),1,'only three new valid frames permit capture');
+});
+
+function captureFrameHarness(){
+ const preview={gray:new Uint8Array([1]),width:900,height:1000};
+ const capture={gray:new Uint8Array([2]),width:900,height:1000};
+ const corners=[{x:100,y:100},{x:800,y:100},{x:800,y:900},{x:100,y:900}];
+ const elements=new Map(), messages=[];
+ const $=id=>{if(!elements.has(id))elements.set(id,{hidden:false,dataset:{},textContent:'',checked:false});return elements.get(id)};
+ Object.assign($('video'),{videoWidth:900,videoHeight:1000,readyState:4});
+ let offset=75,missing=false,calls=0,manualCorners;
+ const state={$,cameraStream:{},cameraScratch:{},cameraFrameDimensions:'',stableFrames:0,
+  previousCorners:null,previousCameraFrame:null,waitingForRemoval:false,absentFrames:0,lastCaptureAt:0,captureBusy:false,
+  drawVideoFrame:()=>preview,detectFiducials:(gray)=>gray===capture.gray
+   ?missing?{found:false,confidence:0,corners:[]}:{found:true,confidence:.98,corners:corners.map(p=>({x:p.x+offset,y:p.y}))}
+   :{found:true,confidence:.96,corners},
+  captureQuality:()=>({ok:true,message:'Folha estável.'}),samePosition:()=>true,
+  positionGuides(){},updateCameraInfo(){},setScanMessage(message){messages.push(message)},captureFrameGray:()=>capture,
+  mapFramePoints:(points,source,target)=>{if(Math.abs(source.width/source.height-target.width/target.height)>.005)throw new Error('Orientação alterada');return points.map(p=>({x:p.x*target.width/source.width,y:p.y*target.height/source.height}))},
+  prepareImage(gray,width,height,options){calls++;manualCorners=options.manualCorners;return {gray,width,height}},
+ };
+ vm.createContext(state);vm.runInContext(code,state,{timeout:3000});
+ return {state,messages,capture,offset:v=>offset=v,missing:v=>missing=v,calls:()=>calls,corners:()=>manualCorners};
+}
+
+test('CAM-114: final image moving relative to preview is rejected, then a matching capture recovers',()=>{
+ const h=captureFrameHarness(),s=h.state;
+ s.scanCameraFrame();s.scanCameraFrame();s.scanCameraFrame();
+ assert.equal(h.calls(),0,'drift must not send preview corners into the final capture');
+ assert.equal(s.waitingForRemoval,false);
+ assert.equal(s.captureBusy,false);
+ assert.match(h.messages.at(-1),/folha se moveu/);
+ h.offset(7);s.lastCaptureAt=0;
+ s.scanCameraFrame();s.scanCameraFrame();s.scanCameraFrame();
+ assert.equal(h.calls(),1);
+ assert.equal(h.corners()[0].x,107,'normalize using corners measured from captured pixels');
+ assert.equal(s.waitingForRemoval,true);
+});
+
+test('CAM-114: missing fiducials in captured frame fail safely, then retry without manual intervention',()=>{
+ const h=captureFrameHarness(),s=h.state;
+ h.missing(true);
+ s.scanCameraFrame();s.scanCameraFrame();s.scanCameraFrame();
+ assert.equal(h.calls(),0);
+ assert.equal(s.waitingForRemoval,false);
+ assert.match(h.messages.at(-1),/Marcadores instáveis/);
+ h.missing(false);h.offset(0);s.lastCaptureAt=0;
+ s.scanCameraFrame();s.scanCameraFrame();s.scanCameraFrame();
+ assert.equal(h.calls(),1);
+});
+
+test('CAM-114: orientation changes between preview and capture never reach perspective correction',()=>{
+ const h=captureFrameHarness(),s=h.state;
+ h.capture.width=1000;h.capture.height=900;
+ s.scanCameraFrame();s.scanCameraFrame();s.scanCameraFrame();
+ assert.equal(h.calls(),0);
+ assert.equal(s.waitingForRemoval,false);
+ assert.match(h.messages.at(-1),/Orientação alterada/);
 });
