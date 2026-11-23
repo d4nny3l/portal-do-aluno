@@ -1,4 +1,4 @@
-import { layoutTemplate } from "./template.mjs?v=20261115assess1";
+import { layoutTemplate } from "./template.mjs?v=20261123embedalign01";
 
 export const READER_VERSION = "salta-omr-reader-v5";
 
@@ -11,7 +11,8 @@ export function readRaster(template, pixels, width, height, { darkThreshold = 10
   if (!Number.isFinite(darkThreshold) || darkThreshold < 0 || darkThreshold > 255 || !Number.isFinite(ambiguityGap) || ambiguityGap < 0) {
     throw new TypeError("Parâmetros de leitura inválidos.");
   }
-  if (template?.mode === 'embedded') {
+  if (template?.mode === 'embedded'||manifest?.mode === 'embedded') {
+    if(template?.mode!=='embedded')throw new TypeError('O manifesto selecionado não corresponde ao formato físico da avaliação.');
     if(!manifest||manifest.schemaVersion!=='salta-layout-manifest-v2'||manifest.mode!=='embedded'||
       manifest.templateId!==template.templateId||manifest.revision!==template.revision||
       manifest.paper?.widthMm!==template.widthMm||manifest.paper?.heightMm!==template.heightMm)

@@ -1,5 +1,5 @@
-import { createTemplate } from './template.mjs?v=20261114v2final';
-import { validateLayoutManifest } from './layout.mjs?v=20261114v2final';
+import { createTemplate } from './template.mjs?v=20261123embedalign01';
+import { validateLayoutManifest } from './layout.mjs?v=20261123embedalign01';
 // Explicit model selection, never automatic discovery from a photograph.
 export function importCardManifest(value){
  const m=typeof value==='string'?JSON.parse(value):value;const manifest=m?.manifest||m;
