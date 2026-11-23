@@ -359,4 +359,14 @@ test('UX-SAFARI-112 runtime: acumula passos de 10 px da visualViewport e remonta
  assert.equal(scheduledMs,2500,'cooldown defers rather than loses the update');
  s.window.visualViewport.height=714;s.watchSafariCameraViewport();
  assert.equal(scheduled,null,'returning to the settled baseline cancels the remount');
+ // The keyboard causes a much larger viewport reduction; do not blink during input.
+ s.window.visualViewport.height=390;s.watchSafariCameraViewport();
+ assert.equal(scheduled,null,'keyboard opening must not remount video');
+ s.window.visualViewport.height=714;s.watchSafariCameraViewport();
+ assert.equal(scheduled,null,'keyboard closing must not remount video');
+ // Pinch zoom modifies the visual viewport without a change in the native camera.
+ s.window.visualViewport.scale=1.5;s.window.visualViewport.height=470;s.watchSafariCameraViewport();
+ assert.equal(scheduled,null,'page pinch-zoom must not remount video');
+ s.window.visualViewport.scale=1;s.window.visualViewport.height=714;s.watchSafariCameraViewport();
+ assert.equal(replacements,1,'only the actual toolbar resize remounts video');
 });
