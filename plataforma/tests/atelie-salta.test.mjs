@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 
 const html = readFileSync(new URL('../atelie-salta.html', import.meta.url), 'utf8');
-const tabs = ['cores','simbolos','botoes','componentes','telas'];
+const tabs = ['cores','simbolos','botoes','componentes','telas','movimentos'];
 
 const luminance = hex => {
   const channels = hex.match(/[\da-f]{2}/gi).map(x => parseInt(x,16) / 255);
@@ -14,9 +14,9 @@ const contrast = (a,b) => {
   return (light + .05) / (dark + .05);
 };
 
-test('Ateliê tem cinco abas vinculadas a painéis acessíveis', () => {
-  assert.equal((html.match(/<button[^>]*role="tab"/g) || []).length,5);
-  assert.equal((html.match(/role="tabpanel"/g) || []).length,5);
+test('Ateliê tem seis abas vinculadas a painéis acessíveis', () => {
+  assert.equal((html.match(/<button[^>]*role="tab"/g) || []).length,6);
+  assert.equal((html.match(/<section[^>]*role="tabpanel"/g) || []).length,6);
   for(const key of tabs){
     assert.match(html,new RegExp(`id="tab-${key}"[^>]*aria-controls="painel-${key}"`));
     assert.match(html,new RegExp(`id="painel-${key}"[^>]*aria-labelledby="tab-${key}"`));
@@ -46,4 +46,19 @@ test('Pares textuais da paleta aprovada têm contraste WCAG AA', () => {
   assert.ok(contrast('17324D','E7AA45')>=4.5);
   assert.ok(contrast('17324D','F5F8FB')>=4.5);
   for(const token of ['#17324D','#166AA6','#E7AA45','#F5F8FB','#BBC7D2']) assert.ok(html.includes(token));
+});
+
+
+test('Movimentos possui cinco experiências reversíveis e sem operações reais', () => {
+  for (const id of ['motion-collection-a','motion-collection-b','motion-touch','motion-lift',
+    'motion-list','motion-reorder','motion-item-toggle','motion-confirm','motion-confirmation']) {
+    assert.match(html, new RegExp(`id="${id}"`));
+  }
+  assert.match(html, /showCollection\('a'\)/);
+  assert.match(html, /showCollection\('b'\)/);
+  assert.match(html, /aria-pressed/);
+  assert.match(html, /confirmation\.hidden=!show/);
+  assert.match(html, /moveList\(\)/);
+  assert.match(html, /prefers-reduced-motion: reduce/);
+  assert.match(html, /Nenhuma informação foi enviada/);
 });
