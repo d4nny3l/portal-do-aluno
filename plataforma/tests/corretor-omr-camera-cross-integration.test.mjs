@@ -163,7 +163,9 @@ test('P1 integrated scanner triggers partial grade, avoids duplicate sheet and a
  for(let i=0;i<4;i++)s.scanCameraFrame();
  assert.equal(captureCount,1,'No duplicate while first card remains');
  found=false;s.scanCameraFrame();s.scanCameraFrame();
- assert.equal(s.waitingForRemoval,false,'Removal releases scanner');
+ assert.equal(s.waitingForRemoval,true,'Transient marker losses must not release scanner');
+ s.scanCameraFrame();
+ assert.equal(s.waitingForRemoval,false,'Confirmed removal releases scanner');
  found=true;s.lastCaptureAt=0;
  for(let i=0;i<4;i++)s.scanCameraFrame();
  assert.equal(captureCount,2,'Next card accepted after removal');

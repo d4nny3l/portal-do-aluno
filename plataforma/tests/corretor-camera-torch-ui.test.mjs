@@ -305,6 +305,8 @@ test('P1 stable frames capture automatically once, wait for removal and then acc
  for(let n=0;n<4;n++)state.scanCameraFrame();
  assert.equal(h.scans,1,'one photo per sheet');
  h.found=false;state.scanCameraFrame();state.scanCameraFrame();
+ assert.equal(state.waitingForRemoval,true);
+ state.scanCameraFrame();
  assert.equal(state.waitingForRemoval,false);
  h.found=true;state.lastCaptureAt=0;
  state.scanCameraFrame();state.scanCameraFrame();state.scanCameraFrame();
