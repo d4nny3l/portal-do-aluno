@@ -1,0 +1,238 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#17324D">
+<title>Ateliê SALTA · Laboratório visual</title>
+<style>
+:root{color-scheme:light;--navy:#17324D;--blue:#166AA6;--amber:#E7AA45;--ice:#F5F8FB;--silver:#BBC7D2;--ink:#17324D;--secondary:#516579;--line:#DEE7EF;--white:#fff;--soft-blue:#EAF3F9;--radius:22px;--shadow:0 14px 40px rgba(23,50,77,.065);font-family:Inter,ui-sans-serif,-apple-system,BlinkMacSystemFont,"Segoe UI",Arial,sans-serif;-webkit-font-smoothing:antialiased}
+*,*::before,*::after{box-sizing:border-box}
+html{scroll-behavior:smooth}
+body{margin:0;min-width:0;min-height:100vh;background:var(--ice);color:var(--ink)}
+button,input,select{font:inherit}
+button{cursor:pointer}
+button:disabled{cursor:not-allowed;opacity:.54}
+button:focus-visible,a:focus-visible,input:focus-visible,select:focus-visible,[role=tab]:focus-visible{outline:3px solid var(--blue);outline-offset:3px}
+button:focus:not(:focus-visible){outline:none}
+svg{width:20px;height:20px;flex:none;stroke:currentColor;stroke-width:1.7;stroke-linecap:round;stroke-linejoin:round;fill:none}
+.icon-sprite{position:absolute;width:0;height:0;overflow:hidden;pointer-events:none}
+.icon{display:inline-flex;align-items:center;justify-content:center;vertical-align:middle}
+.icon svg{width:1em;height:1em}
+.container{width:min(1152px,calc(100% - 48px));margin-inline:auto}
+.eyebrow{margin:0;font-size:11px;font-weight:800;letter-spacing:.15em;text-transform:uppercase}
+.topbar{height:86px;display:flex;align-items:center;justify-content:space-between;gap:12px}
+.wordmark{display:flex;align-items:center;gap:12px;min-width:0}
+.mark{display:grid;place-items:center;flex:none;width:43px;height:43px;border-radius:14px;background:var(--navy);color:white;font-size:23px;line-height:1;font-weight:800;box-shadow:0 9px 18px rgba(23,50,77,.13)}
+.brand-title{display:block;font-weight:850;font-size:14px;letter-spacing:.13em}
+.brand-sub{display:block;margin-top:4px;font-size:11px;color:var(--secondary);font-weight:600}
+.version{display:flex;align-items:center;gap:8px;border:1px solid var(--line);border-radius:99px;padding:9px 13px;background:white;color:var(--secondary);font-size:12px;font-weight:700;white-space:nowrap}
+.version .dot{width:8px;height:8px;border-radius:50%;background:var(--amber);border:1px solid #AD7520}
+.hero{position:relative;overflow:hidden;display:grid;grid-template-columns:minmax(0,1.22fr) minmax(270px,.8fr);gap:24px;align-items:center;min-height:320px;padding:44px 53px;border-radius:32px;color:white;background:var(--navy);isolation:isolate}
+.hero::before{content:"";position:absolute;inset:0;z-index:-1;opacity:.28;background-image:linear-gradient(rgba(255,255,255,.15) 1px,transparent 1px),linear-gradient(90deg,rgba(255,255,255,.15) 1px,transparent 1px);background-size:29px 29px;mask-image:linear-gradient(to right,transparent 15%,black)}
+.hero::after{content:"";position:absolute;z-index:-1;right:-90px;top:-125px;width:380px;height:380px;border-radius:50%;background:radial-gradient(circle,rgba(57,142,196,.28),transparent 67%)}
+.hero .eyebrow{color:#D7EAF7;display:flex;align-items:center;gap:9px}
+.hero .eyebrow::before{content:"";width:22px;height:2px;background:var(--amber)}
+.hero h1{max-width:620px;margin:19px 0 15px;font-size:clamp(30px,4.2vw,53px);line-height:1.08;letter-spacing:-.05em;font-weight:780}
+.hero p{max-width:480px;margin:0;color:#E2EDF5;font-size:15px;line-height:1.65}
+.hero-art{justify-self:end;width:min(100%,340px);transform:rotate(-3deg)}
+.hero-art .sample{border:1px solid rgba(255,255,255,.3);padding:16px;border-radius:23px;background:rgba(248,252,255,.97);color:var(--navy);box-shadow:0 24px 45px rgba(2,17,32,.25)}
+.hero-art .sample-top{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:15px}
+.hero-art .mini-logo{display:inline-flex;align-items:center;gap:8px;font-weight:800;font-size:12px}
+.hero-art .mini-logo b{display:grid;place-items:center;width:26px;height:26px;border-radius:9px;background:var(--navy);color:white}
+.hero-art .sample-line{height:10px;border-radius:99px;background:#DFE9F1;margin-top:9px;width:86%}
+.hero-art .sample-line.narrow{width:55%}
+.hero-art .sample-actions{display:flex;gap:8px;margin-top:17px}
+.hero-art .sample-actions i{height:30px;flex:1;border-radius:9px;background:var(--blue)}
+.hero-art .sample-actions i:last-child{background:#E7EDF2}
+.hero-art .sample-bottom{display:flex;gap:8px;margin-top:10px}
+.hero-art .sample-bottom i{height:58px;border-radius:11px;background:#EAF3F9;flex:1;border:1px solid #D8E6EF}
+.hero-art .sample-bottom i:nth-child(2){background:#FFF3DC;border-color:#F2D6A2}
+.main{padding:30px 0 52px}
+.section-intro{display:flex;align-items:center;justify-content:space-between;gap:12px;margin:0 0 16px}
+.section-intro strong{font-size:14px}
+.section-intro span{font-size:12px;color:var(--secondary)}
+.tabs{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:8px;padding:7px;background:white;border:1px solid var(--line);border-radius:20px;box-shadow:0 4px 14px rgba(23,50,77,.025)}
+.tab{display:flex;align-items:center;justify-content:center;gap:9px;min-width:0;min-height:52px;border:0;border-radius:14px;background:transparent;color:var(--secondary);font-weight:700;font-size:13px;line-height:1.2;padding:9px 11px;transition:background .16s,color .16s,box-shadow .16s}
+.tab svg{width:19px;height:19px}
+.tab[aria-selected=true]{background:var(--navy);color:white;box-shadow:0 5px 14px rgba(23,50,77,.14)}
+.tab:hover:not([aria-selected=true]){background:var(--soft-blue);color:var(--navy)}
+.panel{margin-top:20px;min-height:390px}
+.panel[hidden]{display:none!important}
+.panel-heading{display:flex;justify-content:space-between;align-items:flex-end;gap:16px;margin-bottom:20px}
+.panel-heading h2{margin:6px 0 7px;font-size:clamp(24px,3vw,31px);line-height:1.15;letter-spacing:-.035em}
+.panel-heading p{margin:0;color:var(--secondary);line-height:1.55;font-size:14px;max-width:600px}
+.pill{display:inline-flex;align-items:center;gap:7px;padding:8px 11px;background:#E6F0F7;color:var(--navy);border:1px solid #CCDCE8;border-radius:99px;white-space:nowrap;font-size:11px;font-weight:800}
+.grid{display:grid;grid-template-columns:repeat(12,minmax(0,1fr));gap:17px}
+.card{min-width:0;border:1px solid var(--line);border-radius:var(--radius);padding:22px;background:var(--white);box-shadow:var(--shadow)}
+.card h3{margin:0 0 9px;font-size:17px;line-height:1.2;letter-spacing:-.025em}
+.card p{margin:0;color:var(--secondary);font-size:13px;line-height:1.6}
+.card .kicker{display:block;margin-bottom:10px;font-size:10px;text-transform:uppercase;letter-spacing:.13em;font-weight:850;color:var(--secondary)}
+.swatch{grid-column:span 4;padding:0;overflow:hidden}
+.swatch-color{height:132px;display:flex;align-items:end;padding:17px;position:relative}
+.swatch-color::after{content:"";position:absolute;right:17px;top:17px;width:24px;height:24px;border:1px solid currentColor;border-radius:50%;opacity:.35}
+.swatch-color.navy{background:var(--navy);color:white}.swatch-color.blue{background:var(--blue);color:white}.swatch-color.amber{background:var(--amber);color:var(--navy)}.swatch-color.ice{background:var(--ice);color:var(--navy)}.swatch-color.silver{background:var(--silver);color:var(--navy)}
+.swatch-color strong{font-size:16px;font-weight:850}
+.swatch-desc{padding:17px 19px 20px}
+.swatch-desc p{margin:0;font-size:12px}
+.contrast-example{grid-column:span 6}
+.contrast-pair{display:flex;align-items:center;justify-content:space-between;gap:12px;border-radius:13px;margin-top:14px;padding:16px}
+.contrast-pair.navy{background:var(--navy);color:white}.contrast-pair.blue{background:var(--blue);color:white}.contrast-pair.amber{background:var(--amber);color:var(--navy)}.contrast-pair.ice{background:var(--ice);color:var(--navy);border:1px solid var(--line)}
+.contrast-pair b{font-size:13px}.contrast-pair span{font-size:12px;font-weight:750;white-space:nowrap}
+.icon-card{grid-column:span 3;display:flex;align-items:center;gap:13px;padding:20px}
+.icon-disc{width:49px;height:49px;flex:none;border-radius:15px;display:grid;place-items:center;background:#EAF3F9;color:var(--blue)}
+.icon-disc svg{width:24px;height:24px;stroke-width:1.7}
+.icon-card h3{margin:0;font-size:14px}.icon-card p{font-size:11px}
+.button-card{grid-column:span 6}
+.button-demo{margin:19px 0 9px;min-height:54px;display:flex;align-items:center;flex-wrap:wrap;gap:9px}
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:9px;border:1px solid transparent;border-radius:13px;min-height:46px;padding:11px 17px;font-size:13px;font-weight:760;line-height:1.15;text-align:center;transition:background .16s,transform .16s,border-color .16s}
+.btn:active:not(:disabled){transform:translateY(1px)}
+.btn svg{width:17px;height:17px}
+.btn.primary{background:var(--blue);color:white}.btn.primary:hover{background:#105685}
+.btn.secondary{background:white;color:var(--navy);border-color:#BBCDDC}.btn.secondary:hover{background:var(--soft-blue)}
+.btn.ghost{background:#EAF3F9;color:var(--blue)}.btn.ghost:hover{background:#DCECF7}
+.btn.danger{background:#FFF0E9;color:#9B442F;border-color:#F1C7B8}.btn.danger:hover{background:#FBE1D7}
+.btn.pressed,.btn[aria-pressed=true]{background:var(--navy);color:white}
+.btn.disabled-demo{background:#DDE6EE;color:#476074;border-color:#D0DBE5}
+.loading-dot{width:15px;height:15px;border-radius:50%;border:2px solid currentColor;border-right-color:transparent;animation:turn .85s linear infinite}
+@keyframes turn{to{transform:rotate(360deg)}}
+.demo-note{font-size:12px;line-height:1.5;color:var(--secondary)}
+.demo-feedback{min-height:20px;margin-top:10px;font-size:12px;color:var(--secondary)}
+.demo-feedback[hidden]{display:none}
+.component-card{grid-column:span 6}
+.component-wide{grid-column:span 12}
+.field{display:grid;gap:7px;margin:12px 0}.field label{font-weight:750;font-size:12px}.field input,.field select{width:100%;min-height:46px;border:1px solid #B8CAD8;border-radius:12px;background:white;color:var(--navy);padding:10px 12px;font-size:14px}
+.field input::placeholder{color:#63788A}
+.field input:focus,.field select:focus{border-color:var(--blue)}
+.status-list{display:grid;gap:10px;margin-top:14px}
+.status{display:flex;align-items:flex-start;gap:10px;padding:12px 13px;border-radius:12px;font-size:12px;font-weight:700;line-height:1.45}
+.status svg{width:18px;height:18px;margin-top:1px}
+.status.success{background:#E9F6ED;color:#306749}.status.warn{background:#FFF3DC;color:#6A470E}.status.error{background:#FFF0E9;color:#9B442F}
+.mini-table{width:100%;border-collapse:collapse;margin-top:12px;text-align:left;font-size:12px}
+.mini-table th{background:var(--ice);color:var(--secondary);font-size:11px}.mini-table th,.mini-table td{padding:12px 10px;border-bottom:1px solid var(--line)}
+.mini-table td:last-child{font-weight:750}
+.empty-state{text-align:center;background:var(--ice);padding:20px;border:1px dashed #B9CCDC;border-radius:15px;margin-top:12px}
+.empty-state .icon-disc{margin:0 auto 9px;background:white}.empty-state strong{font-size:13px}.empty-state p{font-size:12px;margin-top:5px}
+.preview-card{grid-column:span 4;padding:14px;background:#E7EEF5}
+.preview-frame{overflow:hidden;background:white;border:1px solid #CEDCE7;border-radius:16px;min-height:255px}
+.preview-top{height:43px;display:flex;align-items:center;justify-content:space-between;padding:0 12px;color:var(--navy);border-bottom:1px solid #DFE6EE;font-size:11px;font-weight:800}
+.preview-top b{display:flex;align-items:center;gap:7px}.preview-top i{width:18px;height:18px;display:grid;place-items:center;border-radius:6px;background:var(--navy);color:white;font-style:normal;font-weight:850}
+.preview-body{padding:14px}.preview-body h4{font-size:14px;margin:0 0 5px}.preview-body small{font-size:10px;color:var(--secondary)}
+.preview-metrics{display:grid;grid-template-columns:repeat(2,1fr);gap:8px;margin-top:15px}.preview-metrics div{padding:12px 9px;border-radius:10px;background:var(--ice);border:1px solid #E1E9F0}.preview-metrics b{display:block;font-size:21px}.preview-metrics span{font-size:10px;color:var(--secondary)}
+.preview-rule{height:7px;background:#E2EBF2;border-radius:9px;margin:12px 0 8px}.preview-rule.small{width:58%;margin:7px 0}
+.preview-nav{display:flex;gap:6px;margin-top:15px}.preview-nav span{padding:8px;border-radius:8px;background:#E8F1F8;color:var(--navy);font-size:10px;font-weight:700}.preview-nav span:first-child{background:var(--navy);color:white}
+.preview-row{display:flex;align-items:center;justify-content:space-between;gap:7px;margin-top:9px;padding:10px;background:var(--ice);border:1px solid #E1E9F0;border-radius:10px;font-size:11px;font-weight:700}
+.preview-row em{font-style:normal;font-size:10px;border-radius:99px;background:#E9F6ED;color:#306749;padding:5px 8px}
+.preview-caption{margin:13px 3px 3px;color:var(--secondary);font-size:12px;line-height:1.5}
+footer{display:flex;justify-content:space-between;align-items:center;gap:10px;padding:0 0 26px;color:var(--secondary);font-size:12px}
+footer strong{color:var(--navy)}
+.sr-only{position:absolute!important;width:1px!important;height:1px!important;padding:0!important;margin:-1px!important;overflow:hidden!important;clip:rect(0,0,0,0)!important;white-space:nowrap!important;border:0!important}
+@media(max-width:1000px){.icon-card{grid-column:span 4}.hero{padding:37px}.preview-card{grid-column:span 6}}
+@media(max-width:700px){.container{width:min(100% - 28px,1152px)}.topbar{height:76px}.hero{grid-template-columns:1fr;min-height:0;padding:29px 25px;border-radius:26px}.hero-art{display:none}.hero h1{font-size:clamp(30px,7vw,42px)}.main{padding-top:23px}.tabs{grid-template-columns:repeat(2,minmax(0,1fr));gap:6px}.tab{min-height:50px;justify-content:flex-start}.tab:last-child{grid-column:1/-1;justify-content:center}.tab svg{width:18px;height:18px}.panel-heading{align-items:flex-start}.panel-heading .pill{display:none}.swatch{grid-column:span 6}.contrast-example,.button-card,.component-card,.component-wide{grid-column:span 12}.icon-card{grid-column:span 6}.preview-card{grid-column:span 12}.section-intro span{display:none}}
+@media(max-width:380px){.container{width:calc(100% - 24px)}.version{font-size:10px;padding:8px 9px}.brand-sub{font-size:10px}.mark{width:38px;height:38px}.hero{padding:25px 19px}.hero p{font-size:13px}.tab{gap:6px;padding:10px 9px;font-size:12px}.tab svg{width:17px;height:17px}.card{padding:17px}.swatch{padding:0}.swatch-color{height:104px;padding:12px}.swatch-desc{padding:13px}.swatch-color strong{font-size:14px}.icon-card{padding:12px;gap:9px}.icon-disc{width:42px;height:42px;border-radius:12px}.icon-disc svg{width:21px;height:21px}.icon-card h3{font-size:12px}.contrast-pair{padding:13px}.contrast-pair b,.contrast-pair span{font-size:11px}.panel-heading h2{font-size:25px}}
+@media(prefers-reduced-motion:reduce){html{scroll-behavior:auto}*,*::before,*::after{animation-duration:.01ms!important;animation-iteration-count:1!important;transition-duration:.01ms!important}}
+</style>
+</head>
+<body>
+<svg class="icon-sprite" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+<symbol id="i-home" viewBox="0 0 24 24"><path d="m3 10 9-7 9 7v10H3z"/><path d="M9 20v-7h6v7"/></symbol>
+<symbol id="i-book" viewBox="0 0 24 24"><path d="M5 3h14a2 2 0 0 1 2 2v16H7a3 3 0 0 1-3-3V5a2 2 0 0 1 2-2Z"/><path d="M4 17a3 3 0 0 1 3-3h14M9 8h7"/></symbol>
+<symbol id="i-checklist" viewBox="0 0 24 24"><rect x="5" y="3" width="14" height="18" rx="2"/><path d="m8 10 2 2 4-4M8 16h8"/></symbol>
+<symbol id="i-camera" viewBox="0 0 24 24"><path d="M4 7h3l2-3h6l2 3h3a2 2 0 0 1 2 2v10H2V9a2 2 0 0 1 2-2Z"/><circle cx="12" cy="13" r="4"/></symbol>
+<symbol id="i-chart" viewBox="0 0 24 24"><path d="M4 20V4M4 20h17"/><path d="M8 16v-4M13 16V7M18 16v-7"/></symbol>
+<symbol id="i-bell" viewBox="0 0 24 24"><path d="M18 9a6 6 0 0 0-12 0c0 7-3 7-3 9h18c0-2-3-2-3-9ZM10 21h4"/></symbol>
+<symbol id="i-save" viewBox="0 0 24 24"><path d="M4 3h14l3 3v15H3V3z"/><path d="M7 3v7h10V3M7 21v-8h10v8M15 3v4"/></symbol>
+<symbol id="i-edit" viewBox="0 0 24 24"><path d="m4 20 5-.9L20 8a2 2 0 0 0-4-4L5 15zM14 6l4 4"/></symbol>
+<symbol id="i-trash" viewBox="0 0 24 24"><path d="M4 7h16M9 7V4h6v3M6 7l1 14h10l1-14M10 11v6M14 11v6"/></symbol>
+<symbol id="i-settings" viewBox="0 0 24 24"><path d="M12 3v2M12 19v2M3 12h2M19 12h2M5.6 5.6 7 7M17 17l1.4 1.4M18.4 5.6 17 7M7 17l-1.4 1.4"/><circle cx="12" cy="12" r="4"/></symbol>
+<symbol id="i-palette" viewBox="0 0 24 24"><path d="M12 3a9 9 0 1 0 0 18h2a2 2 0 0 0 1.5-3.3 2 2 0 0 1 1.5-3.4H19A2 2 0 0 0 21 12a9 9 0 0 0-9-9Z"/><circle cx="7" cy="11" r=".5"/><circle cx="10" cy="7" r=".5"/><circle cx="16" cy="8" r=".5"/></symbol>
+<symbol id="i-components" viewBox="0 0 24 24"><rect x="3" y="3" width="8" height="8" rx="2"/><rect x="13" y="3" width="8" height="8" rx="2"/><rect x="3" y="13" width="8" height="8" rx="2"/><rect x="13" y="13" width="8" height="8" rx="2"/></symbol>
+<symbol id="i-layout" viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 9h18M9 9v12"/></symbol>
+<symbol id="i-cursor" viewBox="0 0 24 24"><path d="m4 3 16 9-8 1-3 8z"/></symbol>
+<symbol id="i-check" viewBox="0 0 24 24"><path d="m4 12 5 5L20 6"/></symbol>
+<symbol id="i-alert" viewBox="0 0 24 24"><path d="M12 3 2 21h20L12 3Z"/><path d="M12 9v5M12 18h.01"/></symbol>
+<symbol id="i-x" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="m9 9 6 6m0-6-6 6"/></symbol>
+<symbol id="i-search" viewBox="0 0 24 24"><circle cx="10" cy="10" r="7"/><path d="m15 15 6 6"/></symbol>
+<symbol id="i-spark" viewBox="0 0 24 24"><path d="m12 2 2.5 7.5L22 12l-7.5 2.5L12 22l-2.5-7.5L2 12l7.5-2.5Z"/></symbol>
+<symbol id="i-arrow" viewBox="0 0 24 24"><path d="M4 12h16m-7-7 7 7-7 7"/></symbol>
+<symbol id="i-file" viewBox="0 0 24 24"><path d="M6 3h8l4 4v14H6zM14 3v5h4M9 13h6M9 17h6"/></symbol>
+</svg>
+<header class="container topbar" aria-label="Cabeçalho do Ateliê SALTA">
+ <div class="wordmark"><div class="mark" aria-hidden="true">S</div><div><span class="brand-title">SALTA <span style="color:var(--blue)">/</span> ATELIÊ</span><span class="brand-sub">Exploração visual da plataforma</span></div></div>
+ <span class="version"><span class="dot" aria-hidden="true"></span> Conceito · V1</span>
+</header>
+<main class="container">
+ <section class="hero" aria-labelledby="hero-title"><div><p class="eyebrow">Identidade em movimento</p><h1 id="hero-title">Uma SALTA mais clara, humana e viva.</h1><p>Cores que orientam. Símbolos que comunicam. Componentes pensados para todos — inclusive em telas pequenas.</p></div><div class="hero-art" aria-hidden="true"><div class="sample"><div class="sample-top"><span class="mini-logo"><b>S</b> SALTA</span><span class="pill">Interface</span></div><div class="sample-line"></div><div class="sample-line narrow"></div><div class="sample-actions"><i></i><i></i></div><div class="sample-bottom"><i></i><i></i><i></i></div></div></div></section>
+ <div class="main"><div class="section-intro"><strong>Explore a linguagem visual</strong><span>Cinco coleções · uma identidade</span></div>
+ <div class="tabs" role="tablist" aria-label="Coleções do Ateliê" aria-orientation="horizontal">
+ <button type="button" class="tab" id="tab-cores" role="tab" aria-controls="painel-cores" aria-selected="true" tabindex="0"><svg aria-hidden="true"><use href="#i-palette"/></svg>Cores e contrastes</button>
+ <button type="button" class="tab" id="tab-simbolos" role="tab" aria-controls="painel-simbolos" aria-selected="false" tabindex="-1"><svg aria-hidden="true"><use href="#i-spark"/></svg>Símbolos e ícones</button>
+ <button type="button" class="tab" id="tab-botoes" role="tab" aria-controls="painel-botoes" aria-selected="false" tabindex="-1"><svg aria-hidden="true"><use href="#i-cursor"/></svg>Botões</button>
+ <button type="button" class="tab" id="tab-componentes" role="tab" aria-controls="painel-componentes" aria-selected="false" tabindex="-1"><svg aria-hidden="true"><use href="#i-components"/></svg>Componentes</button>
+ <button type="button" class="tab" id="tab-telas" role="tab" aria-controls="painel-telas" aria-selected="false" tabindex="-1"><svg aria-hidden="true"><use href="#i-layout"/></svg>Exemplos de telas</button>
+ </div>
+ <section class="panel" id="painel-cores" role="tabpanel" aria-labelledby="tab-cores" tabindex="0"><div class="panel-heading"><div><p class="eyebrow" style="color:var(--blue)">01 · Essência</p><h2>Cores e contrastes</h2><p>Uma paleta com funções claras, sem depender da percepção de uma cor isolada.</p></div><span class="pill">Leitura primeiro</span></div>
+ <div class="grid"><article class="card swatch"><div class="swatch-color navy"><strong>Azul profundo</strong></div><div class="swatch-desc"><p>Identidade, estrutura e títulos.</p></div></article><article class="card swatch"><div class="swatch-color blue"><strong>Azul vivo</strong></div><div class="swatch-desc"><p>Ações, seleção e navegação.</p></div></article><article class="card swatch"><div class="swatch-color amber"><strong>Âmbar</strong></div><div class="swatch-desc"><p>Destaques breves, com texto escuro.</p></div></article><article class="card swatch"><div class="swatch-color ice"><strong>Branco gelo</strong></div><div class="swatch-desc"><p>Respiro e fundos confortáveis.</p></div></article><article class="card swatch"><div class="swatch-color silver"><strong>Prata</strong></div><div class="swatch-desc"><p>Divisórias e elementos de apoio.</p></div></article><article class="card swatch"><span class="kicker">Acessibilidade</span><h3>Não é só cor.</h3><p>Mensagens usam palavras, formas e ícones. O prata não aparece como texto sobre branco, pois não oferece leitura suficiente.</p><div class="status success" style="margin-top:14px"><svg aria-hidden="true"><use href="#i-check"/></svg> Aprovado — informação clara</div></article>
+ <article class="card contrast-example"><h3>Azul profundo com branco</h3><p>Contraste de texto: 13,13:1.</p><div class="contrast-pair navy"><b>Informação importante</b><span>AA ✓</span></div></article><article class="card contrast-example"><h3>Azul vivo com branco</h3><p>Contraste de texto: 5,76:1.</p><div class="contrast-pair blue"><b>Abrir avaliação</b><span>AA ✓</span></div></article><article class="card contrast-example"><h3>Âmbar com azul profundo</h3><p>Contraste de texto: 6,40:1.</p><div class="contrast-pair amber"><b>Destaque com legibilidade</b><span>AA ✓</span></div></article><article class="card contrast-example"><h3>Azul profundo com branco gelo</h3><p>Contraste de texto: 12,32:1.</p><div class="contrast-pair ice"><b>Leitura prolongada</b><span>AA ✓</span></div></article></div></section>
+ <section class="panel" id="painel-simbolos" role="tabpanel" aria-labelledby="tab-simbolos" tabindex="0" hidden><div class="panel-heading"><div><p class="eyebrow" style="color:var(--blue)">02 · Linguagem</p><h2>Símbolos e ícones</h2><p>Traços leves, nomes legíveis e significado estável em qualquer tela.</p></div><span class="pill">Ícone + nome</span></div><div class="grid">
+ <article class="card icon-card"><div class="icon-disc"><svg aria-hidden="true"><use href="#i-home"/></svg></div><div><h3>Início</h3><p>Visão geral</p></div></article>
+ <article class="card icon-card"><div class="icon-disc"><svg aria-hidden="true"><use href="#i-book"/></svg></div><div><h3>Diário</h3><p>Registro de aulas</p></div></article>
+ <article class="card icon-card"><div class="icon-disc"><svg aria-hidden="true"><use href="#i-checklist"/></svg></div><div><h3>Avaliações</h3><p>Provas e atividades</p></div></article>
+ <article class="card icon-card"><div class="icon-disc"><svg aria-hidden="true"><use href="#i-camera"/></svg></div><div><h3>Câmera</h3><p>Captura</p></div></article>
+ <article class="card icon-card"><div class="icon-disc"><svg aria-hidden="true"><use href="#i-chart"/></svg></div><div><h3>Estatísticas</h3><p>Resultados</p></div></article>
+ <article class="card icon-card"><div class="icon-disc"><svg aria-hidden="true"><use href="#i-bell"/></svg></div><div><h3>Avisos</h3><p>Notificações</p></div></article>
+ <article class="card icon-card"><div class="icon-disc"><svg aria-hidden="true"><use href="#i-save"/></svg></div><div><h3>Salvar</h3><p>Disquete</p></div></article>
+ <article class="card icon-card"><div class="icon-disc"><svg aria-hidden="true"><use href="#i-edit"/></svg></div><div><h3>Editar</h3><p>Modificar</p></div></article>
+ <article class="card icon-card"><div class="icon-disc"><svg aria-hidden="true"><use href="#i-trash"/></svg></div><div><h3>Excluir</h3><p>Remover</p></div></article>
+ <article class="card icon-card"><div class="icon-disc"><svg aria-hidden="true"><use href="#i-settings"/></svg></div><div><h3>Ajustes</h3><p>Configuração</p></div></article>
+ <article class="card component-wide"><h3>Um ícone, um significado.</h3><p>Os símbolos nunca substituem nomes em ações importantes. O mesmo desenho representa a mesma ação no Ateliê inteiro.</p></article></div></section>
+ <section class="panel" id="painel-botoes" role="tabpanel" aria-labelledby="tab-botoes" tabindex="0" hidden><div class="panel-heading"><div><p class="eyebrow" style="color:var(--blue)">03 · Interação</p><h2>Botões</h2><p>Convites claros para agir. Toque em alguns exemplos para explorar estados ilustrativos.</p></div><span class="pill">Estados visíveis</span></div><div class="grid">
+ <article class="card button-card"><span class="kicker">01 · Primário</span><h3>Ação principal</h3><p>Azul vivo para decisões relevantes.</p><div class="button-demo"><button class="btn primary" data-demo-message="Prévia: botão principal acionado."><svg aria-hidden="true"><use href="#i-arrow"/></svg>Continuar</button></div><span class="demo-note">Exemplo interativo, sem envio de dados.</span></article>
+ <article class="card button-card"><span class="kicker">02 · Secundário</span><h3>Alternativa</h3><p>Presença discreta sem competir com a ação principal.</p><div class="button-demo"><button class="btn secondary" data-demo-message="Prévia: botão secundário acionado.">Voltar</button></div><span class="demo-note">Contorno e texto ajudam a identificar a ação.</span></article>
+ <article class="card button-card"><span class="kicker">03 · Discreto</span><h3>Ação leve</h3><p>Para ajustes que não exigem destaque.</p><div class="button-demo"><button class="btn ghost" data-demo-message="Prévia: ação discreta acionada."><svg aria-hidden="true"><use href="#i-edit"/></svg>Editar</button></div><span class="demo-note">Ícone acompanhado por palavra.</span></article>
+ <article class="card button-card"><span class="kicker">04 · Destrutivo</span><h3>Ação sensível</h3><p>Texto explícito e destaque de cautela.</p><div class="button-demo"><button class="btn danger" data-demo-message="Demonstração: nenhuma informação foi excluída."><svg aria-hidden="true"><use href="#i-trash"/></svg>Excluir exemplo</button></div><span class="demo-note">Não exclui dados reais.</span></article>
+ <article class="card button-card"><span class="kicker">05 · Selecionado</span><h3>Estado identificável</h3><p>A seleção combina preenchimento, texto e estado acessível.</p><div class="button-demo"><button class="btn secondary" id="demo-toggle" aria-pressed="false"><svg aria-hidden="true"><use href="#i-check"/></svg><span>Selecionar exemplo</span></button></div><span class="demo-note">Clique para selecionar ou desfazer.</span></article>
+ <article class="card button-card"><span class="kicker">06 · Desabilitado</span><h3>Sem ação</h3><p>A aparência comunica indisponibilidade.</p><div class="button-demo"><button class="btn disabled-demo" disabled>Indisponível</button></div><span class="demo-note">Desabilitado de verdade, fora do ciclo de Tab.</span></article>
+ <article class="card button-card"><span class="kicker">07 · Foco</span><h3>Navegação pelo teclado</h3><p>Pressione Tab para encontrar o contorno de foco.</p><div class="button-demo"><button class="btn secondary" data-demo-message="Foco e clique confirmados.">Experimentar foco</button></div><span class="demo-note">Contorno azul com espessura de 3 px.</span></article>
+ <article class="card button-card"><span class="kicker">08 · Carregamento</span><h3>Espera simulada</h3><p>Estado temporal com legenda permanente.</p><div class="button-demo"><button class="btn primary" id="demo-loading"><svg aria-hidden="true"><use href="#i-save"/></svg><span>Simular salvamento</span></button></div><span class="demo-note">A demonstração dura um instante e não salva nada.</span></article>
+ </div><p id="demo-feedback" class="demo-feedback" role="status" aria-live="polite">Selecione um botão para observar a resposta demonstrativa.</p></section>
+ <section class="panel" id="painel-componentes" role="tabpanel" aria-labelledby="tab-componentes" tabindex="0" hidden><div class="panel-heading"><div><p class="eyebrow" style="color:var(--blue)">04 · Composição</p><h2>Componentes</h2><p>Peças acolhedoras, com conteúdo curto e estados que se explicam.</p></div><span class="pill">Sistema coerente</span></div><div class="grid"><article class="card component-card"><span class="kicker">Formulário</span><h3>Nova atividade</h3><form id="demo-form"><div class="field"><label for="demo-title">Título</label><input id="demo-title" placeholder="Ex.: Atividade de revisão" required maxlength="50"></div><div class="field"><label for="demo-subject">Componente</label><select id="demo-subject"><option>Matemática</option><option>Língua Portuguesa</option><option>Ciências</option></select></div><button class="btn primary" type="submit"><svg aria-hidden="true"><use href="#i-check"/></svg>Ver prévia</button></form><p id="form-feedback" class="demo-feedback" role="status" aria-live="polite">Apenas uma simulação local.</p></article>
+ <article class="card component-card"><span class="kicker">Indicadores</span><h3>Cada mensagem é clara</h3><div class="status-list"><div class="status success"><svg aria-hidden="true"><use href="#i-check"/></svg><span>Concluído — registro atualizado.</span></div><div class="status warn"><svg aria-hidden="true"><use href="#i-alert"/></svg><span>Atenção — confira as informações.</span></div><div class="status error"><svg aria-hidden="true"><use href="#i-x"/></svg><span>Não foi possível concluir.</span></div></div></article>
+ <article class="card component-card"><span class="kicker">Tabela</span><h3>Acompanhamento</h3><table class="mini-table"><thead><tr><th scope="col">Atividade</th><th scope="col">Situação</th></tr></thead><tbody><tr><td>Frações</td><td>Concluída ✓</td></tr><tr><td>Geometria</td><td>Em revisão ◷</td></tr><tr><td>Funções</td><td>Pendente ·</td></tr></tbody></table></article>
+ <article class="card component-card"><span class="kicker">Estado vazio</span><h3>Espaços com propósito</h3><div class="empty-state"><div class="icon-disc"><svg aria-hidden="true"><use href="#i-search"/></svg></div><strong>Nenhum item por enquanto</strong><p>Quando houver conteúdo, ele aparece aqui.</p></div></article>
+ <article class="card component-wide"><span class="kicker">Carregamento + navegação</span><h3>Informações previsíveis</h3><div style="display:flex;gap:12px;align-items:center;flex-wrap:wrap"><span class="status" style="background:var(--soft-blue);color:var(--navy)"><span class="loading-dot" aria-hidden="true"></span> Carregando exemplo…</span><span class="pill"><svg aria-hidden="true" style="width:15px;height:15px"><use href="#i-home"/></svg> Página inicial</span><span class="pill"><svg aria-hidden="true" style="width:15px;height:15px"><use href="#i-checklist"/></svg> Avaliações</span></div><p style="margin-top:12px">Elementos ilustrativos. Não representam uma operação em andamento.</p></article></div></section>
+ <section class="panel" id="painel-telas" role="tabpanel" aria-labelledby="tab-telas" tabindex="0" hidden><div class="panel-heading"><div><p class="eyebrow" style="color:var(--blue)">05 · Aplicação</p><h2>Exemplos de telas</h2><p>Três mini-prévias conceituais. Não conectam dados, não reproduzem módulos operacionais.</p></div><span class="pill">Apenas ilustração</span></div><div class="grid">
+ <article class="card preview-card"><div class="preview-frame"><div class="preview-top"><b><i>S</i> Visão Geral</b><svg aria-hidden="true" style="width:16px"><use href="#i-bell"/></svg></div><div class="preview-body"><h4>Olá, professor!</h4><small>Seu dia na SALTA</small><div class="preview-metrics"><div><b>04</b><span>Turmas</span></div><div><b>12</b><span>Atividades</span></div></div><div class="preview-rule"></div><div class="preview-rule small"></div><div class="preview-nav"><span>Diário</span><span>Avaliações</span></div></div></div><p class="preview-caption">Visão Geral · acesso rápido e números legíveis.</p></article>
+ <article class="card preview-card"><div class="preview-frame"><div class="preview-top"><b><i>S</i> Diário</b><svg aria-hidden="true" style="width:16px"><use href="#i-book"/></svg></div><div class="preview-body"><h4>Minhas aulas</h4><small>Semana atual · exemplo fictício</small><div class="preview-row"><span>Segunda · Matemática</span><em>Registrada ✓</em></div><div class="preview-row"><span>Quarta · Matemática</span><span>Planejada</span></div><div class="preview-row"><span>Sexta · Matemática</span><span>Planejada</span></div></div></div><p class="preview-caption">Diário · status com palavras e marcações.</p></article>
+ <article class="card preview-card"><div class="preview-frame"><div class="preview-top"><b><i>S</i> Avaliações</b><svg aria-hidden="true" style="width:16px"><use href="#i-checklist"/></svg></div><div class="preview-body"><h4>Minhas avaliações</h4><small>Organização simplificada</small><div class="preview-row"><span>Funções · 9º A</span><em>Pronta ✓</em></div><div class="preview-row"><span>Estatística · 8º B</span><span>Rascunho</span></div><div class="preview-nav"><span style="background:var(--blue)">Criar avaliação</span></div></div></div><p class="preview-caption">Avaliações / Corretor · ações em primeiro plano.</p></article>
+ </div></section>
+ </div>
+</main>
+<footer class="container"><span><strong>Ateliê SALTA</strong> · proposta independente de interface</span><span>V1 · Sem dados reais</span></footer>
+<script>
+(()=>{'use strict';
+ const tabs=[...document.querySelectorAll('[role="tab"]')];
+ const panels=tabs.map(tab=>document.getElementById(tab.getAttribute('aria-controls')));
+ function activate(index,{focus=false}={}){
+  tabs.forEach((tab,i)=>{const selected=i===index;tab.setAttribute('aria-selected',String(selected));tab.tabIndex=selected?0:-1;panels[i].hidden=!selected});
+  if(focus)tabs[index].focus();
+ }
+ tabs.forEach((tab,index)=>{tab.addEventListener('click',()=>activate(index));tab.addEventListener('keydown',event=>{const key=event.key;let next=index;
+  if(key==='ArrowRight'||key==='ArrowDown')next=(index+1)%tabs.length;
+  else if(key==='ArrowLeft'||key==='ArrowUp')next=(index-1+tabs.length)%tabs.length;
+  else if(key==='Home')next=0;else if(key==='End')next=tabs.length-1;else return;
+  event.preventDefault();activate(next,{focus:true});
+ })});
+ const feedback=document.getElementById('demo-feedback');
+ document.querySelectorAll('[data-demo-message]').forEach(button=>button.addEventListener('click',()=>{feedback.textContent=button.dataset.demoMessage}));
+ const toggle=document.getElementById('demo-toggle');
+ toggle.addEventListener('click',()=>{const pressed=toggle.getAttribute('aria-pressed')!=='true';toggle.setAttribute('aria-pressed',String(pressed));toggle.classList.toggle('pressed',pressed);toggle.querySelector('span').textContent=pressed?'Selecionado ✓':'Selecionar exemplo';feedback.textContent=pressed?'Exemplo selecionado.':'Seleção desfeita.'});
+ const loading=document.getElementById('demo-loading');let resetTimer;
+ loading.addEventListener('click',()=>{if(loading.disabled)return;loading.disabled=true;loading.setAttribute('aria-busy','true');loading.innerHTML='<span class="loading-dot" aria-hidden="true"></span><span>Simulando…</span>';feedback.textContent='Simulando carregamento, sem salvar dados.';
+  clearTimeout(resetTimer);resetTimer=setTimeout(()=>{loading.disabled=false;loading.removeAttribute('aria-busy');loading.innerHTML='<svg aria-hidden="true"><use href="#i-save"/></svg><span>Simular salvamento</span>';feedback.textContent='Simulação concluída. Nenhum dado foi salvo.';},1100);
+ });
+ const form=document.getElementById('demo-form');form.addEventListener('submit',event=>{event.preventDefault();const name=document.getElementById('demo-title').value.trim();if(!name)return;document.getElementById('form-feedback').textContent=`Prévia de “${name}” — ${document.getElementById('demo-subject').value}. Nada foi enviado.`});
+})();
+</script>
+</body>
+</html>
