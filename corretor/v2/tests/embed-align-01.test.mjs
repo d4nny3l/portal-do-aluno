@@ -88,6 +88,7 @@ test('EMBED-ALIGN-01: numeric seven-digit code, objective types and unsupported/
   assert.equal(result.observations[1].state,'blank');
   assert.equal(result.identity.code,code);
   assert.throws(()=>readRaster(t,rasterData,800,1200,{manifest:{...m,revision:m.revision+1}}),/manifesto exato/);
+  assert.throws(()=>readRaster({...t,mode:'full-page'},rasterData,800,1200,{manifest:m}),/formato físico/);
   assert.throws(()=>readRaster(t,rasterData,800,1000,{manifest:m}),/Raster inválido|proporção/);
  }
 });
@@ -173,5 +174,5 @@ test('EMBED-ALIGN-01: frontend enforces selected geometry, no second camera and 
  assert.match(html,/const chosen=prior&&nowScore!==null/);
  assert.match(html,/function recoverSafariVideo\(\)/);
  assert.doesNotMatch(html,/Quadros incorporados: leitura automática indisponível/);
- assert.match(html,/camera\.mjs\?v=20261118wide1/);
+ assert.match(html,/camera\.mjs\?v=20261123embedalign01/);
 });

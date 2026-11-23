@@ -9,8 +9,8 @@ import { detectFiducials, normalizeCard, warpFromFiducials } from '../omr/normal
 const source = readFileSync(new URL('../omr/normalize.mjs', import.meta.url),'utf8');
 assert.equal(source.split(' && retryQuad.physicalFit').length,2,'only one new acceptance gate');
 const beforeSource = source
- .replace('from "./template.mjs?v=20261114v2final"',
-   'from '+JSON.stringify(new URL('../omr/template.mjs?v=20261114v2final',import.meta.url).href))
+ .replace('from "./template.mjs?v=20261123embedalign01"',
+   'from '+JSON.stringify(new URL('../omr/template.mjs?v=20261123embedalign01',import.meta.url).href))
  .replace(' && retryQuad.physicalFit','');
 const { detectFiducials: detectBefore } = await import('data:text/javascript;base64,'+Buffer.from(beforeSource).toString('base64'));
 
