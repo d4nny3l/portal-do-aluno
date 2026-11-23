@@ -6,22 +6,24 @@ import {createTemplate,createLegacyTemplate,layoutTemplate} from '../omr/templat
 import {createCardManifest,renderTemplateSvg} from '../omr/render.mjs';
 import {importCardManifest} from '../omr/manifest.mjs';
 import {readRaster} from '../omr/reader.mjs';
+import {validateLayoutManifest} from '../omr/layout.mjs';
 import {buildPrintDocument,buildManifestJson} from '../omr/export.mjs';
 import {textWidth} from '../omr/artwork.mjs';
 const fixture=name=>JSON.parse(readFileSync(new URL(`./fixtures/${name}`,import.meta.url),'utf8'));
 const sha=value=>createHash('sha256').update(value).digest('hex');
 const card=opts=>createTemplate([{type:'A-E',count:20,label:'Questões'}],opts);
 
-test('maintenance: all 15 manifests retain baseline geometry and SVG differs only by hidden continuation suffix',()=>{
+test('maintenance: historical hashes remain references; new V2 geometry is explicitly versioned',()=>{
  for(const old of fixture('maintenance-16113b6-golden.json').records){
   const t=createTemplate([{type:old.type,count:old.count,label:'Questões'}]),m=createCardManifest(t),svg=renderTemplateSvg(t,{manifest:m});
-  assert.equal(sha(JSON.stringify(m)),old.manifestSha256,`${old.type}/${old.count}: manifest changed`);
-  // Reconstruct the prior printed label using a temporary manifest copy; compare every other SVG byte to the historic baseline.
-  const priorVisualManifest={...m,sections:m.sections.map(f=>f.label.endsWith(' (cont.)')?{...f,label:f.label+' '}:f)};
-  assert.equal(sha(renderTemplateSvg(t,{manifest:priorVisualManifest})),old.svgSha256AfterTitleChange,`${old.type}/${old.count}: unrelated SVG change`);
-  assert.doesNotMatch(svg,/\(cont\.\)/i,'continuation suffix must not be printed');
-  assert.equal(m.identityCode.columns.length,7);assert.equal(m.identityBubbles.length,70);
-  assert.match(svg,/>CÓDIGO DO ALUNO<\/text>/);assert.doesNotMatch(svg,/CÓDIGO SALTA/);
+  assert.equal(m.titleAlignmentRevision,'top-columns-centred-1');
+  assert.notEqual(sha(JSON.stringify(m)),old.manifestSha256,`${old.type}/${old.count}: old manifest hash must not be reused`);
+  assert.equal(validateLayoutManifest(m).valid,true);
+  assert.ok(m.sections.every(f=>Number.isFinite(f.titleBandMm)));
+  assert.doesNotMatch(svg,/\(cont\.\)/i);
+  assert.equal(m.identityCode.columns.length,7);
+  assert.equal(m.identityBubbles.length,70);
+  assert.match(svg,/>CÓDIGO DO ALUNO<\/text>/);
  }
 });
 

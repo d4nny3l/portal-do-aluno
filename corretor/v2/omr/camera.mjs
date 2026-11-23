@@ -220,11 +220,11 @@ export function motionBetween(current, previous) {
   return sum / n;
 }
 
-export function captureQuality(frame, detection, previous = null) {
+export function captureQuality(frame, detection, previous = null, {minArea = .18} = {}) {
   const {gray,width,height} = frame, corners = detection?.corners;
   if (!detection?.found || detection.confidence < .7 || corners?.length !== 4) return {ok:false,message:'Centralize o cartão.'};
   const area = Math.abs(corners.reduce((s,p,i) => {const q=corners[(i+1)%4];return s+p.x*q.y-q.x*p.y},0)/2)/(width*height);
-  if (area < .18) return {ok:false,message:'Aproxime a folha.',area};
+  if (area < minArea) return {ok:false,message:'Aproxime a folha.',area};
   if (corners.some(p => p.x < width*.015 || p.x > width*.985 || p.y < height*.015 || p.y > height*.985)) return {ok:false,message:'Centralize o cartão.',area};
   // Work only inside the marker quadrilateral; dark background is not paper illumination.
   const inside = (x,y) => { const turns=corners.map((p,i)=>{const q=corners[(i+1)%4];return (q.x-p.x)*(y-p.y)-(q.y-p.y)*(x-p.x)}); return turns.every(t=>t>=0)||turns.every(t=>t<=0); };

@@ -101,26 +101,41 @@ function headerPlan(d,bounds){
  frame.height=y-frame.y;return{frame,texts,rules,logos,adminBand,header:h,end:y};
 }
 function runs(d){const source=d.layoutQuestions||d.questions;const result=[];for(const q of source){let last=result.at(-1);if(!last||last.sectionId!==q.sectionId||last.type!==q.type){last={sectionId:q.sectionId,type:q.type,label:d.sections[q.sectionIndex].label,questions:[]};result.push(last);}last.questions.push(q);}return result;}
-function pack(groups,cols,width,start,cap,rowPitch,reserved=0){
+function packOnce(groups,cols,width,start,cap,rowPitch,reserved=0,sharedHeading=0){
  const out=[];let col=0,y=0;const state=new Map();
  for(const run of groups){let offset=0;while(offset<run.questions.length){
   if(col>=cols)return null;
   const limit=col===cols-1?cap-reserved:cap;
   const label=run.label+(offset?' (cont.)':'');
-  const titleLines=lines(label,width-4,2.6);const heading=titleLines.length*3.38+3;
-  const qheight=run.type==='CDU'?64:rowPitch;
-  const gap=y?3:0;
-  // Keep short pedagogical groups intact when they fit a fresh column,
-  // rather than create a one-question continuation just to balance heights.
+  // The internal continuation suffix is omitted from the printed heading and its height.
+  const titleLines=lines(run.label,width-4,2.6),naturalHeading=titleLines.length*3.38+3;
+  let heading=y===0?Math.max(naturalHeading,sharedHeading):naturalHeading;
+  const qheight=run.type==='CDU'?64:rowPitch,gap=y?3:0;
   const entire=heading+(run.questions.length-offset)*qheight+1.5;
   if(offset===0&&run.questions.length<=5&&y&&entire<=limit&&entire>limit-y-gap){col++;y=0;continue;}
+  heading=y===0?Math.max(naturalHeading,sharedHeading):naturalHeading;
   const count=Math.min(run.questions.length-offset,Math.floor((limit-y-gap-heading-1.5+1e-6)/qheight));
   if(count<1){col++;y=0;continue;}
-  y+=gap;const fragment={sectionId:run.sectionId,label,titleLines,type:run.type,columnIndex:col,offset,y:start+y,width,height:heading+count*qheight+1.5,heading,questions:run.questions.slice(offset,offset+count),rowPitch:qheight};
+  y+=gap;
+  const fragment={sectionId:run.sectionId,label,titleLines,type:run.type,columnIndex:col,offset,y:start+y,width,
+   height:heading+count*qheight+1.5,heading,questions:run.questions.slice(offset,offset+count),rowPitch:qheight};
   out.push(fragment);y+=fragment.height;offset+=count;state.set(col,y);
   if(offset<run.questions.length){col++;y=0;}
  }}
  return{fragments:out,heights:Array.from({length:cols},(_,i)=>state.get(i)||0),height:Math.max(0,...state.values())};
+}
+function pack(groups,cols,width,start,cap,rowPitch,reserved=0){
+ // Iterate because equalizing the top heading bands can change which section opens a column.
+ let sharedHeading=0;
+ for(let iteration=0;iteration<=cols+2;iteration++){
+  const packed=packOnce(groups,cols,width,start,cap,rowPitch,reserved,sharedHeading);
+  if(!packed)return null;
+  const first=packed.fragments.filter(f=>Math.abs(f.y-start)<1e-6);
+  const needed=Math.max(0,...first.map(f=>f.titleLines.length*3.38+3));
+  if(needed<=sharedHeading+1e-6)return packed;
+  sharedHeading=needed;
+ }
+ return null;
 }
 function compose(d,size,bounds,start,end){
  const groups=runs(d),coded=d.identity.mode==='seven-digit-code',codeWidth=41.7,codeHeight=67;
@@ -161,7 +176,7 @@ export function composeV2(input,options={}){
  const selected=compose(d,size,bounds,start,end);if(!selected)throw new RangeError(`As ${d.questionCount} questões não cabem em A4 com o cabeçalho e identificação escolhidos. Reduza textos, seções ou quantidade; as bolhas não foram reduzidas.`);
  const questions=[],sections=[];
  for(const f of selected.fragments){
-  const x=bounds.x+f.columnIndex*(selected.width+3);const frame={sectionId:f.sectionId,label:f.label,x,y:f.y,width:f.width,height:f.height,columnIndex:f.columnIndex,titleLines:f.titleLines,type:f.type,role:'section'};sections.push(frame);
+  const x=bounds.x+f.columnIndex*(selected.width+3);const frame={sectionId:f.sectionId,label:f.label,x,y:f.y,width:f.width,height:f.height,columnIndex:f.columnIndex,titleLines:f.titleLines,titleBandMm:f.heading,type:f.type,role:'section'};sections.push(frame);
   for(const [i,q]of f.questions.entries()){
    const y=f.y+f.heading+i*f.rowPitch;const base=x+(f.width-33.7)/2;const bubbles=[],boxes=[];
    if(q.type==='CDU'){
@@ -174,7 +189,7 @@ export function composeV2(input,options={}){
  if(selected.codeFrame){const f=selected.codeFrame;for(let index=0;index<7;index++){const centerX=f.x+5.25+index*5.2;columns.push({index,centerX,box:{x:centerX-2.1,y:f.y+6,width:4.2,height:4.2,centerX},printedDigit:student?.code?.[index]||''});for(let digit=0;digit<10;digit++)identityBubbles.push({bubbleId:`identity:${index}:${digit}`,column:index+1,digit,x:centerX,y:f.y+15.5+digit*5.2,radiusMm:2.25,filled:student?.code?.[index]===String(digit)});}}
  const border={x:embedded?3:12,y:embedded?3:12,width:size.widthMm-(embedded?6:24),height:size.heightMm-(embedded?6:24),strokeMm:.25};
  const fiducials=[[8,8],[size.widthMm-8,8],[size.widthMm-8,size.heightMm-8],[8,size.heightMm-8]].map(([x,y],i)=>({x,y,sizeMm:5.5,markerId:['fiducial-tl','fiducial-tr','fiducial-br','fiducial-bl'][i]}));
- const m={headerRevision:'salta-v2-header-1',schemaVersion:V2_SCHEMA,templateId:d.templateId,revision:d.revision,version:`salta-omr-layout-v2-r${d.revision}`,layoutVersion:'v2',artworkVersion:'salta-card-artwork-v2',mode:d.mode,...(d.sectionFrameStyle==='content'?{sectionFrameStyle:'content'}:{}),paper:size,identity:{mode:d.identity.mode,showName:name,showClass:false},identityCode:{mode:d.identity.mode,student,columns},identityBubbles,header:header.header,panels:{header,name:nameFrame,instructions,code:selected.codeFrame},technicalRegions:{border,fiducials,identityGrid:selected.codeFrame,qr:null},geometry:{...INITIAL_GEOMETRY,objectiveRowPitchMm:selected.pitch},safeBoundsMm:bounds,contentBoundsMm:{...bounds,y:start,height:end-start},columns:Array.from({length:selected.cols},(_,i)=>({x:bounds.x+i*(selected.width+3),width:selected.width,height:selected.heights[i]})),columnWidthMm:selected.width,sections,questions,questionCount:d.questionCount,pages:[{page:1,widthMm:size.widthMm,heightMm:size.heightMm}]};
+ const m={headerRevision:'salta-v2-header-1',titleAlignmentRevision:'top-columns-centred-1',schemaVersion:V2_SCHEMA,templateId:d.templateId,revision:d.revision,version:`salta-omr-layout-v2-r${d.revision}`,layoutVersion:'v2',artworkVersion:'salta-card-artwork-v2',mode:d.mode,...(d.sectionFrameStyle==='content'?{sectionFrameStyle:'content'}:{}),paper:size,identity:{mode:d.identity.mode,showName:name,showClass:false},identityCode:{mode:d.identity.mode,student,columns},identityBubbles,header:header.header,panels:{header,name:nameFrame,instructions,code:selected.codeFrame},technicalRegions:{border,fiducials,identityGrid:selected.codeFrame,qr:null},geometry:{...INITIAL_GEOMETRY,objectiveRowPitchMm:selected.pitch},safeBoundsMm:bounds,contentBoundsMm:{...bounds,y:start,height:end-start},columns:Array.from({length:selected.cols},(_,i)=>({x:bounds.x+i*(selected.width+3),width:selected.width,height:selected.heights[i]})),columnWidthMm:selected.width,sections,questions,questionCount:d.questionCount,pages:[{page:1,widthMm:size.widthMm,heightMm:size.heightMm}]};
  const withoutIdentity=JSON.parse(JSON.stringify(m));delete withoutIdentity.identityCode.student;withoutIdentity.identityCode.columns.forEach(c=>c.printedDigit='');withoutIdentity.identityBubbles.forEach(b=>b.filled=false);
  m.contentHash=hash(withoutIdentity);return{manifest:frozen(m),validation:validateV2(m)};
  }catch(error){return{manifest:null,validation:{valid:false,errors:[error.message],warnings:[]}};}
@@ -187,6 +202,7 @@ export function validateV2(m){
  if(new Set(m.questions.map(q=>q.questionId)).size!==m.questionCount||m.questions.length!==m.questionCount)errors.push('Questões repetidas ou ausentes.');
  const circles=[...m.identityBubbles,...m.questions.flatMap(q=>q.bubbles)];
  for(const b of circles)if(b.radiusMm!==2.25||!Number.isFinite(b.x)||!Number.isFinite(b.y)||b.x-b.radiusMm<m.safeBoundsMm.x||b.y-b.radiusMm<m.safeBoundsMm.y||b.x+b.radiusMm>m.safeBoundsMm.x+m.safeBoundsMm.width||b.y+b.radiusMm>m.safeBoundsMm.y+m.safeBoundsMm.height)errors.push('Bolha inválida ou fora da área segura.');
+ for(const f of m.sections)if(f.titleBandMm!==undefined&&(!Number.isFinite(f.titleBandMm)||f.titleBandMm<f.titleLines.length*3.38+3-1e-5))errors.push('Faixa de título incompatível com o texto impresso.');
  for(const q of m.questions){const f=m.sections.find(f=>f.sectionId===q.sectionId&&f.columnIndex===q.columnIndex&&q.y>=f.y&&q.y<f.y+f.height);if(!f||q.bubbles.some(b=>b.x-b.radiusMm<=f.x||b.x+b.radiusMm>=f.x+f.width||b.y-b.radiusMm<=f.y||b.y+b.radiusMm>=f.y+f.height))errors.push('Uma questão saiu da própria moldura.');}
  for(const b of m.identityBubbles){const f=m.panels.code;if(!f||b.x-b.radiusMm<=f.x||b.x+b.radiusMm>=f.x+f.width||b.y-b.radiusMm<=f.y||b.y+b.radiusMm>=f.y+f.height)errors.push('O código saiu da própria moldura.');}
  for(const t of m.panels.header.texts){if(![t.x,t.y,t.size].every(Number.isFinite)||t.box.x<m.panels.header.frame.x||t.box.x+t.box.width>m.panels.header.frame.x+m.panels.header.frame.width+.001||t.y-t.size<m.panels.header.frame.y-.001||t.y+t.size*.25>m.panels.header.end+.001)errors.push('Texto de cabeçalho fora da moldura.');}
