@@ -151,7 +151,26 @@ function quadArea(points) {
   }, 0) / 2);
 }
 
-function chooseQuad(candidates, width, height) {
+function embeddedGeometry(manifest){
+ if(!manifest||manifest.mode!=='embedded')return null;
+ const paper=manifest.paper,markers=manifest.technicalRegions?.fiducials;
+ if(manifest.schemaVersion!=='salta-layout-manifest-v2'||!paper||
+   !Number.isFinite(paper.widthMm)||!Number.isFinite(paper.heightMm)||
+   paper.widthMm<60||paper.widthMm>210||paper.heightMm<80||paper.heightMm>297||
+   !Array.isArray(markers)||markers.length!==4)throw new TypeError('Manifesto de quadro incorporado inválido.');
+ const order=['fiducial-tl','fiducial-tr','fiducial-br','fiducial-bl'];
+ const points=order.map(id=>markers.find(m=>m.markerId===id));
+ if(points.some(p=>!p||p.sizeMm!==5.5||!Number.isFinite(p.x)||!Number.isFinite(p.y)||
+   p.x<=0||p.y<=0||p.x>=paper.widthMm||p.y>=paper.heightMm)||
+   points[1].x-points[0].x<25||points[3].y-points[0].y<30||
+   Math.abs(points[0].y-points[1].y)>.01||Math.abs(points[2].y-points[3].y)>.01||
+   Math.abs(points[0].x-points[3].x)>.01||Math.abs(points[1].x-points[2].x)>.01)
+  throw new TypeError('Os quatro marcadores do manifesto são incompatíveis.');
+ return{widthMm:paper.widthMm,heightMm:paper.heightMm,points,spanX:points[1].x-points[0].x,
+  spanY:points[3].y-points[0].y,markerSize:5.5,minArea:.025,embedded:true};
+}
+function chooseQuad(candidates, width, height, geometry = null) {
+  const spanX=geometry?.spanX??194,spanY=geometry?.spanY??281,markerMm=geometry?.markerSize??5.5;
   let best = null;
   const n = candidates.length;
   for (let a = 0; a < n - 3; a++) for (let b = a + 1; b < n - 2; b++) {
@@ -164,7 +183,7 @@ function chooseQuad(candidates, width, height) {
       });
       if (turns.some(turn => turn <= 0)) continue;
       const areaRatio = quadArea(order.ordered) / (width * height);
-      if (areaRatio < 0.08 || areaRatio > 0.99) continue;
+      if (areaRatio < (geometry?.minArea??0.08) || areaRatio > 0.99) continue;
       if (order.ratioError > 0.85 || order.oppositeError > 1.15) continue;
       const markerQuality = points.reduce((sum, point) => sum + point.quality, 0) / 4;
       // All supported page markers are solid 5.5 mm squares. A text glyph or
@@ -173,7 +192,7 @@ function chooseQuad(candidates, width, height) {
       const sizeError = order.ordered.reduce((sum, p, i) => {
         const previous = order.ordered[(i + 3) % 4], next = order.ordered[(i + 1) % 4];
         const localArea = Math.abs((previous.x-p.x)*(next.y-p.y)-(previous.y-p.y)*(next.x-p.x));
-        const expectedArea = localArea * 5.5 ** 2 / (194 * 281);
+        const expectedArea = localArea * markerMm ** 2 / (spanX * spanY);
         return sum + Math.abs(Math.log(p.area / expectedArea));
       }, 0) / 4;
       const geometricScore = markerQuality - order.ratioError * 0.28 - order.oppositeError * 0.12 + Math.min(areaRatio, 0.72) * 0.08;
@@ -188,12 +207,12 @@ function chooseQuad(candidates, width, height) {
     const deviations = best.corners.map((p, i) => {
       const previous = best.corners[(i + 3) % 4], next = best.corners[(i + 1) % 4];
       const localArea = Math.abs((previous.x-p.x)*(next.y-p.y)-(previous.y-p.y)*(next.x-p.x));
-      const expectedArea = localArea * 5.5 ** 2 / (194 * 281);
+      const expectedArea = localArea * markerMm ** 2 / (spanX * spanY);
       const size = Math.abs(Math.log(p.area / expectedArea));
       // Marker dimensions are 5.5 mm in BOTH axes. At even corners the
       // next edge is horizontal; at odd corners it is vertical.
-      const horizontal = distance(p, i % 2 ? previous : next) / 194;
-      const vertical = distance(p, i % 2 ? next : previous) / 281;
+      const horizontal = distance(p, i % 2 ? previous : next) / spanX;
+      const vertical = distance(p, i % 2 ? next : previous) / spanY;
       const shape = Math.abs(Math.log(p.aspect / (horizontal / vertical)));
       return { size, shape };
     });
@@ -206,16 +225,17 @@ function chooseQuad(candidates, width, height) {
       && shapeError <= Math.log(1.45)
       && deviations.every(part => part.shape <= Math.log(1.8));
   }
-  return best;
+  return geometry?.embedded&&!best?.physicalFit?null:best;
 }
 
-export function detectFiducials(gray, width, height) {
+export function detectFiducials(gray, width, height, {manifest = null} = {}) {
+  const geometry=embeddedGeometry(manifest);
   if (!Number.isInteger(width) || !Number.isInteger(height) || width < 32 || height < 32 || !gray || gray.length !== width * height) {
     throw new TypeError("Imagem inválida para localizar os marcadores.");
   }
   const sample = downsample(gray, width, height);
   let found = components(sample);
-  let quad = chooseQuad(found, width, height);
+  let quad = chooseQuad(found, width, height, geometry);
   let lightingFallback = false;
   // Only retry marker DISCOVERY after the existing geometric search fails.
   // The legacy Otsu threshold has a floor of 65; this can classify a dark
@@ -233,7 +253,7 @@ export function detectFiducials(gray, width, height) {
       const threshold = Math.max(12, Math.min(sample.threshold - 9, Math.floor(paper * .7)));
       if (threshold < sample.threshold - 8) {
         const retryFound = components({ ...sample, threshold });
-        const retryQuad = chooseQuad(retryFound, width, height);
+        const retryQuad = chooseQuad(retryFound, width, height, geometry);
         // A weaker segmentation must pass a stronger geometric gate.
         if (retryQuad && retryQuad.confidence >= .75 && retryQuad.physicalFit) {
           quad = retryQuad;
@@ -285,7 +305,8 @@ function homography(source, target) {
   return solve(matrix, values);
 }
 
-export function warpFromFiducials(gray, width, height, corners, { outputWidth = 1200 } = {}) {
+export function warpFromFiducials(gray, width, height, corners, { outputWidth = 1200, manifest = null } = {}) {
+  const geometry=embeddedGeometry(manifest),paperW=geometry?.widthMm??PAGE_WIDTH_MM,paperH=geometry?.heightMm??PAGE_HEIGHT_MM;
   if (!Array.isArray(corners) || corners.length !== 4 || !Number.isInteger(outputWidth) || outputWidth < 300 || outputWidth > 2400) {
     throw new TypeError("Informe os quatro marcadores na ordem superior esquerda, superior direita, inferior direita e inferior esquerda.");
   }
@@ -303,8 +324,8 @@ export function warpFromFiducials(gray, width, height, corners, { outputWidth = 
   if (edgeLengths.some(length => length < Math.min(width, height) * 0.08) || signedTurns.some(turn => Math.abs(turn) < width * height * 0.0002) || !signedTurns.every(turn => Math.sign(turn) === Math.sign(signedTurns[0]))) {
     throw new Error("Os quatro pontos não formam um enquadramento válido. Marque os centros dos marcadores na ordem indicada.");
   }
-  const outputHeight = Math.round(outputWidth * PAGE_HEIGHT_MM / PAGE_WIDTH_MM);
-  const target = [
+  const outputHeight = Math.round(outputWidth * paperH / paperW);
+  const target = geometry?geometry.points.map(p=>({x:outputWidth*p.x/paperW,y:outputHeight*p.y/paperH})):[
     { x: outputWidth * 8 / PAGE_WIDTH_MM, y: outputHeight * 8 / PAGE_HEIGHT_MM },
     { x: outputWidth * (PAGE_WIDTH_MM - 8) / PAGE_WIDTH_MM, y: outputHeight * 8 / PAGE_HEIGHT_MM },
     { x: outputWidth * (PAGE_WIDTH_MM - 8) / PAGE_WIDTH_MM, y: outputHeight * (PAGE_HEIGHT_MM - 8) / PAGE_HEIGHT_MM },
@@ -327,7 +348,7 @@ export function warpFromFiducials(gray, width, height, corners, { outputWidth = 
 }
 
 export function normalizeCard(gray, width, height, options = {}) {
-  const detection = detectFiducials(gray, width, height);
+  const detection = detectFiducials(gray, width, height, options);
   if (!detection.found || detection.confidence < (options.minConfidence ?? 0.62)) {
     throw new Error("Não foi possível ler o cartão. Enquadre a folha inteira, melhore a iluminação e tente novamente; se necessário, ajuste os quatro marcadores manualmente.");
   }
