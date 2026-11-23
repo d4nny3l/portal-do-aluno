@@ -226,10 +226,10 @@ test('P1 interface contains only open/close, real lamp and import; scanner owns 
  assert.match(html,/stableFrames>=3/);
  assert.match(html,/captureQuality\(frame,detection,previousCameraFrame\)/);
  assert.match(html,/projected=mapFramePoints\(detection.corners,frame,capture\)/);
- assert.match(html,/actual=detectFiducials\(capture.gray,capture.width,capture.height\)/);
+ assert.match(html,/actual=detectFiducials\(capture.gray,capture.width,capture.height,embedded\?\{manifest:embedded\}:\{\}\)/);
  assert.match(html,/const chosen=prior&&nowScore!==null/);
  assert.match(html,/manualCorners:chosen.actual.corners/);
- assert.match(html,/actual=detectFiducials\(capture.gray,capture.width,capture.height\)/);
+ assert.match(html,/actual=detectFiducials\(capture.gray,capture.width,capture.height,embedded\?\{manifest:embedded\}:\{\}\)/);
  assert.match(html,/corretor-v2\.css\?v=20261121ux79c1/);
  assert.match(html,/camera\.mjs\?v=20261118wide1/);
  assert.match(css,/\.camera-stage video\{object-position:center;transform:none\}/);

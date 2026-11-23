@@ -109,8 +109,8 @@ for(const mode of ['full-page','embedded'])for(const columns of [2,3]){
   const counts=mode==='embedded'&&columns===2?[20,20,20]:[26,28,30];
   const sections=[
    {type:'A-D',count:counts[0],label:'MATEMÁTICA'},
-   {type:'A-E',count:counts[1],label:'GEOMETRIA E REPRESENTAÇÕES\\nDE FIGURAS PLANAS'},
-   {type:'C-E',count:counts[2],label:'ANÁLISE DE PROPOSIÇÕES MATEMÁTICAS\\nE RACIOCÍNIO LÓGICO\\nAPLICADO'},
+   {type:'A-E',count:counts[1],label:'GEOMETRIA E REPRESENTAÇÕES\nDE FIGURAS PLANAS'},
+   {type:'C-E',count:counts[2],label:'ANÁLISE DE PROPOSIÇÕES MATEMÁTICAS\nE RACIOCÍNIO LÓGICO\nAPLICADO'},
   ];
   const t=make(sections,{mode,w:170,h:260,cols:columns});
   const m=createCardManifest(t),svg=renderTemplateSvg(t,{manifest:m});
