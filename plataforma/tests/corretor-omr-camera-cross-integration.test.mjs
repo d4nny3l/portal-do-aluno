@@ -184,11 +184,17 @@ test('P1 adversarial and historical coverage remains in combined source',()=>{
 });
 
 
-test('UX-SAFARI-111: camera sem moldura escura e video na proporcao intrinseca sem recorte',()=>{
- assert.match(html,/#corrigir \.camera-stage\{[^}]*aspect-ratio:auto;height:auto;min-height:0;border:0;border-radius:0;background:transparent;box-shadow:none\}/);
- assert.match(html,/#corrigir \.camera-stage video\{display:block;width:100%;height:auto;aspect-ratio:auto;object-fit:contain;background:transparent\}/);
+test('UX-SAFARI-112: visor estavel e recuperacao da superficie WebKit sem reabrir MediaStream',()=>{
+ assert.match(html,/#corrigir \.camera-stage\{width:min\(100%,660px\);aspect-ratio:auto;height:auto;min-height:0;border:0;border-radius:0;background:transparent;box-shadow:none\}/);
+ assert.match(html,/#corrigir \.camera-stage video\{display:block;width:100%;height:auto;aspect-ratio:auto;object-fit:fill;background:transparent\}/);
+ assert.doesNotMatch(html,/#corrigir \.camera-stage\{[^}]*\bvh\b/);
+ assert.doesNotMatch(html,/--camera-ratio/);
  assert.doesNotMatch(html,/#corrigir \.camera-stage video\{[^}]*object-fit:cover/);
- assert.match(html,/stage\.style\?\.setProperty\?\.\('--camera-ratio',String\(vw\/vh\)\)/);
+ assert.match(html,/function replaceCameraVideo\(stream\)\{[\s\S]*?old\.cloneNode\(false\);[\s\S]*?old\.replaceWith\(video\);video\.srcObject=stream;/);
+ assert.match(html,/const video=replaceCameraVideo\(stream\);\$\('cameraStage'\)\.hidden=false;await video\.play\(\)/);
+ assert.match(html,/function watchSafariCameraViewport\(\)\{[\s\S]*?Math\.abs\(current\.width-previous\.width\)>8\|\|Math\.abs\(current\.height-previous\.height\)<20/);
+ assert.match(html,/visualViewport\?\.addEventListener\?\.\('resize',watchSafariCameraViewport\)/);
+ assert.match(html,/function stopCamera\(\)\{cameraUiGeneration\+\+;clearTimeout\(safariCameraResyncTimer\)/);
  assert.match(html,/#corrigir #cameraGuides\{display:none!important\}/);
  assert.match(html,/id="video" playsinline autoplay muted/);
 });
