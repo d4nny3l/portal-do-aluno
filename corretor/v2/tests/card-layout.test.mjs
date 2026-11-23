@@ -345,7 +345,7 @@ test("batch roster defaults alphabetically and selects explicit 1-based page ran
 });
 
 test("browser modules pin generator assets and keep the legacy route intact", async () => {
-  const [renderSource, readerSource, pageSource, teacherSource, themeSource, corretorCss, legacyRoute] = await Promise.all([
+  const [renderSource, readerSource, pageSource, teacherSource, themeSource, corretorCss, legacyRoute, exportSource] = await Promise.all([
     readFile(new URL("../omr/render-v1.mjs", import.meta.url), "utf8"),
     readFile(new URL("../omr/reader.mjs", import.meta.url), "utf8"),
     readFile(new URL("../../../plataforma/corretor-v2.html", import.meta.url), "utf8"),
@@ -353,10 +353,15 @@ test("browser modules pin generator assets and keep the legacy route intact", as
     readFile(new URL("../../../plataforma/professor-theme.css", import.meta.url), "utf8"),
     readFile(new URL("../../../plataforma/corretor-v2.css", import.meta.url), "utf8"),
     readFile(new URL("../../../corretor/index.html", import.meta.url), "utf8"),
+    readFile(new URL("../omr/export.mjs", import.meta.url), "utf8"),
   ]);
   assert.match(renderSource, /from ["']\.\/template\.mjs\?v=20261114v2final["']/);
   assert.match(readerSource, /from ["']\.\/template\.mjs\?v=20261115assess1["']/);
-  assert.match(pageSource, /omr\/(?:template|render|reader|normalize|export)\.mjs\?v=20261114v2final/g);
+  assert.match(pageSource, /omr\/render\.mjs\?v=20261123cont110/);
+  assert.match(pageSource, /omr\/export\.mjs\?v=20261123cont110/);
+  assert.match(exportSource, /\.\/render\.mjs\?v=20261123cont110/);
+  assert.match(pageSource, /omr\/manifest\.mjs\?v=20261114v2final/);
+  assert.doesNotMatch(pageSource, /omr\/(?:render|export)\.mjs\?v=20261114v2final/);
   assert.match(teacherSource, /corretor-v2\.html\?v=20261115assess2/g);
   assert.match(teacherSource, /professor-theme\.css\?v=20261110ux1/);
   assert.match(pageSource, /professor-theme\.css\?v=20261110ux1/);
