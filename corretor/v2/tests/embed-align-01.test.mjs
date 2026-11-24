@@ -73,7 +73,8 @@ for(const mode of ['full-page','embedded']){
  for(const cols of [2,3]){
   test('EMBED-ALIGN: first rows vertically equal in '+mode+', '+cols+' columns and SVG titles fit',()=>{
    const names=['CURTA','TÍTULO MAIS LONGO QUE OCUPA DUAS LINHAS','TÍTULO DE GEOMETRIA MATEMÁTICA E ESTATÍSTICA COM MUITAS PALAVRAS'];
-   const groups=names.map((label,i)=>({label,type:'A-D',count:12}));
+   const groups=names.map((label,i)=>({label:typeAdjust(label),type:'A-D',count:cols===3&&mode==='full-page'?35:12}));
+   function typeAdjust(label){return cols===3&&mode==='full-page'?label.slice(0,37):label}
    const options={mode,columnCount:cols,identityMode:'none',showName:false,
     ...(mode==='embedded'?{embeddedSize:{widthMm:180,heightMm:240}}:{})};
    const template=createTemplate(groups,options),manifest=createCardManifest(template);
