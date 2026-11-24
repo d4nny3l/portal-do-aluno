@@ -1,6 +1,7 @@
 import {exact,opaqueId,uuid,validateDefinition,printArtifact} from './definition.mjs';
 import {keyring,seal,open,operationMac} from './crypto.mjs';
 import {SCORE_FORMAT_VERSION} from '../corretor/v2/assessments/score-format.mjs';
+import {EDITOR_SNAPSHOT_CAPABILITY} from '../corretor/v2/assessments/editor-snapshot.mjs';
 
 class Failure extends Error { constructor(status,code,message) { super(message); this.status=status; this.code=code; } }
 const deny = (status,code,message) => { throw new Failure(status,code,message); };
@@ -134,7 +135,7 @@ async function route(request,env) {
  if (!env.ASSESSMENTS_DB) deny(503,'database_unavailable','Banco indisponível.');
  if (!env.PORTAL_ORIGIN || request.headers.get('Origin')!==env.PORTAL_ORIGIN) deny(403,'origin_denied','Origem não autorizada.');
  const db=env.ASSESSMENTS_DB, actor=await principal(request,env,db), ring=keyring(env), url=new URL(request.url), path=url.pathname;
- if (path==='/assessments/v1/session'&&request.method==='GET') return json({authenticated:true,principalId:actor.id,epoch:actor.epoch,cryptoModel:'server-managed',scoreFormatVersion:SCORE_FORMAT_VERSION,embeddedLibraryVersion:'salta-embedded-library-v1'});
+ if (path==='/assessments/v1/session'&&request.method==='GET') return json({authenticated:true,principalId:actor.id,epoch:actor.epoch,cryptoModel:'server-managed',scoreFormatVersion:SCORE_FORMAT_VERSION,embeddedLibraryVersion:'salta-embedded-library-v1',editorSnapshotVersion:EDITOR_SNAPSHOT_CAPABILITY});
  if (path==='/assessments/v1/grants'&&request.method==='GET') return json({grants:(await db.prepare('SELECT institution_id AS institutionId,class_id AS classId,period_id AS periodId FROM av_grants WHERE principal_id=? AND enabled=1 AND expires_at>? ORDER BY institution_id,class_id,period_id').bind(actor.id,Date.now()).all()).results});
  if (path==='/assessments/v1/assessments'&&request.method==='GET') {
   const allowed=['after','institutionId','classId','periodId'];
