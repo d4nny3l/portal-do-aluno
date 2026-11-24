@@ -8,7 +8,7 @@ const allowed=new Set([
  'corretor/v2/assessments/editor-snapshot.mjs','corretor/v2/assessments/private-client.mjs','corretor/v2/assessments/private-library.mjs','corretor/v2/assessments/private-contract-adapter.mjs','plataforma/avaliacoes-biblioteca.mjs','plataforma/corretor-v2.html','plataforma/tests/avaliacoes-biblioteca-unificada.test.mjs','plataforma/tests/piloto-avaliacoes-isolado.test.mjs',
  '.github/workflows/test-avaliacoes-biblioteca.yml','.github/workflows/test-assessments-embedded.yml','docs/avaliacoes/BIBLIOTECA_QUADROS_118.md','docs/avaliacoes/SALVAMENTO_INTEGRAL_120.md',
  ...['.gitignore','worker.mjs','definition.mjs','crypto.mjs','build.mjs','dependencies.json','integrity.mjs','test-composition.mjs','README.md','migrations/0001_private_library.sql'].map(p=>'assessments-service/'+p),
- ...['helpers.mjs','service.test.mjs','catalog-pages.test.mjs','private-bridge.integration.test.mjs','score-format.test.mjs','d1-auth.integration.mjs','build.test.mjs','sealed-gateway.mjs','gateway.integration.mjs','frontend88.integration.mjs','embedded-library.integration.mjs','embedded-browser.mjs','editor-snapshot.test.mjs'].map(n=>'assessments-service/tests/'+n)
+ ...['helpers.mjs','service.test.mjs','catalog-pages.test.mjs','private-bridge.integration.test.mjs','score-format.test.mjs','d1-auth.integration.mjs','build.test.mjs','sealed-gateway.mjs','gateway.integration.mjs','frontend88.integration.mjs','embedded-library.integration.mjs','embedded-browser.mjs','editor-snapshot.test.mjs','editor-frontend-browser.mjs'].map(n=>'assessments-service/tests/'+n)
 ]);
 export function assertScope(paths){const denied=paths.filter(p=>!allowed.has(p));if(denied.length)throw Error('Forbidden #120 delta: '+denied.join(', '))}
 export function verifyScope(){

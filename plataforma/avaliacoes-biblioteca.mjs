@@ -287,7 +287,7 @@ export function mountAssessmentLibrary({
   applyExactModel({manifest:restored.manifest,title:record.definition.title,revision:record.revision});
   unsaved=false;confirmedEarlierSave=false;selectionNeedsConfirmation=false;
   renderScoring();
-  
+
  }
  const controller=createPrivateLibraryController({
   client,getDraft,applyRecord,
