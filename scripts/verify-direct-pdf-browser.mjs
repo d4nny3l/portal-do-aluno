@@ -16,7 +16,7 @@ const failures=[],network=[],report={issue:125,base:'14fa328e178bfa359de7177dce5
 const browser=await chromium.launch({headless:true,args:['--disable-background-networking','--disable-sync','--no-first-run','--host-resolver-rules=MAP * 0.0.0.0','--no-proxy-server']});
 function nearly(a,b,tolerance=.06){return Math.abs(a-b)<=tolerance}
 function inPt(mm){return mm*72/25.4}
-async function auditPdf(bytes,{pages=1,landscape=false,minPaths=10,hasText=null,expectedTextByPage=null}={}){
+async function auditPdf(bytes,{pages=1,landscape=false,minPaths=10,minImages=0,hasText=null,expectedTextByPage=null}={}){
  assert.equal(bytes.subarray(0,5).toString('ascii'),'%PDF-');
  assert(bytes.length>1200);
  const parsed=await PDFDocument.load(bytes,{updateMetadata:false});
@@ -34,13 +34,15 @@ async function auditPdf(bytes,{pages=1,landscape=false,minPaths=10,hasText=null,
     'A4 physical MediaBox mismatch '+JSON.stringify({pageBox,expected}));
    const ops=await page.getOperatorList();
    const paths=ops.fnArray.filter(op=>op===pdfjs.OPS.constructPath).length;
+   const images=ops.fnArray.filter(op=>op===pdfjs.OPS.paintImageXObject||op===pdfjs.OPS.paintInlineImageXObject).length;
+   assert(images>=minImages,'Embedded logo images absent: '+images+'/'+minImages);
    const textItems=(await page.getTextContent()).items.map(x=>x.str).join(' ');
    assert(paths>=minPaths,'Insufficient vector paths: '+paths);
    if(hasText)assert(textItems.toUpperCase().includes(hasText.toUpperCase()),
     'Missing PDF text '+hasText+': '+textItems.slice(0,300));
    if(expectedTextByPage)assert(textItems.includes(expectedTextByPage[n-1]),
     'Batch selection/order mismatch on page '+n+': expected '+expectedTextByPage[n-1]);
-   info.push({page:n,physicalPoints:pageBox,vectorPaths:paths,textSample:textItems.slice(0,120)});
+   info.push({page:n,physicalPoints:pageBox,vectorPaths:paths,imageOps:images,textSample:textItems.slice(0,120)});
   }
  }finally{await pdf.destroy();}
  return info;
@@ -86,14 +88,14 @@ async function createContext(){
  });
  return context;
 }
-async function downloadPdf(p,{button='printCard',filename,outputName,landscape=false,pages=1,minPaths=10,hasText=null,expectedTextByPage=null}){
+async function downloadPdf(p,{button='printCard',filename,outputName,landscape=false,pages=1,minPaths=10,minImages=0,hasText=null,expectedTextByPage=null}){
  const before=await p.locator('#preview svg').getAttribute('data-layout-hash');
  const event=p.waitForEvent('download',{timeout:120000});
  await p.locator('#'+button).click();
  const download=await event;
  assert.equal(download.suggestedFilename(),filename);
  const bytes=readFileSync(await download.path());
- const infos=await auditPdf(bytes,{pages,landscape,minPaths,hasText,expectedTextByPage});
+ const infos=await auditPdf(bytes,{pages,landscape,minPaths,minImages,hasText,expectedTextByPage});
  const after=await p.locator('#preview svg').getAttribute('data-layout-hash');
  assert.equal(after,before,'PDF download must not recompose the optical manifest');
  writeFileSync(path.join(output,outputName+'.pdf'),bytes);
@@ -181,6 +183,21 @@ try{
  await p.locator('#batchPages').fill('');
  const batchAll=await downloadPdf(p,{button:'printBatch',filename:'cartoes-resposta-lote.pdf',outputName:'lote-entrada-3-paginas',pages:3,expectedTextByPage:['Zeta Exemplo','Alfa Exemplo','Mi Exemplo']});
  report.cases.push({...batchAll,format:'nominal-batch-input-order'});
+ // Two synthetic SVG image embeds survive vector conversion; no external assets or upload.
+ await navigate(p,'criar');
+ await p.locator('#headerSettings summary').click();
+ const syntheticLogo=Buffer.from('iVBORw0KGgoAAAANSUhEUgAAACAAAAAgCAIAAAD8GO2jAAAAvklEQVR4nNWWQQ7DMAgEoer/v+wecqlsYAc3rhRfcgjaEYvB+BjDTp7XUXUze18fd79d+vLmeAb/smg9G8UPfU4z6FYli68s4owicgZMzhBGHRNk0GJMf9fKxRZBhlRPAYRB1CtAzYDqApAxuLoGZAyojgCFCul2OotWLThLKEDeop8AsA82AXVVJUMAQvUWozFNv3U5g74H8hb13gPYTYQRAFq9KhkzoDsJZExjmu5FpluF3bSNPX/x8sdv1x/CyGxIIgXSkwAAAABJRU5ErkJggg==','base64');
+ await p.locator('#headerLogo').setInputFiles({name:'logo-sintetico-1.png',mimeType:'image/png',buffer:syntheticLogo});
+ await p.waitForFunction(()=>document.getElementById('headerPreview').querySelectorAll('image').length>=1);
+ await navigate(p,'cartoes');
+ const oneLogo=await downloadPdf(p,{filename:'cartao-respostas-a4.pdf',outputName:'a4-logo-1',minImages:1});
+ report.cases.push({...oneLogo,logos:1});
+ await navigate(p,'criar');
+ await p.locator('#headerLogo2').setInputFiles({name:'logo-sintetico-2.png',mimeType:'image/png',buffer:syntheticLogo});
+ await p.waitForFunction(()=>document.getElementById('headerPreview').querySelectorAll('image').length>=2);
+ await navigate(p,'cartoes');
+ const twoLogos=await downloadPdf(p,{filename:'cartao-respostas-a4.pdf',outputName:'a4-logo-2',minImages:2});
+ report.cases.push({...twoLogos,logos:2});
  // Repeated clicks while the PDF renderer is processing are disabled.
  const afterBusy=await p.evaluate(()=>({main:document.getElementById('printCard').textContent,batch:document.getElementById('printBatch').textContent,printCalls:window.__pdfPrintCalls}));
  assert.equal(afterBusy.main,'Baixar PDF');assert.equal(afterBusy.batch,'Baixar PDF do lote');
