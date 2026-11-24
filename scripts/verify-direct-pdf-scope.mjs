@@ -25,6 +25,7 @@ const allowed=new Set([
  'plataforma/vendor/pdf/LICENSE.svg2pdf',
  'scripts/verify-economy-browser.mjs',
  'scripts/verify-direct-pdf-browser.mjs',
+ 'scripts/verify-direct-pdf-mobile.mjs',
  'scripts/verify-direct-pdf-scope.mjs',
  'docs/avaliacoes/PDF_DIRETO_125.md'
 ]);

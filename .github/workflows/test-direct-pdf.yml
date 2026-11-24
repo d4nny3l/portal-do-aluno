@@ -10,6 +10,7 @@ on:
       - 'corretor/v2/omr/export.mjs'
       - 'corretor/v2/tests/pdf-download.test.mjs'
       - 'scripts/verify-direct-pdf-browser.mjs'
+      - 'scripts/verify-direct-pdf-mobile.mjs'
       - 'scripts/verify-direct-pdf-scope.mjs'
       - '.github/workflows/test-direct-pdf.yml'
 permissions:
@@ -31,22 +32,29 @@ jobs:
           node scripts/verify-direct-pdf-scope.mjs
           node --check corretor/v2/omr/pdf-download.mjs
           node --check scripts/verify-direct-pdf-browser.mjs
+          node --check scripts/verify-direct-pdf-mobile.mjs
           node --test corretor/v2/tests/pdf-download.test.mjs corretor/v2/tests/economy-print.test.mjs
           git diff --check
       - name: Browser/PDF parsing tools — only in CI, not in production bundle
         run: |
           npm install --prefix "$RUNNER_TEMP/salta-pdf" --no-save --ignore-scripts --no-audit --no-fund \
             playwright@1.65.1 pdf-lib@1.17.1 pdfjs-dist@5.4.449
-          node "$RUNNER_TEMP/salta-pdf/node_modules/playwright/cli.js" install --with-deps chromium
+          node "$RUNNER_TEMP/salta-pdf/node_modules/playwright/cli.js" install --with-deps chromium webkit
       - name: Chromium genuine downloads + independent PDF MediaBox/vector/text parser
         run: |
           SALTA_PLAYWRIGHT_MODULE="$RUNNER_TEMP/salta-pdf/node_modules/playwright/index.mjs" \
           SALTA_PDFLIB_MODULE="$RUNNER_TEMP/salta-pdf/node_modules/pdf-lib/cjs/index.js" \
           SALTA_PDFJS_MODULE="$RUNNER_TEMP/salta-pdf/node_modules/pdfjs-dist/legacy/build/pdf.mjs" \
           node scripts/verify-direct-pdf-browser.mjs
+      - name: Simulated mobile engines — iPhone WebKit / Android Chromium, no physical claim
+        run: |
+          SALTA_PLAYWRIGHT_MODULE="$RUNNER_TEMP/salta-pdf/node_modules/playwright/index.mjs" \
+          node scripts/verify-direct-pdf-mobile.mjs
       - uses: actions/upload-artifact@v4
         if: always()
         with:
           name: salta-125-direct-vector-pdf-candidate-only
-          path: tmp/direct-pdf-evidence/
+          path: |
+            tmp/direct-pdf-evidence/
+            tmp/direct-pdf-mobile/
           if-no-files-found: warn
