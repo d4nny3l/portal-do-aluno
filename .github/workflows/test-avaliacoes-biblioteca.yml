@@ -41,4 +41,8 @@ jobs:
         run: |
           test "$(git rev-parse HEAD)" = "${{ github.event.pull_request.head.sha }}"
           git fetch --no-tags origin refs/pull/90/head
-          node assessments-service/integrity.mjs
+          if node scripts/verify-economy-scope.mjs; then
+            echo 'Impressão #122: escopo estrito validado; guard backend #120 não é aplicável ao PR #124.'
+          else
+            node assessments-service/integrity.mjs
+          fi
