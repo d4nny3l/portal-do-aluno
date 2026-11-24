@@ -66,9 +66,17 @@ test('library remains isolated in Criar avaliação; Corrigir cartões uses expl
  const focus='<span id="cameraFocusLabel" hidden><button id="cameraFocus" type="button">Solicitar foco</button></span>';
  assert.equal(markup.split(focus).length,2);
  assert.ok(markup.indexOf(focus)<markup.indexOf('<details class="camera-settings"'));
- const prior=markup.replace(focus,'').replace('<label class="camera-check" id="cameraTorchLabel"', '<span id="cameraFocusLabel" hidden><button id="cameraFocus" type="button">Focar automaticamente</button></span><label class="camera-check" id="cameraTorchLabel"');
+ // Reconstruct the pinned markup before UX-READY-01's precisely scoped wording changes.
+ const prior=markup.replace(focus,'')
+  .replace('<label class="camera-check" id="cameraTorchLabel"', '<span id="cameraFocusLabel" hidden><button id="cameraFocus" type="button">Focar automaticamente</button></span><label class="camera-check" id="cameraTorchLabel"')
+  .replace('Avaliação cadastrada<select id="readingAssessment"', 'Avaliação cadastrada (homologação)<select id="readingAssessment"')
+  .replace('Importar modelo do cartão (JSON)', 'Importar modelo exato (JSON)')
+  .replace('Foto capturada', 'Captura consolidada')
+  .replace('<p id="scanModelStatus" class="status" role="status"></p>', '<p id="scanModelStatus" class="status" role="status">Gere o cartão nesta sessão ou importe o JSON exato, inclusive para cartões anteriores.</p>')
+  .replace('Formato<select id="scanType"', 'Formato padrão V2<select id="scanType"')
+  .replace('Questões<input id="scanCount"', 'Questões do modelo padrão<input id="scanCount"');
  assert.equal(fnv(prior),'b740cdc8871ea315');
- assert.equal(gitSha('plataforma/corretor-v2.css'),'176dbecdf3abaf4680b7dfef2e97cca92acf738d');
+ assert.equal(gitSha('plataforma/corretor-v2.css'),'7602bebba8cac2cb4b74b49146acf4031a740abd');
  assert.match(html,/mountAssessmentLibrary\(/);
  assert.match(html,/privateSelection\.manifestHash/);
  assert.doesNotMatch(html.slice(start,correct),/<section[^>]+id="piloto-avaliacoes"/);
@@ -128,7 +136,7 @@ test('embedded V2 keeps its manifest; CDU, nominal students and incompatible alt
  const m=make();
  assert.throws(()=>assertLibraryModel({manifest:m.manifest,editor:m.editor,nominalFields:{code:'1234567'}}),/Limpe nome/);
  const cdu=make({counts:[3],types:['CDU']});
- assert.throws(()=>createLibraryPlan(planArgs(cdu)),/apenas cartão A4|suportado|compatível/i);
+ assert.throws(()=>createLibraryPlan(planArgs(cdu)),/não pode ser salvo|compatível/i);
  const embedded=make({counts:[3],types:['A-D'],mode:'embedded'});
  const saved=createLibraryPlan(planArgs(embedded));
  assert.deepEqual(saved.definition.manifest,embedded.manifest);
@@ -421,7 +429,7 @@ test('P0 race SELECT: delayed issued selection cannot revive old answer key afte
  await selecting;
  assert.equal(f.getSelected(),null,'stale selection must never activate private key');
  assert.equal(f.mounted.controller.view().record.id,initial.id,'preserve writable record for editing B');
- assert.match(f.top.children[4].textContent,/Alterações não salvas|confirme novamente/i);
+ assert.match(f.top.children[4].textContent,/Alterações não salvas|Salve e selecione novamente/i);
  await f.button('Usar na correção').handlers.click();
  assert.equal(f.getSelected(),null,'unsaved B cannot silently select old issued A');
  await f.button('Salvar avaliação').handlers.click();
@@ -515,7 +523,7 @@ test('P0 structural buttons: delayed SELECT never reactivates an old key without
   hold.resolve();await selecting;
   assert.equal(f.getSelected(),null,'old key cannot return after '+kind);
   assert.equal(f.mounted.controller.view().record.id,id,'keep writable revision for B');
-  assert.match(f.top.children[4].textContent,/Alterações não salvas|confirme novamente/i);
+  assert.match(f.top.children[4].textContent,/Alterações não salvas|Salve e selecione novamente/i);
   assert.equal(f.button('Usar na correção').disabled,true);
  });
 });
