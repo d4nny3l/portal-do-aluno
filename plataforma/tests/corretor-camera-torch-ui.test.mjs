@@ -225,7 +225,7 @@ test('P1 camera controls remain capability-gated; scanner owns capture',()=>{
  assert.match(html,/if\(\$\('read'\)\.disabled\)throw new Error\('Aguarde a avaliação/);
  assert.doesNotMatch(html,/Fotografar para ajustar|Você também pode fotografar/);
  assert.match(html,/function scanCameraFrame\(\)/);
- assert.match(html,/stableFrames>=3/);
+ assert.match(html,/stableFrames>=2/);
  assert.match(html,/captureQuality\(frame,detection,previousCameraFrame,\{captureSize\}\)/);
  assert.match(html,/projected=mapFramePoints\(detection.corners,frame,capture\)/);
  assert.match(html,/actual=detectFiducials\(capture\.gray,capture\.width,capture\.height,\{manifest:typeof activeManifest==='undefined'\?null:activeManifest\}\)/);
@@ -305,7 +305,7 @@ function scanHarness(){
 }
 test('P1 stable frames capture automatically once, wait for removal and then accept next card',()=>{
  const {state,h}=scanHarness();
- state.scanCameraFrame();state.scanCameraFrame();
+ state.scanCameraFrame();
  assert.equal(h.scans,0);
  state.scanCameraFrame();assert.equal(h.scans,1);
  for(let n=0;n<4;n++)state.scanCameraFrame();
