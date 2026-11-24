@@ -90,19 +90,19 @@ function captureFrameHarness(){
  const elements=new Map(), messages=[];
  const $=id=>{if(!elements.has(id))elements.set(id,{hidden:false,dataset:{},textContent:'',checked:false});return elements.get(id)};
  Object.assign($('video'),{videoWidth:900,videoHeight:1000,readyState:4});
- let offset=75,missing=false,calls=0,manualCorners;
+ let offset=75,missing=false,blurred=false,calls=0,manualCorners;
  const state={$,cameraStream:{},cameraScratch:{},cameraFrameDimensions:'',stableFrames:0,
   previousCorners:null,previousCameraFrame:null,waitingForRemoval:false,absentFrames:0,lastCaptureAt:0,captureBusy:false,
   drawVideoFrame:()=>preview,detectFiducials:(gray)=>gray===capture.gray
    ?missing?{found:false,confidence:0,corners:[]}:{found:true,confidence:.98,corners:corners.map(p=>({x:p.x+offset,y:p.y}))}
    :{found:true,confidence:.96,corners},
-  captureQuality:()=>({ok:true,message:'Folha estável.'}),samePosition:()=>true,
+  captureQuality:frame=>frame===capture&&blurred?({ok:false,message:'Aguarde o foco.'}):({ok:true,message:'Folha estável.'}),samePosition:()=>true,
   positionGuides(){},updateCameraInfo(){},setScanMessage(message){messages.push(message)},captureFrameGray:()=>capture,
   mapFramePoints:(points,source,target)=>{if(Math.abs(source.width/source.height-target.width/target.height)>.005)throw new Error('Orientação alterada');return points.map(p=>({x:p.x*target.width/source.width,y:p.y*target.height/source.height}))},
   prepareImage(gray,width,height,options){calls++;manualCorners=options.manualCorners;return {gray,width,height}},
  };
  vm.createContext(state);vm.runInContext(code,state,{timeout:3000});
- return {state,messages,capture,offset:v=>offset=v,missing:v=>missing=v,calls:()=>calls,corners:()=>manualCorners};
+ return {state,messages,capture,offset:v=>offset=v,missing:v=>missing=v,blurred:v=>blurred=v,calls:()=>calls,corners:()=>manualCorners};
 }
 
 test('CAM-114: final image moving relative to preview is rejected, then a matching capture recovers',()=>{
@@ -138,4 +138,18 @@ test('CAM-114: orientation changes between preview and capture never reach persp
  assert.equal(h.calls(),0);
  assert.equal(s.waitingForRemoval,false);
  assert.match(h.messages.at(-1),/Orientação alterada/);
+});
+
+test('CAM-FOCUS-01: sharp preview cannot authorize a blurred final capture; retry succeeds',()=>{
+ const h=captureFrameHarness(),s=h.state;
+ h.offset(0);h.blurred(true);
+ for(let i=0;i<3;i++)s.scanCameraFrame();
+ assert.equal(h.calls(),0);
+ assert.equal(s.waitingForRemoval,false);
+ assert.equal(s.captureBusy,false);
+ assert.match(h.messages.at(-1),/foco/);
+ h.blurred(false);s.lastCaptureAt=0;
+ for(let i=0;i<3;i++)s.scanCameraFrame();
+ assert.equal(h.calls(),1);
+ assert.equal(s.waitingForRemoval,true);
 });

@@ -58,7 +58,16 @@ export async function applyCameraControl(track, name, value) {
   if (!control || !track?.applyConstraints) return false;
   if (typeof control === 'object' && (!Number.isFinite(value) || value < control.min || value > control.max)) return false;
   if (name === 'focusMode' && value !== 'continuous' || name === 'torch' && typeof value !== 'boolean') return false;
-  try { await track.applyConstraints({ advanced: [{ [name]: value }] }); return true; } catch { return false; }
+  try {
+    await track.applyConstraints({ advanced: [{ [name]: value }] });
+    // Advanced constraints can be ignored by the browser. If it reports an
+    // incompatible focus mode, don't present the request as applied.
+    if(name==='focusMode'){
+      const actual=track.getSettings?.()?.focusMode;
+      if(actual!=null&&actual!==value)return false;
+    }
+    return true;
+  } catch { return false; }
 }
 
 
@@ -156,6 +165,8 @@ export class CameraSession {
       if (generation !== this.generation) throw new Error('Abertura da câmera cancelada.');
       const zoom = await reduceUnwantedCameraZoom(track);
       if (generation !== this.generation) throw new Error('Abertura da câmera cancelada.');
+      if(cameraControls(safeCapabilities(track)).focusMode) await applyCameraControl(track,'focusMode','continuous');
+      if (generation !== this.generation) throw new Error('Abertura da câmera cancelada.');
       return {track,capabilities:safeCapabilities(track),zoom};
     };
     try {
@@ -220,12 +231,41 @@ export function motionBetween(current, previous) {
   return sum / n;
 }
 
-export function captureQuality(frame, detection, previous = null) {
+// A smaller sheet is not automatically unreadable. For the conservative alternative
+// below, measure each actual dark marker core in both axes; never infer detail from
+// an upscaled canvas or from area alone. The final image is checked independently.
+export function markerCorePixels(frame, corners) {
+  const {gray,width,height}=frame;
+  const short=Math.min(...corners.map((p,i)=>Math.hypot(p.x-corners[(i+1)%4].x,p.y-corners[(i+1)%4].y)));
+  const radius=Math.max(5,Math.min(60,Math.ceil(short*.08)));
+  return Math.min(...corners.flatMap(p=>[[1,0],[0,1]].map(([dx,dy])=>{
+    const x=Math.round(p.x),y=Math.round(p.y);
+    if(x-radius<0||x+radius>=width||y-radius<0||y+radius>=height)return 0;
+    const sample=i=>gray[(y+i*dy)*width+x+i*dx];
+    const center=sample(0);
+    let light=0;
+    for(let i=-radius;i<=radius;i++)light=Math.max(light,sample(i));
+    if(light-center<35)return 0;
+    const threshold=(light+center)/2;
+    let a=0,b=0;
+    while(a>-radius&&sample(a-1)<=threshold)a--;
+    while(b<radius&&sample(b+1)<=threshold)b++;
+    return a===-radius||b===radius?0:b-a+1;
+  })));
+}
+export function captureQuality(frame, detection, previous = null, {captureSize=frame} = {}) {
   const {gray,width,height} = frame, corners = detection?.corners;
   if (!detection?.found || detection.confidence < .7 || corners?.length !== 4) return {ok:false,message:'Centralize o cartão.'};
   const area = Math.abs(corners.reduce((s,p,i) => {const q=corners[(i+1)%4];return s+p.x*q.y-q.x*p.y},0)/2)/(width*height);
-  if (area < .18) return {ok:false,message:'Aproxime a folha.',area};
+  // Preserve the detector's existing 8% lower bound. Below 18%, require
+  // sufficient real capture pixels and visible marker detail, not digital zoom.
+  if (area < .08) return {ok:false,message:'Aproxime a folha aos poucos, sem perder o foco.',area};
   if (corners.some(p => p.x < width*.015 || p.x > width*.985 || p.y < height*.015 || p.y > height*.985)) return {ok:false,message:'Centralize o cartão.',area};
+  const scale=Math.min(captureSize.width/width,captureSize.height/height);
+  const minEdge=Math.min(...corners.map((p,i)=>Math.hypot(p.x-corners[(i+1)%4].x,p.y-corners[(i+1)%4].y)));
+  const effectiveEdge=minEdge*scale;
+  const markerPixels=area<.18?markerCorePixels(frame,corners):null;
+  const enoughDetail=area>=.18||(Number.isFinite(scale)&&scale>=1&&effectiveEdge>=360&&markerPixels>=4&&markerPixels*scale>=10);
   // Work only inside the marker quadrilateral; dark background is not paper illumination.
   const inside = (x,y) => { const turns=corners.map((p,i)=>{const q=corners[(i+1)%4];return (q.x-p.x)*(y-p.y)-(q.y-p.y)*(x-p.x)}); return turns.every(t=>t>=0)||turns.every(t=>t<=0); };
   const histogram = new Uint32Array(256), tiles = Array.from({length:16},()=>({sum:0,white:0,n:0}));
@@ -245,10 +285,11 @@ export function captureQuality(frame, detection, previous = null) {
   const motion=motionBetween(frame,previous);
   let message='';
   if(glare)message='Evite reflexos.';
-  else if(brightness<95||contrast<35)message='Melhore a iluminação.';
-  else if(sharpness<5||edges/n<.0005)message='Ajuste o foco e segure a câmera firmemente.';
+  else if(brightness<95)message='Melhore a iluminação.';
+  else if(contrast<35||sharpness<5||edges/n<.0005)message='Afaste um pouco a folha se estiver perto demais. Aguarde o foco e mantenha boa iluminação.';
+  else if(!enoughDetail)message='Aproxime a folha aos poucos, somente enquanto continuar nítida.';
   else if(motion>10)message='Segure a câmera firmemente.';
-  return {ok:!message,message:message||'Folha estável e legível.',area,brightness,contrast,sharpness,motion,glare};
+  return {ok:!message,message:message||'Folha estável e legível.',area,brightness,contrast,sharpness,motion,glare,effectiveEdge,markerPixels};
 }
 
 export function mapFramePoints(points, source, target) {
