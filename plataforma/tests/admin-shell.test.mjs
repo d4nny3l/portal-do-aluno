@@ -45,7 +45,7 @@ test("formulário do Corretor esconde controles que não se aplicam ao modo esco
   assert.match(source, /data-field-group="identity-code"/);
   assert.doesNotMatch(source, /id="cduPosition"/);
   assert.match(source, /id="cardLimitStatus"/);
-  assert.match(source, /C-D-U pode ser impresso/);
+  assert.match(source, /CDU: sem leitura automática/);
   assert.doesNotMatch(source, /id="assessmentValue"/);
   assert.equal((source.match(/id="sectionManager"/g) || []).length, 1);
   assert.equal((source.match(/id="studentCodeBatch"/g) || []).length, 1);
