@@ -31,7 +31,7 @@ function setup({fail=false,inconclusive=false}={}){
 }
 test('camera indicators reflect stable, real consolidation and recognized card; reset on removal',()=>{
  const h=setup(),s=h.state;
- s.scanCameraFrame();s.scanCameraFrame();
+ s.scanCameraFrame();
  assert.equal(h.$('cameraStableStatus').hidden,true);
  assert.equal(h.$('cameraCaptureStatus').hidden,true);
  s.scanCameraFrame();
@@ -73,14 +73,14 @@ test('optically inconclusive read cannot claim card recognized even when normali
 
 test('CAM-114: one missing fiducial frame does not erase stable corner reference or permit capture',()=>{
  const h=setup(),s=h.state;
- s.scanCameraFrame();s.scanCameraFrame();
- assert.equal(s.stableFrames,2);
+ s.scanCameraFrame();
+ assert.equal(s.stableFrames,1);
  h.hide();s.scanCameraFrame();
  assert.equal(s.stableFrames,0);
  assert.equal(s.previousCorners?.corners.length,4,'preserve reference through one optical dropout');
  assert.equal(h.count(),0);
  h.show();s.scanCameraFrame();s.scanCameraFrame();s.scanCameraFrame();
- assert.equal(h.count(),1,'only three new valid frames permit capture');
+ assert.equal(h.count(),1,'two new valid frames permit capture while keeping final optical checks');
 });
 
 function captureFrameHarness(){
@@ -107,13 +107,13 @@ function captureFrameHarness(){
 
 test('CAM-114: final image moving relative to preview is rejected, then a matching capture recovers',()=>{
  const h=captureFrameHarness(),s=h.state;
- s.scanCameraFrame();s.scanCameraFrame();s.scanCameraFrame();
+ s.scanCameraFrame();s.scanCameraFrame();
  assert.equal(h.calls(),0,'drift must not send preview corners into the final capture');
  assert.equal(s.waitingForRemoval,false);
  assert.equal(s.captureBusy,false);
  assert.match(h.messages.at(-1),/folha se moveu/);
  h.offset(7);s.lastCaptureAt=0;
- s.scanCameraFrame();s.scanCameraFrame();s.scanCameraFrame();
+ s.scanCameraFrame();s.scanCameraFrame();
  assert.equal(h.calls(),1);
  assert.equal(h.corners()[0].x,107,'normalize using corners measured from captured pixels');
  assert.equal(s.waitingForRemoval,true);
@@ -122,19 +122,19 @@ test('CAM-114: final image moving relative to preview is rejected, then a matchi
 test('CAM-114: missing fiducials in captured frame fail safely, then retry without manual intervention',()=>{
  const h=captureFrameHarness(),s=h.state;
  h.missing(true);
- s.scanCameraFrame();s.scanCameraFrame();s.scanCameraFrame();
+ s.scanCameraFrame();s.scanCameraFrame();
  assert.equal(h.calls(),0);
  assert.equal(s.waitingForRemoval,false);
  assert.match(h.messages.at(-1),/Marcadores instáveis/);
  h.missing(false);h.offset(0);s.lastCaptureAt=0;
- s.scanCameraFrame();s.scanCameraFrame();s.scanCameraFrame();
+ s.scanCameraFrame();s.scanCameraFrame();
  assert.equal(h.calls(),1);
 });
 
 test('CAM-114: orientation changes between preview and capture never reach perspective correction',()=>{
  const h=captureFrameHarness(),s=h.state;
  h.capture.width=1000;h.capture.height=900;
- s.scanCameraFrame();s.scanCameraFrame();s.scanCameraFrame();
+ s.scanCameraFrame();s.scanCameraFrame();
  assert.equal(h.calls(),0);
  assert.equal(s.waitingForRemoval,false);
  assert.match(h.messages.at(-1),/Orientação alterada/);
@@ -143,13 +143,13 @@ test('CAM-114: orientation changes between preview and capture never reach persp
 test('CAM-FOCUS-01: sharp preview cannot authorize a blurred final capture; retry succeeds',()=>{
  const h=captureFrameHarness(),s=h.state;
  h.offset(0);h.blurred(true);
- for(let i=0;i<3;i++)s.scanCameraFrame();
+ for(let i=0;i<2;i++)s.scanCameraFrame();
  assert.equal(h.calls(),0);
  assert.equal(s.waitingForRemoval,false);
  assert.equal(s.captureBusy,false);
  assert.match(h.messages.at(-1),/foco/);
  h.blurred(false);s.lastCaptureAt=0;
- for(let i=0;i<3;i++)s.scanCameraFrame();
+ for(let i=0;i<2;i++)s.scanCameraFrame();
  assert.equal(h.calls(),1);
  assert.equal(s.waitingForRemoval,true);
 });

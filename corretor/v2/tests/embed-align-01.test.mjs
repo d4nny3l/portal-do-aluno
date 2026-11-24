@@ -63,10 +63,11 @@ test('EMBED-ALIGN: embedded manifest mismatch and malformed fiducial positions f
  assert.ok(layoutTemplate(a4,{width:420,height:594}));
 });
 
-test('EMBED-ALIGN: manifest selection, frame choice and Safari recovery wiring remain present',()=>{
+test('EMBED-ALIGN: manifest selection, single-shot capture and Safari recovery remain present',()=>{
  const html=readFileSync(new URL('../../../plataforma/corretor-v2.html',import.meta.url),'utf8');
  assert.match(html,/validateLayoutManifest\(manifest\)\.valid/);
- assert.match(html,/scanBestFrame/);
+ assert.match(html,/manualCorners:actual\.corners/);
+ assert.doesNotMatch(html,/scanBestFrame|sampleScanFrame/);
  assert.match(html,/function recoverSafariVideo\(\)/);
 });
 
