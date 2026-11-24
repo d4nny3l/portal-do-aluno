@@ -55,7 +55,7 @@ function syncEconomyPrint(){
  if(!copies){$('economyPrintStatus').textContent='';return;}
  try{
   const plan=planEconomySheet(activeManifest,copies);
-  $('economyPrintStatus').textContent=`${copies} quadros por folha A4 · ${plan.orientation==='landscape'?'paisagem':'retrato'}. Imprima em tamanho real (100%), sem ajustar à página.`;
+  $('economyPrintStatus').textContent=`${copies} quadros por folha A4 · ${plan.orientation==='landscape'?'paisagem':'retrato'}. Imprima em tamanho real (100%), sem ajustar à página. Confira a escala nas opções de impressão.`;
  }catch(error){$('economyPrintStatus').textContent=error.message;}
 }
 $('economyCopies').onchange=syncEconomyPrint;
