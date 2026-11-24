@@ -83,9 +83,10 @@ try{
    const req=route.request(),u=new URL(req.url());methods.push(req.method()+' '+u.pathname);
    try{
     if(u.origin===api){
-     if(u.pathname==='/auth/session')return route.fulfill({status:200,contentType:'application/json',body:JSON.stringify({authenticated:true})});
-     if(u.pathname==='/assessments/v1/session')return route.fulfill({status:200,contentType:'application/json',body:JSON.stringify({authenticated:true,principalId:'print-only-synthetic',epoch:1,editorSnapshotVersion:'salta-editor-snapshot-v1'})});
-     if(u.pathname==='/assessments/v1/grants')return route.fulfill({status:200,contentType:'application/json',body:JSON.stringify({grants:[]})});
+     const cors={'access-control-allow-origin':origin,'access-control-allow-credentials':'true'};
+     if(u.pathname==='/auth/session')return route.fulfill({status:200,contentType:'application/json',headers:cors,body:JSON.stringify({authenticated:true})});
+     if(u.pathname==='/assessments/v1/session')return route.fulfill({status:200,contentType:'application/json',headers:cors,body:JSON.stringify({authenticated:true,principalId:'print-only-synthetic',epoch:1,editorSnapshotVersion:'salta-editor-snapshot-v1'})});
+     if(u.pathname==='/assessments/v1/grants')return route.fulfill({status:200,contentType:'application/json',headers:cors,body:JSON.stringify({grants:[]})});
      errors.push('Unexpected private endpoint: '+req.method()+' '+u.pathname);return route.abort();
     }
     if(u.origin===origin&&u.pathname.startsWith('/portal-do-aluno/')){
