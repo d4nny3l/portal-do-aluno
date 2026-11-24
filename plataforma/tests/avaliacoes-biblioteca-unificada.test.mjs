@@ -26,8 +26,8 @@ const header=()=>({...DEFAULT_CARD_HEADER,title:'Avaliação de Matemática',ins
  customFields:[{label:'PROJETO',value:'SINTÉTICO',visible:true}],logoWidthMm:22,secondaryLogoWidthMm:22,logoAspect:1,secondaryLogoAspect:1});
 const make=({counts=[10,20],types=['A-D','A-E'],mode='full-page',identityMode='seven-digit-code',h=header()}={})=>{
  let num=0;
- const sections=counts.map((count,i)=>({sectionId:'block-'+(i+1),label:'Bloco '+(i+1),type:types[i%types.length],
-  items:Array.from({length:count},()=>({questionId:'question-'+(++num),number:num,type:types[i%types.length]}))}));
+ const sections=counts.map((count,i)=>({sectionId:'block-'+(i+1),label:'Bloco '+(i+1),order:i,count,type:types[i%types.length],
+  items:Array.from({length:count},()=>({questionId:'question-'+(++num),originalOrder:num,number:num,type:types[i%types.length]}))}));
  const template=createTemplate(sections,{layoutVersion:'v2',revision:8,title:h.title,
    schoolName:h.institution,identityMode,mode,embeddedSize:mode==='embedded'?{widthMm:120,heightMm:180}:null,metadata:{...h,className:h.className,subject:h.subject,
     date:h.date,teacher:h.teacher,visibleFields:h.visible}});
@@ -37,7 +37,7 @@ const make=({counts=[10,20],types=['A-D','A-E'],mode='full-page',identityMode='s
  const editor={version:1,sections,header:h,layoutRevision:8,nextQuestionNumber:num+1,nextSectionOrder:sections.length,
   fields:{assessmentTitle:h.title,assessmentKind:'Prova objetiva',assessmentSubject:h.subject,
    assessmentClass:h.className,assessmentDate:h.date,identityMode,columnCount:'auto',cardMode:mode,
-   embeddedWidth:mode==='embedded'?'120':'100',embeddedHeight:'180',type:types[0],count:String(counts[0])},showInstructions:false};
+   embeddedWidth:mode==='embedded'?'120':'100',embeddedHeight:'180',type:types[0],count:String(counts[0]),sectionLabel:''},showInstructions:false};
  return {sections,template,manifest,answers,values,editor};
 };
 const planArgs=m=>({metadata:{title:m.editor.fields.assessmentTitle,subject:m.editor.fields.assessmentSubject,
@@ -45,7 +45,8 @@ const planArgs=m=>({metadata:{title:m.editor.fields.assessmentTitle,subject:m.ed
  sections:m.sections,values:m.values,answers:m.answers,manifest:m.manifest,editor:m.editor});
 
 const catalogRecord=(row,m)=>{
- const {plan,definition}=createLibraryPlan(planArgs(m));
+ const {plan}=createLibraryPlan(planArgs(m));
+ const definition=definitionFromLocalPlan(plan,m.manifest); // Explicit historical V2 fixture with no original editor fields.
  return {id:row.id,revision:row.revision??1,definition:{...definition,title:row.title},
   manifestHash:definition.manifest.contentHash,scoreScale:10000,totalUnits:plan.totalUnits,
   status:'issued',archived:false,institutionId:row.institutionId,classId:row.classId,periodId:row.periodId};
@@ -136,7 +137,7 @@ test('original v2 client handles separate accounts, scope isolation, save/reopen
  const fixedId=()=>crypto.randomUUID();
  const fetchFn=async(url,opts)=>{
   const pathname=new URL(url).pathname.slice('/assessments/v1'.length);
-  if(opts.method==='GET'&&pathname==='/session')return Response.json({authenticated:true,principalId:actor,epoch:1});
+  if(opts.method==='GET'&&pathname==='/session')return Response.json({authenticated:true,principalId:actor,epoch:1,editorSnapshotVersion:'salta-editor-snapshot-v1'});
   if(opts.method==='GET'&&pathname==='/grants')return Response.json({grants:[actor==='teacher-a'?scope:other]});
   if(opts.method==='GET'&&pathname==='/assessments'){
    const q=new URL(url).searchParams,gr=actor==='teacher-a'?scope:other;
@@ -174,7 +175,7 @@ test('original v2 client handles separate accounts, scope isolation, save/reopen
  const client=createPrivateAssessmentClient({enabled:true,baseUrl:LIBRARY_GATEWAY,fetchFn,uuidFn:fixedId});
  const m=make();let payload=createLibraryPlan(planArgs(m));
  const revision1Definition=structuredClone(payload.definition);
- const ctl=createPrivateLibraryController({client,getDraft:()=>({plan:payload.plan,manifest:payload.manifest})});
+ const ctl=createPrivateLibraryController({client,getDraft:()=>({plan:payload.plan,manifest:payload.manifest,editorSnapshot:payload.editorSnapshot})});
  await ctl.initialize();ctl.useScope(scope);
  const first=await ctl.save('issued');assert.equal(first.record.revision,1);
  const id=first.record.id;

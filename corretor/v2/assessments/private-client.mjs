@@ -107,7 +107,6 @@ export function createPrivateAssessmentClient({enabled=false,baseUrl=null,fetchF
   async history(assessmentId){idCheck(assessmentId);const data=await read('/assessments/'+assessmentId+'/revisions');if(!Array.isArray(data?.revisions))fail('Histórico inválido.');return data.revisions},
   prepareSave({plan,manifest,editorSnapshot,scope,assessmentId=null,expectedRevision=0,status='draft'}){
    scopeCheck(scope);if(!['draft','issued'].includes(status)||!Number.isSafeInteger(expectedRevision)||expectedRevision<0)fail('Situação de revisão inválida.');
-   if(!editorSnapshot)fail('Snapshot obrigatório: o servidor deve confirmar a capability antes do salvamento.');
    const idValue=assessmentId?idCheck(assessmentId):id(),definition=definitionFromLocalPlan(plan,manifest,editorSnapshot);
    if(status==='issued'&&!definition.date)fail('A data é obrigatória antes de emitir.');
    return operation('PUT','/assessments/'+idValue,{requestId:id(),expectedRevision,...scope,status,definition});

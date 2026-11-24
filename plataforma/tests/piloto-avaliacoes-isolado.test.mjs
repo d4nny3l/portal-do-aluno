@@ -17,9 +17,9 @@ const gitBlob=rel=>{const body=fs.readFileSync(path.join(root,rel));return creat
 // Keep optical/controller/client pins unchanged. Only the #118 adapter allowlist now includes embedded V2.
 const original={
  'corretor/v2/assessments/block-scoring.mjs':'42a3ec7bfd2a10495f74c103a792bf1d65f6d264',
- 'corretor/v2/assessments/private-contract-adapter.mjs':'66258e44a332e8ae427361c4c2ffd8fd36c91ccd',
- 'corretor/v2/assessments/private-client.mjs':'d909b412f95747c4f3b1830fdcb0fd385633694b',
- 'corretor/v2/assessments/private-library.mjs':'8eb63a54c83a121d58108af7066be381c7290bd2',
+ 'corretor/v2/assessments/private-contract-adapter.mjs':'ac042fbf6d448ebdd296d8ef4f9ebffbd8da94de',
+ 'corretor/v2/assessments/private-client.mjs':'8fd33f353b8a8c25d49a6470f3e94d53375a6fb4',
+ 'corretor/v2/assessments/private-library.mjs':'f375076a373ebcdafba9303901c799c64b0ea4a1',
  'corretor/v2/assessments/private-ui.mjs':'f22f6a04ef2248bf28216d1e7764fb89741b0494',
  'corretor/v2/omr/template.mjs':'f3c4bf988101a4e4bb1df37643d76a53f5a12413',
  'corretor/v2/omr/render.mjs':'1b3abd4bc61c90fb68a94504cc57b9056365023a',
