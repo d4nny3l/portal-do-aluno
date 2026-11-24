@@ -13,7 +13,9 @@ import {SCORE_FORMAT_VERSION,DEFAULT_SCORE_DECIMALS,scoreDecimals as assertScore
 // Same authorized namespace as the original private client; server Auth and grants
 // remain the security boundary. No worker flags, tokens, credentials or secrets here.
 export const LIBRARY_GATEWAY='https://salta-stats.dannyel-moises.workers.dev/assessments/v1';
-const unsupported='A biblioteca salva apenas cartão A4 completo com questões A–D, A–E ou C–E. Este modelo permanece disponível no Corretor, mas não pode ser salvo na biblioteca atual.';
+const unsupported='A biblioteca aceita cartões A4 e quadros incorporados V2 com questões A–D, A–E ou C–E. Este modelo não é compatível com o salvamento.';
+const embeddedUnavailable='O servidor conectado ainda não confirma o salvamento de quadros incorporados. Você pode continuar usando o quadro no Corretor.';
+export const EMBEDDED_LIBRARY_VERSION='salta-embedded-library-v1';
 const copy=value=>structuredClone(value);
 const el=(doc,tag,label='',attrs={})=>{
  const node=doc.createElement(tag);
@@ -47,8 +49,14 @@ const scoreForDraftInput=(value,precision)=>{
 export function assertLibraryModel({manifest,editor,nominalFields={}}){
  if(!manifest)throw new Error('Gere primeiro um cartão válido.');
  const {template}=importCardManifest(manifest);
- if(template.mode!=='full-page'||template.questions.some(q=>!['A-D','A-E','C-E'].includes(q.type)))
+ if(!['full-page','embedded'].includes(template.mode)||
+    (template.mode==='embedded'&&manifest.schemaVersion!=='salta-layout-manifest-v2')||
+    template.questions.some(q=>!['A-D','A-E','C-E'].includes(q.type)))
   throw new Error(unsupported);
+ if(editor?.fields?.cardMode!==template.mode||
+    (template.mode==='embedded'&&
+     (Number(editor.fields.embeddedWidth)!==manifest.paper.widthMm||Number(editor.fields.embeddedHeight)!==manifest.paper.heightMm)))
+  throw new Error('O formato físico do editor e o manifesto estão diferentes. Atualize a prévia antes de salvar.');
  if(Object.values(nominalFields).some(x=>String(x||'').trim()))
   throw new Error('Limpe nome, turma nominal e código individual do estudante antes de salvar um modelo reutilizável.');
  if(manifest.identityCode?.student&&Object.values(manifest.identityCode.student).some(Boolean))
@@ -86,7 +94,8 @@ export function editorFromPrivateRecord(record,previousEditor){
   assessmentClass:String(header.className||''),
   assessmentDate:record.definition.date,
   identityMode:manifest.identity.mode,
-  cardMode:'full-page',
+  cardMode:manifest.mode,
+  ...(manifest.mode==='embedded'?{embeddedWidth:String(manifest.paper.widthMm),embeddedHeight:String(manifest.paper.heightMm)}:{}),
   columnCount:String(manifest.columns?.length||'auto'),
   type:template.questions[0]?.type||'A-E',
   count:String(editor.sections[0]?.items.length||20)
@@ -118,6 +127,8 @@ export function mountAssessmentLibrary({
  const restoredUnits=new Map(),editedAmountIds=new Set();
  const scoreFormatField=get('scoreFormatField'),scoreFormatSelect=get('scoreFormatSelect');
  const hasScoreFormat=()=>controller.view().session?.scoreFormatVersion===SCORE_FORMAT_VERSION;
+ const hasEmbeddedLibrary=()=>controller.view().session?.embeddedLibraryVersion===EMBEDDED_LIBRARY_VERSION;
+ const embeddedEditor=()=>snapshotEditor()?.fields?.cardMode==='embedded';
  function syncScoreFormatUi(){
   const enabled=Boolean(ready&&hasScoreFormat());
   if(scoreFormatField){scoreFormatField.hidden=!enabled;scoreFormatField.style.display=enabled?'':'none';}
@@ -213,6 +224,7 @@ export function mountAssessmentLibrary({
   // The default new-draft scope may be saved without clicking "Nova avaliação".
   // Once prepared for private persistence, its editor must be scrubbed on 401/403.
   privateEditorLoaded=true;
+  if(embeddedEditor()&&!hasEmbeddedLibrary())throw new Error(embeddedUnavailable);
   if(scoreFormatExplicit&&!hasScoreFormat())
     throw new Error('O servidor ainda não confirma o formato da nota. Nada foi salvo.');
    const currentSections=getSections();
@@ -224,6 +236,7 @@ export function mountAssessmentLibrary({
   const unchanged=Boolean(savedManifest&&savedSignature===editorSignature());
   if(!unchanged&&!prepareModel())throw new Error('Não foi possível montar o cartão. Revise a composição.');
   const m=unchanged?savedManifest:getModel(),editor=snapshotEditor();
+  if(m?.mode==='embedded'&&!hasEmbeddedLibrary())throw new Error(embeddedUnavailable);
   const payload=createLibraryPlan({
    sections:getSections(),metadata:getMetadata(),values,answers,
    manifest:m,
@@ -245,6 +258,7 @@ export function mountAssessmentLibrary({
   }
   privateEditorLoaded=true; // Also covers partially restored private editor on failure.
   const restored=editorFromPrivateRecord(record,snapshotEditor());
+  if(restored.manifest.mode==='embedded'&&!hasEmbeddedLibrary())throw new Error(embeddedUnavailable);
    if(Object.hasOwn(restored.plan,'scoreDecimals')&&!hasScoreFormat())
     throw new Error('A sessão não confirma o formato da nota desta avaliação. Conecte-se a um servidor compatível.');
    resetScoreFormat();
@@ -274,6 +288,9 @@ export function mountAssessmentLibrary({
    if(!sameEdit(selectionAttempt)){
     flagUnnoticedEdit(selectionAttempt);
     activeSelection=false;selectionNeedsConfirmation=true;clearSelection();return;
+   }
+   if(selection.manifest.mode==='embedded'&&!hasEmbeddedLibrary()){
+    activeSelection=false;clearSelection();throw new Error(embeddedUnavailable);
    }
    activeSelection=true;activateSelection(selection);
   },
@@ -574,7 +591,8 @@ export function mountAssessmentLibrary({
   catalog.disabled=operationBusy||catalogBusy||!catalogReady||Boolean(s.pending);
   revisions.disabled=operationBusy||Boolean(s.pending);
   create.disabled=operationBusy||!ready||Boolean(s.pending);
-  save.disabled=operationBusy||!ready||(!opened&&s.editorMode!=='new')||Boolean(s.pending);
+  const embeddedBlocked=embeddedEditor()&&!hasEmbeddedLibrary();
+  save.disabled=operationBusy||!ready||embeddedBlocked||(!opened&&s.editorMode!=='new')||Boolean(s.pending);
   open.disabled=operationBusy||!ready||!catalog.value||Boolean(s.pending);
   duplicate.disabled=operationBusy||!ready||!opened||current.id!==catalog.value||Boolean(s.pending);
   selectForCorrection.disabled=operationBusy||unsaved||!ready||!opened||current.status!=='issued'||current.id!==catalog.value||Boolean(s.pending);
@@ -608,6 +626,9 @@ export function mountAssessmentLibrary({
   if(ready&&catalogLoadError&&!catalogBusy&&!s.pending){
    status.dataset.state='error';
    status.textContent='Não foi possível carregar suas avaliações. Tente novamente.';
+  }
+  if(ready&&embeddedBlocked&&!s.pending&&!catalogLoadError){
+   status.dataset.state='unsupported';status.textContent=embeddedUnavailable;
   }
   updateSummary();
  }

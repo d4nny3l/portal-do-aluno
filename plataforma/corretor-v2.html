@@ -52,7 +52,7 @@ function syncConditionalFields(){
  document.querySelectorAll('[data-field-group="embedded"]').forEach(el=>el.hidden=mode!=='embedded');
  document.querySelectorAll('[data-field-group="identity-code"]').forEach(el=>el.hidden=identity!=='seven-digit-code');
  const hasCdu=$('type').value==='CDU'||sections.some(section=>section.items.some(question=>question.type==='CDU'));
- const limitations=[];if(hasCdu)limitations.push('C-D-U pode ser impresso, mas a leitura automática ainda não está disponível.');if(mode==='embedded')limitations.push('Quadros incorporados podem ser impressos, mas a leitura automática exige cartão A4 independente.');$('cardLimitStatus').textContent=limitations.join(' ');$('cardLimitStatus').hidden=!limitations.length;
+ const limitations=[];if(hasCdu)limitations.push('C-D-U pode ser impresso, mas a leitura automática ainda não está disponível.');$('cardLimitStatus').textContent=limitations.join(' ');$('cardLimitStatus').hidden=!limitations.length;
  $('previewTitle').textContent=mode==='embedded'?'Pré-visualização do quadro incorporado':'Pré-visualização do cartão A4';
  $('previewModeLabel').textContent=mode==='embedded'?'Quadro incorporado · confira as dimensões antes de imprimir':'A4 · uma folha';
 }
