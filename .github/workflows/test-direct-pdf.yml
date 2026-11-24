@@ -29,7 +29,9 @@ jobs:
           node-version: 24
       - name: Exact authorized scope, syntax, vendored integrity and regression
         run: |
-          node scripts/verify-direct-pdf-scope.mjs
+          if ! node scripts/verify-camera-focus-scope.mjs; then
+            node scripts/verify-direct-pdf-scope.mjs
+          fi
           node --check corretor/v2/omr/pdf-download.mjs
           node --check scripts/verify-direct-pdf-browser.mjs
           node --check scripts/verify-direct-pdf-mobile.mjs

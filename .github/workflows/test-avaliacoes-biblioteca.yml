@@ -41,7 +41,10 @@ jobs:
         run: |
           test "$(git rev-parse HEAD)" = "${{ github.event.pull_request.head.sha }}"
           git fetch --no-tags origin refs/pull/90/head
-          if node scripts/verify-direct-pdf-scope.mjs || node scripts/verify-economy-scope.mjs; then
+          if node scripts/verify-camera-focus-scope.mjs; then
+            node --input-type=module -e "import {verifyDependencies} from './assessments-service/build.mjs'; verifyDependencies()"
+            echo 'CAM-FOCUS-01: exact camera-only scope and pinned current backend runtime verified; historical #120 suite also runs in embedded CI.'
+          elif node scripts/verify-direct-pdf-scope.mjs || node scripts/verify-economy-scope.mjs; then
             echo 'Impressão #122: escopo estrito validado; guard backend #120 não é aplicável ao PR #124.'
           else
             node assessments-service/integrity.mjs

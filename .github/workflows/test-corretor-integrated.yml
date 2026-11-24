@@ -18,6 +18,8 @@ on:
       - "scripts/verify-card-artwork-raster.mjs"
       - "scripts/verify-card-header-raster.mjs"
       - "scripts/verify-camera-geometry.mjs"
+      - "scripts/verify-camera-focus-raster.mjs"
+      - "scripts/verify-camera-focus-scope.mjs"
       - ".github/workflows/test-corretor-integrated.yml"
 permissions:
   contents: read
@@ -58,10 +60,12 @@ jobs:
           SALTA_SHARP_MODULE="$RUNNER_TEMP/salta-raster/node_modules/sharp/dist/index.cjs" node scripts/verify-card-artwork-raster.mjs
           SALTA_SHARP_MODULE="$RUNNER_TEMP/salta-raster/node_modules/sharp/dist/index.cjs" node scripts/verify-card-header-raster.mjs
           SALTA_SHARP_MODULE="$RUNNER_TEMP/salta-raster/node_modules/sharp/dist/index.cjs" node scripts/verify-camera-geometry.mjs
+          SALTA_SHARP_MODULE="$RUNNER_TEMP/salta-raster/node_modules/sharp/dist/index.cjs" node scripts/verify-camera-focus-raster.mjs
       - uses: actions/upload-artifact@v4
         with:
           name: salta-card-artwork-synthetic
           path: |
             tmp/card-artwork-evidence/
             tmp/camera-evidence/
+            tmp/camera-focus-evidence/
       - run: git diff --check HEAD^ HEAD

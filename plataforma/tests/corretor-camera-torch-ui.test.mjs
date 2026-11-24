@@ -216,7 +216,9 @@ test('P1 front-only device is refused, permission failure retries without lockin
  assert.ok(denied.state.cameraStream);
  denied.state.stopCamera();
 });
-test('P1 interface contains only open/close, real lamp and import; scanner owns capture',()=>{
+test('P1 camera controls remain capability-gated; scanner owns capture',()=>{
+ assert.match(html,/<span id="cameraFocusLabel" hidden><button id="cameraFocus" type="button">Solicitar foco<\/button><\/span>/);
+ assert.match(html,/const finalQuality=captureQuality\(capture,actual,capture\);\s*if\(!finalQuality.ok\)throw/);
  assert.doesNotMatch(html,/id="capture"|id="cameraDevice"|id="cameraDeviceLabel"/);
  assert.match(html,/<input id="read" type="hidden" aria-hidden="true">/);
  assert.doesNotMatch(html,/<button[^>]*id="read"/);
@@ -224,14 +226,14 @@ test('P1 interface contains only open/close, real lamp and import; scanner owns 
  assert.doesNotMatch(html,/Fotografar para ajustar|Você também pode fotografar/);
  assert.match(html,/function scanCameraFrame\(\)/);
  assert.match(html,/stableFrames>=3/);
- assert.match(html,/captureQuality\(frame,detection,previousCameraFrame\)/);
+ assert.match(html,/captureQuality\(frame,detection,previousCameraFrame,\{captureSize\}\)/);
  assert.match(html,/projected=mapFramePoints\(detection.corners,frame,capture\)/);
  assert.match(html,/actual=detectFiducials\(capture.gray,capture.width,capture.height\)/);
  assert.match(html,/const chosen=prior&&nowScore!==null/);
  assert.match(html,/manualCorners:chosen.actual.corners/);
  assert.match(html,/actual=detectFiducials\(capture.gray,capture.width,capture.height\)/);
  assert.match(html,/corretor-v2\.css\?v=20261121ux79c1/);
- assert.match(html,/camera\.mjs\?v=20261118wide1/);
+ assert.match(html,/camera\.mjs\?v=20261124focus52/);
  assert.match(css,/\.camera-stage video\{object-position:center;transform:none\}/);
 });
 
