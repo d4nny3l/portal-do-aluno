@@ -124,3 +124,9 @@ button,select,input{touch-action:manipulation;}
  .keys{font-size:.62rem;}
 }
 @media(prefers-reduced-motion:reduce){*,*::before,*::after{animation-duration:.01ms!important;transition-duration:.01ms!important;scroll-behavior:auto!important;}}
+
+.import-status{font-size:.78rem;font-weight:620;min-height:1.15rem;color:#2b7b5e;margin-top:-.35rem;margin-bottom:.8rem;}
+.import-status:empty{display:none;}
+.import-status[data-error="true"]{color:#a23b45;}
+#scanner:not(.camera-on){margin-top:1rem;}
+@media(max-width:540px){.import-status{font-size:.75rem;}}
