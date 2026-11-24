@@ -63,10 +63,8 @@ test('EMBED-ALIGN: embedded manifest mismatch and malformed fiducial positions f
  assert.ok(layoutTemplate(a4,{width:420,height:594}));
 });
 
-test('EMBED-ALIGN: distant capture must be rejected by physical pixel-size gate in camera flow',()=>{
+test('EMBED-ALIGN: manifest selection, frame choice and Safari recovery wiring remain present',()=>{
  const html=readFileSync(new URL('../../../plataforma/corretor-v2.html',import.meta.url),'utf8');
- assert.match(html,/side<220/);
- assert.match(html,/Aproxime a câmera do quadro/);
  assert.match(html,/validateLayoutManifest\(manifest\)\.valid/);
  assert.match(html,/scanBestFrame/);
  assert.match(html,/function recoverSafariVideo\(\)/);
@@ -143,10 +141,109 @@ test('EMBED-ALIGN: short/near physical frame, tilted source and less illuminatio
  const {manifest}=embedded('CIÊNCIAS',100,180);
  const compact=scene(manifest,{left:300,top:190,scale:2,shade:210});
  const near=scene(manifest,{left:140,top:100,scale:5,shade:225,skew:.12});
- for(const photo of [compact,near]){
+ assert.throws(()=>warpFromFiducials(compact.pixels,compact.width,compact.height,compact.point,{outputWidth:600,manifest}),/Aproxime a câmera do quadro/);
+ for(const photo of [near]){
   const warped=warpFromFiducials(photo.pixels,photo.width,photo.height,photo.point,{outputWidth:600,manifest});
   assert.equal(warped.height,1080);
   assert.equal(warped.pixels.length,600*1080);
  }
  assert.ok(Math.min(...compact.point.map((p,i)=>Math.hypot(p.x-compact.point[(i+1)%4].x,p.y-compact.point[(i+1)%4].y)))<220);
+});
+
+
+const tooSmall='Aproxime a câmera do quadro para ler as marcações com segurança.';
+function resolutionScene(side){
+ const width=600,height=600,pixels=new Uint8Array(width*height).fill(255);
+ const point=[{x:100,y:80},{x:100+side,y:80},{x:100+side,y:480},{x:100,y:480}];
+ for(const {x,y} of point)fillRect(pixels,width,height,x-4,y-4,9,9,0);
+ return {pixels,width,height,point};
+}
+test('CAM-EMBED-01: detected source edges 219/220 px gate imported photographs and explicit corners identically',()=>{
+ const {template,manifest}=embedded();
+ for(const side of [219,220,260]){
+  const p=resolutionScene(side),d=detectFiducials(p.pixels,p.width,p.height);
+  assert.equal(d.found,true);
+  assert.deepEqual(d.corners,p.point,'exact source-pixel boundary, not normalized output');
+  const options={manifest,outputWidth:600,minConfidence:.7};
+  for(const normalize of [
+   ()=>normalizeCard(p.pixels,p.width,p.height,options),
+   ()=>warpFromFiducials(p.pixels,p.width,p.height,p.point,options)
+  ]){
+   if(side<220)assert.throws(normalize,e=>e.message===tooSmall);
+   else{
+    const n=normalize();
+    assert.equal(n.width,600);
+    const result=readRaster(template,n.pixels,n.width,n.height,{manifest,showCode:false});
+    assert.equal(result.observations.length,10);
+    assert.ok(result.observations.every(q=>q.state==='blank'));
+   }
+  }
+ }
+});
+test('CAM-EMBED-01: small A4 source continues through V1 and V2 readers',()=>{
+ const p=resolutionScene(219);
+ for(const template of [
+  createLegacyTemplate([{type:'A-D',count:10,label:'Legado'}]),
+  createTemplate([{type:'A-D',count:10,label:'Atual'}],{layoutVersion:'v2'})
+ ]){
+  const manifest=createCardManifest(template);
+  for(const n of [
+   normalizeCard(p.pixels,p.width,p.height,{outputWidth:600,manifest,minConfidence:.7}),
+   warpFromFiducials(p.pixels,p.width,p.height,p.point,{outputWidth:600,manifest})
+  ]){
+   const result=readRaster(template,n.pixels,n.width,n.height,{manifest,showCode:false});
+   assert.equal(result.observations.length,10);
+  }
+ }
+});
+test('CAM-EMBED-01: real frontend capture and import flow rejects, never reads or scores rejected frame, and retries same selected model',async()=>{
+ const {template,manifest}=embedded();
+ const html=readFileSync(new URL('../../../plataforma/corretor-v2.html',import.meta.url),'utf8');
+ // Execute production functions; browser decoding/drawing and UI sinks are synthetic.
+ const from=(start,end)=>{const a=html.indexOf(start),b=html.indexOf(end,a+start.length);assert.ok(a>=0&&b>a);return html.slice(a,b)};
+ const source=[
+  from('function markLastReadingPending()','function toPageRaster('),
+  from('function toPageRaster(','async function loadPhoto('),
+  from('async function loadPhoto(',"$('file').onchange="),
+  from('function readNormalized(',"$('manualAlign').onclick=")
+ ].join('\n');
+ const prelude=[
+ "let rawRaster=null,normalizedRaster=null,manualMode=false,manualPoints=[],currentPage=1,assessmentBank=null,headerState={showStudentCode:false},replaceLastCapture=false,activeHistoryEntry=null,scanHistory=[],reads=0,scores=0,message='';",
+ "const elements=new Map();",
+ "const $=id=>{if(!elements.has(id))elements.set(id,{hidden:true,disabled:false,textContent:'',innerHTML:'',dataset:{review:'false'},value:'1',classList:{remove(){}}});return elements.get(id)};",
+ "const setScanMessage=m=>{message=m};",
+ "const updateCaptureComparison=()=>{},paintGray=()=>{},showCameraGrade=()=>{},ensureScanTemplate=()=>{},renderHistory=()=>{};",
+ "const renderAnswers=result=>{reads++;$('scanScore').hidden=false;$('scanScore').dataset.stale='false';$('scanScore').dataset.review=String(result.needsReview)};",
+ "const calculateScore=()=>{scores++};",
+ "const createImageBitmap=async file=>({width:file.scene.width,height:file.scene.height,scene:file.scene,close(){}});",
+ "const document={createElement(){const canvas={width:0,height:0};canvas.getContext=()=>({canvas,drawImage(bitmap){canvas.scene=bitmap.scene},getImageData(){return {data:canvas.scene.pixels}}});return canvas}};",
+ "const grayFromRgba=data=>data;"
+ ].join('\n');
+ const make=new Function('template','activeManifest','detectFiducials','normalizeCard','warpFromFiducials','readRaster','validateLayoutManifest',prelude+'\n'+source+
+  '\nreturn {prepareImage,loadPhoto,readNormalized,snapshot:()=>({template,activeManifest,normalizedRaster,scanHistory:[...scanHistory],reads,scores,status:$("status").textContent,message,stale:$("scanScore").dataset.stale})};');
+ const ui=make(template,manifest,detectFiducials,normalizeCard,warpFromFiducials,readRaster,validateLayoutManifest);
+ const small=resolutionScene(219),valid=resolutionScene(220);
+ const file=scene=>({type:'image/png',size:scene.pixels.length,scene});
+ await ui.loadPhoto(file(small));
+ let state=ui.snapshot();
+ assert.equal(state.status,tooSmall);assert.equal(state.message,tooSmall);
+ assert.equal(state.normalizedRaster,null);assert.equal(state.reads,0);assert.equal(state.scores,0);assert.equal(state.scanHistory.length,0);
+ assert.equal(ui.readNormalized(),null,'read button cannot bypass rejection');
+ assert.equal(ui.snapshot().reads,0);assert.equal(ui.snapshot().scores,0);
+ await ui.loadPhoto(file(valid));
+ state=ui.snapshot();
+ assert.ok(state.normalizedRaster);assert.equal(state.reads,1);assert.equal(state.scores,1);assert.equal(state.scanHistory.length,1);
+ assert.equal(state.template,template);assert.equal(state.activeManifest,manifest);
+ for(const automatic of [true,false]){
+  const prior=ui.snapshot();
+  assert.equal(ui.prepareImage(small.pixels,small.width,small.height,{automatic,manualCorners:small.point}),null);
+  state=ui.snapshot();
+  assert.equal(state.status,tooSmall);assert.equal(state.normalizedRaster,null);assert.equal(state.stale,'true');
+  assert.equal(state.reads,prior.reads);assert.equal(state.scores,prior.scores);assert.equal(state.scanHistory.length,prior.scanHistory.length);
+  assert.equal(ui.readNormalized(),null);
+  assert.ok(ui.prepareImage(valid.pixels,valid.width,valid.height,{automatic,manualCorners:valid.point}));
+  if(!automatic)assert.ok(ui.readNormalized());
+  state=ui.snapshot();assert.equal(state.reads,prior.reads+1);assert.equal(state.scores,prior.scores+1);
+  assert.equal(state.template,template);assert.equal(state.activeManifest,manifest);
+ }
 });
