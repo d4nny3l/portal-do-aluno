@@ -47,5 +47,7 @@ try{
  assert(css===cssBase.trimEnd()+'\n'+cssRule,'CSS modified outside empty-message spacing rule');
  assert(readFileSync(path.join(root,'plataforma/corretor-v2.html'),'utf8').includes('Não use avaliações ou dados reais.'),
   'Synthetic laboratory warning cannot be removed');
+ assert(readFileSync(path.join(root,'.github/workflows/test-direct-pdf.yml'),'utf8').includes('ref: ${{ github.event.pull_request.head.sha }}'),
+  'PDF guard must run against the PR HEAD, never a synthetic merge commit');
  console.log('PR #130 strict copy-only scope PASS. No OMR, backend, data model, PDF or access change.');
 }catch(e){console.error('Not UX-READY-01:',e.message);process.exitCode=1;}
