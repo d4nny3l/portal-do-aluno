@@ -6,6 +6,8 @@ import {fileURLToPath} from 'node:url';
 const root=fileURLToPath(new URL('../',import.meta.url));
 const base='14fa328e178bfa359de7177dce51d06283b4fc0c';
 const allowed=new Set([
+ '.gitattributes',
+ 'plataforma/tests/corretor-visual-flow.test.mjs',
  '.github/workflows/test-avaliacoes-biblioteca.yml',
  '.github/workflows/test-assessments-embedded.yml',
  '.github/workflows/test-economy-print.yml',
