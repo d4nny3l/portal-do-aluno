@@ -1,7 +1,7 @@
 // #122: real Chromium/PDF evidence for candidate print geometry only.
 // All test cards and logos are synthetic; no session, gateway, production API or storage.
 import assert from 'node:assert/strict';
-import {mkdirSync,writeFileSync} from 'node:fs';
+import {mkdirSync,writeFileSync,readFileSync,existsSync} from 'node:fs';
 import path from 'node:path';
 import {fileURLToPath} from 'node:url';
 import {createTemplate} from '../corretor/v2/omr/template.mjs';
@@ -73,6 +73,78 @@ try{
    console.log('ECONOMY-BROWSER '+name+' '+plan.orientation+' scale='+plan.scale+' PDF pages=1 PASS');
    await context.close();
   }
+ }
+ // Full real frontend interaction: 2 -> 4 -> normal, no backend writes.
+ {
+  const origin='https://d4nny3l.github.io',api='https://salta-stats.dannyel-moises.workers.dev';
+  const uiContext=await browser.newContext({viewport:{width:1440,height:1000},locale:'pt-BR',serviceWorkers:'block'});
+  const methods=[];
+  await uiContext.route('**/*',async route=>{
+   const req=route.request(),u=new URL(req.url());methods.push(req.method()+' '+u.pathname);
+   try{
+    if(u.origin===api){
+     if(u.pathname==='/auth/session')return route.fulfill({status:200,contentType:'application/json',body:JSON.stringify({authenticated:true})});
+     if(u.pathname==='/assessments/v1/session')return route.fulfill({status:200,contentType:'application/json',body:JSON.stringify({authenticated:true,principalId:'print-only-synthetic',epoch:1,editorSnapshotVersion:'salta-editor-snapshot-v1'})});
+     if(u.pathname==='/assessments/v1/grants')return route.fulfill({status:200,contentType:'application/json',body:JSON.stringify({grants:[]})});
+     errors.push('Unexpected private endpoint: '+req.method()+' '+u.pathname);return route.abort();
+    }
+    if(u.origin===origin&&u.pathname.startsWith('/portal-do-aluno/')){
+     const file=path.resolve(root,decodeURIComponent(u.pathname.slice('/portal-do-aluno/'.length)));
+     if(!file.startsWith(root+path.sep)||!existsSync(file))return route.fulfill({status:404,body:'Missing candidate asset'});
+     const mime={'.html':'text/html','.css':'text/css','.mjs':'text/javascript','.js':'text/javascript','.svg':'image/svg+xml','.json':'application/json','.png':'image/png'};
+     return route.fulfill({status:200,contentType:mime[path.extname(file)]||'application/octet-stream',body:readFileSync(file)});
+    }
+    errors.push('External request: '+req.url());return route.abort();
+   }catch(error){errors.push(error.message);return route.abort();}
+  });
+  const p=await uiContext.newPage();p.on('pageerror',e=>errors.push(e.message));p.on('dialog',d=>d.accept());
+  await p.goto(origin+'/portal-do-aluno/plataforma/corretor-v2.html');
+  await p.waitForFunction(()=>document.body.classList.contains('salta-auth-ready'));
+  assert.equal(await p.locator('#economyOptions').isHidden(),true,'A4 must not show economic options');
+  await p.locator('#assessmentTitle').fill('TESTE ECONÔMICO');
+  await p.locator('#assessmentSubject').fill('Matemática');
+  await p.locator('#assessmentClass').fill('Turma fictícia');
+  await p.locator('#assessmentDate').fill('2026-11-24');
+  await p.locator('#identitySettings summary').click();
+  await p.locator('#identityMode').selectOption('none');
+  await p.locator('#cardMode').selectOption('embedded');
+  await p.locator('#embeddedWidth').fill('100');
+  await p.locator('#embeddedHeight').fill('160');
+  await p.locator('#identitySettings summary').click();
+  await p.locator('#type').selectOption('A-D');
+  await p.locator('#count').fill('3');
+  await p.locator('#add').click();
+  await p.locator('nav.module-nav [data-view="cartoes"]').click();
+  assert.equal(await p.locator('#economyOptions').isVisible(),false,'options remain inside closed Others formats');
+  await p.locator('details.export-options').first().locator('summary').click();
+  assert.equal(await p.locator('#economyOptions').isVisible(),true,'embedded options visible');
+  for(const copies of [2,4]){
+   await p.locator('#economyCopies').selectOption(String(copies));
+   assert((await p.locator('#economyPrintStatus').innerText()).includes('100%'));
+   await p.screenshot({path:path.join(out,'real-ui-select-'+copies+'.png')});
+   const popupPromise=p.waitForEvent('popup');
+   await p.locator('#printCard').click();
+   const popup=await popupPromise;
+   await popup.locator('svg.economy-sheet').waitFor();
+   assert.equal(await popup.locator('svg.economy-sheet').getAttribute('data-economy-copies'),String(copies));
+   assert.equal(await popup.locator('svg[data-economy-copy]').count(),copies);
+   await popup.close();
+  }
+  await p.locator('#economyCopies').selectOption('');
+  const normalPopup=p.waitForEvent('popup');await p.locator('#printCard').click();
+  const normal=await normalPopup;await normal.locator('.print-page').waitFor();
+  assert.equal(await normal.locator('svg.economy-sheet').count(),0);
+  await normal.close();
+  await p.locator('nav.module-nav [data-view="criar"]').click();
+  await p.locator('#identitySettings summary').click();
+  await p.locator('#cardMode').selectOption('full-page');
+  await p.locator('#identitySettings summary').click();
+  assert.equal(await p.locator('#economyCopies').inputValue(),'');
+  assert.equal(await p.locator('#economyOptions').isHidden(),true);
+  assert.equal(methods.filter(m=>m.startsWith('PUT ')).length,0,'print selection must never persist');
+  report.scenarios.push({realFrontend:true,sequence:'2 -> 4 -> normal A4',putRequests:0,selectedCopiesResetAfterA4:true});
+  console.log('ECONOMY-REAL-UI: 2 -> 4 -> normal + A4 reset + no PUT PASS');
+  await uiContext.close();
  }
  assert.equal(errors.length,0);
  report.result='PASS';
