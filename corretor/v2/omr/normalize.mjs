@@ -293,6 +293,9 @@ export function warpFromFiducials(gray, width, height, corners, { outputWidth = 
     throw new TypeError("Os pontos de enquadramento precisam estar dentro da imagem.");
   }
   const edgeLengths = corners.map((point, index) => distance(point, corners[(index + 1) % 4]));
+  // All paths converge here with source-image coordinates, before any upscaling.
+  const embedded=manifest?.mode==='embedded';
+  if(embedded&&edgeLengths.some(length=>length<220))throw new Error('Aproxime a câmera do quadro para ler as marcações com segurança.');
   const signedTurns = corners.map((point, index) => {
     const next = corners[(index + 1) % 4], after = corners[(index + 2) % 4];
     return (next.x - point.x) * (after.y - next.y) - (next.y - point.y) * (after.x - next.x);
@@ -305,7 +308,6 @@ export function warpFromFiducials(gray, width, height, corners, { outputWidth = 
   }
   // The selected V2 embedded manifest defines its own physical paper and fiducials.
   // Legacy A4 paths keep their original target coordinates byte-for-byte.
-  const embedded=manifest?.mode==='embedded';
   const paper=embedded?manifest.paper:{widthMm:PAGE_WIDTH_MM,heightMm:PAGE_HEIGHT_MM};
   const markers=embedded?manifest.technicalRegions?.fiducials:null;
   const ordered=['fiducial-tl','fiducial-tr','fiducial-br','fiducial-bl'];
