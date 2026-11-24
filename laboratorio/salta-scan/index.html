@@ -34,6 +34,7 @@
     <span class="hint mono">Câmera automática · ajuste manual · PDF multipágina</span>
   </div>
   <p id="camerr" class="err mono" role="alert" hidden></p>
+  <p id="importStatus" class="import-status" role="status" aria-live="polite"></p>
 </section>
 
 <section id="scanner" hidden aria-label="Área de digitalização">
@@ -110,10 +111,10 @@
         <button id="edrotr" class="btn ghost" type="button" title="Girar para a direita">⟳</button>
         <select id="edmode" class="btn ghost" aria-label="Tratamento desta página">
           <option value="">Tratamento geral</option>
-          <option value="color">colour</option>
-          <option value="gray">greyscale</option>
-          <option value="bw">black &amp; white</option>
-          <option value="original">original</option>
+          <option value="color">Cor aprimorada</option>
+          <option value="gray">Cinza</option>
+          <option value="bw">Preto e branco</option>
+          <option value="original">Sem aprimoramento</option>
         </select>
         <button id="edcorners" class="btn ghost" type="button">Ajustar cantos</button>
         <button id="edcopy" class="btn ghost" type="button" title="Copiar imagem">Copiar</button>
