@@ -59,7 +59,15 @@ test('library remains isolated in Criar avaliação; Corrigir cartões uses expl
  assert.ok(start>=0&&correct>start&&end>correct);
  assert.ok(html.slice(start,correct).includes('id="savedAssessments"'));
  assert.ok(!html.slice(correct,end).includes('savedAssessments'));
- assert.equal(fnv(html.slice(correct+'<section class="corretor-card module-view" id="corrigir">'.length,end)),'b740cdc8871ea315');
+
+ const markup=html.slice(correct+'<section class="corretor-card module-view" id="corrigir">'.length,end);
+ // CAM-FOCUS-01 authorizes exactly one new visible capability-gated control.
+ // Reconstruct the previous markup and keep the historical snapshot check.
+ const focus='<span id="cameraFocusLabel" hidden><button id="cameraFocus" type="button">Solicitar foco</button></span>';
+ assert.equal(markup.split(focus).length,2);
+ assert.ok(markup.indexOf(focus)<markup.indexOf('<details class="camera-settings"'));
+ const prior=markup.replace(focus,'').replace('<label class="camera-check" id="cameraTorchLabel"', '<span id="cameraFocusLabel" hidden><button id="cameraFocus" type="button">Focar automaticamente</button></span><label class="camera-check" id="cameraTorchLabel"');
+ assert.equal(fnv(prior),'b740cdc8871ea315');
  assert.equal(gitSha('plataforma/corretor-v2.css'),'176dbecdf3abaf4680b7dfef2e97cca92acf738d');
  assert.match(html,/mountAssessmentLibrary\(/);
  assert.match(html,/privateSelection\.manifestHash/);

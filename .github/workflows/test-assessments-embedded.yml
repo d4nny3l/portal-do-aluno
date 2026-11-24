@@ -35,6 +35,14 @@ jobs:
           else
             echo 'print_only=false' >> "$GITHUB_OUTPUT"
           fi
+      - name: Classify exact CAM-FOCUS-01 delta (PR #127 only)
+        id: camera_scope
+        run: |
+          if node scripts/verify-camera-focus-scope.mjs; then
+            echo 'camera_only=true' >> "$GITHUB_OUTPUT"
+          else
+            echo 'camera_only=false' >> "$GITHUB_OUTPUT"
+          fi
       - name: Read pinned historical backend/gateway fixture sources
         if: steps.print_scope.outputs.print_only != 'true'
         run: |
@@ -44,13 +52,24 @@ jobs:
           git cat-file -e 7080d2de0b5a01bbe417b71732221a869e7a4d42^{commit}
       - if: steps.print_scope.outputs.print_only != 'true'
         run: npm ci --prefix assessments-lab --ignore-scripts --no-audit --no-fund
-      - if: steps.print_scope.outputs.print_only != 'true'
+      - if: steps.print_scope.outputs.print_only != 'true' && steps.camera_scope.outputs.camera_only != 'true'
         run: node assessments-service/integrity.mjs
-      - if: steps.print_scope.outputs.print_only != 'true'
+      - if: steps.print_scope.outputs.print_only != 'true' && steps.camera_scope.outputs.camera_only != 'true'
         run: node --test assessments-service/tests/build.test.mjs
       - name: Current frontend/backend, synthetic Auth, local D1 and unchanged gateway regressions
-        if: steps.print_scope.outputs.print_only != 'true'
+        if: steps.print_scope.outputs.print_only != 'true' && steps.camera_scope.outputs.camera_only != 'true'
         run: node assessments-service/test-composition.mjs
+      - name: CAM-FOCUS-01 — verify unchanged current dependencies and run original #120 guard and full historical suite
+        if: steps.camera_scope.outputs.camera_only == 'true'
+        run: |
+          node scripts/verify-camera-focus-scope.mjs
+          node --input-type=module -e "import {verifyDependencies} from './assessments-service/build.mjs'; verifyDependencies()"
+          git worktree add --detach "$RUNNER_TEMP/salta-120" ce74c520a464a17ed7fda2991df92f984a04d8e7
+          cd "$RUNNER_TEMP/salta-120"
+          npm ci --prefix assessments-lab --ignore-scripts --no-audit --no-fund
+          node assessments-service/integrity.mjs
+          node --test assessments-service/tests/build.test.mjs
+          node assessments-service/test-composition.mjs
       - name: Candidate build only — no Worker configuration or deployment
         if: steps.print_scope.outputs.print_only != 'true'
         run: node assessments-service/build.mjs

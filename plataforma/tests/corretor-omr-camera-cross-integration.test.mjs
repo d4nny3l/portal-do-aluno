@@ -38,7 +38,7 @@ const script=[
 
 test('P1 integration: audited reader + camera code, imports, hidden bank gate, no old capture controls',()=>{
  assert.match(html,/reader\.mjs\?v=20261118final1/);
- assert.match(html,/camera\.mjs\?v=20261118wide1/);
+ assert.match(html,/camera\.mjs\?v=20261124focus52/);
  assert.match(html,/<input id="read" type="hidden" aria-hidden="true">/);
  assert.doesNotMatch(html,/<button[^>]+id="read"|id="capture"|id="cameraDevice"/);
  assert.match(html,/recognition==='partial'/);
