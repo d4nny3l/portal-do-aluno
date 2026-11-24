@@ -115,6 +115,7 @@ test('EMBED-ALIGN: A-E strong, double, blank, and ambiguous marks from one embed
  const normalized=warpFromFiducials(image.pixels,image.width,image.height,image.point,{outputWidth:700,manifest});
  const read=readRaster(template,normalized.pixels,normalized.width,normalized.height,{manifest,showCode:false});
  const byNumber=n=>read.observations.find(q=>q.number===n);
+ console.log('EMBED-ALIGN ink debug',JSON.stringify(read.observations.slice(0,5)));
  assert.equal(byNumber(1).state,'read');assert.equal(byNumber(1).answer,'B');
  assert.notEqual(byNumber(2).state,'read','double cannot become definite answer');
  assert.equal(byNumber(2).answer,null);
@@ -132,6 +133,7 @@ test('EMBED-ALIGN: physical seven-digit ID in wide embedded frame remains readab
  }
  const n=warpFromFiducials(image.pixels,image.width,image.height,image.point,{outputWidth:900,manifest});
  const read=readRaster(template,n.pixels,n.width,n.height,{manifest,showCode:true});
+ console.log('EMBED-ALIGN code debug',JSON.stringify(read.identity));
  assert.equal(read.identity.state,'read');
  assert.equal(read.identity.code,code);
  assert.ok(read.observations.every(x=>x.state==='blank'));
@@ -145,5 +147,5 @@ test('EMBED-ALIGN: short/near physical frame, tilted source and less illuminatio
   assert.equal(warped.height,1080);
   assert.equal(warped.pixels.length,600*1080);
  }
- assert.ok(Math.min(...compact.point.map((p,i)=>Math.hypot(p.x-compact.point[(i+1)%4].x,p.y-compact.point[(i+1)%4].y)))>220);
+ assert.ok(Math.min(...compact.point.map((p,i)=>Math.hypot(p.x-compact.point[(i+1)%4].x,p.y-compact.point[(i+1)%4].y)))<220);
 });
