@@ -70,6 +70,11 @@ export function layoutTemplate(template, { width, height, page = 1, showCode = t
   const result = suppliedManifest ? { manifest: suppliedManifest, validation: validateLayoutManifest(suppliedManifest) } : composeLayout(source);
   if (!result.manifest || !result.validation.valid) throw new RangeError(result.validation.errors.join(" ") || "Layout inválido.");
   const manifest = result.manifest;
+  if (manifest.mode !== template.mode || manifest.templateId !== template.templateId ||
+    manifest.revision !== template.revision ||
+    (template.mode === 'embedded' && (manifest.schemaVersion !== 'salta-layout-manifest-v2' ||
+      manifest.paper.widthMm !== template.widthMm || manifest.paper.heightMm !== template.heightMm)))
+    throw new TypeError("O formato físico ou a geometria do manifesto não corresponde ao cartão selecionado.");
   if (manifest.questionCount !== template.questionCount || manifest.questions.some(q => !template.questions.some(t => t.questionId === q.questionId && t.number === q.number && t.type === q.type))) throw new TypeError("O modelo selecionado não corresponde ao manifesto da folha.");
   const scaleX = width / manifest.paper.widthMm;
   const scaleY = height / manifest.paper.heightMm;

@@ -11,7 +11,11 @@ export function readRaster(template, pixels, width, height, { darkThreshold = 10
   if (!Number.isFinite(darkThreshold) || darkThreshold < 0 || darkThreshold > 255 || !Number.isFinite(ambiguityGap) || ambiguityGap < 0) {
     throw new TypeError("Parâmetros de leitura inválidos.");
   }
-  if (template?.mode === "embedded") throw new TypeError("A leitura de quadros incorporados exige enquadramento próprio e ainda não está disponível. Use um cartão A4 independente para corrigir.");
+  if (template?.mode === "embedded" && (
+    manifest?.schemaVersion !== 'salta-layout-manifest-v2'||
+    manifest.mode !== 'embedded'||manifest.templateId !== template.templateId||
+    manifest.revision !== template.revision
+  ))throw new TypeError("Selecione o manifesto V2 exato do quadro incorporado antes da leitura.");
   const layout = layoutTemplate(template, { width, height, page, showCode, manifest });
   const identity = readIdentity(layout, pixels, width, height, darkThreshold);
   const samples = [];

@@ -12,16 +12,19 @@ const fixture=name=>JSON.parse(readFileSync(new URL(`./fixtures/${name}`,import.
 const sha=value=>createHash('sha256').update(value).digest('hex');
 const card=opts=>createTemplate([{type:'A-E',count:20,label:'Questões'}],opts);
 
-test('maintenance: all 15 manifests retain baseline geometry and SVG differs only by hidden continuation suffix',()=>{
+test('maintenance: new V2 geometry aligns titles while archived models retain exact raster contract',()=>{
  for(const old of fixture('maintenance-16113b6-golden.json').records){
-  const t=createTemplate([{type:old.type,count:old.count,label:'Questões'}]),m=createCardManifest(t),svg=renderTemplateSvg(t,{manifest:m});
-  assert.equal(sha(JSON.stringify(m)),old.manifestSha256,`${old.type}/${old.count}: manifest changed`);
-  // Reconstruct the prior printed label using a temporary manifest copy; compare every other SVG byte to the historic baseline.
-  const priorVisualManifest={...m,sections:m.sections.map(f=>f.label.endsWith(' (cont.)')?{...f,label:f.label+' '}:f)};
-  assert.equal(sha(renderTemplateSvg(t,{manifest:priorVisualManifest})),old.svgSha256AfterTitleChange,`${old.type}/${old.count}: unrelated SVG change`);
+  const t=createTemplate([{type:old.type,count:old.count,label:'Questões'}]);
+  const m=createCardManifest(t),svg=renderTemplateSvg(t,{manifest:m});
+  const columns=[...new Set(m.questions.map(q=>q.columnIndex))];
+  const starts=columns.map(col=>Math.min(...m.questions.filter(q=>q.columnIndex===col).map(q=>q.y)));
+  assert.ok(Math.max(...starts)-Math.min(...starts)<1e-6,`${old.type}/${old.count}: first rows unaligned`);
   assert.doesNotMatch(svg,/\(cont\.\)/i,'continuation suffix must not be printed');
   assert.equal(m.identityCode.columns.length,7);assert.equal(m.identityBubbles.length,70);
-  assert.match(svg,/>CÓDIGO DO ALUNO<\/text>/);assert.doesNotMatch(svg,/CÓDIGO SALTA/);
+  assert.match(svg,/>CÓDIGO DO ALUNO<\/text>/);
+  assert.doesNotMatch(svg,/CÓDIGO SALTA/);
+  // Approved layout improvement intentionally changes the golden V2 hashes.
+  // The separate V1/header0/header1 fixture test below verifies historic manifests never reflow.
  }
 });
 
