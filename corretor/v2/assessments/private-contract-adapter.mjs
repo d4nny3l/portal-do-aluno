@@ -11,7 +11,9 @@ const whole=value=>typeof value==='string'&&/^[1-9][0-9]{0,7}$/.test(value);
 const freeze=o=>Object.freeze(o);
 const canonicalManifest=manifest=>{
  const {template,manifest:exact}=importCardManifest(manifest);
- if(template.mode!=='full-page'||template.questions.some(q=>!['A-D','A-E','C-E'].includes(q.type)))fail('Modelo óptico completo não suportado.');
+ if(!['full-page','embedded'].includes(template.mode)||
+    (template.mode==='embedded'&&exact.schemaVersion!=='salta-layout-manifest-v2')||
+    template.questions.some(q=>!['A-D','A-E','C-E'].includes(q.type)))fail('Modelo óptico objetivo não suportado.');
  return {template,manifest:exact};
 };
 export function definitionFromLocalPlan(plan,sourceManifest){

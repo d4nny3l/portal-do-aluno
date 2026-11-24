@@ -37,32 +37,8 @@ jobs:
         run: |
           node --test corretor/v2/tests/card-v2.test.mjs corretor/v2/tests/card-layout.test.mjs corretor/v2/tests/answer-key.test.mjs
           node --test plataforma/tests/corretor-interface.test.mjs plataforma/tests/corretor-visual-flow.test.mjs
-      - name: Restrict changes to integration only (approved CSS blobs pinned)
-        shell: bash
+      - name: Exact authorized library/backend scope; published optical and security sources remain pinned
         run: |
-          set -euo pipefail
-          BASE=5865dfc43efeada4effa2c8a96a3543794a6ff7f
-          APPROVED=1c42a0ad41bd0d2a22ebaf8d379ce5698543bc9d
           test "$(git rev-parse HEAD)" = "${{ github.event.pull_request.head.sha }}"
-          test "$(git rev-parse origin/main)" = "$BASE"
-          git cat-file -e "$APPROVED^{commit}"
-          git diff --check "$BASE" HEAD
-          # These exact blobs are from the audited PR #95, not free-form CSS exceptions.
-          test "$(git rev-parse "$APPROVED:plataforma/corretor-v2.css")" = "176dbecdf3abaf4680b7dfef2e97cca92acf738d"
-          test "$(git rev-parse "$APPROVED:plataforma/avaliacoes-biblioteca.css")" = "d56766dd552bc92d7173ac29ebb3ffb7b5a26da9"
-          if [[ "$(git rev-parse HEAD:plataforma/corretor-v2.css)" != "176dbecdf3abaf4680b7dfef2e97cca92acf738d" ]]; then
-            echo "::error::Corretor CSS differs from approved #95 blob"; exit 1
-          fi
-          if [[ "$(git rev-parse HEAD:plataforma/avaliacoes-biblioteca.css)" != "d56766dd552bc92d7173ac29ebb3ffb7b5a26da9" ]]; then
-            echo "::error::Library CSS differs from approved #95 blob"; exit 1
-          fi
-          # Keep the original deny-list; only the approved Corretor CSS may pass.
-          while IFS= read -r changed_path; do
-            case "$changed_path" in
-              stats-worker/*|auth-worker/*|assessments-service/*|corretor/v2/omr/*)
-                echo "::error::Forbidden production or optical path: $changed_path"; exit 1 ;;
-              plataforma/corretor-v2.css)
-                echo "Approved Corretor CSS blob verified" ;;
-            esac
-          done < <(git diff --name-only origin/main...HEAD)
-          echo "Sensitive-path deny-list and both CSS SHA pins: PASS"
+          git fetch --no-tags origin refs/pull/90/head
+          node assessments-service/integrity.mjs

@@ -1,0 +1,53 @@
+name: SALTA embedded library candidate — synthetic only
+on:
+  pull_request:
+    paths:
+      - 'assessments-service/**'
+      - 'corretor/v2/assessments/private-contract-adapter.mjs'
+      - 'plataforma/avaliacoes-biblioteca.mjs'
+      - 'plataforma/corretor-v2.html'
+      - 'plataforma/tests/avaliacoes-biblioteca-unificada.test.mjs'
+      - 'docs/avaliacoes/BIBLIOTECA_QUADROS_118.md'
+      - '.github/workflows/test-assessments-embedded.yml'
+permissions:
+  contents: read
+jobs:
+  local-synthetic-only:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    env:
+      WRANGLER_SEND_METRICS: 'false'
+      WRANGLER_WRITE_LOGS: 'false'
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+          ref: ${{ github.event.pull_request.head.sha }}
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+      - name: Read pinned historical backend/gateway fixture sources
+        run: |
+          test "$(git rev-parse HEAD)" = "${{ github.event.pull_request.head.sha }}"
+          git fetch --no-tags origin refs/pull/90/head refs/pull/74/head
+          git cat-file -e 72695b469d7e9b3140371a196ce235918b3df307^{commit}
+          git cat-file -e 7080d2de0b5a01bbe417b71732221a869e7a4d42^{commit}
+      - run: npm ci --prefix assessments-lab --ignore-scripts --no-audit --no-fund
+      - run: node assessments-service/integrity.mjs
+      - run: node --test assessments-service/tests/build.test.mjs
+      - name: Current frontend/backend, synthetic Auth, local D1 and unchanged gateway regressions
+        run: node assessments-service/test-composition.mjs
+      - name: Candidate build only — no Worker configuration or deployment
+        run: node assessments-service/build.mjs
+      - name: Isolated real browser — synthetic sessions, exact frame recovery and optical correction
+        shell: bash
+        run: |
+          npm install --prefix "$RUNNER_TEMP/salta-browser" --no-save --ignore-scripts playwright@1.65.1
+          node "$RUNNER_TEMP/salta-browser/node_modules/playwright/cli.js" install --with-deps chromium
+          SALTA_PLAYWRIGHT_MODULE="$RUNNER_TEMP/salta-browser/node_modules/playwright/index.mjs" node assessments-service/tests/embedded-browser.mjs
+      - uses: actions/upload-artifact@v4
+        with:
+          name: embedded-library-candidate-not-published
+          path: assessments-service/dist/
+      - run: git diff --check

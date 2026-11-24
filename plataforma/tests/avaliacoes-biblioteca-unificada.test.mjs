@@ -37,7 +37,7 @@ const make=({counts=[10,20],types=['A-D','A-E'],mode='full-page',identityMode='s
  const editor={version:1,sections,header:h,layoutRevision:8,nextQuestionNumber:num+1,nextSectionOrder:sections.length,
   fields:{assessmentTitle:h.title,assessmentKind:'Prova objetiva',assessmentSubject:h.subject,
    assessmentClass:h.className,assessmentDate:h.date,identityMode,columnCount:'auto',cardMode:mode,
-   embeddedWidth:'100',embeddedHeight:'180',type:types[0],count:String(counts[0])},showInstructions:false};
+   embeddedWidth:mode==='embedded'?'120':'100',embeddedHeight:'180',type:types[0],count:String(counts[0])},showInstructions:false};
  return {sections,template,manifest,answers,values,editor};
 };
 const planArgs=m=>({metadata:{title:m.editor.fields.assessmentTitle,subject:m.editor.fields.assessmentSubject,
@@ -115,13 +115,16 @@ test('immutable private record preserves class, customized header, fields and ex
  assert.equal(recovered.manifest.contentHash,m.manifest.contentHash);
  assert.deepEqual(recovered.plan.blocks.map(b=>b.valueUnits),['60000','40000']);
 });
-test('no silent conversion for CDU, embedded cards, nominal students or incompatible alternatives',()=>{
+test('embedded V2 keeps its manifest; CDU, nominal students and incompatible alternatives remain rejected',()=>{
  const m=make();
  assert.throws(()=>assertLibraryModel({manifest:m.manifest,editor:m.editor,nominalFields:{code:'1234567'}}),/Limpe nome/);
  const cdu=make({counts:[3],types:['CDU']});
  assert.throws(()=>createLibraryPlan(planArgs(cdu)),/apenas cartão A4|suportado|compatível/i);
  const embedded=make({counts:[3],types:['A-D'],mode:'embedded'});
- assert.throws(()=>createLibraryPlan(planArgs(embedded)),/apenas cartão A4|suportado|compatível/i);
+ const saved=createLibraryPlan(planArgs(embedded));
+ assert.deepEqual(saved.definition.manifest,embedded.manifest);
+ embedded.editor.fields.embeddedWidth='100';
+ assert.throws(()=>createLibraryPlan(planArgs(embedded)),/formato físico/);
  const incompatible=make({counts:[4],types:['A-D']});
  incompatible.answers['question-1']='E';
  assert.throws(()=>createLibraryPlan(planArgs(incompatible)),/Gabarito|Alternativa|incompatível/i);
