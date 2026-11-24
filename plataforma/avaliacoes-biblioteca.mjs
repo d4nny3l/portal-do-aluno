@@ -15,8 +15,8 @@ import {SCORE_FORMAT_VERSION,DEFAULT_SCORE_DECIMALS,scoreDecimals as assertScore
 // Same authorized namespace as the original private client; server Auth and grants
 // remain the security boundary. No worker flags, tokens, credentials or secrets here.
 export const LIBRARY_GATEWAY='https://salta-stats.dannyel-moises.workers.dev/assessments/v1';
-const unsupported='A biblioteca aceita cartões A4 e quadros incorporados V2 com questões A–D, A–E ou C–E. Este modelo não é compatível com o salvamento.';
-const embeddedUnavailable='O servidor conectado ainda não confirma o salvamento de quadros incorporados. Você pode continuar usando o quadro no Corretor.';
+const unsupported='Este cartão não pode ser salvo na biblioteca. Use questões A–D, A–E ou C–E.';
+const embeddedUnavailable='Não é possível salvar este quadro na biblioteca agora. Você ainda pode baixá-lo.';
 export const EMBEDDED_LIBRARY_VERSION='salta-embedded-library-v1';
 const copy=value=>structuredClone(value);
 const el=(doc,tag,label='',attrs={})=>{
@@ -133,7 +133,7 @@ export function mountAssessmentLibrary({
  const hasScoreFormat=()=>controller.view().session?.scoreFormatVersion===SCORE_FORMAT_VERSION;
  const hasEmbeddedLibrary=()=>controller.view().session?.embeddedLibraryVersion===EMBEDDED_LIBRARY_VERSION;
  const hasEditorSnapshot=()=>controller.view().session?.editorSnapshotVersion===EDITOR_SNAPSHOT_CAPABILITY;
- const snapshotUnavailable='Este servidor ainda não confirma o salvamento integral das configurações. Nada foi salvo; reconecte-se quando o serviço atualizado estiver disponível.';
+ const snapshotUnavailable='Não foi possível salvar todas as configurações. Nada foi salvo.';
  const embeddedEditor=()=>snapshotEditor()?.fields?.cardMode==='embedded';
  function syncScoreFormatUi(){
   const enabled=Boolean(ready&&hasScoreFormat());
@@ -233,7 +233,7 @@ export function mountAssessmentLibrary({
   if(!hasEditorSnapshot())throw new Error(snapshotUnavailable);
   if(embeddedEditor()&&!hasEmbeddedLibrary())throw new Error(embeddedUnavailable);
   if(scoreFormatExplicit&&!hasScoreFormat())
-    throw new Error('O servidor ainda não confirma o formato da nota. Nada foi salvo.');
+    throw new Error('Não foi possível salvar o formato da nota. Nada foi salvo.');
    const currentSections=getSections();
    for(const section of currentSections){
     const id=section.sectionId;
@@ -267,7 +267,7 @@ export function mountAssessmentLibrary({
   const restored=editorFromPrivateRecord(record);legacyEditorActive=restored.legacy;
   if(restored.manifest.mode==='embedded'&&!hasEmbeddedLibrary())throw new Error(embeddedUnavailable);
    if(Object.hasOwn(restored.plan,'scoreDecimals')&&!hasScoreFormat())
-    throw new Error('A sessão não confirma o formato da nota desta avaliação. Conecte-se a um servidor compatível.');
+    throw new Error('Não foi possível recuperar o formato da nota desta avaliação. Confira antes de continuar.');
    resetScoreFormat();
    scoreFormatExplicit=Object.hasOwn(restored.plan,'scoreDecimals');
    selectedScoreDecimals=assertScoreDecimals(restored.plan.scoreDecimals);
@@ -618,24 +618,24 @@ export function mountAssessmentLibrary({
    status.textContent=!s.session?'Não foi possível conectar a biblioteca. Se já entrou na SALTA, tente novamente.':
     !s.scope?'Selecione uma turma para acessar suas avaliações.':
     s.pending&&manualRetryNeeded?'A operação não foi confirmada. Use Tentar novamente quando houver conexão.':
-  s.pending?'A operação está sendo verificada. Alterações posteriores ainda não foram salvas.':
-    confirmedEarlierSave?'A avaliação enviada foi salva e conferida; suas alterações posteriores ainda não foram salvas.':
-    selectionNeedsConfirmation?'A avaliação mudou durante a seleção. Salve as alterações e confirme novamente para corrigir.':
-    unsaved?'Há alterações nesta avaliação que ainda não foram salvas.':
-    s.phase==='saved'?'Avaliação salva e conferida no servidor.':
-    s.phase==='selected'?'Avaliação confirmada para correção.':
-    catalogBusy?'Conferindo avaliações e dados antes de liberar a lista…':
+  s.pending?'Conferindo a operação. Alterações recentes não salvas.':
+    confirmedEarlierSave?'Alterações não salvas.':
+    selectionNeedsConfirmation?'A avaliação mudou. Salve e selecione novamente para corrigir.':
+    unsaved?'Alterações não salvas.':
+    s.phase==='saved'?'Salvo.':
+    s.phase==='selected'?'Pronto para corrigir.':
+    catalogBusy?'Carregando avaliações…':
     catalogLoadError?'Não foi possível carregar suas avaliações. Tente novamente.':
     s.phase==='loading'?'Carregando suas avaliações…':
     s.phase==='unavailable'?'Biblioteca indisponível no momento.':
-    opened?'Avaliação aberta para edição.':
-    'Escolha uma avaliação ou crie uma nova.';
+    opened?'':
+    '';
   }
   if(ready&&catalogLoadError&&!catalogBusy&&!s.pending){
    status.dataset.state='error';
    status.textContent='Não foi possível carregar suas avaliações. Tente novamente.';
   }
-  if(ready&&legacyEditorActive&&opened&&!unsaved&&!s.pending&&!catalogLoadError){status.dataset.state='legacy';status.textContent='Avaliação histórica: apenas informações verificáveis foram restauradas. Preferências não registradas receberam padrões neutros; confira antes de editar.';}
+  if(ready&&legacyEditorActive&&opened&&!unsaved&&!s.pending&&!catalogLoadError){status.dataset.state='legacy';status.textContent='Alguns campos não foram recuperados. Confira os dados antes de editar.';}
   if(ready&&!hasEditorSnapshot()&&!s.pending&&!catalogLoadError){status.dataset.state='unsupported';status.textContent=snapshotUnavailable;}
   if(ready&&embeddedBlocked&&!s.pending&&!catalogLoadError){
    status.dataset.state='unsupported';status.textContent=embeddedUnavailable;
@@ -709,8 +709,8 @@ export function mountAssessmentLibrary({
   if(signature!==lastScoringSections)renderScoring();else updateSummary();
   status.dataset.state='draft';
   status.textContent=controller.view().pending?
-   'A operação anterior continua pendente; alterações recentes ainda não foram salvas.':
-   'Alterações ainda não salvas nesta avaliação.';
+   'Operação em andamento. Alterações não salvas.':
+   'Alterações não salvas.';
   render({preserveError:true}); // Refresh disabled actions without losing the edit warning.
  }
  // Capture the editor state before native onclick handlers mutate sections.
