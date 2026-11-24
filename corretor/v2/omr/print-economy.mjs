@@ -47,7 +47,7 @@ function positionedSvg(source,slot){
  return open+raw.slice(found[0].length);
 }
 const named=student=>Boolean(student&&typeof student==='object'&&Object.values(student).some(v=>typeof v==='string'&&v.trim()));
-export function buildEconomyPrintDocument({template,manifest,header,renderSvg,copies}){
+export function buildEconomySheetSvg({template,manifest,header,renderSvg,copies}){
  const p=planEconomySheet(manifest,copies);
  if(!template||typeof renderSvg!=='function')throw new TypeError('Modelo SVG indisponível.');
  if(named(template.identity?.student)||named(manifest.identity?.student)||named(manifest.identityCode?.student)||
@@ -58,6 +58,11 @@ export function buildEconomyPrintDocument({template,manifest,header,renderSvg,co
  const lines=p.guides.map(g=>'<line data-economy-cut="'+g.axis+'" x1="'+num(g.x1)+'" y1="'+num(g.y1)+'" x2="'+num(g.x2)+'" y2="'+num(g.y2)+'" stroke="#777" stroke-width=".32" stroke-dasharray="1.7 1.5" fill="none"/>').join('');
  const svg='<svg xmlns="http://www.w3.org/2000/svg" class="economy-sheet" role="img" aria-label="A4 com '+copies+' quadros idênticos" width="'+p.widthMm+'mm" height="'+p.heightMm+'mm" viewBox="0 0 '+p.widthMm+' '+p.heightMm+'" data-economy-copies="'+copies+'" data-economy-scale="'+p.scale+'" data-economy-orientation="'+p.orientation+'" data-source-hash="'+manifest.contentHash+'">'+
   '<rect width="'+p.widthMm+'" height="'+p.heightMm+'" fill="#fff"/>'+copiesSvg+'<g data-economy-guides="true">'+lines+cutter(p.widthMm/2,p.heightMm/2)+'</g></svg>';
+ return {svg,plan:p};
+}
+export function buildEconomyPrintDocument(options){
+ const {svg,plan:p}=buildEconomySheetSvg(options);
+ const copies=p.copies;
  const advice='A4 '+(p.orientation==='landscape'?'paisagem':'retrato')+' · '+copies+' cópias · escala '+(p.scale*100).toFixed(2).replace('.',',')+'%. Imprima em tamanho real (100%), sem ajustar à página. Leitura física de quadros reduzidos ainda não homologada.';
  return '<!doctype html><html lang="pt-BR"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Impressão econômica SALTA</title><style>'+
  '@page{size:A4 '+p.orientation+';margin:0}html,body{margin:0;padding:0;background:#fff}.economy-page{width:'+p.widthMm+'mm;height:'+p.heightMm+'mm;margin:0;overflow:hidden;break-after:auto;page-break-after:auto}.economy-sheet{display:block;width:'+p.widthMm+'mm;height:'+p.heightMm+'mm;max-width:none;max-height:none}.print-advice{font:14px Arial,sans-serif;padding:8px;text-align:center}'+

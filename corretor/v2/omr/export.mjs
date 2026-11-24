@@ -124,7 +124,7 @@ export async function embedRasterResolution(blob, { format, dpi }) {
   return new Blob([output], { type: format });
 }
 
-function bindStudentToManifest(manifest, student) {
+export function bindStudentToManifest(manifest, student) {
   const bound = JSON.parse(JSON.stringify(manifest));
   if (bound.identityCode?.mode === "seven-digit-code") {
     const code = String(student?.code || "");
