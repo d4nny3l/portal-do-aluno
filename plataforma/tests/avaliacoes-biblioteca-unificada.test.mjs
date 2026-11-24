@@ -421,7 +421,7 @@ test('P0 race SELECT: delayed issued selection cannot revive old answer key afte
  await selecting;
  assert.equal(f.getSelected(),null,'stale selection must never activate private key');
  assert.equal(f.mounted.controller.view().record.id,initial.id,'preserve writable record for editing B');
- assert.match(f.top.children[4].textContent,/não foram salvas|confirme novamente/);
+ assert.match(f.top.children[4].textContent,/Alterações não salvas|confirme novamente/i);
  await f.button('Usar na correção').handlers.click();
  assert.equal(f.getSelected(),null,'unsaved B cannot silently select old issued A');
  await f.button('Salvar avaliação').handlers.click();
@@ -448,7 +448,7 @@ test('P0 race SAVE: delayed receipt confirms frozen A while edited B remains uns
  assert.equal(result.revision,1);
  assert.equal(result.definition.title,'Avaliação de Matemática');
  assert.equal(f.m.editor.fields.assessmentTitle,'Título posterior B','local edit B must remain visible');
- assert.match(f.top.children[4].textContent,/avaliação enviada foi salva.*alterações posteriores/i);
+ assert.match(f.top.children[4].textContent,/Alterações não salvas/i);
  assert.equal(f.getPending(),null,'receipt and verifying GET settled original request');
  await f.button('Salvar avaliação').handlers.click();
  assert.equal(f.mounted.controller.view().record.revision,2);
@@ -477,7 +477,7 @@ test('P0 retry: edited B cannot change original requestId/body/CAS while lost A 
  assert.equal(saved.revision,1,'idempotent replay cannot create revision 2');
  assert.equal(saved.definition.title,'Avaliação de Matemática');
  assert.equal(f.m.editor.fields.assessmentTitle,'Outra edição B');
- assert.match(f.top.children[4].textContent,/alterações posteriores/i);
+ assert.match(f.top.children[4].textContent,/Alterações não salvas/i);
 });
 
 test('P0 race OPEN: an old GET cannot overwrite edits made while assessment is loading',async()=>{
@@ -515,7 +515,7 @@ test('P0 structural buttons: delayed SELECT never reactivates an old key without
   hold.resolve();await selecting;
   assert.equal(f.getSelected(),null,'old key cannot return after '+kind);
   assert.equal(f.mounted.controller.view().record.id,id,'keep writable revision for B');
-  assert.match(f.top.children[4].textContent,/não foram salvas|confirme novamente/i);
+  assert.match(f.top.children[4].textContent,/Alterações não salvas|confirme novamente/i);
   assert.equal(f.button('Usar na correção').disabled,true);
  });
 });
@@ -529,7 +529,7 @@ test('P0 structural buttons: an already active selection is cleared without an i
   await f.silentClick(kind);
   assert.equal(f.getSelected(),null,'already selected key must be cleared after '+kind);
   assert.equal(f.button('Usar na correção').disabled,true);
-  assert.match(f.top.children[4].textContent,/alterações ainda não salvas/i);
+  assert.match(f.top.children[4].textContent,/Alterações não salvas/i);
  });
 });
 
@@ -554,7 +554,7 @@ test('P0 structural buttons: delayed PUT preserves A receipt but never declares 
   assert.equal(f.getPending(),null);
   assert.equal(f.writeCalls[0].requestId,original);
   assert.equal(f.writeCalls[0].expectedRevision,0);
-  assert.match(f.top.children[4].textContent,/avaliação enviada foi salva.*alterações posteriores/i);
+  assert.match(f.top.children[4].textContent,/Alterações não salvas/i);
   assert.equal(f.button('Usar na correção').disabled,true);
  });
 });
@@ -589,7 +589,7 @@ test('P0 structural retry: requestId, body and CAS are unchanged after silent se
  assert.equal(f.writeCalls.length,2);
  assert.deepEqual(f.writeCalls[0],f.writeCalls[1],'frozen HTTP payload and CAS must replay byte-for-byte');
  assert.equal(f.mounted.controller.view().record.revision,1);
- assert.match(f.top.children[4].textContent,/alterações posteriores/i);
+ assert.match(f.top.children[4].textContent,/Alterações não salvas/i);
 });
 
 
