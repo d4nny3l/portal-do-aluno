@@ -8,7 +8,6 @@ import {fileURLToPath} from 'node:url';
 export const ROOT=fileURLToPath(new URL('..',import.meta.url));
 export const matrix=JSON.parse(readFileSync(new URL('dependencies.json',import.meta.url)));
 const require=createRequire(new URL('../assessments-lab/package.json',import.meta.url));
-const {build}=require('esbuild');
 export const sha256=b=>createHash('sha256').update(b).digest('hex');
 export function verifyDependencies(read=p=>readFileSync(path.join(ROOT,p))){
  if(matrix.inputs.length!==17||new Set(matrix.inputs.map(x=>x.path)).size!==17||matrix.inputs.filter(x=>x.comparison==='identical').length!==14)throw Error('Dependency matrix cardinality');
@@ -19,6 +18,7 @@ export function verifyDependencies(read=p=>readFileSync(path.join(ROOT,p))){
  return matrix;
 }
 export async function buildBackend(directory){
+ const {build}=require('esbuild');
  verifyDependencies();
  const result=await build({absWorkingDir:ROOT,entryPoints:[path.join(ROOT,'assessments-service/worker.mjs')],bundle:true,write:false,format:'esm',platform:'browser',target:'es2022',keepNames:true,metafile:true});
  const actual=Object.keys(result.metafile.inputs).map(p=>path.relative(ROOT,path.resolve(ROOT,p.split('?')[0])).split(path.sep).join('/')).sort();
