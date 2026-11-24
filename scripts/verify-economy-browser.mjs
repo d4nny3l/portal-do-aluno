@@ -9,7 +9,7 @@ import {createCardManifest,renderTemplateSvg,DEFAULT_CARD_HEADER} from '../corre
 import {buildPrintDocument} from '../corretor/v2/omr/export.mjs';
 import {planEconomySheet} from '../corretor/v2/omr/print-economy.mjs';
 const {chromium}=await import(process.env.SALTA_PLAYWRIGHT_MODULE||'playwright');
-const root=fileURLToPath(new URL('../',import.meta.url));
+const root=path.resolve(fileURLToPath(new URL('../',import.meta.url))); // strip trailing separator for safe asset-path containment
 const out=process.argv[2]||path.join(root,'tmp/economy-print-evidence');
 mkdirSync(out,{recursive:true});
 const logo='data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVQIHWP4z8DwHwAFgAI/ScLbtAAAAABJRU5ErkJggg==';
