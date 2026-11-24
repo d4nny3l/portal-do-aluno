@@ -13,9 +13,9 @@ function embedded(label='MATEMÁTICA',widthMm=100,heightMm=180,code=false){
   showName:false,columnCount:2});
  return {template,manifest:createCardManifest(template)};
 }
-function fillRect(pixels,w,h,x,y,size,value){
- for(let py=Math.max(0,Math.floor(y));py<Math.min(h,Math.ceil(y+size));py++)
-  for(let px=Math.max(0,Math.floor(x));px<Math.min(w,Math.ceil(x+size));px++)pixels[py*w+px]=value;
+function fillRect(pixels,w,h,x,y,spanW,spanH,value){
+ for(let py=Math.max(0,Math.floor(y));py<Math.min(h,Math.ceil(y+spanH));py++)
+  for(let px=Math.max(0,Math.floor(x));px<Math.min(w,Math.ceil(x+spanW));px++)pixels[py*w+px]=value;
 }
 function scene(manifest,{left=140,top=100,scale=5,shade=255}={}){
  const width=1100,height=1250,pixels=new Uint8Array(width*height).fill(shade);
@@ -25,7 +25,7 @@ function scene(manifest,{left=140,top=100,scale=5,shade=255}={}){
  const spot=({x,y})=>({x:left+x*scale,y:top+y*scale});
  for(const f of manifest.technicalRegions.fiducials){
   const x=left+(f.x-f.sizeMm/2)*scale,y=top+(f.y-f.sizeMm/2)*scale;
-  fillRect(pixels,width,height,x,y,f.sizeMm*scale,10);
+  fillRect(pixels,width,height,x,y,f.sizeMm*scale,f.sizeMm*scale,10);
  }
  const point=manifest.technicalRegions.fiducials.map(spot);
  return {pixels,width,height,point};
@@ -115,16 +115,6 @@ test('EMBED-ALIGN: A-E strong, double, blank, and ambiguous marks from one embed
  const normalized=warpFromFiducials(image.pixels,image.width,image.height,image.point,{outputWidth:700,manifest});
  const read=readRaster(template,normalized.pixels,normalized.width,normalized.height,{manifest,showCode:false});
  const byNumber=n=>read.observations.find(q=>q.number===n);
- const diagnostic=layoutTemplate(template,{width:normalized.width,height:normalized.height,manifest});
- const fromBubble=cell=>cell.bubbles[0];
- const d=diagnostic.cells[2],bb=fromBubble(d);
- const bInput=manifest.questions.find(q=>q.number===3).bubbles[0];
- console.log('EMBED-ALIGN PIXEL debug',JSON.stringify({
-  blankTarget:[bb.x,bb.y,normalized.pixels[Math.round(bb.y)*normalized.width+Math.round(bb.x)]],
-  blankInput:[140+bInput.x*5,100+bInput.y*5,image.pixels[Math.round(100+bInput.y*5)*image.width+Math.round(140+bInput.x*5)]],
-  imageSize:[normalized.width,normalized.height],paper:manifest.paper,
-  sections:manifest.sections.map(x=>({y:x.y,heading:x.heading}))}));
- console.log('EMBED-ALIGN ink debug',JSON.stringify(read.observations.slice(0,5)));
  assert.equal(byNumber(1).state,'read');assert.equal(byNumber(1).answer,'B');
  assert.notEqual(byNumber(2).state,'read','double cannot become definite answer');
  assert.equal(byNumber(2).answer,null);
@@ -142,7 +132,6 @@ test('EMBED-ALIGN: physical seven-digit ID in wide embedded frame remains readab
  }
  const n=warpFromFiducials(image.pixels,image.width,image.height,image.point,{outputWidth:900,manifest});
  const read=readRaster(template,n.pixels,n.width,n.height,{manifest,showCode:true});
- console.log('EMBED-ALIGN code debug',JSON.stringify(read.identity));
  assert.equal(read.identity.state,'read');
  assert.equal(read.identity.code,code);
  assert.ok(read.observations.every(x=>x.state==='blank'));
