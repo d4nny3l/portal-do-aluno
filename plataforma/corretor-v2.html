@@ -263,8 +263,6 @@ function scanCameraFrame(){
  stableFrames=quality.ok&&samePosition(detection,previousCorners,width,height)?stableFrames+1:0;previousCorners=detection;
  const guidance=quality.ok?(stableFrames>=2?'Validando captura…':'Mantenha a folha estável ('+stableFrames+'/2).'):quality.message;
  if($('cameraGuideStatus').textContent!==guidance)setScanMessage(guidance);
- if(!stableFrames)
-
  typeof setCameraProgress==='function'&&setCameraProgress(stableFrames>=2,false,false);
  if(stableFrames>=2&&Date.now()-lastCaptureAt>=2000){lastCaptureAt=Date.now();captureBusy=true;try{typeof markLastReadingPending==='function'&&markLastReadingPending();const capture=captureFrameGray(),projected=mapFramePoints(detection.corners,frame,capture),actual=detectFiducials(capture.gray,capture.width,capture.height,{manifest:typeof activeManifest==='undefined'?null:activeManifest});if(!actual.found||actual.confidence<.7||actual.corners?.length!==4)throw new Error('Marcadores instáveis na captura. Segure a folha e tente novamente.');const tolerance=Math.hypot(capture.width,capture.height)*.012;if(actual.corners.some((point,i)=>Math.hypot(point.x-projected[i].x,point.y-projected[i].y)>tolerance))throw new Error('A folha se moveu durante a captura. Segure-a e tente novamente.');
  const finalQuality=captureQuality(capture,actual,capture);
