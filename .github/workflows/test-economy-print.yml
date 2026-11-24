@@ -5,9 +5,12 @@ on:
     paths:
       - 'corretor/v2/omr/print-economy.mjs'
       - 'corretor/v2/omr/export.mjs'
+      - 'corretor/v2/omr/pdf-download.mjs'
+      - 'plataforma/vendor/pdf/**'
       - 'corretor/v2/tests/economy-print.test.mjs'
       - 'plataforma/corretor-v2.html'
       - 'scripts/verify-economy-browser.mjs'
+      - 'scripts/verify-direct-pdf-browser.mjs'
       - '.github/workflows/test-economy-print.yml'
 permissions:
   contents: read
@@ -26,6 +29,7 @@ jobs:
         run: |
           node --check corretor/v2/omr/print-economy.mjs
           node --check corretor/v2/omr/export.mjs
+          node --check corretor/v2/omr/pdf-download.mjs
           node --check corretor/v2/tests/economy-print.test.mjs
           node --check scripts/verify-economy-browser.mjs
           node --test corretor/v2/tests/economy-print.test.mjs

@@ -30,7 +30,7 @@ jobs:
       - name: Classify the strictly authorized print-only #122 delta
         id: print_scope
         run: |
-          if node scripts/verify-economy-scope.mjs; then
+          if node scripts/verify-direct-pdf-scope.mjs || node scripts/verify-economy-scope.mjs; then
             echo 'print_only=true' >> "$GITHUB_OUTPUT"
           else
             echo 'print_only=false' >> "$GITHUB_OUTPUT"
