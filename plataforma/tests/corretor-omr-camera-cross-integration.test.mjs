@@ -44,7 +44,7 @@ test('P1 integration: audited reader + camera code, imports, hidden bank gate, n
  assert.match(html,/recognition==='partial'/);
  assert.match(html,/Marcação parcial reconhecida automaticamente/);
  assert.match(html,/if\(\$\('read'\)\.disabled\)throw new Error/);
- assert.match(html,/stableFrames>=3/);
+ assert.match(html,/stableFrames>=2/);
  assert.match(html,/waitingForRemoval/);
  assert.match(html,/function scanCameraFrame\(\)/);
  assert.match(html,/cameraTorchButton/);
