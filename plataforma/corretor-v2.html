@@ -127,10 +127,6 @@ function toPageRaster(gray,width,height,manualCorners=null){
    manifest.mode!=='embedded'||manifest.templateId!==template.templateId||
    manifest.revision!==template.revision||!validateLayoutManifest(manifest).valid))
    throw new Error('Selecione o manifesto exato e válido do quadro incorporado.');
- if(embedded&&manualCorners){
-  const side=Math.min(...manualCorners.map((p,i)=>Math.hypot(p.x-manualCorners[(i+1)%4].x,p.y-manualCorners[(i+1)%4].y)));
-  if(side<220)throw new Error('Aproxime a câmera do quadro para ler as marcações com segurança.');
- }
  const outputWidth=embedded?Math.min(1400,Math.floor(2200*manifest.paper.widthMm/manifest.paper.heightMm)):1400;
  const options={outputWidth,manifest};
  if(manualCorners)return warpFromFiducials(gray,width,height,manualCorners,options);
