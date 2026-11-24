@@ -91,7 +91,9 @@ async function fill(p,{title,mode,visible,logos,score,columns,teacher,school}){
   await p.locator('#logoWidth2').evaluate(e=>{e.value='18';e.dispatchEvent(new Event('input',{bubbles:true}))});
  }
  await p.locator('#headerSettings summary').click();
+ await p.locator('#identitySettings summary').click();
  await p.locator('#showInstructions').setChecked(logos);
+ await p.locator('#identitySettings summary').click();
  // These next-block controls are independent of the printed questions.
  await p.locator('#type').selectOption(logos?'CDU':'A-D');
  await p.locator('#count').fill(logos?'':'7');
