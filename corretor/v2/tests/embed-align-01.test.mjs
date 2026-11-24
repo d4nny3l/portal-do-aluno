@@ -115,6 +115,15 @@ test('EMBED-ALIGN: A-E strong, double, blank, and ambiguous marks from one embed
  const normalized=warpFromFiducials(image.pixels,image.width,image.height,image.point,{outputWidth:700,manifest});
  const read=readRaster(template,normalized.pixels,normalized.width,normalized.height,{manifest,showCode:false});
  const byNumber=n=>read.observations.find(q=>q.number===n);
+ const diagnostic=layoutTemplate(template,{width:normalized.width,height:normalized.height,manifest});
+ const fromBubble=cell=>cell.bubbles[0];
+ const d=diagnostic.cells[2],bb=fromBubble(d);
+ const bInput=manifest.questions.find(q=>q.number===3).bubbles[0];
+ console.log('EMBED-ALIGN PIXEL debug',JSON.stringify({
+  blankTarget:[bb.x,bb.y,normalized.pixels[Math.round(bb.y)*normalized.width+Math.round(bb.x)]],
+  blankInput:[140+bInput.x*5,100+bInput.y*5,image.pixels[Math.round(100+bInput.y*5)*image.width+Math.round(140+bInput.x*5)]],
+  imageSize:[normalized.width,normalized.height],paper:manifest.paper,
+  sections:manifest.sections.map(x=>({y:x.y,heading:x.heading}))}));
  console.log('EMBED-ALIGN ink debug',JSON.stringify(read.observations.slice(0,5)));
  assert.equal(byNumber(1).state,'read');assert.equal(byNumber(1).answer,'B');
  assert.notEqual(byNumber(2).state,'read','double cannot become definite answer');
