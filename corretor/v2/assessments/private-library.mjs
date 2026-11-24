@@ -155,7 +155,7 @@ export function createPrivateLibraryController({
   if(s.editorMode==='opened'&&!s.record)throw new Error('A avaliação ativa não foi confirmada.');
   const editor=getDraft();
   const current=s.record;
-  const op=client.prepareSave({plan:editor.plan,manifest:editor.manifest,scope:{...s.scope},
+  const op=client.prepareSave({plan:editor.plan,manifest:editor.manifest,editorSnapshot:editor.editorSnapshot,scope:{...s.scope},
    assessmentId:current?.id||null,expectedRevision:current?.revision||0,status});
   return runPending(op,op0=>client.saveAndVerify(op0),res=>{
    s.record=res.record;s.editorMode='opened';signal('saved','Salvo · revisão '+res.record.revision+' confirmada pelo recibo e consulta do servidor.');
