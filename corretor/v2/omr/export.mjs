@@ -1,5 +1,6 @@
 import { PAGE_HEIGHT_MM, PAGE_WIDTH_MM } from "./template.mjs?v=20261114v2final";
 import { createCardManifest, renderTemplateSvg, DEFAULT_CARD_HEADER } from "./render.mjs?v=20261123cont110";
+import { buildEconomyPrintDocument } from "./print-economy.mjs?v=20261124print122";
 
 export const EXPORT_VERSION = "salta-omr-export-v1";
 
@@ -137,10 +138,14 @@ function bindStudentToManifest(manifest, student) {
   return bound;
 }
 
-export function buildPrintDocument(template, { header = DEFAULT_CARD_HEADER, students = [], manifest: suppliedManifest = null } = {}) {
+export function buildPrintDocument(template, { header = DEFAULT_CARD_HEADER, students = [], manifest: suppliedManifest = null, economyCopies = 0 } = {}) {
   if (!template || !Array.isArray(students)) throw new TypeError("Informe o modelo e a lista de cartões.");
   if (students.length > 500) throw new RangeError("A impressão em lote aceita até 500 cartões por operação.");
   const baseManifest = suppliedManifest || createCardManifest(template, header);
+  if(economyCopies!==0){
+    if(students.length)throw new TypeError("A impressão econômica não aceita lista nominal.");
+    return buildEconomyPrintDocument({template,manifest:baseManifest,header,renderSvg:renderTemplateSvg,copies:economyCopies});
+  }
   const roster = students.length ? students : [template.identity?.student || null];
   const pages = roster.map((student, index) => {
     const studentManifest = bindStudentToManifest(baseManifest, student);
