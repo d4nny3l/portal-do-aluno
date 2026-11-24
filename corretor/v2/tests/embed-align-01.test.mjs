@@ -1,5 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
+import {readFileSync} from 'node:fs';
 import {createTemplate,layoutTemplate,createLegacyTemplate} from '../omr/template.mjs';
 import {createCardManifest,renderTemplateSvg} from '../omr/render.mjs';
 import {normalizeCard,warpFromFiducials,detectFiducials} from '../omr/normalize.mjs';
@@ -60,7 +61,7 @@ test('EMBED-ALIGN: embedded manifest mismatch and malformed fiducial positions f
 });
 
 test('EMBED-ALIGN: distant capture must be rejected by physical pixel-size gate in camera flow',()=>{
- const html=(await import('node:fs')).readFileSync(new URL('../../../plataforma/corretor-v2.html',import.meta.url),'utf8');
+ const html=readFileSync(new URL('../../../plataforma/corretor-v2.html',import.meta.url),'utf8');
  assert.match(html,/side<220/);
  assert.match(html,/Aproxime a câmera do quadro/);
  assert.match(html,/validateLayoutManifest\(manifest\)\.valid/);
