@@ -35,10 +35,10 @@ jobs:
           else
             echo 'print_only=false' >> "$GITHUB_OUTPUT"
           fi
-      - name: Classify exact CAM-FOCUS-01 delta (PR #127 only)
+      - name: Classify scoped frontend-only changes (#127/#128/#130)
         id: camera_scope
         run: |
-          if node scripts/verify-single-shot-scope.mjs || node scripts/verify-camera-focus-scope.mjs; then
+          if node scripts/verify-product-ux-scope.mjs || node scripts/verify-single-shot-scope.mjs || node scripts/verify-camera-focus-scope.mjs; then
             echo 'camera_only=true' >> "$GITHUB_OUTPUT"
           else
             echo 'camera_only=false' >> "$GITHUB_OUTPUT"
@@ -59,10 +59,10 @@ jobs:
       - name: Current frontend/backend, synthetic Auth, local D1 and unchanged gateway regressions
         if: steps.print_scope.outputs.print_only != 'true' && steps.camera_scope.outputs.camera_only != 'true'
         run: node assessments-service/test-composition.mjs
-      - name: CAM-FOCUS-01 — verify unchanged current dependencies and run original #120 guard and full historical suite
+      - name: Frontend-only — verify unchanged dependencies and execute original #120 guard and historical suite
         if: steps.camera_scope.outputs.camera_only == 'true'
         run: |
-          node scripts/verify-single-shot-scope.mjs || node scripts/verify-camera-focus-scope.mjs
+          node scripts/verify-product-ux-scope.mjs || node scripts/verify-single-shot-scope.mjs || node scripts/verify-camera-focus-scope.mjs
           node --input-type=module -e "import {verifyDependencies} from './assessments-service/build.mjs'; verifyDependencies()"
           git worktree add --detach "$RUNNER_TEMP/salta-120" ce74c520a464a17ed7fda2991df92f984a04d8e7
           cd "$RUNNER_TEMP/salta-120"
