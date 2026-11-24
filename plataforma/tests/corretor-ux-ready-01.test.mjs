@@ -67,7 +67,7 @@ test('CLEAN UX 01: comparacao curta preserva contexto acessivel e leitura sem fa
 });
 
 test('CLEAN UX 01: titulo da avaliacao e orientacao de enquadramento continuam contextuais',()=>{
- assert.match(html,/selection\.plan\.metadata\.title\+' · Confira se os cartões pertencem a esta avaliação\.'/);
+ assert.match(html,/selection\.plan\.metadata\.title\+' · avaliação confirmada para correção\. Confira se os cartões pertencem a esta avaliação\.'/);
  assert.match(html,/'Avaliação '\+bundle\.title\+' · Confira se os cartões pertencem a esta avaliação\.'/);
  const source=html.match(/^function scanModelNotice\(model\).*$/m)?.[0];
  assert.ok(source,'função de aviso contextual deve continuar definida');
