@@ -228,10 +228,10 @@ test('P1 camera controls remain capability-gated; scanner owns capture',()=>{
  assert.match(html,/stableFrames>=3/);
  assert.match(html,/captureQuality\(frame,detection,previousCameraFrame,\{captureSize\}\)/);
  assert.match(html,/projected=mapFramePoints\(detection.corners,frame,capture\)/);
- assert.match(html,/actual=detectFiducials\(capture.gray,capture.width,capture.height\)/);
+ assert.match(html,/actual=detectFiducials\(capture\.gray,capture\.width,capture\.height,\{manifest:typeof activeManifest==='undefined'\?null:activeManifest\}\)/);
  assert.match(html,/const chosen=prior&&nowScore!==null/);
  assert.match(html,/manualCorners:chosen.actual.corners/);
- assert.match(html,/actual=detectFiducials\(capture.gray,capture.width,capture.height\)/);
+ assert.match(html,/actual=detectFiducials\(capture\.gray,capture\.width,capture\.height,\{manifest:typeof activeManifest==='undefined'\?null:activeManifest\}\)/);
  assert.match(html,/corretor-v2\.css\?v=20261121ux79c1/);
  assert.match(html,/camera\.mjs\?v=20261124focus52/);
  assert.match(css,/\.camera-stage video\{object-position:center;transform:none\}/);
