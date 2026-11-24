@@ -3,7 +3,8 @@ import assert from 'node:assert/strict';
 import {readFileSync,writeFileSync,mkdirSync,existsSync} from 'node:fs';
 import path from 'node:path';
 import {fileURLToPath} from 'node:url';
-import {PDFDocument} from 'pdf-lib';
+const pdfLib=await import(process.env.SALTA_PDFLIB_MODULE||'pdf-lib');
+const PDFDocument=pdfLib.PDFDocument||pdfLib.default?.PDFDocument;
 const {chromium}=await import(process.env.SALTA_PLAYWRIGHT_MODULE||'playwright');
 const pdfjs=await import(process.env.SALTA_PDFJS_MODULE||'pdfjs-dist/legacy/build/pdf.mjs');
 const root=path.resolve(fileURLToPath(new URL('../',import.meta.url)));
@@ -100,7 +101,7 @@ async function downloadPdf(p,{button='printCard',filename,outputName,landscape=f
  return {name:outputName,filename,bytes:bytes.length,infos,manifestHash:before};
 }
 async function navigate(p,id){await p.locator('nav.module-nav [data-view="'+id+'"]').click();}
-async function openIdentity(p){if(!await p.locator('#identitySettings').getAttribute('open'))await p.locator('#identitySettings summary').click();}
+async function openIdentity(p){if(await p.locator('#identitySettings').getAttribute('open')===null)await p.locator('#identitySettings summary').click();}
 async function closeIdentity(p){if(await p.locator('#identitySettings').getAttribute('open')!==null)await p.locator('#identitySettings summary').click();}
 const ctx=await createContext();
 let p;
