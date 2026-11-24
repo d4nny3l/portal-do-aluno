@@ -251,6 +251,8 @@ export function createDownload(blob, filename) {
   const link = document.createElement("a");
   link.href = url;
   link.download = filename;
-  link.click();
+  // Safari/WebKit is more reliable when the temporary anchor belongs to the document.
+  document.body.appendChild(link);
+  try { link.click(); } finally { link.remove(); }
   setTimeout(() => URL.revokeObjectURL(url), 30_000);
 }
