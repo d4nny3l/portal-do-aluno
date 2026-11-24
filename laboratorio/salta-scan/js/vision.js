@@ -365,9 +365,9 @@ function paperContrastQuad(rgba,w,h){
    if(diff>maxDiff){maxDiff=diff;tr=[cx,cy]}
    if(sum>maxSum){maxSum=sum;br=[cx,cy]}
    if(diff<minDiff){minDiff=diff;bl=[cx,cy]}
-   const neighbors=[p-1,p+1,p-w,p+w];
+   const neighbors=[cx>0?p-1:-1,cx+1<w?p+1:-1,cy>0?p-w:-1,cy+1<h?p+w:-1];
    for(let v of neighbors){
-    if(mask[v]||lum[v]<threshold||sat[v]>80)continue;
+    if(v<0||v>=n||mask[v]||lum[v]<threshold||sat[v]>80)continue;
     mask[v]=1;stack[write++]=v;
    }
   }
