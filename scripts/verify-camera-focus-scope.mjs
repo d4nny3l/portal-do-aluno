@@ -7,6 +7,7 @@ const root=fileURLToPath(new URL('../',import.meta.url));
 const base='65ca8f4286b6fbbe663e9451ed5978eea4ccb50b';
 const allowed=new Set([
  'corretor/v2/omr/camera.mjs',
+ 'corretor/v2/omr/normalize.mjs',
  'corretor/v2/tests/cam-focus-01.test.mjs',
  'plataforma/corretor-v2.html',
  'plataforma/tests/corretor-camera-progress-p1.test.mjs',
@@ -41,6 +42,7 @@ try{
  const old=git('show',base+':plataforma/corretor-v2.html');
  let now=readFileSync(path.join(root,'plataforma/corretor-v2.html'),'utf8').trim();
  now=once(now,'camera.mjs?v=20261124focus52','camera.mjs?v=20261118wide1');
+ now=once(now,'normalize.mjs?v=20261124focus52','normalize.mjs?v=20261115camera1');
  now=once(now,'<span id="cameraFocusLabel" hidden><button id="cameraFocus" type="button">Solicitar foco</button></span>','');
  now=once(now,'<label class="camera-check" id="cameraTorchLabel"','<span id="cameraFocusLabel" hidden><button id="cameraFocus" type="button">Focar automaticamente</button></span><label class="camera-check" id="cameraTorchLabel"');
  // Reconstruct only camera implementation slots; all scoring, import,
@@ -57,5 +59,9 @@ try{
   now=now.slice(0,a)+old.slice(c,d)+now.slice(z);
  }
  if(now!==old)throw Error('HTML changed outside camera-only slots');
+ // Verify perspective warp, normalization entry and reader are unchanged.
+ const npath='corretor/v2/omr/normalize.mjs',previous=git('show',base+':'+npath),current=readFileSync(path.join(root,npath),'utf8').trim();
+ const boundary='function solve(matrix, values) {';
+ if(previous.slice(previous.indexOf(boundary))!==current.slice(current.indexOf(boundary)))throw Error('Perspective warp or normalization changed');
  console.log('CAM-FOCUS-01 exact camera-only scope PASS; all unrelated sources and HTML unchanged vs '+base);
 }catch(e){console.error('Not CAM-FOCUS-01:',e.message);process.exitCode=1}

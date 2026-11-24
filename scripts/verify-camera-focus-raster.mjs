@@ -59,11 +59,13 @@ for(const [name,w,h,version,count=10,showCode=false] of cases){
   const wideW=Math.round(W*1100/H);
   const wideGray=await sharp(photo,{raw:{width:W,height:H,channels:1}}).resize(wideW,1100).greyscale().raw().toBuffer();
   const preview={gray:small,width:W/2,height:H/2},full={gray:photo,width:W,height:H},wide={gray:wideGray,width:wideW,height:1100};
-  const d=detectFiducials(small,preview.width,preview.height),f=detectFiducials(photo,W,H),dWide=detectFiducials(wide.gray,wide.width,wide.height);
-  const prior=oldQuality(preview,d,preview),q=captureQuality(preview,d,preview,{captureSize:full}),final=captureQuality(full,f,full);
+  const legacyDetection=detectFiducials(small,preview.width,preview.height);
+  const options={manifest};
+  const d=detectFiducials(small,preview.width,preview.height,options),f=detectFiducials(photo,W,H,options),dWide=detectFiducials(wide.gray,wide.width,wide.height,options);
+  const prior=oldQuality(preview,legacyDetection,preview),q=captureQuality(preview,d,preview,{captureSize:full}),final=captureQuality(full,f,full);
   const alternativeWide=captureQuality(wide,dWide,wide,{captureSize:full});
   const maxError=(det,frame)=>det.found&&det.corners.length===4?Math.max(...det.corners.map((p,i)=>Math.hypot(p.x*W/frame.width-expected[i].x,p.y*H/frame.height-expected[i].y))):null;
-  const entry={name,width,expected,legacy:prior,preview:q,final,preview1100:alternativeWide,previewErrorPx:maxError(d,preview),finalErrorPx:maxError(f,full),preview1100ErrorPx:maxError(dWide,wide),previewConfidence:d.confidence,finalConfidence:f.confidence,previewCorners:d.corners,finalCorners:f.corners};
+  const entry={name,width,expected,legacy:prior,legacyCorners:legacyDetection.corners,legacyErrorPx:maxError(legacyDetection,preview),preview:q,final,preview1100:alternativeWide,previewErrorPx:maxError(d,preview),finalErrorPx:maxError(f,full),preview1100ErrorPx:maxError(dWide,wide),previewConfidence:d.confidence,finalConfidence:f.confidence,previewCorners:d.corners,finalCorners:f.corners};
   report.push(entry);
   if(width===470){
    await sharp(small,{raw:{width:W/2,height:H/2,channels:1}}).png().toFile(out+'/'+name+'-preview.png');

@@ -47,21 +47,24 @@ for(const profile of [
   };
   const canvas=document.createElement('canvas');canvas.width=1200;canvas.height=1800;
   const ctx=canvas.getContext('2d');
-  let image=null,stream=null,track=null,timer=null;
+  let image=null,stream=null,track=null,timer=null,draws=0;
+  // WebKit may suspend capture of a detached canvas: keep the source rendered.
+  // The test still uses a real MediaStream and native video drawImage in the app.
+  const mount=()=>{if(canvas.isConnected)return;canvas.style.cssText='position:fixed;left:0;top:0;width:12px;height:18px;z-index:2147483647;pointer-events:none';document.body.append(canvas);};
   const fixture={focusRequests:0,async setFrame(src){
-   if(!src){image=null;return}
-   const next=new Image();next.src=src;await next.decode();image=next;
+   if(!src){image=null;draw();return}
+   const next=new Image();next.src=src;await next.decode();image=next;draw();
   }};
   const draw=()=>{
    ctx.fillStyle='#c8c8c8';ctx.fillRect(0,0,canvas.width,canvas.height);
    if(image)ctx.drawImage(image,0,0,canvas.width,canvas.height);
-   track?.requestFrame?.();
+   draws++;track?.requestFrame?.();
   };
   const media={
    async getUserMedia(options){
     if(options.audio||options.video?.facingMode?.exact!=='environment')throw Error('Expected rear-only constraint');
     if(typeof canvas.captureStream!=='function')throw Error('Synthetic MediaStream not supported in this browser');
-    draw();stream=canvas.captureStream(10);track=stream.getVideoTracks()[0];
+    mount();draw();stream=canvas.captureStream(10);track=stream.getVideoTracks()[0];
     const originalStop=track.stop.bind(track);
     Object.defineProperties(track,{
      getCapabilities:{value:()=>focus?{focusMode:['continuous']}:{}},
@@ -75,6 +78,15 @@ for(const profile of [
    async enumerateDevices(){return [{kind:'videoinput',deviceId:'synthetic-camera',label:'Back Camera (synthetic)'}]}
   };
   Object.defineProperty(navigator,'mediaDevices',{value:media,configurable:true});
+  fixture.diagnostics=()=>{
+    const video=document.querySelector('#video'),probe=document.createElement('canvas');probe.width=120;probe.height=180;
+    const pc=probe.getContext('2d',{willReadFrequently:true});
+    pc.drawImage(canvas,0,0,120,180);const source=pc.getImageData(0,0,120,180).data;
+    if(!video?.videoWidth||video.readyState<2)return {draws,readyState:video?.readyState,match:false};
+    pc.drawImage(video,0,0,120,180);const received=pc.getImageData(0,0,120,180).data;
+    let delta=0;for(let i=0;i<source.length;i+=4)delta+=Math.abs(source[i]-received[i]);
+    return {draws,width:video.videoWidth,height:video.videoHeight,readyState:video.readyState,meanDelta:delta/(120*180),match:delta/(120*180)<4};
+  };
   window.__camFocusFixture=fixture;
  },{focus:profile.focus});
  let page;
@@ -86,21 +98,23 @@ for(const profile of [
   await page.locator('#loadManifest').setInputFiles(path.join(fixture,'a4-v2-manifest.json'));
   await page.waitForFunction(()=>document.querySelector('#scanModelStatus').textContent.includes('Modelo importado'));
   const show=src=>page.evaluate(src=>window.__camFocusFixture.setFrame(src),src);
+  const delivered=()=>page.waitForFunction(()=>window.__camFocusFixture.diagnostics().match,undefined,{timeout:15000});
   const count=()=>page.locator('#captureHistory li').filter({hasText:/Cartão \d+/}).count();
   const waitCount=n=>page.waitForFunction(n=>[...document.querySelectorAll('#captureHistory li')].filter(el=>/Cartão \d+/.test(el.textContent)).length===n,n,{timeout:30000});
   await show(img('near-blurred'));await page.locator('#camera').click();
   await page.waitForFunction(()=>document.querySelector('#video').readyState>=2,undefined,{timeout:15000});
+  await delivered();
   assert.equal(await page.locator('#cameraFocus').isVisible(),profile.focus,'native capability gate');
   if(profile.focus){await page.locator('#cameraFocus').click();await page.waitForFunction(()=>window.__camFocusFixture.focusRequests>=2);}
   await page.waitForFunction(()=>/foco|desfocada|iluminação|marcadores/.test(document.querySelector('#cameraGuideStatus').textContent));
   await page.waitForTimeout(2500);
   assert.equal(await count(),0,'blurred frame must not reach reading');
   await page.screenshot({path:path.join(out,profile.name+'-blurred.png')});
-  await show(img('a4-v2-capture'));await waitCount(1);
+  await show(img('a4-v2-capture'));await delivered();await waitCount(1);
   await page.screenshot({path:path.join(out,profile.name+'-distant.png')});
   await page.waitForTimeout(2500);assert.equal(await count(),1,'no duplicate while same sheet remains');
-  await show(null);await page.waitForFunction(()=>/Folha retirada/.test(document.querySelector('#cameraGuideStatus').textContent));
-  await show(img('ideal'));await waitCount(2);
+  await show(null);await delivered();await page.waitForFunction(()=>/Folha retirada/.test(document.querySelector('#cameraGuideStatus').textContent));
+  await show(img('ideal'));await delivered();await waitCount(2);
   await page.screenshot({path:path.join(out,profile.name+'-next-sheet.png')});
   await page.locator('#camera').click();
   assert.equal(await page.locator('#cameraStage').isVisible(),false);
@@ -110,7 +124,8 @@ for(const profile of [
   report.results.push({profile:profile.name,focusCapabilityMocked:profile.focus,captures:2,duplicate:0,blurRejected:true,result:'PASS'});
   console.log('CAM-FOCUS-BROWSER PASS '+profile.name+' synthetic video, not physical');
  }catch(e){
-  report.results.push({profile:profile.name,result:'FAIL',error:e.stack||String(e),errors});
+  const diagnostics=await page?.evaluate(()=>window.__camFocusFixture?.diagnostics()).catch(()=>null);
+  report.results.push({profile:profile.name,result:'FAIL',error:e.stack||String(e),errors,diagnostics});
   if(page){try{await page.screenshot({path:path.join(out,profile.name+'-error.png'),fullPage:true})}catch{}}
   console.error(profile.name+' '+e.stack);process.exitCode=1;
  }finally{await context.close();await browser.close();writeFileSync(path.join(out,'report.json'),JSON.stringify(report,null,2));}

@@ -42,7 +42,7 @@ import { validateLayoutManifest } from '../corretor/v2/omr/layout.mjs?v=20261114
 import { readRaster } from '../corretor/v2/omr/reader.mjs?v=20261118final1';
 import { CameraSession, mapFramePoints, drawVideoFrame, containMapping, guidePoints, captureQuality, cameraControls, applyCameraControl, cameraZoomSnapshot } from '../corretor/v2/omr/camera.mjs?v=20261124focus52';
 import { calibrationSvg, calibrationMetrics } from '../corretor/v2/omr/camera-calibration.mjs?v=20261115camera1';
-import { detectFiducials, normalizeCard, warpFromFiducials } from '../corretor/v2/omr/normalize.mjs?v=20261115camera1';
+import { detectFiducials, normalizeCard, warpFromFiducials } from '../corretor/v2/omr/normalize.mjs?v=20261124focus52';
 let sections=[],template,activeManifest=null,activeSvg="",nextQuestionNumber=1,nextSectionOrder=0,layoutRevision=8;
 let headerState={...DEFAULT_CARD_HEADER,logoWidthMm:22,secondaryLogoWidthMm:22,logoAspect:1,secondaryLogoAspect:1,visible:{...DEFAULT_CARD_HEADER.visible,className:true},customFields:[]};
 let currentPage=1,exactScanModel=false,assessmentTitleValue='',assessmentBank=null,privateLibrary=null,privateSelection=null,privateModelLoaded=false;
@@ -255,7 +255,7 @@ function scanOpticalRank(capture,actual,q=captureQuality(capture,actual,capture)
 }
 function scanValidFrame(capture,preview,detection){
  const projected=mapFramePoints(detection.corners,preview,capture),
-   actual=detectFiducials(capture.gray,capture.width,capture.height);
+   actual=detectFiducials(capture.gray,capture.width,capture.height,{manifest:typeof activeManifest==='undefined'?null:activeManifest});
  if(!actual.found||actual.confidence<.7||actual.corners?.length!==4)return null;
  const tolerance=Math.hypot(capture.width,capture.height)*.012;
  if(actual.corners.some((p,i)=>Math.hypot(p.x-projected[i].x,p.y-projected[i].y)>tolerance))return null;
@@ -284,7 +284,7 @@ function scanCameraFrame(){
  const dimensions=`${video.videoWidth}x${video.videoHeight}`;
  if(dimensions!==cameraFrameDimensions){typeof clearScanFrameChoice==='function'&&clearScanFrameChoice();cameraFrameDimensions=dimensions;previousCameraFrame=null;stableFrames=0;previousCorners=null;typeof setCameraProgress==='function'&&setCameraProgress();updateCameraInfo();}
  const frame=drawVideoFrame(video,cameraScratch,900),{gray,width,height}=frame;let detection;
- try{detection=detectFiducials(gray,width,height)}catch{detection={found:false,corners:[]}}
+ try{detection=detectFiducials(gray,width,height,{manifest:typeof activeManifest==='undefined'?null:activeManifest})}catch{detection={found:false,corners:[]}}
  if(!detection.found||detection.confidence<.7){typeof clearScanFrameChoice==='function'&&clearScanFrameChoice();stableFrames=0;previousCameraFrame=null;absentFrames++;if(absentFrames>=2){previousCorners=null;positionGuides(null,false)}$('cameraLiveBadge').dataset.found='false';$('cameraLiveBadge').textContent=waitingForRemoval?'Aguardando retirada da folha':'Aguardando a folha';if(waitingForRemoval&&absentFrames>=3){waitingForRemoval=false;absentFrames=0;typeof setCameraProgress==='function'&&setCameraProgress();setScanMessage('Folha retirada. Enquadre o próximo cartão.')}else if(!waitingForRemoval){typeof setCameraProgress==='function'&&setCameraProgress();setScanMessage('Mantenha os quatro marcadores visíveis. Se a folha estiver desfocada, afaste-a um pouco e aguarde o foco.')}return}
  absentFrames=0;positionGuides(detection.corners.map(p=>({x:p.x*video.videoWidth/width,y:p.y*video.videoHeight/height})),true);
  const captureScale=Math.min(1,1800/Math.max(video.videoWidth,video.videoHeight));
@@ -300,7 +300,7 @@ function scanCameraFrame(){
  if(!stableFrames)typeof clearScanFrameChoice==='function'&&clearScanFrameChoice();
  if(stableFrames===2&&Date.now()-lastCaptureAt>=2000)typeof sampleScanFrame==='function'&&sampleScanFrame(frame,detection,dimensions,video);
  typeof setCameraProgress==='function'&&setCameraProgress(stableFrames>=3,false,false);
- if(stableFrames>=3&&Date.now()-lastCaptureAt>=2000){lastCaptureAt=Date.now();captureBusy=true;try{typeof markLastReadingPending==='function'&&markLastReadingPending();const capture=captureFrameGray(),projected=mapFramePoints(detection.corners,frame,capture),actual=detectFiducials(capture.gray,capture.width,capture.height);if(!actual.found||actual.confidence<.7||actual.corners?.length!==4)throw new Error('Marcadores instáveis na captura. Segure a folha e tente novamente.');const tolerance=Math.hypot(capture.width,capture.height)*.012;if(actual.corners.some((point,i)=>Math.hypot(point.x-projected[i].x,point.y-projected[i].y)>tolerance))throw new Error('A folha se moveu durante a captura. Segure-a e tente novamente.');
+ if(stableFrames>=3&&Date.now()-lastCaptureAt>=2000){lastCaptureAt=Date.now();captureBusy=true;try{typeof markLastReadingPending==='function'&&markLastReadingPending();const capture=captureFrameGray(),projected=mapFramePoints(detection.corners,frame,capture),actual=detectFiducials(capture.gray,capture.width,capture.height,{manifest:typeof activeManifest==='undefined'?null:activeManifest});if(!actual.found||actual.confidence<.7||actual.corners?.length!==4)throw new Error('Marcadores instáveis na captura. Segure a folha e tente novamente.');const tolerance=Math.hypot(capture.width,capture.height)*.012;if(actual.corners.some((point,i)=>Math.hypot(point.x-projected[i].x,point.y-projected[i].y)>tolerance))throw new Error('A folha se moveu durante a captura. Segure-a e tente novamente.');
  const finalQuality=captureQuality(capture,actual,capture);
  if(!finalQuality.ok)throw new Error(finalQuality.message||'A imagem final perdeu nitidez. Aguarde o foco e tente novamente.');
  const nowScore=typeof scanSelectionEnabled!=='undefined'&&scanSelectionEnabled&&typeof scanOpticalRank==='function'?scanOpticalRank(capture,actual,finalQuality):null;

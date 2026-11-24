@@ -117,7 +117,7 @@ function components(image) {
 
 const distance = (a, b) => Math.hypot(a.x - b.x, a.y - b.y);
 
-function orderedQuad(points) {
+function orderedQuad(points, geometry = null) {
   const center = points.reduce((sum, point) => ({ x: sum.x + point.x / 4, y: sum.y + point.y / 4 }), { x: 0, y: 0 });
   const ring = [...points].sort((a, b) => Math.atan2(a.y - center.y, a.x - center.x) - Math.atan2(b.y - center.y, b.x - center.x));
   const variants = [];
@@ -129,7 +129,7 @@ function orderedQuad(points) {
       const horizontal = (distance(ordered[0], ordered[1]) + distance(ordered[2], ordered[3])) / 2;
       const vertical = (distance(ordered[1], ordered[2]) + distance(ordered[3], ordered[0])) / 2;
       const ratio = horizontal / vertical;
-      const ratioError = Math.abs(Math.log(ratio / (PAGE_WIDTH_MM / PAGE_HEIGHT_MM)));
+      const ratioError = Math.abs(Math.log(ratio / (geometry ? geometry.horizontal / geometry.vertical : PAGE_WIDTH_MM / PAGE_HEIGHT_MM)));
       const oppositeError = Math.abs(Math.log(distance(ordered[0], ordered[1]) / distance(ordered[2], ordered[3])))
         + Math.abs(Math.log(distance(ordered[1], ordered[2]) / distance(ordered[3], ordered[0])));
       variants.push({ ordered, ratioError, oppositeError });
@@ -151,13 +151,14 @@ function quadArea(points) {
   }, 0) / 2);
 }
 
-function chooseQuad(candidates, width, height) {
+function chooseQuad(candidates, width, height, geometry = null) {
+  const horizontalMm=geometry?.horizontal??194, verticalMm=geometry?.vertical??281;
   let best = null;
   const n = candidates.length;
   for (let a = 0; a < n - 3; a++) for (let b = a + 1; b < n - 2; b++) {
     for (let c = b + 1; c < n - 1; c++) for (let d = c + 1; d < n; d++) {
       const points = [candidates[a], candidates[b], candidates[c], candidates[d]];
-      const order = orderedQuad(points);
+      const order = orderedQuad(points, geometry);
       const turns = order.ordered.map((p, i) => {
         const q = order.ordered[(i + 1) % 4], r = order.ordered[(i + 2) % 4];
         return (q.x - p.x) * (r.y - q.y) - (q.y - p.y) * (r.x - q.x);
@@ -173,9 +174,24 @@ function chooseQuad(candidates, width, height) {
       const sizeError = order.ordered.reduce((sum, p, i) => {
         const previous = order.ordered[(i + 3) % 4], next = order.ordered[(i + 1) % 4];
         const localArea = Math.abs((previous.x-p.x)*(next.y-p.y)-(previous.y-p.y)*(next.x-p.x));
-        const expectedArea = localArea * 5.5 ** 2 / (194 * 281);
+        const expectedArea = localArea * 5.5 ** 2 / (horizontalMm * verticalMm);
         return sum + Math.abs(Math.log(p.area / expectedArea));
       }, 0) / 4;
+      // Embedded manifests have much larger relative fiducials than A4. Reject
+      // mismatched physical components BEFORE ranking so a bubble cannot win
+      // and suppress the genuine four corners. Legacy A4 ranking is untouched.
+      if(geometry){
+        const deviations=order.ordered.map((p,i)=>{
+          const previous=order.ordered[(i+3)%4],next=order.ordered[(i+1)%4];
+          const localArea=Math.abs((previous.x-p.x)*(next.y-p.y)-(previous.y-p.y)*(next.x-p.x));
+          const expectedArea=localArea*5.5**2/(horizontalMm*verticalMm);
+          const h=distance(p,i%2?previous:next)/horizontalMm;
+          const v=distance(p,i%2?next:previous)/verticalMm;
+          return {size:Math.abs(Math.log(p.area/expectedArea)),shape:Math.abs(Math.log(p.aspect/(h/v)))};
+        });
+        if(sizeError>Math.log(1.4)||deviations.some(p=>p.size>Math.log(1.7)||p.shape>Math.log(1.8))||
+          deviations.reduce((sum,p)=>sum+p.shape,0)/4>Math.log(1.45))continue;
+      }
       const geometricScore = markerQuality - order.ratioError * 0.28 - order.oppositeError * 0.12 + Math.min(areaRatio, 0.72) * 0.08;
       const score = geometricScore - sizeError * 0.3;
       if (!best || score > best.score) best = { corners: order.ordered, score, confidence: Math.max(0, Math.min(1, geometricScore)), areaRatio, sizeError };
@@ -188,12 +204,12 @@ function chooseQuad(candidates, width, height) {
     const deviations = best.corners.map((p, i) => {
       const previous = best.corners[(i + 3) % 4], next = best.corners[(i + 1) % 4];
       const localArea = Math.abs((previous.x-p.x)*(next.y-p.y)-(previous.y-p.y)*(next.x-p.x));
-      const expectedArea = localArea * 5.5 ** 2 / (194 * 281);
+      const expectedArea = localArea * 5.5 ** 2 / (horizontalMm * verticalMm);
       const size = Math.abs(Math.log(p.area / expectedArea));
       // Marker dimensions are 5.5 mm in BOTH axes. At even corners the
       // next edge is horizontal; at odd corners it is vertical.
-      const horizontal = distance(p, i % 2 ? previous : next) / 194;
-      const vertical = distance(p, i % 2 ? next : previous) / 281;
+      const horizontal = distance(p, i % 2 ? previous : next) / horizontalMm;
+      const vertical = distance(p, i % 2 ? next : previous) / verticalMm;
       const shape = Math.abs(Math.log(p.aspect / (horizontal / vertical)));
       return { size, shape };
     });
@@ -209,13 +225,25 @@ function chooseQuad(candidates, width, height) {
   return best;
 }
 
-export function detectFiducials(gray, width, height) {
+// Only the camera passes an already validated embedded manifest. Do not change
+// the legacy detector used by imports and other normalization callers.
+function embeddedGeometry(manifest){
+  if(manifest?.mode!=='embedded')return null;
+  const w=manifest.paper?.widthMm,h=manifest.paper?.heightMm,m=manifest.technicalRegions?.fiducials;
+  const expected=[[8,8],[w-8,8],[w-8,h-8],[8,h-8]];
+  if(manifest.schemaVersion!=='salta-layout-manifest-v2'||!Number.isFinite(w)||!Number.isFinite(h)||w<60||w>210||h<80||h>297||
+    !Array.isArray(m)||m.length!==4||m.some((p,i)=>p.sizeMm!==5.5||p.markerId!==['fiducial-tl','fiducial-tr','fiducial-br','fiducial-bl'][i]||p.x!==expected[i][0]||p.y!==expected[i][1]))
+    throw new Error('Modelo de quadro incompatível com a captura.');
+  return {horizontal:w-16,vertical:h-16};
+}
+export function detectFiducials(gray, width, height, {manifest=null}={}) {
+  const geometry=embeddedGeometry(manifest);
   if (!Number.isInteger(width) || !Number.isInteger(height) || width < 32 || height < 32 || !gray || gray.length !== width * height) {
     throw new TypeError("Imagem inválida para localizar os marcadores.");
   }
   const sample = downsample(gray, width, height);
   let found = components(sample);
-  let quad = chooseQuad(found, width, height);
+  let quad = chooseQuad(found, width, height, geometry);
   let lightingFallback = false;
   // Only retry marker DISCOVERY after the existing geometric search fails.
   // The legacy Otsu threshold has a floor of 65; this can classify a dark
@@ -233,7 +261,7 @@ export function detectFiducials(gray, width, height) {
       const threshold = Math.max(12, Math.min(sample.threshold - 9, Math.floor(paper * .7)));
       if (threshold < sample.threshold - 8) {
         const retryFound = components({ ...sample, threshold });
-        const retryQuad = chooseQuad(retryFound, width, height);
+        const retryQuad = chooseQuad(retryFound, width, height, geometry);
         // A weaker segmentation must pass a stronger geometric gate.
         if (retryQuad && retryQuad.confidence >= .75 && retryQuad.physicalFit) {
           quad = retryQuad;
