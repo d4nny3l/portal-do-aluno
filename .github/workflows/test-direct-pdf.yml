@@ -29,7 +29,9 @@ jobs:
           node-version: 24
       - name: Exact authorized scope, syntax, vendored integrity and regression
         run: |
-          if ! node scripts/verify-camera-focus-scope.mjs; then
+          if node scripts/verify-single-shot-scope.mjs; then
+            echo 'PR #128 only changes camera capture; pinned PDF dependencies and regressions execute below.'
+          elif ! node scripts/verify-camera-focus-scope.mjs; then
             node scripts/verify-direct-pdf-scope.mjs
           fi
           node --check corretor/v2/omr/pdf-download.mjs
