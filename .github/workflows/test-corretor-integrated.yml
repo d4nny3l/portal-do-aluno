@@ -63,6 +63,7 @@ jobs:
           SALTA_SHARP_MODULE="$RUNNER_TEMP/salta-raster/node_modules/sharp/dist/index.cjs" node scripts/verify-camera-geometry.mjs
           SALTA_SHARP_MODULE="$RUNNER_TEMP/salta-raster/node_modules/sharp/dist/index.cjs" node scripts/verify-camera-focus-raster.mjs
       - name: Camera flow in isolated Chromium and WebKit (synthetic MediaStream, not a physical camera)
+        if: always() && hashFiles('tmp/camera-focus-evidence/a4-v2-manifest.json') != ''
         run: |
           npm install --prefix "$RUNNER_TEMP/salta-camera-browser" --no-save --ignore-scripts --no-audit --no-fund playwright@1.65.1
           node "$RUNNER_TEMP/salta-camera-browser/node_modules/playwright/cli.js" install --with-deps chromium webkit
