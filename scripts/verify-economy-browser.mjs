@@ -98,6 +98,19 @@ try{
     errors.push('External request: '+req.url());return route.abort();
    }catch(error){errors.push(error.message);return route.abort();}
   });
+  // Deterministic in-page Auth/grants for this hermetic UI test. No credential
+  // cookies, remote auth, D1 or production backend are invoked.
+  await uiContext.addInitScript(()=>{
+   const genuine=window.fetch.bind(window);
+   window.fetch=(resource,init)=>{
+    const url=String(typeof resource==='string'?resource:resource?.url||resource);
+    const reply=(body)=>Promise.resolve(new Response(JSON.stringify(body),{status:200,headers:{'content-type':'application/json'}}));
+    if(url.endsWith('/auth/session'))return reply({authenticated:true});
+    if(url.endsWith('/assessments/v1/session'))return reply({authenticated:true,principalId:'print-only-synthetic',epoch:1,editorSnapshotVersion:'salta-editor-snapshot-v1'});
+    if(url.endsWith('/assessments/v1/grants'))return reply({grants:[]});
+    return genuine(resource,init);
+   };
+  });
   const p=await uiContext.newPage();p.on('pageerror',e=>errors.push(e.message));p.on('dialog',d=>d.accept());
   await p.goto(origin+'/portal-do-aluno/plataforma/corretor-v2.html');
   await p.waitForFunction(()=>document.body.classList.contains('salta-auth-ready'));
