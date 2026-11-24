@@ -1,6 +1,7 @@
 import {importCardManifest} from '../corretor/v2/omr/manifest.mjs';
 import {renderTemplateSvg} from '../corretor/v2/omr/render.mjs';
 import {validateScoreDisplay} from '../corretor/v2/assessments/score-format.mjs';
+import {validateEditorSnapshot,SNAPSHOT_DEFINITION_SCHEMA} from '../corretor/v2/assessments/editor-snapshot.mjs';
 
 const fail = message => { throw new TypeError(message); };
 export const opaqueId = value => typeof value === 'string' && /^[A-Za-z0-9][A-Za-z0-9._-]{1,63}$/.test(value);
@@ -13,8 +14,10 @@ function text(value, max) {
  return value;
 }
 export function validateDefinition(input) {
- exact(input, ['schemaVersion','title','subject','kind','date','manifest','blocks','answers','display']);
- if (input.schemaVersion !== 'salta-assessment-definition-v2') fail('Versão de definição inválida.');
+ const withEditor=input?.schemaVersion===SNAPSHOT_DEFINITION_SCHEMA;
+ exact(input, ['schemaVersion','title','subject','kind','date','manifest','blocks','answers','display',...(withEditor?['editorSnapshot']:[])]);
+ if (!withEditor && input.schemaVersion !== 'salta-assessment-definition-v2') fail('Versão de definição inválida.');
+ if(withEditor&&new TextEncoder().encode(JSON.stringify(input)).length>1_000_000)fail('A avaliação excede o limite.');
  text(input.title,160); text(input.subject,120); text(input.kind,80);
  if (input.date !== '' && (!/^\d{4}-\d{2}-\d{2}$/.test(input.date) || !Number.isFinite(Date.parse(input.date+'T12:00:00Z')) || new Date(input.date+'T12:00:00Z').toISOString().slice(0,10) !== input.date)) fail('Data inválida.');
  const {template} = importCardManifest(input.manifest);
@@ -46,6 +49,7 @@ export function validateDefinition(input) {
   if (!q || keyed.has(q.questionId) || !q.choices.includes(answer.correct)) fail('Gabarito incompatível com o manifesto.');
   keyed.add(q.questionId);
  }
+ if(withEditor)validateEditorSnapshot(input.editorSnapshot,{manifest:input.manifest,template,definition:input});
  return {definition:structuredClone(input), totalUnits:String(totalUnits), scoreScale:10000};
 }
 export function printArtifact(record) {

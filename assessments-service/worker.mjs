@@ -1,6 +1,7 @@
 import {exact,opaqueId,uuid,validateDefinition,printArtifact} from './definition.mjs';
 import {keyring,seal,open,operationMac} from './crypto.mjs';
 import {SCORE_FORMAT_VERSION} from '../corretor/v2/assessments/score-format.mjs';
+import {EDITOR_SNAPSHOT_CAPABILITY} from '../corretor/v2/assessments/editor-snapshot.mjs';
 
 class Failure extends Error { constructor(status,code,message) { super(message); this.status=status; this.code=code; } }
 const deny = (status,code,message) => { throw new Failure(status,code,message); };
@@ -89,10 +90,12 @@ async function save(db,actor,ring,id,p,operation={kind:'save',id,p}) {
  const a=await db.prepare('SELECT * FROM av_assessments WHERE id=?').bind(id).first();
  if (a&&(a.owner_id!==actor.id || ['institutionId','classId','periodId'].some(k=>rowScope(a)[k]!==p[k]))) deny(404,'not_found','Avaliação não encontrada.');
  if ((a?.current_revision??0)!==p.expectedRevision || a?.state==='archived') deny(409,'revision_conflict','A avaliação mudou ou foi arquivada. Reabra antes de salvar.');
- // An older client must not silently erase an explicitly saved presentation choice.
- if (a&&!Object.hasOwn(definition.display,'scoreDecimals')) {
+ // An older client must not silently erase saved presentation/editor choices.
+ if (a&&(!Object.hasOwn(definition.display,'scoreDecimals')||!Object.hasOwn(definition,'editorSnapshot'))) {
   const previous=await load(db,actor,ring,id,a.current_revision);
-  if (Object.hasOwn(previous.definition.display,'scoreDecimals'))
+  if (!Object.hasOwn(definition,'editorSnapshot')&&Object.hasOwn(previous.definition,'editorSnapshot'))
+   deny(409,'editor_snapshot_required','Reabra com um cliente compatível antes de salvar as configurações completas.');
+  if (!Object.hasOwn(definition.display,'scoreDecimals')&&Object.hasOwn(previous.definition.display,'scoreDecimals'))
    deny(409,'score_format_required','Reabra com um cliente compatível antes de salvar o formato da nota.');
  }
  const revision=p.expectedRevision+1, now=new Date().toISOString(), record={id,ownerId:actor.id,institutionId:p.institutionId,classId:p.classId,periodId:p.periodId,revision,status:p.status,manifestHash:definition.manifest.contentHash,keyVersion:ring.active};
@@ -134,7 +137,7 @@ async function route(request,env) {
  if (!env.ASSESSMENTS_DB) deny(503,'database_unavailable','Banco indisponível.');
  if (!env.PORTAL_ORIGIN || request.headers.get('Origin')!==env.PORTAL_ORIGIN) deny(403,'origin_denied','Origem não autorizada.');
  const db=env.ASSESSMENTS_DB, actor=await principal(request,env,db), ring=keyring(env), url=new URL(request.url), path=url.pathname;
- if (path==='/assessments/v1/session'&&request.method==='GET') return json({authenticated:true,principalId:actor.id,epoch:actor.epoch,cryptoModel:'server-managed',scoreFormatVersion:SCORE_FORMAT_VERSION,embeddedLibraryVersion:'salta-embedded-library-v1'});
+ if (path==='/assessments/v1/session'&&request.method==='GET') return json({authenticated:true,principalId:actor.id,epoch:actor.epoch,cryptoModel:'server-managed',scoreFormatVersion:SCORE_FORMAT_VERSION,embeddedLibraryVersion:'salta-embedded-library-v1',editorSnapshotVersion:EDITOR_SNAPSHOT_CAPABILITY});
  if (path==='/assessments/v1/grants'&&request.method==='GET') return json({grants:(await db.prepare('SELECT institution_id AS institutionId,class_id AS classId,period_id AS periodId FROM av_grants WHERE principal_id=? AND enabled=1 AND expires_at>? ORDER BY institution_id,class_id,period_id').bind(actor.id,Date.now()).all()).results});
  if (path==='/assessments/v1/assessments'&&request.method==='GET') {
   const allowed=['after','institutionId','classId','periodId'];

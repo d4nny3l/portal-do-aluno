@@ -46,6 +46,7 @@ jobs:
           npm install --prefix "$RUNNER_TEMP/salta-browser" --no-save --ignore-scripts playwright@1.65.1
           node "$RUNNER_TEMP/salta-browser/node_modules/playwright/cli.js" install --with-deps chromium
           SALTA_PLAYWRIGHT_MODULE="$RUNNER_TEMP/salta-browser/node_modules/playwright/index.mjs" node assessments-service/tests/embedded-browser.mjs
+          SALTA_PLAYWRIGHT_MODULE="$RUNNER_TEMP/salta-browser/node_modules/playwright/index.mjs" node assessments-service/tests/editor-frontend-browser.mjs
       - uses: actions/upload-artifact@v4
         with:
           name: embedded-library-candidate-not-published

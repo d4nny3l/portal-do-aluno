@@ -27,6 +27,7 @@ let cameraStream;
 </script>
 <script type="module">
 import { installAssessmentBank } from '../corretor/v2/assessments/editor.mjs?v=20261115assess2';
+import {EDITOR_FIELD_IDS} from '../corretor/v2/assessments/editor-snapshot.mjs?v=20261124snap120';
 import {mountAssessmentLibrary} from './avaliacoes-biblioteca.mjs?v=20261121ux79c-84-87';
 import {scoreIntegratedPlan,keyTextForPlan,scoreInputUnits,POINT_SCALE} from '../corretor/v2/assessments/block-scoring.mjs?v=20261121ux79c-84-87';
 import {formatScore} from '../corretor/v2/assessments/score-format.mjs?v=20261121ux79c-84-87';
@@ -57,7 +58,7 @@ function syncConditionalFields(){
  $('previewModeLabel').textContent=mode==='embedded'?'Quadro incorporado · confira as dimensões antes de imprimir':'A4 · uma folha';
 }
 function updateHeaderPreview(){try{$('headerPreview').innerHTML=renderHeaderPreviewSvg(headerState)}catch(error){$('headerPreview').replaceChildren(Object.assign(document.createElement('p'),{textContent:error.message,role:'status'}))}}
-function syncHeaderForm(){document.querySelectorAll('[data-header]').forEach(el=>{el.value=el.dataset.header==='title'?assessmentTitleValue:(headerState[el.dataset.header]||'')});document.querySelectorAll('[data-visible]').forEach(el=>{el.checked=headerState.visible[el.dataset.visible]===true});$('logoWidth').value=headerState.logoWidthMm;$('logoWidth2').value=headerState.secondaryLogoWidthMm;}
+function syncHeaderForm(){document.querySelectorAll('[data-header]').forEach(el=>{el.value=el.dataset.header==='title'?assessmentTitleValue:(headerState[el.dataset.header]||'')});document.querySelectorAll('[data-visible]').forEach(el=>{el.checked=headerState.visible[el.dataset.visible]===true});$('logoWidth').value=headerState.logoWidthMm;$('logoWidth2').value=headerState.secondaryLogoWidthMm;updateHeaderPreview();}
 function currentMetadata(){return{showInstructions:$('showInstructions').checked,kind:$('assessmentKind').value,subject:$('assessmentSubject').value.trim(),className:$('assessmentClass').value.trim(),date:$('assessmentDate').value,teacher:headerState.teacher,grade:headerState.grade,schoolYear:headerState.schoolYear,customFields:headerState.customFields,visibleFields:headerState.visible,headerLayout:headerState.layout,logoWidthMm:Number(headerState.logoWidthMm)||22,secondaryLogoWidthMm:Number(headerState.secondaryLogoWidthMm)||22,logoAspect:Number(headerState.logoAspect)||1,secondaryLogoAspect:Number(headerState.secondaryLogoAspect)||1,cduPosition:'bottom'}}
 function updateAssessmentHeader(){headerState.title=assessmentTitleValue.trim()||'CARTÃO DE RESPOSTAS';headerState.subject=$('assessmentSubject').value.trim();headerState.className=$('assessmentClass').value.trim();headerState.date=$('assessmentDate').value;}
 function renderPreviews(){privateModelLoaded=false;headerState.title=assessmentTitleValue.trim()||'CARTÃO DE RESPOSTAS';const nominalCode=$('studentCode')?.value.trim()||'';const identityMode=$('identityMode').value;const student={name:$('studentName').value.trim(),className:$('studentClass').value.trim(),code:nominalCode};if(!student.name&&!student.className&&!student.code){}else if(identityMode==='seven-digit-code'&&nominalCode&&!/^\d{7}$/.test(nominalCode))throw new Error('O código do aluno precisa conter exatamente sete dígitos.');const mode=$('cardMode').value;const embeddedSize=mode==='embedded'?{widthMm:Number($('embeddedWidth').value),heightMm:Number($('embeddedHeight').value)}:null;headerState.showStudentCode=identityMode==='seven-digit-code';headerState.showInstructions=$('showInstructions').checked;template=createTemplate(sections,{templateId:'omr-a4',revision:layoutRevision,title:headerState.title,schoolName:headerState.institution,student:student.name||student.className||student.code?student:null,identityMode,mode,embeddedSize,columnCount:$('columnCount').value==='auto'?null:Number($('columnCount').value),layoutVersion:'v2',showName:headerState.visible.studentName,metadata:currentMetadata()});activeManifest=createCardManifest(template,headerState,{sectionFrameStyle:'content'});const svgMarkup=renderTemplateSvg(template,{page:1,header:headerState,manifest:activeManifest});activeSvg=svgMarkup;exactScanModel=true;syncScanInputs();$('scanModelStatus').textContent='Modelo pronto para correção · '+activeManifest.questionCount+(activeManifest.questionCount===1?' questão':' questões')+scanModelNotice(activeManifest);const manifest=activeManifest;currentPage=1;$('pageSelect').value='1';const page=document.createElement('div');page.className='omr-page';page.innerHTML=svgMarkup;$('preview').replaceChildren(page);$('sectionText').textContent=`${sections.length} seção(ões) · ${template.questionCount} questões · 1 cartão A4${manifest.geometry.objectiveRowPitchMm<6.2?` · passo vertical ${manifest.geometry.objectiveRowPitchMm.toFixed(2)} mm`:''}`;updateHeaderPreview();}
@@ -102,7 +103,7 @@ $('printBatch').onclick=()=>{try{if(!activeManifest)throw new Error('Gere uma pr
 $('headerSettings').addEventListener('toggle',()=>{if($('headerSettings').open)updateHeaderPreview()});
 document.querySelectorAll('[data-header]').forEach(el=>el.oninput=el.onchange=()=>{const key=el.dataset.header;if(key==='title'){setAssessmentTitle(el.value);return}if(headerState[key]===el.value)return;headerState[key]=el.value;if(key==='subject')$('assessmentSubject').value=el.value;if(key==='className')$('assessmentClass').value=el.value;if(key==='date')$('assessmentDate').value=el.value;updateAssessmentHeader();layoutRevision++;build()});document.querySelectorAll('[data-visible]').forEach(el=>el.onchange=()=>{headerState.visible[el.dataset.visible]=el.checked;layoutRevision++;build()});
 $('logoWidth').oninput=e=>{headerState.logoWidthMm=Number(e.target.value);layoutRevision++;build()};$('logoWidth2').oninput=e=>{headerState.secondaryLogoWidthMm=Number(e.target.value);layoutRevision++;build()};
-async function loadLogo(file,key){if(!file)return;if(!['image/png','image/jpeg','image/webp'].includes(file.type)||file.size>2*1024*1024){$('buildStatus').textContent='Use PNG, JPG ou WebP com até 2 MB.';return}const url=URL.createObjectURL(file);try{const image=new Image();image.src=url;await image.decode();if(image.naturalWidth>6000||image.naturalHeight>6000||image.naturalWidth*image.naturalHeight>12000000)throw new Error('Imagem com dimensões excessivas.');const scale=Math.min(1,800/Math.max(image.naturalWidth,image.naturalHeight)),canvas=document.createElement('canvas');canvas.width=Math.max(1,Math.round(image.naturalWidth*scale));canvas.height=Math.max(1,Math.round(image.naturalHeight*scale));canvas.getContext('2d').drawImage(image,0,0,canvas.width,canvas.height);headerState[key]=canvas.toDataURL('image/png');headerState[key==='logo'?'logoAspect':'secondaryLogoAspect']=image.naturalWidth/image.naturalHeight;layoutRevision++;build()}catch(error){$('buildStatus').textContent=error.message==='Imagem com dimensões excessivas.'?error.message:'Não foi possível abrir essa imagem.'}finally{URL.revokeObjectURL(url)}}
+async function loadLogo(file,key){if(!file)return;if(!['image/png','image/jpeg','image/webp'].includes(file.type)||file.size>2*1024*1024){$('buildStatus').textContent='Use PNG, JPG ou WebP com até 2 MB.';return}const url=URL.createObjectURL(file);try{const image=new Image();image.src=url;await image.decode();if(image.naturalWidth>6000||image.naturalHeight>6000||image.naturalWidth*image.naturalHeight>12000000)throw new Error('Imagem com dimensões excessivas.');const scale=Math.min(1,800/Math.max(image.naturalWidth,image.naturalHeight)),canvas=document.createElement('canvas');canvas.width=Math.max(1,Math.round(image.naturalWidth*scale));canvas.height=Math.max(1,Math.round(image.naturalHeight*scale));canvas.getContext('2d').drawImage(image,0,0,canvas.width,canvas.height);headerState[key]=canvas.toDataURL('image/png');headerState[key==='logo'?'logoAspect':'secondaryLogoAspect']=image.naturalWidth/image.naturalHeight;layoutRevision++;build();privateLibrary?.onEditorChanged()}catch(error){$('buildStatus').textContent=error.message==='Imagem com dimensões excessivas.'?error.message:'Não foi possível abrir essa imagem.'}finally{URL.revokeObjectURL(url)}}
 $('headerLogo').onchange=e=>loadLogo(e.target.files[0],'logo');$('headerLogo2').onchange=e=>loadLogo(e.target.files[0],'secondaryLogo');$('clearLogo').onclick=()=>{headerState.logo='';headerState.logoAspect=1;$('headerLogo').value='';layoutRevision++;build()};$('clearLogo2').onclick=()=>{headerState.secondaryLogo='';headerState.secondaryLogoAspect=1;$('headerLogo2').value='';layoutRevision++;build()};
 let rawRaster=null, normalizedRaster=null, manualMode=false, manualPoints=[], cameraTimer=null;
 const cameraSession=new CameraSession(navigator.mediaDevices);
@@ -336,18 +337,29 @@ $('loadManifest').onchange=async event=>{try{const file=event.target.files[0];if
 $('scanType').onchange=resetScanDefault;$('scanCount').onchange=resetScanDefault;$('answerKey').oninput=calculateScore;$('scanMaxScore').oninput=calculateScore;addEventListener('pagehide',stopCamera);
 document.querySelectorAll('[data-view]').forEach(button=>button.onclick=()=>showView(button.dataset.view));document.querySelectorAll('[data-go]').forEach(button=>button.onclick=()=>showView(button.dataset.go));function showView(id){if(id!=='corrigir'&&cameraStream)stopCamera();document.querySelectorAll('.module-view').forEach(panel=>panel.classList.toggle('active',panel.id===id));document.querySelectorAll('[data-view]').forEach(button=>{if(button.dataset.view===id)button.setAttribute('aria-current','page');else button.removeAttribute('aria-current')});if(id==='cartoes')document.getElementById('cartoes').scrollIntoView({block:'start',behavior:'smooth'});else window.scrollTo({top:0,behavior:'smooth'})}
 
-const bankFieldIds=['assessmentTitle','assessmentSubject','assessmentClass','assessmentDate','assessmentKind','identityMode','columnCount','cardMode','embeddedWidth','embeddedHeight','type','count'];
+const bankFieldIds=EDITOR_FIELD_IDS;
 
-function restoreAssessmentEditor(editor){if(editor?.version!==1||!Array.isArray(editor.sections))throw Error('Editor salvo incompatível.');sections=structuredClone(editor.sections);headerState=structuredClone(editor.header);layoutRevision=editor.layoutRevision;nextQuestionNumber=Math.max(editor.nextQuestionNumber||1,...sections.flatMap(section=>section.items.map(question=>{const match=/^question-(\d+)$/.exec(question.questionId||'');return match?Number(match[1])+1:1})));nextSectionOrder=editor.nextSectionOrder;for(const id of bankFieldIds)$(id).value=editor.fields[id];assessmentTitleValue=editor.fields.assessmentTitle;for(const id of ['studentName','studentClass','studentCode'])$(id).value='';$('showInstructions').checked=editor.showInstructions;syncHeaderForm();syncConditionalFields();drawSections();build()}
+function restoreAssessmentEditor(editor){
+ if(editor?.version!==1||!Array.isArray(editor.sections)||!editor.fields)throw Error('Editor salvo incompatível.');
+ sections=structuredClone(editor.sections);headerState=structuredClone(editor.header);
+ layoutRevision=editor.layoutRevision;nextQuestionNumber=editor.nextQuestionNumber;nextSectionOrder=editor.nextSectionOrder;
+ for(const id of bankFieldIds)$(id).value=editor.fields[id];
+ assessmentTitleValue=editor.fields.assessmentTitle;
+ for(const id of ['studentName','studentClass','studentCode','studentCodeBatch','headerLogo','headerLogo2'])if($(id))$(id).value='';
+ $('showInstructions').checked=editor.showInstructions;
+ syncHeaderForm();syncConditionalFields();drawSections();
+ // applyExactModel renders the immutable private revision. Rebuilding here would
+ // replace its saved geometry and content hash.
+}
 function resetAssessmentEditor(){
  sections=[];nextQuestionNumber=1;nextSectionOrder=0;layoutRevision=8;assessmentTitleValue='';
  headerState={...DEFAULT_CARD_HEADER,logoWidthMm:22,secondaryLogoWidthMm:22,logoAspect:1,secondaryLogoAspect:1,
   visible:{...DEFAULT_CARD_HEADER.visible,className:true},customFields:[]};
  const defaults={assessmentTitle:'',assessmentSubject:'',assessmentClass:'',assessmentDate:'',
   assessmentKind:'Prova objetiva',identityMode:'seven-digit-code',columnCount:'auto',cardMode:'full-page',
-  embeddedWidth:'100',embeddedHeight:'180',type:'A-E',count:'20'};
+  embeddedWidth:'100',embeddedHeight:'180',type:'A-E',count:'20',sectionLabel:''};
  for(const [id,value] of Object.entries(defaults))$(id).value=value;
- for(const id of ['studentName','studentClass','studentCode'])$(id).value='';
+ for(const id of ['studentName','studentClass','studentCode','studentCodeBatch','headerLogo','headerLogo2'])if($(id))$(id).value='';
  $('showInstructions').checked=false;syncHeaderForm();drawSections();build();
 }
 // Legacy manual correction still reads #answerKey, but its editor lives only
@@ -422,7 +434,7 @@ privateLibrary=mountAssessmentLibrary({
  restoreEditor:restoreAssessmentEditor,
  nominalFields:()=>({name:$('studentName').value,className:$('studentClass').value,code:$('studentCode').value}),
  newEditor:resetAssessmentEditor,
- applyExactModel:bundle=>applyAssessmentModel(bundle,{privateAssessment:true}),
+ applyExactModel:bundle=>{applyAssessmentModel(bundle,{privateAssessment:true});updateHeaderPreview();setExportAvailability(true)},
  activateSelection:activatePrivateCorrection,
  clearSelection:clearPrivateCorrection
 });

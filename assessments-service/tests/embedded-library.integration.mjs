@@ -10,15 +10,17 @@ import {createPrivateAssessmentClient} from '../../corretor/v2/assessments/priva
 import {editorFromPrivateRecord,assertLibraryModel,mountAssessmentLibrary,EMBEDDED_LIBRARY_VERSION} from '../../plataforma/avaliacoes-biblioteca.mjs';
 import {buildPrintDocument} from '../../corretor/v2/omr/export.mjs';
 import {readFileSync} from 'node:fs';
+import {createEditorSnapshot} from '../../corretor/v2/assessments/editor-snapshot.mjs';
 
 function model({type='A-E',width=120,height=180,identityMode='none',legacy=false}={}){
- const sections=[{sectionId:'block',label:'Bloco',type,items:Array.from({length:3},(_,i)=>({questionId:'question-'+(i+1),number:i+1,type}))}];
- const header={...DEFAULT_CARD_HEADER,title:'Sintética',institution:'Escola sintética',subject:'Matemática',className:'Turma sintética',date:'2026-11-24',visible:{...DEFAULT_CARD_HEADER.visible},customFields:[]};
+ const sections=[{sectionId:'block',label:'Bloco',order:0,count:3,type,items:Array.from({length:3},(_,i)=>({questionId:'question-'+(i+1),originalOrder:i+1,number:i+1,type}))}];
+ const header={...DEFAULT_CARD_HEADER,title:'Sintética',institution:'Escola sintética',subject:'Matemática',className:'Turma sintética',date:'2026-11-24',visible:{...DEFAULT_CARD_HEADER.visible},customFields:[],showStudentCode:identityMode==='seven-digit-code',logoWidthMm:22,secondaryLogoWidthMm:22,logoAspect:1,secondaryLogoAspect:1};
  const template=(legacy?createLegacyTemplate:createTemplate)(sections,{layoutVersion:legacy?'v1':'v2',revision:8,title:header.title,identityMode,mode:'embedded',embeddedSize:{widthMm:width,heightMm:height},metadata:header});
  const manifest=createCardManifest(template,header,{sectionFrameStyle:'content'});
  const plan=type==='CDU'?null:createIntegratedPlan({metadata:{title:header.title,subject:header.subject,kind:'Prova',date:header.date,className:header.className},sections,values:{block:'10'},answers:Object.fromEntries(template.questions.map(q=>[q.questionId,q.choices[0]])),display:'both',model:manifest,scoreDecimals:1});
- const editor={version:1,sections,header,layoutRevision:8,nextQuestionNumber:4,nextSectionOrder:1,fields:{assessmentTitle:header.title,assessmentKind:'Prova',assessmentSubject:header.subject,assessmentClass:header.className,assessmentDate:header.date,identityMode,cardMode:'embedded',embeddedWidth:String(width),embeddedHeight:String(height),columnCount:'auto',type,count:'3'},showInstructions:false};
- return {sections,header,template,manifest,plan,editor};
+ const editor={version:1,sections,header,layoutRevision:8,nextQuestionNumber:4,nextSectionOrder:1,fields:{assessmentTitle:header.title,assessmentKind:'Prova',assessmentSubject:header.subject,assessmentClass:header.className,assessmentDate:header.date,identityMode,cardMode:'embedded',embeddedWidth:String(width),embeddedHeight:String(height),columnCount:'auto',type,count:'3',sectionLabel:''},showInstructions:false};
+ const editorSnapshot=type==='CDU'||legacy?undefined:createEditorSnapshot(editor,manifest);
+ return {sections,header,template,manifest,plan,editor,editorSnapshot};
 }
 const client=(h,fetchOverride)=>createPrivateAssessmentClient({
  enabled:true,baseUrl:'https://synthetic/assessments/v1',
@@ -35,7 +37,7 @@ for(const [type,width,height,identityMode] of [['A-D',100,160,'none'],['A-E',120
   assert.equal((await a.session()).embeddedLibraryVersion,EMBEDDED_LIBRARY_VERSION);
   assertLibraryModel(m);
   const op=a.prepareSave({...m,scope,status:'issued'}),saved=await a.saveAndVerify(op),id=saved.record.id;
-  assert.deepEqual(saved.record.definition,definitionFromLocalPlan(m.plan,m.manifest));assert.equal(saved.record.manifestHash,m.manifest.contentHash);
+  assert.deepEqual(saved.record.definition,definitionFromLocalPlan(m.plan,m.manifest,m.editorSnapshot));assert.equal(saved.record.manifestHash,m.manifest.contentHash);
   assert.equal((await a.saveAndVerify(op)).receipt.replayed,true);assert.deepEqual(counts(h),{roots:1,revisions:1,receipts:1});
   const previous=structuredClone(m.editor);Object.assign(previous.fields,{cardMode:'full-page',embeddedWidth:'200',embeddedHeight:'290'});
   const restored=editorFromPrivateRecord(await a.open(id,1),previous);
@@ -49,7 +51,7 @@ for(const [type,width,height,identityMode] of [['A-D',100,160,'none'],['A-E',120
   const copy=await a.duplicateAndVerify(a.prepareDuplicate(id,1));assert.notEqual(copy.record.id,id);assert.equal(copy.record.revision,1);assert.equal(copy.record.status,'draft');assert.deepEqual(copy.record.definition,original);
   const selected=await a.selectAndVerify(a.prepareSelection(id,1));assert.equal(selected.selection.manifestHash,m.manifest.contentHash);
   const next=structuredClone(m.plan);next.blocks[0].questions[0].correct=type==='C-E'?'E':'B';
-  const edited=await a.saveAndVerify(a.prepareSave({plan:next,manifest:m.manifest,scope,assessmentId:id,expectedRevision:1,status:'issued'}));assert.equal(edited.record.revision,2);
+  const edited=await a.saveAndVerify(a.prepareSave({plan:next,manifest:m.manifest,editorSnapshot:m.editorSnapshot,scope,assessmentId:id,expectedRevision:1,status:'issued'}));assert.equal(edited.record.revision,2);
   assert.deepEqual((await a.open(id,1)).definition,original);assert.equal(edited.record.manifestHash,m.manifest.contentHash);
   const pinned=await a.resumeSelection(selected.selection.selectionId);assert.equal(pinned.revision,1);
   const observations=m.template.questions.map(q=>({questionId:q.questionId,number:q.number,state:'read',answer:q.choices[0],reviewed:true}));

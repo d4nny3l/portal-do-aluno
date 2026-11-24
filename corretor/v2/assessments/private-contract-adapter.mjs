@@ -3,6 +3,7 @@
 import {importCardManifest} from '../omr/manifest.mjs';
 import {PLAN_SCHEMA,assertPlanBinding} from './block-scoring.mjs';
 import {validateScoreDisplay} from './score-format.mjs';
+import {SNAPSHOT_DEFINITION_SCHEMA,validateEditorSnapshot} from './editor-snapshot.mjs';
 
 export const PRIVATE_DEFINITION_SCHEMA='salta-assessment-definition-v2';
 const fail=message=>{throw new TypeError(message)};
@@ -16,7 +17,7 @@ const canonicalManifest=manifest=>{
     template.questions.some(q=>!['A-D','A-E','C-E'].includes(q.type)))fail('Modelo óptico objetivo não suportado.');
  return {template,manifest:exact};
 };
-export function definitionFromLocalPlan(plan,sourceManifest){
+export function definitionFromLocalPlan(plan,sourceManifest,editorSnapshot){
  if(plan?.schema!==PLAN_SCHEMA)fail('Planejamento transitório incompatível.');
  const display={score:plan.display,...(Object.hasOwn(plan,'scoreDecimals')?{scoreDecimals:plan.scoreDecimals}:{})};
  validateScoreDisplay(display);
@@ -43,13 +44,19 @@ export function definitionFromLocalPlan(plan,sourceManifest){
  const byQuestion=new Map(plan.blocks.flatMap(b=>b.questions.map(q=>[q.questionId,q.correct])));
  // Backend expects complete answer map, ordered by the exact manifest.
  const answers=template.questions.map(q=>({questionId:q.questionId,correct:byQuestion.get(q.questionId)}));
- return {schemaVersion:PRIVATE_DEFINITION_SCHEMA,title:plan.metadata.title,subject:plan.metadata.subject,
-  kind:plan.metadata.kind,date:plan.metadata.date||'',manifest,blocks,answers,display};
+ const definition={schemaVersion:editorSnapshot===undefined?PRIVATE_DEFINITION_SCHEMA:SNAPSHOT_DEFINITION_SCHEMA,
+  title:plan.metadata.title,subject:plan.metadata.subject,
+  kind:plan.metadata.kind,date:plan.metadata.date||'',manifest,blocks,answers,display,
+  ...(editorSnapshot===undefined?{}:{editorSnapshot})};
+ if(editorSnapshot!==undefined)validateEditorSnapshot(editorSnapshot,{manifest,template,definition});
+ return definition;
 }
 export function planFromPrivateRecord(record){
  if(!record||!Number.isSafeInteger(record.revision)||record.revision<1||!record.definition||
-    record.definition.schemaVersion!==PRIVATE_DEFINITION_SCHEMA)fail('Revisão privada inválida.');
+    ![PRIVATE_DEFINITION_SCHEMA,SNAPSHOT_DEFINITION_SCHEMA].includes(record.definition.schemaVersion))fail('Revisão privada inválida.');
  const definition=record.definition,{template,manifest}=canonicalManifest(definition.manifest);
+ if(definition.schemaVersion===SNAPSHOT_DEFINITION_SCHEMA)validateEditorSnapshot(definition.editorSnapshot,{manifest,template,definition});
+ else if(Object.hasOwn(definition,'editorSnapshot'))fail('Snapshot proibido na revisão histórica.');
  if(record.manifestHash!==manifest.contentHash||record.scoreScale!==10000)fail('Hash ou escala da revisão não conferem.');
  validateScoreDisplay(definition.display);
  const byId=new Map(template.questions.map(q=>[q.questionId,q])),key=new Map(),seen=new Set();

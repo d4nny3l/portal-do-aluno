@@ -6,9 +6,9 @@ import {tmpdir} from 'node:os';
 import path from 'node:path';
 import {buildBackend,verifyDependencies,matrix,sha256,ROOT} from '../build.mjs';
 import {assertScope,verifyScope} from '../integrity.mjs';
-test('#118 runtime graph pins all 17 inputs, 14 unchanged main dependencies and the candidate bundle',async()=>{
+test('#120 runtime graph pins all 18 inputs, 15 unchanged main dependencies and the candidate bundle',async()=>{
  const dir=await mkdtemp(path.join(tmpdir(),'salta-minimal-build-'));try{
-  verifyScope();assert.equal(verifyDependencies().inputs.length,17);assert.equal(matrix.inputs.filter(x=>x.comparison==='identical').length,14);
+  verifyScope();assert.equal(verifyDependencies().inputs.length,18);assert.equal(matrix.inputs.filter(x=>x.comparison==='identical').length,15);
   assert.equal(matrix.inputs.filter(x=>x.path.startsWith('assessments-service/')).length,3);
   const b=await buildBackend(dir);assert.equal(sha256(b.code),matrix.expectedBundleSha256);
   assert.equal(b.manifest.deploymentPerformed,false);assert.equal(b.manifest.secretsIncluded,false);
