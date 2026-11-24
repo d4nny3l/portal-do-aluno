@@ -416,7 +416,7 @@ function activatePrivateCorrection(selection){
  $('scanMaxScore').type='text';
  $('scanMaxScore').value=formatScore(BigInt(selection.plan.totalUnits),POINT_SCALE,selection.plan.scoreDecimals);
  $('scanMaxScore').readOnly=true;
- $('scanModelStatus').textContent=selection.plan.metadata.title+' · Confira se os cartões pertencem a esta avaliação.';
+ $('scanModelStatus').textContent=selection.plan.metadata.title+' · avaliação confirmada para correção. Confira se os cartões pertencem a esta avaliação.';
 }
 function clearPrivateCorrection(){
  // Opening a private assessment loads its manifest before a selection exists.
