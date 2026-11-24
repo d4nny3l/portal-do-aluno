@@ -229,8 +229,8 @@ test('P1 camera controls remain capability-gated; scanner owns capture',()=>{
  assert.match(html,/captureQuality\(frame,detection,previousCameraFrame,\{captureSize\}\)/);
  assert.match(html,/projected=mapFramePoints\(detection.corners,frame,capture\)/);
  assert.match(html,/actual=detectFiducials\(capture\.gray,capture\.width,capture\.height,\{manifest:typeof activeManifest==='undefined'\?null:activeManifest\}\)/);
- assert.match(html,/const chosen=prior&&nowScore!==null/);
- assert.match(html,/manualCorners:chosen.actual.corners/);
+ assert.doesNotMatch(html,/scanBestFrame|scanOpticalRank|sampleScanFrame/);
+ assert.match(html,/manualCorners:actual.corners/);
  assert.match(html,/actual=detectFiducials\(capture\.gray,capture\.width,capture\.height,\{manifest:typeof activeManifest==='undefined'\?null:activeManifest\}\)/);
  assert.match(html,/corretor-v2\.css\?v=20261121ux79c1/);
  assert.match(html,/camera\.mjs\?v=20261124focus52/);
@@ -320,12 +320,12 @@ test('P1 stable frames capture automatically once, wait for removal and then acc
 });
 test('P1 failed auto normalization does not trap the session or demand manual photograph',()=>{
  const {state,h}=scanHarness();h.fail=true;
- state.scanCameraFrame();state.scanCameraFrame();state.scanCameraFrame();
+ state.scanCameraFrame();state.scanCameraFrame();
  assert.equal(h.scans,1);
  assert.equal(state.waitingForRemoval,false);
  assert.equal(state.stableFrames,0);
  h.fail=false;state.lastCaptureAt=0;
- state.scanCameraFrame();state.scanCameraFrame();state.scanCameraFrame();
+ state.scanCameraFrame();state.scanCameraFrame();
  assert.equal(h.scans,2);
  assert.equal(state.waitingForRemoval,true);
 });
