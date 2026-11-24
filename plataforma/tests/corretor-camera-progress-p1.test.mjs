@@ -107,13 +107,13 @@ function captureFrameHarness(){
 
 test('CAM-114: final image moving relative to preview is rejected, then a matching capture recovers',()=>{
  const h=captureFrameHarness(),s=h.state;
- s.scanCameraFrame();s.scanCameraFrame();s.scanCameraFrame();
+ s.scanCameraFrame();s.scanCameraFrame();
  assert.equal(h.calls(),0,'drift must not send preview corners into the final capture');
  assert.equal(s.waitingForRemoval,false);
  assert.equal(s.captureBusy,false);
  assert.match(h.messages.at(-1),/folha se moveu/);
  h.offset(7);s.lastCaptureAt=0;
- s.scanCameraFrame();s.scanCameraFrame();s.scanCameraFrame();
+ s.scanCameraFrame();s.scanCameraFrame();
  assert.equal(h.calls(),1);
  assert.equal(h.corners()[0].x,107,'normalize using corners measured from captured pixels');
  assert.equal(s.waitingForRemoval,true);
@@ -122,19 +122,19 @@ test('CAM-114: final image moving relative to preview is rejected, then a matchi
 test('CAM-114: missing fiducials in captured frame fail safely, then retry without manual intervention',()=>{
  const h=captureFrameHarness(),s=h.state;
  h.missing(true);
- s.scanCameraFrame();s.scanCameraFrame();s.scanCameraFrame();
+ s.scanCameraFrame();s.scanCameraFrame();
  assert.equal(h.calls(),0);
  assert.equal(s.waitingForRemoval,false);
  assert.match(h.messages.at(-1),/Marcadores instáveis/);
  h.missing(false);h.offset(0);s.lastCaptureAt=0;
- s.scanCameraFrame();s.scanCameraFrame();s.scanCameraFrame();
+ s.scanCameraFrame();s.scanCameraFrame();
  assert.equal(h.calls(),1);
 });
 
 test('CAM-114: orientation changes between preview and capture never reach perspective correction',()=>{
  const h=captureFrameHarness(),s=h.state;
  h.capture.width=1000;h.capture.height=900;
- s.scanCameraFrame();s.scanCameraFrame();s.scanCameraFrame();
+ s.scanCameraFrame();s.scanCameraFrame();
  assert.equal(h.calls(),0);
  assert.equal(s.waitingForRemoval,false);
  assert.match(h.messages.at(-1),/Orientação alterada/);
@@ -143,13 +143,13 @@ test('CAM-114: orientation changes between preview and capture never reach persp
 test('CAM-FOCUS-01: sharp preview cannot authorize a blurred final capture; retry succeeds',()=>{
  const h=captureFrameHarness(),s=h.state;
  h.offset(0);h.blurred(true);
- for(let i=0;i<3;i++)s.scanCameraFrame();
+ for(let i=0;i<2;i++)s.scanCameraFrame();
  assert.equal(h.calls(),0);
  assert.equal(s.waitingForRemoval,false);
  assert.equal(s.captureBusy,false);
  assert.match(h.messages.at(-1),/foco/);
  h.blurred(false);s.lastCaptureAt=0;
- for(let i=0;i<3;i++)s.scanCameraFrame();
+ for(let i=0;i<2;i++)s.scanCameraFrame();
  assert.equal(h.calls(),1);
  assert.equal(s.waitingForRemoval,true);
 });
