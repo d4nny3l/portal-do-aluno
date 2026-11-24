@@ -328,15 +328,71 @@ export function bestQuad(lines, edge, w, h, opts = {}) {
   return best;
 }
 
+/* SALTA SCAN LAB: fallback por região clara. Apenas se contornos de Hough falharem.
+   Não trata regiões sem contraste, fundo integralmente claro ou folhas cortadas. */
+function paperContrastQuad(rgba,w,h){
+ if(w<96||h<96)return null;
+ const n=w*h,lum=new Uint8Array(n),sat=new Uint8Array(n),hist=new Uint32Array(256);
+ let k=0;
+ for(let i=0;i<n;i++,k+=4){
+  const r=rgba[k],g=rgba[k+1],b=rgba[k+2];
+  const mx=Math.max(r,g,b),mn=Math.min(r,g,b),v=Math.round(.299*r+.587*g+.114*b);
+  lum[i]=v;sat[i]=mx-mn;hist[v]++;
+ }
+ const percentile=f=>{let sum=0,t=Math.ceil(n*f);for(let i=0;i<256;i++){sum+=hist[i];if(sum>=t)return i}return 255};
+ const lo=percentile(.12),hi=percentile(.88);
+ if(hi-lo<45)return null;
+ const threshold=Math.max(116,Math.min(225,Math.round(lo+(hi-lo)*.49)));
+ const mask=new Uint8Array(n),stack=new Int32Array(n);
+ let largest=null;
+ for(let y=1;y<h-1;y++)for(let x=1;x<w-1;x++){
+  const i=y*w+x;
+  if(mask[i]||lum[i]<threshold||sat[i]>80)continue;
+  let read=0,write=0;
+  stack[write++]=i;mask[i]=1;
+  let area=0,minX=w,maxX=0,minY=h,maxY=0,brightness=0;
+  let tl=[x,y],tr=[x,y],br=[x,y],bl=[x,y];
+  let minSum=Infinity,maxDiff=-Infinity,maxSum=-Infinity,minDiff=Infinity;
+  let touching=false;
+  while(read<write){
+   const p=stack[read++],cx=p%w,cy=(p-cx)/w;
+   area++;brightness+=lum[p];
+   if(cx<=1||cy<=1||cx>=w-2||cy>=h-2)touching=true;
+   minX=Math.min(minX,cx);maxX=Math.max(maxX,cx);
+   minY=Math.min(minY,cy);maxY=Math.max(maxY,cy);
+   const sum=cx+cy,diff=cx-cy;
+   if(sum<minSum){minSum=sum;tl=[cx,cy]}
+   if(diff>maxDiff){maxDiff=diff;tr=[cx,cy]}
+   if(sum>maxSum){maxSum=sum;br=[cx,cy]}
+   if(diff<minDiff){minDiff=diff;bl=[cx,cy]}
+   const neighbors=[p-1,p+1,p-w,p+w];
+   for(let v of neighbors){
+    if(mask[v]||lum[v]<threshold||sat[v]>80)continue;
+    mask[v]=1;stack[write++]=v;
+   }
+  }
+  if(touching||area<n*.06||area>n*.86)continue;
+  if(maxX-minX<w*.20||maxY-minY<h*.20)continue;
+  const corners=[tl,tr,br,bl];
+  const shoelace=Math.abs(corners.reduce((a,p,j)=>{const q=corners[(j+1)%4];return a+p[0]*q[1]-q[0]*p[1]},0)/2);
+  if(shoelace<n*.06||shoelace>n*.88)continue;
+  const fill=area/Math.max(1,shoelace),mean=brightness/area;
+  if(fill<.42||fill>1.20||mean-lo<45)continue;
+  const scored=area/n*Math.min(1,(mean-lo)/95);
+  if(!largest||scored>largest.rank)largest={corners,rank:scored,score:.35+.18*Math.min(1,fill),support:.48,method:"paper-contrast"};
+ }
+ return largest;
+}
+
 /** Full pipeline on a small RGBA frame → quad or null. */
 export function detectDocument(data, w, h, opts = {}) {
   const gray = grayFromRGBA(data, w, h);
   const e = edges(gray, w, h, opts);
   const lines = houghLines(e.edge, e.gx, e.gy, w, h, opts);
-  if (lines.length < 4) return null;
+  if (lines.length < 4) return paperContrastQuad(data,w,h);
   const q = bestQuad(lines, e.edge, w, h, opts);
   if (q) q.lines = lines.length;
-  return q;
+  return q || paperContrastQuad(data,w,h);
 }
 
 /* ------------------------------------------------------------------ */
