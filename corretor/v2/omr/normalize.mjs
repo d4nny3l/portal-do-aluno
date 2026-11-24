@@ -285,7 +285,7 @@ function homography(source, target) {
   return solve(matrix, values);
 }
 
-export function warpFromFiducials(gray, width, height, corners, { outputWidth = 1200 } = {}) {
+export function warpFromFiducials(gray, width, height, corners, { outputWidth = 1200, manifest = null } = {}) {
   if (!Array.isArray(corners) || corners.length !== 4 || !Number.isInteger(outputWidth) || outputWidth < 300 || outputWidth > 2400) {
     throw new TypeError("Informe os quatro marcadores na ordem superior esquerda, superior direita, inferior direita e inferior esquerda.");
   }
@@ -303,13 +303,25 @@ export function warpFromFiducials(gray, width, height, corners, { outputWidth = 
   if (edgeLengths.some(length => length < Math.min(width, height) * 0.08) || signedTurns.some(turn => Math.abs(turn) < width * height * 0.0002) || !signedTurns.every(turn => Math.sign(turn) === Math.sign(signedTurns[0]))) {
     throw new Error("Os quatro pontos não formam um enquadramento válido. Marque os centros dos marcadores na ordem indicada.");
   }
-  const outputHeight = Math.round(outputWidth * PAGE_HEIGHT_MM / PAGE_WIDTH_MM);
-  const target = [
-    { x: outputWidth * 8 / PAGE_WIDTH_MM, y: outputHeight * 8 / PAGE_HEIGHT_MM },
-    { x: outputWidth * (PAGE_WIDTH_MM - 8) / PAGE_WIDTH_MM, y: outputHeight * 8 / PAGE_HEIGHT_MM },
-    { x: outputWidth * (PAGE_WIDTH_MM - 8) / PAGE_WIDTH_MM, y: outputHeight * (PAGE_HEIGHT_MM - 8) / PAGE_HEIGHT_MM },
-    { x: outputWidth * 8 / PAGE_WIDTH_MM, y: outputHeight * (PAGE_HEIGHT_MM - 8) / PAGE_HEIGHT_MM },
-  ];
+  // The selected V2 embedded manifest defines its own physical paper and fiducials.
+  // Legacy A4 paths keep their original target coordinates byte-for-byte.
+  const embedded=manifest?.mode==='embedded';
+  const paper=embedded?manifest.paper:{widthMm:PAGE_WIDTH_MM,heightMm:PAGE_HEIGHT_MM};
+  const markers=embedded?manifest.technicalRegions?.fiducials:null;
+  const ordered=['fiducial-tl','fiducial-tr','fiducial-br','fiducial-bl'];
+  if(embedded&&(
+    manifest.schemaVersion!=='salta-layout-manifest-v2'||
+    ![paper?.widthMm,paper?.heightMm].every(Number.isFinite)||
+    paper.widthMm<60||paper.widthMm>210||paper.heightMm<80||paper.heightMm>297||
+    !Array.isArray(markers)||markers.length!==4||
+    markers.some((m,i)=>m.markerId!==ordered[i]||!Number.isFinite(m.x)||!Number.isFinite(m.y)||
+      m.x<=0||m.y<=0||m.x>=paper.widthMm||m.y>=paper.heightMm)
+  ))throw new TypeError('Geometria do quadro incorporado incompatível com o manifesto.');
+  const outputHeight=Math.round(outputWidth*paper.heightMm/paper.widthMm);
+  const fiducials=embedded?markers:[[8,8],[PAGE_WIDTH_MM-8,8],[PAGE_WIDTH_MM-8,PAGE_HEIGHT_MM-8],[8,PAGE_HEIGHT_MM-8]].map(([x,y])=>({x,y}));
+  const target=fiducials.map(point=>({
+    x:outputWidth*point.x/paper.widthMm,y:outputHeight*point.y/paper.heightMm
+  }));
   const project = homography(target, corners);
   const output = new Uint8Array(outputWidth * outputHeight).fill(255);
   for (let y = 0; y < outputHeight; y++) for (let x = 0; x < outputWidth; x++) {

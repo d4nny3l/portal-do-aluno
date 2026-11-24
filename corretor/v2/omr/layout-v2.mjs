@@ -107,7 +107,8 @@ function pack(groups,cols,width,start,cap,rowPitch,reserved=0){
   if(col>=cols)return null;
   const limit=col===cols-1?cap-reserved:cap;
   const label=run.label+(offset?' (cont.)':'');
-  const titleLines=lines(label,width-4,2.6);const heading=titleLines.length*3.38+3;
+  // '(cont.)' is an internal marker, not printed text or reserved title space.
+  const titleLines=lines(run.label,width-4,2.6);const heading=titleLines.length*3.38+3;
   const qheight=run.type==='CDU'?64:rowPitch;
   const gap=y?3:0;
   // Keep short pedagogical groups intact when they fit a fresh column,
@@ -120,6 +121,22 @@ function pack(groups,cols,width,start,cap,rowPitch,reserved=0){
   out.push(fragment);y+=fragment.height;offset+=count;state.set(col,y);
   if(offset<run.questions.length){col++;y=0;}
  }}
+ // Align only first rows across occupied columns; internal subsequent blocks keep natural packing.
+ // The actual printed title with the most lines determines the shared heading band.
+ const first=new Map();
+ for(const f of out)if(!first.has(f.columnIndex))first.set(f.columnIndex,f);
+ const common=Math.max(0,...Array.from(first.values(),f=>f.heading));
+ for(const [column,head] of first){
+  const delta=common-head.heading;
+  if(delta<=1e-8)continue;
+  for(const f of out)if(f.columnIndex===column){
+   if(f===head){f.heading+=delta;f.height+=delta}
+   else f.y+=delta;
+  }
+  const raised=(state.get(column)||0)+delta;
+  if(raised>cap-(column===cols-1?reserved:0)+1e-5)return null;
+  state.set(column,raised);
+ }
  return{fragments:out,heights:Array.from({length:cols},(_,i)=>state.get(i)||0),height:Math.max(0,...state.values())};
 }
 function compose(d,size,bounds,start,end){
@@ -161,7 +178,7 @@ export function composeV2(input,options={}){
  const selected=compose(d,size,bounds,start,end);if(!selected)throw new RangeError(`As ${d.questionCount} questões não cabem em A4 com o cabeçalho e identificação escolhidos. Reduza textos, seções ou quantidade; as bolhas não foram reduzidas.`);
  const questions=[],sections=[];
  for(const f of selected.fragments){
-  const x=bounds.x+f.columnIndex*(selected.width+3);const frame={sectionId:f.sectionId,label:f.label,x,y:f.y,width:f.width,height:f.height,columnIndex:f.columnIndex,titleLines:f.titleLines,type:f.type,role:'section'};sections.push(frame);
+  const x=bounds.x+f.columnIndex*(selected.width+3);const frame={sectionId:f.sectionId,label:f.label,x,y:f.y,width:f.width,height:f.height,columnIndex:f.columnIndex,titleLines:f.titleLines,heading:f.heading,type:f.type,role:'section'};sections.push(frame);
   for(const [i,q]of f.questions.entries()){
    const y=f.y+f.heading+i*f.rowPitch;const base=x+(f.width-33.7)/2;const bubbles=[],boxes=[];
    if(q.type==='CDU'){

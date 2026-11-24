@@ -25,7 +25,7 @@ function sectionVisualFrame(f,questions){
  for(let candidate=width;candidate<=f.width+0.001;candidate=Math.min(f.width,candidate+0.5)){
   let fit=null;
   for(const [size,limit] of [[2.6,f.titleLines.length],[2.25,maxLines]]){
-   try{const lines=wrapText(f.label,candidate-padding*2,size);if(lines.length<=limit){fit={lines,size};break;}}catch{}
+   try{const lines=wrapText(f.label.replace(/ \(cont\.\)$/,''),candidate-padding*2,size);if(lines.length<=limit){fit={lines,size};break;}}catch{}
   }
   if(fit){width=candidate;titleLines=fit.lines;titleFont=fit.size;break;}
   if(candidate===f.width){width=f.width;break;}
@@ -78,11 +78,12 @@ export function renderTemplateSvg(template,{page=1,header=null,manifest:supplied
  for(const f of m.sections){
   const visual=m.sectionFrameStyle==='content'?sectionVisualFrame(f,m.questions):{...f,titleFont:2.6};
   parts.push(`<g class="omr-section-frame" data-section-id="${esc(f.sectionId)}">`,frame(visual,'omr-section-border'));
-  const pitch=visual.titleFont===2.6?3.38:2.35,heading=f.titleLines.length*3.38+3;
-  const first=visual.titleFont===2.6?3.6:Math.max(2.5,(heading-pitch*(visual.titleLines.length-1))/2+.55);
-  // Only printed titles lose the automatic suffix; preserve the manifest and optical layout.
+  const pitch=visual.titleFont===2.6?3.38:2.35,heading=f.heading??(f.titleLines.length*3.38+3);
+  // New layouts have exactly the printed lines. Legacy manifests retain old line metadata.
   const continued=f.label.endsWith(' (cont.)')&&m.sections.some(previous=>previous.sectionId===f.sectionId&&previous.columnIndex<f.columnIndex);
   const printedLines=continued?visual.titleLines.map(line=>line.replace(/(?:^|\s)\(cont\.\)$/,'').trimEnd()).filter(Boolean):visual.titleLines;
+  const first=f.heading!=null?(heading-pitch*(printedLines.length-1))/2+.4:
+    visual.titleFont===2.6?3.6:Math.max(2.5,(heading-pitch*(visual.titleLines.length-1))/2+.55);
   printedLines.forEach((line,i)=>parts.push(text(visual.x+visual.width/2,f.y+first+i*pitch,line,visual.titleFont,700,'middle')));
   parts.push('</g>');
  }
