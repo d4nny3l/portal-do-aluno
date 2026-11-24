@@ -211,7 +211,7 @@ test('actual Create-tab UI mounts and saves/opens/selects/duplicates without a s
  const records=new Map(),selections=new Map();let currentEditor=m.editor,selected=null,nominalCleared=0,appliedExact=null,modelBuilds=0;
  const fetchFn=async(url,init)=>{
   const route=new URL(url).pathname.slice('/assessments/v1'.length),q=new URL(url).searchParams;
-  if(route==='/session'&&init.method==='GET')return Response.json({authenticated:true,principalId:'teacher-a',epoch:1});
+  if(route==='/session'&&init.method==='GET')return Response.json({authenticated:true,principalId:'teacher-a',epoch:1,editorSnapshotVersion:'salta-editor-snapshot-v1'});
   if(route==='/grants'&&init.method==='GET')return Response.json({grants:[grants]});
   if(route==='/assessments'&&init.method==='GET'){
    assert.equal(q.get('classId'),grants.classId);
@@ -303,7 +303,7 @@ async function mountedRaceFixture({onPut=async()=>{},onSelection=async()=>{},onO
  const records=new Map(),selections=new Map(),requestById=new Map(),writeCalls=[];let currentEditor=m.editor,selected=null,nominalCleared=0,appliedExact=null,modelBuilds=0,snapshotOverride=null;
  const fetchFn=async(url,init)=>{
   const route=new URL(url).pathname.slice('/assessments/v1'.length),q=new URL(url).searchParams;
-  if(route==='/session'&&init.method==='GET')return Response.json({authenticated:true,principalId:'teacher-a',epoch:1,...(scoreFormatVersion?{scoreFormatVersion}:{})});
+  if(route==='/session'&&init.method==='GET')return Response.json({authenticated:true,principalId:'teacher-a',epoch:1,editorSnapshotVersion:'salta-editor-snapshot-v1',...(scoreFormatVersion?{scoreFormatVersion}:{})});
   if(route==='/grants'&&init.method==='GET')return Response.json({grants:[grants]});
   if(route==='/assessments'&&init.method==='GET'){
    assert.equal(q.get('classId'),grants.classId);
@@ -705,7 +705,7 @@ test('UX-79C actual library never publishes private metadata when detail GET ret
   const id=crypto.randomUUID();let sessionRequests=0;
   const fetchFn=async(url)=>{
    const route=new URL(url).pathname.slice('/assessments/v1'.length);
-   if(route==='/session'){sessionRequests++;return Response.json({authenticated:true,principalId:'teacher-a',epoch:1});}
+   if(route==='/session'){sessionRequests++;return Response.json({authenticated:true,principalId:'teacher-a',epoch:1,editorSnapshotVersion:'salta-editor-snapshot-v1'});}
    if(route==='/grants')return Response.json({grants:[grant]});
    if(route==='/assessments')return Response.json({assessments:[{id,revision:1,title:'Avaliação sigilosa',...grant}],nextCursor:null});
    if(route==='/assessments/'+id+'/revisions/1')return Response.json({code:'denied'},{status});
@@ -736,7 +736,7 @@ test('UX-79C consolidated: 13 paginated options remain locked until all private 
  const gate=deferred(),entered=deferred();let reads=0,inflight=0,peak=0,pages=0,editRestores=0;
  const fetchFn=async(url,req)=>{
   const u=new URL(url),route=u.pathname.slice('/assessments/v1'.length);
-  if(route==='/session')return Response.json({authenticated:true,principalId:'teacher-A',epoch:1});
+  if(route==='/session')return Response.json({authenticated:true,principalId:'teacher-A',epoch:1,editorSnapshotVersion:'salta-editor-snapshot-v1'});
   if(route==='/grants')return Response.json({grants:[grant]});
   if(route==='/assessments'){
    pages++;const pos=u.searchParams.get('after')?rows.findIndex(x=>x.id===u.searchParams.get('after'))+1:0;
@@ -779,7 +779,7 @@ test('UX-79C consolidated: 201-item catalog is not partially published and does 
  let pages=0,details=0;
  const fetchFn=async(url,req)=>{
   const u=new URL(url),route=u.pathname.slice('/assessments/v1'.length);
-  if(route==='/session')return Response.json({authenticated:true,principalId:'teacher-A',epoch:1});
+  if(route==='/session')return Response.json({authenticated:true,principalId:'teacher-A',epoch:1,editorSnapshotVersion:'salta-editor-snapshot-v1'});
   if(route==='/grants')return Response.json({grants:[grant]});
   if(route==='/assessments'){
    pages++;const after=u.searchParams.get('after'),pos=after?rows.findIndex(x=>x.id===after)+1:0;
@@ -812,7 +812,7 @@ test('UX-79C consolidated: 429 metadata failure permits retry without releasing 
  let fail=true,reads=0;
  const fetchFn=async(url,req)=>{
   const route=new URL(url).pathname.slice('/assessments/v1'.length);
-  if(route==='/session')return Response.json({authenticated:true,principalId:'teacher-A',epoch:1});
+  if(route==='/session')return Response.json({authenticated:true,principalId:'teacher-A',epoch:1,editorSnapshotVersion:'salta-editor-snapshot-v1'});
   if(route==='/grants')return Response.json({grants:[grant]});
   if(route==='/assessments')return Response.json({assessments:[row],nextCursor:null});
   if(route==='/assessments/'+row.id+'/revisions/1'){
@@ -872,7 +872,7 @@ test('UX-79B fetches all internal catalog pages without exposing pagination cont
  let requests=0;
  const fetchFn=async(url,init)=>{
   const target=new URL(url),route=target.pathname.slice('/assessments/v1'.length);
-  if(route==='/session')return Response.json({authenticated:true,principalId:'teacher-a',epoch:1});
+  if(route==='/session')return Response.json({authenticated:true,principalId:'teacher-a',epoch:1,editorSnapshotVersion:'salta-editor-snapshot-v1'});
   if(route==='/grants')return Response.json({grants:[grant]});
   if(route==='/assessments'&&init.method==='GET'){
    requests++;
@@ -917,7 +917,7 @@ test('UX-79B P0 privacy: 401/403 purge 13 cached assessments, metadata and edita
   let deny=false,cleared=0;
   const fetchFn=async(url,req)=>{
    const u=new URL(url),route=u.pathname.slice('/assessments/v1'.length);
-   if(route==='/session')return Response.json({authenticated:true,principalId:'teacher-a',epoch:1});
+   if(route==='/session')return Response.json({authenticated:true,principalId:'teacher-a',epoch:1,editorSnapshotVersion:'salta-editor-snapshot-v1'});
    if(route==='/grants')return Response.json({grants:[grant]});
    if(route==='/assessments'){
     if(deny&&trigger==='list')return Response.json({code:'denied'},{status:code});
@@ -972,7 +972,7 @@ test('UX-79C P0 privacy: scope switch discards hydrated catalog and late detail 
  const entered=deferred(),release=deferred();let opensOfA=0;
  const fetchFn=async(url,request)=>{
   const u=new URL(url),route=u.pathname.slice('/assessments/v1'.length);
-  if(route==='/session')return Response.json({authenticated:true,principalId:'teacher-a',epoch:1});
+  if(route==='/session')return Response.json({authenticated:true,principalId:'teacher-a',epoch:1,editorSnapshotVersion:'salta-editor-snapshot-v1'});
   if(route==='/grants')return Response.json({grants:[grantA,grantB]});
   if(route==='/assessments'){
    const src=u.searchParams.get('classId')==='class-a'?rowsA:[onlyB];
@@ -1315,7 +1315,7 @@ test('P0-80-RF-01 actual adapter + Corretor callback clears private reader on 40
   let revoked=false;
   const fetchFn=async(url,req)=>{
    const u=new URL(url),route=u.pathname.slice('/assessments/v1'.length);
-   if(route==='/session')return Response.json({authenticated:true,principalId:'A',epoch:1});
+   if(route==='/session')return Response.json({authenticated:true,principalId:'A',epoch:1,editorSnapshotVersion:'salta-editor-snapshot-v1'});
    if(route==='/grants')return Response.json({grants:[grant]});
    if(route==='/assessments'){
     if(revoked)return Response.json({code:'unauthorized'},{status:code});
@@ -1363,7 +1363,7 @@ test('P0-80-RF-02 normal navigation does not reinitialize a ready controller',as
  let sessions=0;
  const fetchFn=async(url)=>{
   const route=new URL(url).pathname.slice('/assessments/v1'.length);
-  if(route==='/session'){sessions++;return Response.json({authenticated:true,principalId:'teacher-A',epoch:1});}
+  if(route==='/session'){sessions++;return Response.json({authenticated:true,principalId:'teacher-A',epoch:1,editorSnapshotVersion:'salta-editor-snapshot-v1'});}
   if(route==='/grants')return Response.json({grants:[grant]});
   if(route==='/assessments')return Response.json({assessments:[],nextCursor:null});
   throw Error('Unexpected '+route);
@@ -1394,7 +1394,7 @@ test('P0-80-RF-01 revoking a library session does not discard a manually importe
  let revoked=false,editorResets=0;
  const fetchFn=async(url)=>{
   const route=new URL(url).pathname.slice('/assessments/v1'.length);
-  if(route==='/session')return Response.json({authenticated:true,principalId:'teacher-A',epoch:1});
+  if(route==='/session')return Response.json({authenticated:true,principalId:'teacher-A',epoch:1,editorSnapshotVersion:'salta-editor-snapshot-v1'});
   if(route==='/grants')return Response.json({grants:[scope]});
   if(route==='/assessments')return revoked?Response.json({code:'expired'},{status:401}):
    Response.json({assessments:[],nextCursor:null});
@@ -1498,7 +1498,7 @@ function crossTeacherCatalogFixture({aCount=11,bCount=23,holdRetry=false}={}){
  const fetchFn=async(url,request)=>{
   const u=new URL(url),route=u.pathname.slice('/assessments/v1'.length);
   const teacher=actor,version=epoch; // Response belongs to the initiating session.
-  if(route==='/session')return Response.json({authenticated:true,principalId:teacher,epoch:version,
+  if(route==='/session')return Response.json({authenticated:true,principalId:teacher,epoch:version,editorSnapshotVersion:'salta-editor-snapshot-v1',
    scoreFormatVersion:'salta-score-format-v1'});
   if(route==='/grants')return Response.json({grants:[teacher==='teacher-a'?scopeA:scopeB]});
   if(route==='/assessments'){

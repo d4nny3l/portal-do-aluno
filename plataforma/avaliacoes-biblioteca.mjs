@@ -148,7 +148,7 @@ export function mountAssessmentLibrary({
  const catalogCache=new Map();
  let catalogGeneration=0,catalogBusy=false,catalogReady=false,catalogLoadError=false;
  let catalogErrorContext='',catalogErrorGeneration=-1;
- let authorizedContext='',manualRetryNeeded=false,privateEditorLoaded=false;
+ let authorizedContext='',manualRetryNeeded=false,privateEditorLoaded=false,legacyEditorActive=false;
  // UI edit clock is separate from controller operation generation. Never
  // invalidate that generation during PUT: the original requestId must survive.
  let editVersion=0,unsaved=false,confirmedEarlierSave=false,pendingSave=null,selectionAttempt=null,openAttempt=null,selectionNeedsConfirmation=false;
@@ -207,7 +207,7 @@ export function mountAssessmentLibrary({
   catalogGeneration++;catalogBusy=false;catalogReady=false;catalogLoadError=false;
   catalogErrorContext='';catalogErrorGeneration=-1;
   catalogCache.clear();allRows=[];metadataById.clear();selectedCatalogId='';
-  const hadPrivateEditor=privateEditorLoaded;privateEditorLoaded=false;
+  const hadPrivateEditor=privateEditorLoaded;privateEditorLoaded=false;legacyEditorActive=false;
   resetScores();pendingSave=null;selectionAttempt=null;openAttempt=null;
   unsaved=false;confirmedEarlierSave=false;selectionNeedsConfirmation=false;
   manualRetryNeeded=false;scheduledRequestId=null;editVersion++;
@@ -264,7 +264,7 @@ export function mountAssessmentLibrary({
    throw new Error('A avaliação foi editada durante a abertura. Suas alterações foram preservadas; abra novamente se desejar.');
   }
   privateEditorLoaded=true; // Also covers partially restored private editor on failure.
-  const restored=editorFromPrivateRecord(record);
+  const restored=editorFromPrivateRecord(record);legacyEditorActive=restored.legacy;
   if(restored.manifest.mode==='embedded'&&!hasEmbeddedLibrary())throw new Error(embeddedUnavailable);
    if(Object.hasOwn(restored.plan,'scoreDecimals')&&!hasScoreFormat())
     throw new Error('A sessão não confirma o formato da nota desta avaliação. Conecte-se a um servidor compatível.');
@@ -287,7 +287,7 @@ export function mountAssessmentLibrary({
   applyExactModel({manifest:restored.manifest,title:record.definition.title,revision:record.revision});
   unsaved=false;confirmedEarlierSave=false;selectionNeedsConfirmation=false;
   renderScoring();
-  if(restored.legacy){status.dataset.state='legacy';status.textContent='Avaliação histórica aberta. Preferências não gravadas originalmente foram reconstruídas com valores padrão; confira antes de editar.';}
+  
  }
  const controller=createPrivateLibraryController({
   client,getDraft,applyRecord,
@@ -311,7 +311,7 @@ export function mountAssessmentLibrary({
    '” para corrigir este lote? Confira o cartão físico: modelos visualmente iguais podem ter gabaritos diferentes.')
  });
  const connect=btn('Conectar',async()=>{await connectAndList()},'connect');
- const create=btn('Nova avaliação',async()=>{if(!ready)throw Error('Sua biblioteca não está conectada.');controller.newDraft();privateEditorLoaded=true;resetScores();newEditor();editVersion++;unsaved=false;confirmedEarlierSave=false;selectionNeedsConfirmation=false;selectedCatalogId='';renderScoring()},'new');
+ const create=btn('Nova avaliação',async()=>{if(!ready)throw Error('Sua biblioteca não está conectada.');controller.newDraft();privateEditorLoaded=true;resetScores();newEditor();legacyEditorActive=false;editVersion++;unsaved=false;confirmedEarlierSave=false;selectionNeedsConfirmation=false;selectedCatalogId='';renderScoring()},'new');
  const reconcileSaved=async(result,attempt)=>{
   if(!result?.record)return false;
   // A verified immutable revision is real, even if the teacher subsequently
@@ -499,7 +499,7 @@ export function mountAssessmentLibrary({
   try{
    const chosen=controller.view().grants[Number(scope.value)];
    if(!chosen)throw Error('Selecione a turma.');
-   resetScores();controller.useScope(chosen);newEditor();editVersion++;allRows=[];selectedCatalogId='';unsaved=false;
+   resetScores();controller.useScope(chosen);newEditor();legacyEditorActive=false;editVersion++;allRows=[];selectedCatalogId='';unsaved=false;
    await loadCatalog();
   }catch(error){status.textContent=error.message;status.dataset.state='error'}
   finally{operationBusy=false;render({preserveError:status.dataset.state==='error'})}
@@ -513,7 +513,7 @@ export function mountAssessmentLibrary({
   }
   operationBusy=true;
   try{
-   if(!id){controller.invalidateOpenedRecord();selectedCatalogId='';resetScores();newEditor();renderScoring();return;}
+   if(!id){controller.invalidateOpenedRecord();selectedCatalogId='';resetScores();newEditor();legacyEditorActive=false;renderScoring();return;}
    selectedCatalogId=id;
    await openSelected(id);
   }catch(error){status.textContent=error.message;status.dataset.state='error'}
@@ -635,6 +635,7 @@ export function mountAssessmentLibrary({
    status.dataset.state='error';
    status.textContent='Não foi possível carregar suas avaliações. Tente novamente.';
   }
+  if(ready&&legacyEditorActive&&opened&&!unsaved&&!s.pending&&!catalogLoadError){status.dataset.state='legacy';status.textContent='Avaliação histórica: apenas informações verificáveis foram restauradas. Preferências não registradas receberam padrões neutros; confira antes de editar.';}
   if(ready&&!hasEditorSnapshot()&&!s.pending&&!catalogLoadError){status.dataset.state='unsupported';status.textContent=snapshotUnavailable;}
   if(ready&&embeddedBlocked&&!s.pending&&!catalogLoadError){
    status.dataset.state='unsupported';status.textContent=embeddedUnavailable;
