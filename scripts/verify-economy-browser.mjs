@@ -135,23 +135,30 @@ try{
   assert.equal(await p.locator('#economyOptions').isVisible(),false,'options remain inside closed Others formats');
   await p.locator('details.export-options').first().locator('summary').click();
   assert.equal(await p.locator('#economyOptions').isVisible(),true,'embedded options visible');
+  let popups=0,printDialogs=0;
+  p.on('popup',()=>popups++);
+  p.on('dialog',d=>{printDialogs++;d.dismiss()});
   for(const copies of [2,4]){
    await p.locator('#economyCopies').selectOption(String(copies));
    assert((await p.locator('#economyPrintStatus').innerText()).includes('100%'));
    await p.screenshot({path:path.join(out,'real-ui-select-'+copies+'.png')});
-   const popupPromise=p.waitForEvent('popup');
+   const event=p.waitForEvent('download',{timeout:120000});
    await p.locator('#printCard').click();
-   const popup=await popupPromise;
-   await popup.locator('svg.economy-sheet').waitFor();
-   assert.equal(await popup.locator('svg.economy-sheet').getAttribute('data-economy-copies'),String(copies));
-   assert.equal(await popup.locator('svg[data-economy-copy]').count(),copies);
-   await popup.close();
+   const download=await event;
+   assert.equal(download.suggestedFilename(),'cartao-respostas-'+copies+'-por-a4.pdf');
+   const bytes=readFileSync(await download.path());
+   assert.equal(bytes.subarray(0,5).toString('ascii'),'%PDF-');
+   assert(bytes.length>1000);
+   writeFileSync(path.join(out,'real-ui-'+copies+'-por-a4.pdf'),bytes);
   }
   await p.locator('#economyCopies').selectOption('');
-  const normalPopup=p.waitForEvent('popup');await p.locator('#printCard').click();
-  const normal=await normalPopup;await normal.locator('.print-page').waitFor();
-  assert.equal(await normal.locator('svg.economy-sheet').count(),0);
-  await normal.close();
+  const ordinaryEvent=p.waitForEvent('download',{timeout:120000});
+  await p.locator('#printCard').click();
+  const ordinary=await ordinaryEvent;
+  assert.equal(ordinary.suggestedFilename(),'cartao-respostas-a4.pdf');
+  assert.equal(readFileSync(await ordinary.path()).subarray(0,5).toString(),'%PDF-');
+  assert.equal(popups,0,'PDF must not open tabs');
+  assert.equal(printDialogs,0,'PDF must not invoke a print dialog');
   await p.locator('nav.module-nav [data-view="criar"]').click();
   await p.locator('#identitySettings summary').click();
   await p.locator('#cardMode').selectOption('full-page');
@@ -159,8 +166,8 @@ try{
   assert.equal(await p.locator('#economyCopies').inputValue(),'');
   assert.equal(await p.locator('#economyOptions').isHidden(),true);
   assert.equal(methods.filter(m=>m.startsWith('PUT ')).length,0,'print selection must never persist');
-  report.scenarios.push({realFrontend:true,sequence:'2 -> 4 -> normal A4',putRequests:0,selectedCopiesResetAfterA4:true});
-  console.log('ECONOMY-REAL-UI: 2 -> 4 -> normal + A4 reset + no PUT PASS');
+  report.scenarios.push({realFrontend:true,sequence:'2 -> 4 -> normal A4',putRequests:0,popups,printDialogs,selectedCopiesResetAfterA4:true});
+  console.log('ECONOMY-REAL-UI: real downloaded PDF 2 -> 4 -> normal + no popup/print/PUT PASS');
   await uiContext.close();
  }
  assert.equal(errors.length,0);
