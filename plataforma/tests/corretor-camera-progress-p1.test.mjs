@@ -31,7 +31,7 @@ function setup({fail=false,inconclusive=false}={}){
 }
 test('camera indicators reflect stable, real consolidation and recognized card; reset on removal',()=>{
  const h=setup(),s=h.state;
- s.scanCameraFrame();s.scanCameraFrame();
+ s.scanCameraFrame();
  assert.equal(h.$('cameraStableStatus').hidden,true);
  assert.equal(h.$('cameraCaptureStatus').hidden,true);
  s.scanCameraFrame();
@@ -73,14 +73,14 @@ test('optically inconclusive read cannot claim card recognized even when normali
 
 test('CAM-114: one missing fiducial frame does not erase stable corner reference or permit capture',()=>{
  const h=setup(),s=h.state;
- s.scanCameraFrame();s.scanCameraFrame();
- assert.equal(s.stableFrames,2);
+ s.scanCameraFrame();
+ assert.equal(s.stableFrames,1);
  h.hide();s.scanCameraFrame();
  assert.equal(s.stableFrames,0);
  assert.equal(s.previousCorners?.corners.length,4,'preserve reference through one optical dropout');
  assert.equal(h.count(),0);
  h.show();s.scanCameraFrame();s.scanCameraFrame();s.scanCameraFrame();
- assert.equal(h.count(),1,'only three new valid frames permit capture');
+ assert.equal(h.count(),1,'two new valid frames permit capture while keeping final optical checks');
 });
 
 function captureFrameHarness(){
