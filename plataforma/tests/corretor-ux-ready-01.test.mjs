@@ -7,6 +7,7 @@ const html=readFileSync(new URL('../corretor-v2.html',import.meta.url),'utf8');
 const library=readFileSync(new URL('../avaliacoes-biblioteca.mjs',import.meta.url),'utf8');
 const css=readFileSync(new URL('../corretor-v2.css',import.meta.url),'utf8');
 const pdfSource=readFileSync(new URL('../../corretor/v2/omr/pdf-download.mjs',import.meta.url),'utf8');
+const directWorkflow=readFileSync(new URL('../../.github/workflows/test-direct-pdf.yml',import.meta.url),'utf8');
 
 test('UX-READY-01: nenhuma narrativa de homologacao/versao na experiencia publica',()=>{
  assert.doesNotMatch(html,/A leitura óptica de quadros reduzidos ainda não foi homologada/);
@@ -93,4 +94,10 @@ test('CLEAN UX 01: orientacao fisica e privacidade do lote permanecem verdadeira
  assert.match(html,/CDU: sem leitura automática/);
  assert.match(library,/Não foi possível salvar todas as configurações\. Nada foi salvo/);
  assert.match(library,/Alguns campos não foram recuperados\. Confira os dados antes de editar/);
+});
+
+test('CLEAN UX 01: workflow PDF deve conferir HEAD real do PR antes do guard estrito',()=>{
+ assert.match(directWorkflow,/ref: \$\{\{ github\.event\.pull_request\.head\.sha \}\}/);
+ assert.match(directWorkflow,/node scripts\/verify-product-ux-scope\.mjs/);
+ assert.match(directWorkflow,/node scripts\/verify-direct-pdf-browser\.mjs/);
 });
