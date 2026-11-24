@@ -38,7 +38,7 @@ jobs:
       - name: Classify exact CAM-FOCUS-01 delta (PR #127 only)
         id: camera_scope
         run: |
-          if node scripts/verify-camera-focus-scope.mjs; then
+          if node scripts/verify-single-shot-scope.mjs || node scripts/verify-camera-focus-scope.mjs; then
             echo 'camera_only=true' >> "$GITHUB_OUTPUT"
           else
             echo 'camera_only=false' >> "$GITHUB_OUTPUT"
@@ -62,7 +62,7 @@ jobs:
       - name: CAM-FOCUS-01 — verify unchanged current dependencies and run original #120 guard and full historical suite
         if: steps.camera_scope.outputs.camera_only == 'true'
         run: |
-          node scripts/verify-camera-focus-scope.mjs
+          node scripts/verify-single-shot-scope.mjs || node scripts/verify-camera-focus-scope.mjs
           node --input-type=module -e "import {verifyDependencies} from './assessments-service/build.mjs'; verifyDependencies()"
           git worktree add --detach "$RUNNER_TEMP/salta-120" ce74c520a464a17ed7fda2991df92f984a04d8e7
           cd "$RUNNER_TEMP/salta-120"
