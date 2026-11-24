@@ -95,3 +95,55 @@ for(const mode of ['full-page','embedded']){
   });
  }
 }
+
+function paintDisc(pixels,w,h,cx,cy,r,shade=0){
+ for(let y=Math.max(0,Math.floor(cy-r));y<=Math.min(h-1,Math.ceil(cy+r));y++)
+  for(let x=Math.max(0,Math.floor(cx-r));x<=Math.min(w-1,Math.ceil(cx+r));x++)
+   if((x-cx)**2+(y-cy)**2<=r*r)pixels[y*w+x]=shade;
+}
+test('EMBED-ALIGN: A-E strong, double, blank, and ambiguous marks from one embedded photo keep decisions safe',()=>{
+ const {template,manifest}=embedded();
+ const image=scene(manifest,{shade:236,scale:5});
+ const marks=[{question:1,choices:['B']},{question:2,choices:['A','C']},{question:4,choices:['E'],shade:120}];
+ for(const mark of marks){
+  const question=manifest.questions.find(q=>q.number===mark.question);
+  for(const choice of mark.choices){
+   const b=question.bubbles.find(b=>b.choice===choice);
+   paintDisc(image.pixels,image.width,image.height,140+b.x*5,100+b.y*5,b.radiusMm*5*.96,mark.shade??0);
+  }
+ }
+ const normalized=warpFromFiducials(image.pixels,image.width,image.height,image.point,{outputWidth:700,manifest});
+ const read=readRaster(template,normalized.pixels,normalized.width,normalized.height,{manifest,showCode:false});
+ const byNumber=n=>read.observations.find(q=>q.number===n);
+ assert.equal(byNumber(1).state,'read');assert.equal(byNumber(1).answer,'B');
+ assert.notEqual(byNumber(2).state,'read','double cannot become definite answer');
+ assert.equal(byNumber(2).answer,null);
+ assert.equal(byNumber(3).state,'blank');
+ assert.ok(['read','review','blank'].includes(byNumber(4).state));
+ assert.equal(byNumber(2).marks.length,2);
+});
+test('EMBED-ALIGN: physical seven-digit ID in wide embedded frame remains readable',()=>{
+ const {template,manifest}=embedded('IDENTIFICAÇÃO',180,240,true);
+ const image=scene(manifest,{left:130,top:80,scale:3.5});
+ const code='0123456';
+ for(const bubble of manifest.identityBubbles){
+  if(code[ bubble.column-1 ]!==String(bubble.digit))continue;
+  paintDisc(image.pixels,image.width,image.height,130+bubble.x*3.5,80+bubble.y*3.5,bubble.radiusMm*3.5*.96);
+ }
+ const n=warpFromFiducials(image.pixels,image.width,image.height,image.point,{outputWidth:900,manifest});
+ const read=readRaster(template,n.pixels,n.width,n.height,{manifest,showCode:true});
+ assert.equal(read.identity.state,'read');
+ assert.equal(read.identity.code,code);
+ assert.ok(read.observations.every(x=>x.state==='blank'));
+});
+test('EMBED-ALIGN: short/near physical frame, tilted source and less illumination preserve manifest ratio',()=>{
+ const {manifest}=embedded('CIÊNCIAS',100,180);
+ const compact=scene(manifest,{left:300,top:190,scale:2,shade:210});
+ const near=scene(manifest,{left:140,top:100,scale:5,shade:225});
+ for(const photo of [compact,near]){
+  const warped=warpFromFiducials(photo.pixels,photo.width,photo.height,photo.point,{outputWidth:600,manifest});
+  assert.equal(warped.height,1080);
+  assert.equal(warped.pixels.length,600*1080);
+ }
+ assert.ok(Math.min(...compact.point.map((p,i)=>Math.hypot(p.x-compact.point[(i+1)%4].x,p.y-compact.point[(i+1)%4].y)))>220);
+});
