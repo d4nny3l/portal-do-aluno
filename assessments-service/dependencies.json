@@ -2,7 +2,7 @@
   "schemaVersion": "salta-backend-source-matrix-v2",
   "main": "e156a8673a10421e8d62728c1b6a4ff7f6c0d1d3",
   "backendSource": "e156a8673a10421e8d62728c1b6a4ff7f6c0d1d3",
-  "expectedBundleSha256": "66cc73a31d3f1f8d527e37a5b58efa611c539fe3ffd5032155b780b9829b4704",
+  "expectedBundleSha256": "55e2c19f86ecfb3b06a5165780a1c3a63b386edc51c9b93fe039728d5415bebc",
   "inputs": [
     {
       "path": "assessments-lab/crypto/crypto-format.js",
@@ -63,8 +63,8 @@
       "origin": "e156a8673a10421e8d62728c1b6a4ff7f6c0d1d3",
       "originBlob": "bc16a611edd0de541aba600efcbcfa0af75c31ae",
       "mainBlob": "bc16a611edd0de541aba600efcbcfa0af75c31ae",
-      "candidateBlob": "18716d0dc14a694fa703f66a69cadde4be9633cc",
-      "sha256": "ab954d1673885080a10e0a19c87810bfd537760a04cd9ece2c7e85fadd4dc8c1",
+      "candidateBlob": "413ea85f92d07c980f52990035856d39e7dd8273",
+      "sha256": "70f483ee2a86eb9dd16400410da187ef4ffef0b7720a356217a25a86d1cf1c88",
       "comparison": "changed"
     },
     {

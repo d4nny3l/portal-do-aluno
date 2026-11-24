@@ -44,3 +44,16 @@ test('capability authenticates teacher, historical v2 A4 V1/V2 still reads witho
  for(const legacy of [false,true]){const old=legacyDefinition({legacy}),id=crypto.randomUUID();assert.equal((await h.request('/assessments/'+id,{method:'PUT',data:packet(0,{definition:old})})).status,201);assert.deepEqual((await(await h.request('/assessments/'+id)).json()).record.definition,old);}
  const huge=packet(0,{definition:snapshotFixture().definition});huge.definition.editorSnapshot.header.institution='x'.repeat(1_000_001);assert.equal((await h.request('/assessments/'+crypto.randomUUID(),{method:'PUT',data:huge})).status,413);
 });
+
+test('old clients cannot discard an existing editor snapshot; historical receipt replay remains safe',async t=>{
+ const h=await harness();t.after(h.close);const id=crypto.randomUUID(),old=snapshotFixture().definition;
+ delete old.editorSnapshot;old.schemaVersion='salta-assessment-definition-v2';
+ const p0=packet(0,{definition:old});assert.equal((await h.request('/assessments/'+id,{method:'PUT',data:p0})).status,201);
+ const full=snapshotFixture().definition;assert.equal((await h.request('/assessments/'+id,{method:'PUT',data:packet(1,{definition:full})})).status,201);
+ const replay=await h.request('/assessments/'+id,{method:'PUT',data:p0});assert.equal(replay.status,200);assert.equal((await replay.json()).replayed,true);
+ const downgrade=await h.request('/assessments/'+id,{method:'PUT',data:packet(2,{definition:old})});assert.equal(downgrade.status,409);assert.equal((await downgrade.json()).code,'editor_snapshot_required');
+ assert.equal(h.db.sqlite.prepare('SELECT COUNT(*) AS n FROM av_revisions').get().n,2);
+ assert.deepEqual((await(await h.request('/assessments/'+id)).json()).record.definition,full);
+ const next=structuredClone(full);next.editorSnapshot.fields.sectionLabel='Próximo bloco';assert.equal((await h.request('/assessments/'+id,{method:'PUT',data:packet(2,{definition:next})})).status,201);
+ assert.deepEqual((await(await h.request('/assessments/'+id+'/revisions/2')).json()).record.definition,full);
+});

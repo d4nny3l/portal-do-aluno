@@ -90,10 +90,12 @@ async function save(db,actor,ring,id,p,operation={kind:'save',id,p}) {
  const a=await db.prepare('SELECT * FROM av_assessments WHERE id=?').bind(id).first();
  if (a&&(a.owner_id!==actor.id || ['institutionId','classId','periodId'].some(k=>rowScope(a)[k]!==p[k]))) deny(404,'not_found','Avaliação não encontrada.');
  if ((a?.current_revision??0)!==p.expectedRevision || a?.state==='archived') deny(409,'revision_conflict','A avaliação mudou ou foi arquivada. Reabra antes de salvar.');
- // An older client must not silently erase an explicitly saved presentation choice.
- if (a&&!Object.hasOwn(definition.display,'scoreDecimals')) {
+ // An older client must not silently erase saved presentation/editor choices.
+ if (a&&(!Object.hasOwn(definition.display,'scoreDecimals')||!Object.hasOwn(definition,'editorSnapshot'))) {
   const previous=await load(db,actor,ring,id,a.current_revision);
-  if (Object.hasOwn(previous.definition.display,'scoreDecimals'))
+  if (!Object.hasOwn(definition,'editorSnapshot')&&Object.hasOwn(previous.definition,'editorSnapshot'))
+   deny(409,'editor_snapshot_required','Reabra com um cliente compatível antes de salvar as configurações completas.');
+  if (!Object.hasOwn(definition.display,'scoreDecimals')&&Object.hasOwn(previous.definition.display,'scoreDecimals'))
    deny(409,'score_format_required','Reabra com um cliente compatível antes de salvar o formato da nota.');
  }
  const revision=p.expectedRevision+1, now=new Date().toISOString(), record={id,ownerId:actor.id,institutionId:p.institutionId,classId:p.classId,periodId:p.periodId,revision,status:p.status,manifestHash:definition.manifest.contentHash,keyVersion:ring.active};

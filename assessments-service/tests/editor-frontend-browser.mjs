@@ -3,6 +3,7 @@
 import assert from 'node:assert/strict';
 import {readFileSync,existsSync,mkdirSync,writeFileSync} from 'node:fs';
 import path from 'node:path';
+import {deflateSync} from 'node:zlib';
 import {fileURLToPath} from 'node:url';
 import {harness,packet,definition as historicalDefinition} from './helpers.mjs';
 import {importCardManifest} from '../../corretor/v2/omr/manifest.mjs';
@@ -14,7 +15,8 @@ const out=path.join(root,'assessments-service/dist/editor-snapshot-browser');
 mkdirSync(out,{recursive:true});
 const origin='https://d4nny3l.github.io',api='https://salta-stats.dannyel-moises.workers.dev';
 const h=await harness(),requests=[],errors=[],blocked=[];
-const browser=await chromium.launch({headless:true,args:['--disable-background-networking','--disable-sync','--no-first-run','--host-resolver-rules=MAP * 0.0.0.0','--no-proxy-server']});
+const launch=()=>chromium.launch({headless:true,args:['--disable-background-networking','--disable-sync','--no-first-run','--host-resolver-rules=MAP * 0.0.0.0','--no-proxy-server']});
+let browser=await launch();
 const base=origin+'/portal-do-aluno/plataforma/corretor-v2.html';
 const grant='?institutionId=synthetic-institution&classId=synthetic-class&periodId=synthetic-period';
 async function context(capability=true){
@@ -55,7 +57,15 @@ async function page(c){
  await p.locator('#savedAssessments select[aria-label="Minhas avaliações"]:not([disabled])').waitFor();
  return p;
 }
-const image=Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVQIHWP4z8DwHwAFgAI/ScLbtAAAAABJRU5ErkJggg==','base64');
+// Distinct, valid PNG pixels/aspects detect swapped or stale logo references.
+function syntheticPng(w,h,color){
+ const crc=b=>{let c=0xffffffff;for(const byte of b){c^=byte;for(let i=0;i<8;i++)c=(c>>>1)^((c&1)?0xedb88320:0);}return(c^0xffffffff)>>>0;};
+ const chunk=(name,bytes)=>{const n=Buffer.from(name),head=Buffer.alloc(4),tail=Buffer.alloc(4);head.writeUInt32BE(bytes.length);tail.writeUInt32BE(crc(Buffer.concat([n,bytes])));return Buffer.concat([head,n,bytes,tail]);};
+ const ihdr=Buffer.alloc(13);ihdr.writeUInt32BE(w);ihdr.writeUInt32BE(h,4);ihdr[8]=8;ihdr[9]=6;
+ const rows=Buffer.concat(Array.from({length:h},()=>Buffer.from([0,...Array.from({length:w},()=>color).flat()])));
+ return Buffer.concat([Buffer.from([137,80,78,71,13,10,26,10]),chunk('IHDR',ihdr),chunk('IDAT',deflateSync(rows)),chunk('IEND',Buffer.alloc(0))]);
+}
+const image=syntheticPng(4,2,[0,0,0,255]),image2=syntheticPng(2,4,[100,100,100,180]);
 const visibility=['studentName','institution','teacher','subject','className','grade','date','schoolYear'];
 const visibleA={studentName:false,institution:false,teacher:true,subject:false,className:true,grade:false,date:true,schoolYear:false};
 const visibleB=Object.fromEntries(visibility.map(k=>[k,!visibleA[k]]));
@@ -85,8 +95,8 @@ async function fill(p,{title,mode,visible,logos,score,columns,teacher,school}){
  for(const k of visibility)await p.locator('[data-visible="'+k+'"]').setChecked(visible[k]);
  if(logos){
   await p.locator('#headerLogo').setInputFiles({name:'sintetico-1.png',mimeType:'image/png',buffer:image});
-  await p.locator('#headerLogo2').setInputFiles({name:'sintetico-2.png',mimeType:'image/png',buffer:image});
-  await p.waitForFunction(()=>document.getElementById('headerPreview').innerHTML.includes('data:image/png'));
+  await p.locator('#headerLogo2').setInputFiles({name:'sintetico-2.png',mimeType:'image/png',buffer:image2});
+  await p.waitForFunction(()=>document.querySelectorAll('#headerPreview image').length===2);
   await p.locator('#logoWidth').evaluate(e=>{e.value='26';e.dispatchEvent(new Event('input',{bubbles:true}))});
   await p.locator('#logoWidth2').evaluate(e=>{e.value='18';e.dispatchEvent(new Event('input',{bubbles:true}))});
  }
@@ -99,7 +109,8 @@ async function fill(p,{title,mode,visible,logos,score,columns,teacher,school}){
  await p.locator('#count').fill(logos?'':'7');
  await p.locator('#sectionLabel').fill('Próximo '+title);
  await p.locator('#scoreFormatSelect').selectOption(String(score));
- await p.locator('#savedAssessments details.library-answers summary').click();
+ if(await p.locator('#savedAssessments details.library-answers').getAttribute('open')===null)
+  await p.locator('#savedAssessments details.library-answers summary').click();
  await p.locator('#savedAssessments textarea').fill('1 A\n2 B\n3 C');
  await p.locator('#savedAssessments button').filter({hasText:'Aplicar gabarito'}).click();
 }
@@ -117,11 +128,18 @@ async function save(p,title){
  assert.equal(await b.isDisabled(),false,'save must be enabled with v3 capability');
  await b.click();
  const record=await stored(title);
- await p.waitForFunction(()=>document.querySelector('#savedAssessments [data-state="saved"]')||document.querySelector('#savedAssessments').innerText.includes('salva e conferida'));
+ // Refreshing history can legitimately leave phase "opened" after the verified
+ // receipt/GET. Await the selected record and enabled correction, not a transient toast.
+ await p.waitForFunction(id=>{
+  const host=document.getElementById('savedAssessments');
+  return host.querySelector('select[aria-label="Minhas avaliações"]').value===id&&
+   !host.querySelector('button[data-action-icon="correct"]').disabled&&
+   !host.innerText.includes('não foram salvas');
+ },record.id);
  return record;
 }
 async function inspect(p,expected){
- await p.waitForFunction(t=>document.getElementById('assessmentTitle').value===t,expected.title);
+ await p.waitForFunction(t=>document.getElementById('assessmentTitle').value===t,expected.definition.title);
  const values=await p.evaluate(keys=>({
   fields:Object.fromEntries(['assessmentTitle','assessmentSubject','assessmentClass','assessmentDate','assessmentKind','identityMode','columnCount','cardMode','embeddedWidth','embeddedHeight','type','count','sectionLabel'].map(k=>[k,document.getElementById(k).value])),
   visible:Object.fromEntries(keys.map(k=>[k,document.querySelector('[data-visible="'+k+'"]').checked])),
@@ -129,7 +147,9 @@ async function inspect(p,expected){
   institution:document.querySelector('[data-header="institution"]').value,
   grade:document.querySelector('[data-header="grade"]').value,
   schoolYear:document.querySelector('[data-header="schoolYear"]').value,
-  logo1:document.querySelector('#headerPreview').innerHTML.includes('data:image/png'),
+  logos:Array.from(document.querySelectorAll('#headerPreview image')).map(e=>e.getAttribute('href')),
+  logoWidths:[document.getElementById('logoWidth').value,document.getElementById('logoWidth2').value],
+  scoreDecimals:document.getElementById('scoreFormatSelect').value,
   instructions:document.getElementById('showInstructions').checked,
   hash:document.querySelector('#preview svg')?.getAttribute('data-layout-hash')
  }),visibility);
@@ -140,7 +160,9 @@ async function inspect(p,expected){
  assert.equal(values.grade,expected.definition.editorSnapshot.header.grade);
  assert.equal(values.schoolYear,expected.definition.editorSnapshot.header.schoolYear);
  assert.equal(values.instructions,expected.definition.editorSnapshot.showInstructions);
- assert.equal(values.logo1,Boolean(expected.definition.manifest.header.logo));
+ assert.deepEqual(values.logos,[expected.definition.manifest.header.logo,expected.definition.manifest.header.secondaryLogo].filter(Boolean));
+ assert.deepEqual(values.logoWidths,[expected.definition.editorSnapshot.header.logoWidthMm,expected.definition.editorSnapshot.header.secondaryLogoWidthMm].map(String));
+ assert.equal(values.scoreDecimals,String(expected.definition.display.scoreDecimals??2));
  assert.equal(values.hash,expected.manifestHash);
  assert.equal(await p.locator('#studentName').inputValue(),'');
  assert.equal(await p.locator('#studentCode').inputValue(),'');
@@ -176,6 +198,13 @@ try{
  const {template,manifest}=importCardManifest(a.definition.manifest);
  const expectedSvg=renderTemplateSvg(template,{manifest});
  assert(expectedSvg.includes('data-layout-hash="'+a.manifestHash+'"'));
+ const exactDrawing=await p.locator('#preview svg').evaluate((svg,source)=>{
+  const tree=n=>n.nodeType===3?n.nodeValue:{tag:n.localName,
+   attributes:Object.fromEntries(Array.from(n.attributes).map(a=>[a.name,a.value]).sort(([a],[b])=>a.localeCompare(b))),
+   children:Array.from(n.childNodes).filter(c=>c.nodeType===1||c.nodeType===3&&c.nodeValue.trim()).map(tree)};
+  return JSON.stringify(tree(svg))===JSON.stringify(tree(new DOMParser().parseFromString(source,'image/svg+xml').documentElement));
+ },expectedSvg);
+ assert.equal(exactDrawing,true,'Every visible SVG node, image, text and optical coordinate matches the saved manifest');
  const preview=await p.locator('#preview svg').getAttribute('data-layout-hash');
  assert.equal(preview,a.manifestHash);
  const print=await c.newPage();
@@ -184,7 +213,9 @@ try{
  assert(pdf.length>5000);await print.close();
  report.cases.push('Unmodified revision SVG and PDF preserved the exact manifest hash');
  await c.close();
- // A fresh authorized browser context must restore A without any previous editor state.
+ // Close the entire browser process; only the synthetic server/D1 survives.
+ await browser.close();browser=await launch();
+ // A fresh authorized browser must restore A without any previous editor state.
  const c2=await context(),p2=await page(c2);
  await p2.locator('#savedAssessments select[aria-label="Minhas avaliações"]').selectOption(a.id);
  await inspect(p2,a);
@@ -201,7 +232,10 @@ try{
  assert.equal(duplicated.manifestHash,a.manifestHash);
  await p2.waitForFunction(id=>document.querySelector('#savedAssessments select[aria-label="Minhas avaliações"]').value===id,copy.id);
  await p2.locator('#sectionLabel').fill('APÓS DUPLICAÇÃO');
- await p2.waitForFunction(()=>document.querySelector('#savedAssessments').innerText.includes('não foram salvas'));
+ await p2.waitForFunction(()=>{
+  const host=document.getElementById('savedAssessments');
+  return host.querySelector('[role="status"]').dataset.state==='draft'&&/não (?:foram )?salvas/.test(host.innerText);
+ });
  assert.equal(await p2.locator('#savedAssessments button[data-action-icon="correct"]').isDisabled(),true);
  await p2.locator('#savedAssessments button[data-action-icon="save"]').click();
  let newer;
