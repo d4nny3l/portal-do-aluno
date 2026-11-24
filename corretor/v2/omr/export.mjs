@@ -124,7 +124,7 @@ export async function embedRasterResolution(blob, { format, dpi }) {
   return new Blob([output], { type: format });
 }
 
-function bindStudentToManifest(manifest, student) {
+export function bindStudentToManifest(manifest, student) {
   const bound = JSON.parse(JSON.stringify(manifest));
   if (bound.identityCode?.mode === "seven-digit-code") {
     const code = String(student?.code || "");
@@ -251,6 +251,8 @@ export function createDownload(blob, filename) {
   const link = document.createElement("a");
   link.href = url;
   link.download = filename;
-  link.click();
+  // Safari/WebKit is more reliable when the temporary anchor belongs to the document.
+  document.body.appendChild(link);
+  try { link.click(); } finally { link.remove(); }
   setTimeout(() => URL.revokeObjectURL(url), 30_000);
 }

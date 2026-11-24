@@ -109,8 +109,10 @@ test('economic control is confined to Outros formatos and cannot alter saved edi
  const a=html.indexOf('id="cartoes"'),b=html.indexOf('id="corrigir"'),c=html.indexOf('id="economyOptions"');
  assert(a>=0&&c>a&&c<b);
  assert(html.slice(a,b).includes('id="economyCopies"'));
- assert(html.includes("economyCopies=students.length===0&&activeManifest.mode==='embedded'"));
+ assert(html.includes("economyCopies=!batch&&students.length===0&&activeManifest.mode==='embedded'"));
  assert(!html.slice(0,a).includes('economyCopies'));
+ assert.match(html,/id="printCard"[^>]*>Baixar PDF<\/button>/);
+ assert.doesNotMatch(html,/window\.open\(|window\.print\(/);
  const fields=readFileSync(new URL('../assessments/editor-snapshot.mjs',import.meta.url),'utf8');
  assert(!fields.includes('economyCopies'));
  const e=readFileSync(new URL('../omr/export.mjs',import.meta.url),'utf8');

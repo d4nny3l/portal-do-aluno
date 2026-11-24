@@ -56,13 +56,25 @@ test('ordering: moves renumber continuously and restore original order',()=>{
  run();assert.deepEqual(sections.map(s=>s.label),['Alpha','Beta']);assert.deepEqual(sections[0].items.map(q=>q.questionId),['question-1','question-2']);assert.deepEqual(sections[0].items.map(q=>q.number),[1,2]);assert.equal(builds,6);
 });
 
-test('printing: batch sorting/page selection works; single card ignores unrelated batch settings',()=>{
+test('PDF download: batch sorting/page selection works; single PDF ignores unrelated batch settings',async()=>{
  const fields={studentCodeBatch:{value:'Pessoa Z; A; 0000003\nPessoa A; A; 0000001\nPessoa M; A; 0000002'},batchOrder:{value:'name-asc'},batchPages:{value:'2'},buildStatus:{textContent:''}};
- const calls=[];const printBatch=new Function('$','template','activeManifest','openPrintDocument','sortStudentRoster','selectStudentPages',`return ${handler('printBatch')}`)(id=>fields[id],{identity:{mode:'seven-digit-code'}},{},rows=>calls.push(rows),sortStudentRoster,selectStudentPages);
- printBatch();assert.equal(fields.buildStatus.textContent,'');assert.deepEqual(calls[0].map(s=>s.code),['0000002']);
- fields.batchPages.value='99';printBatch();assert.equal(calls.length,1);assert.match(fields.buildStatus.textContent,/seleção precisa estar/);
- const printOne=new Function('$','openPrintDocument',`return ${handler('printCard')}`)(()=>{throw Error('Single print accessed batch option')},()=>calls.push('one'));
- printOne();assert.equal(calls.at(-1),'one');
+ const calls=[];
+ const batch=new Function('$','template','activeManifest','pdfBusy','downloadCardPdf','sortStudentRoster','selectStudentPages',`return ${handler('printBatch')}`)(
+  id=>fields[id],{identity:{mode:'seven-digit-code'}},{},false,
+  async args=>calls.push(args),sortStudentRoster,selectStudentPages);
+ await batch();
+ assert.equal(fields.buildStatus.textContent,'');
+ assert.deepEqual(calls[0].students.map(s=>s.code),['0000002']);
+ assert.equal(calls[0].batch,true);
+ fields.batchPages.value='99';
+ await batch();
+ assert.equal(calls.length,1);
+ assert.match(fields.buildStatus.textContent,/seleção precisa estar/);
+ const one=new Function('downloadCardPdf','$',`return ${handler('printCard')}`)(
+  async()=>calls.push('single'),()=>{throw Error('Single PDF accessed batch fields')});
+ one();
+ await Promise.resolve();
+ assert.equal(calls.at(-1),'single');
 });
 
 test('header title: both editors share a single value and rebuild the same header',()=>{
