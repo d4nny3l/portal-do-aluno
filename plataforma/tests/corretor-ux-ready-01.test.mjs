@@ -14,7 +14,7 @@ test('UX-READY-01: nenhuma narrativa de homologacao/versao na experiencia public
  assert.match(html,/<label>Formato<select id="scanType">/);
  assert.match(html,/<label>Questões<input id="scanCount"/);
  assert.match(html,/<p id="scanModelStatus" class="status" role="status"><\/p>/);
- assert.match(html,/Imprima em tamanho real \(100%\)/);
+ assert.match(html,/Imprima em escala 100%/);
  assert.match(html,/CDU: sem leitura automática/);
  assert.match(html,/id="cameraCaptureStatus" hidden>Foto capturada/);
  assert.doesNotMatch(library,/Avaliação histórica:|Preferências não registradas receberam padrões neutros/);
