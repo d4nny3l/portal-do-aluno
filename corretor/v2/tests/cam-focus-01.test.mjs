@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {captureQuality,markerCorePixels,CameraSession,applyCameraControl} from '../omr/camera.mjs';
+import {captureQuality,markerCorePixels,CameraSession,applyCameraControl,requestContinuousFocus} from '../omr/camera.mjs';
 
 // Pixel-only synthetic fixtures: the same quadrilateral is checked against the
 // previous 18% occupancy rule and the new effective-resolution path.
@@ -67,4 +67,9 @@ test('CAM-FOCUS-01 native focus capability, ignored constraint and unsupported b
   session.stop();
  }
  assert.equal(await applyCameraControl(make(true,'manual'),'focusMode','continuous'),false);
+});
+
+test('CAM-FOCUS-01 optional focus constraint timeout leaves a usable fallback',async()=>{
+ const track={getCapabilities:()=>({focusMode:['continuous']}),applyConstraints:()=>new Promise(()=>{})};
+ assert.equal(await requestContinuousFocus(track,5),false);
 });

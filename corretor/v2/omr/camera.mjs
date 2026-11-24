@@ -71,6 +71,16 @@ export async function applyCameraControl(track, name, value) {
 }
 
 
+// Native focus is optional. A stalled capability request must not prevent video
+// from opening. The browser may still finish its own native request later.
+export async function requestContinuousFocus(track,timeoutMs=2500){
+  if(!cameraControls(safeCapabilities(track)).focusMode)return false;
+  let timer;
+  try{
+    return await Promise.race([applyCameraControl(track,'focusMode','continuous'),new Promise(resolve=>{timer=setTimeout(()=>resolve(false),timeoutMs)})]);
+  }finally{clearTimeout(timer)}
+}
+
 export function cameraZoomSnapshot(track) {
   const capabilities = safeCapabilities(track);
   let settings = {}, constraints = {};
@@ -165,7 +175,7 @@ export class CameraSession {
       if (generation !== this.generation) throw new Error('Abertura da câmera cancelada.');
       const zoom = await reduceUnwantedCameraZoom(track);
       if (generation !== this.generation) throw new Error('Abertura da câmera cancelada.');
-      if(cameraControls(safeCapabilities(track)).focusMode) await applyCameraControl(track,'focusMode','continuous');
+      await requestContinuousFocus(track);
       if (generation !== this.generation) throw new Error('Abertura da câmera cancelada.');
       return {track,capabilities:safeCapabilities(track),zoom};
     };

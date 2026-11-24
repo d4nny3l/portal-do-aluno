@@ -19,6 +19,7 @@ const allowed=new Set([
  '.github/workflows/test-corretor-integrated.yml',
  'scripts/verify-camera-focus-scope.mjs',
  'scripts/verify-camera-focus-raster.mjs',
+ 'scripts/verify-camera-focus-browser.mjs',
  'docs/avaliacoes/CAM_FOCUS_01.md'
 ]);
 const git=(...a)=>execFileSync('git',a,{cwd:root,encoding:'utf8'}).trim();

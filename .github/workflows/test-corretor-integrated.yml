@@ -19,6 +19,7 @@ on:
       - "scripts/verify-card-header-raster.mjs"
       - "scripts/verify-camera-geometry.mjs"
       - "scripts/verify-camera-focus-raster.mjs"
+      - "scripts/verify-camera-focus-browser.mjs"
       - "scripts/verify-camera-focus-scope.mjs"
       - ".github/workflows/test-corretor-integrated.yml"
 permissions:
@@ -61,7 +62,13 @@ jobs:
           SALTA_SHARP_MODULE="$RUNNER_TEMP/salta-raster/node_modules/sharp/dist/index.cjs" node scripts/verify-card-header-raster.mjs
           SALTA_SHARP_MODULE="$RUNNER_TEMP/salta-raster/node_modules/sharp/dist/index.cjs" node scripts/verify-camera-geometry.mjs
           SALTA_SHARP_MODULE="$RUNNER_TEMP/salta-raster/node_modules/sharp/dist/index.cjs" node scripts/verify-camera-focus-raster.mjs
+      - name: Camera flow in isolated Chromium and WebKit (synthetic MediaStream, not a physical camera)
+        run: |
+          npm install --prefix "$RUNNER_TEMP/salta-camera-browser" --no-save --ignore-scripts --no-audit --no-fund playwright@1.65.1
+          node "$RUNNER_TEMP/salta-camera-browser/node_modules/playwright/cli.js" install --with-deps chromium webkit
+          SALTA_PLAYWRIGHT_MODULE="$RUNNER_TEMP/salta-camera-browser/node_modules/playwright/index.mjs" node scripts/verify-camera-focus-browser.mjs
       - uses: actions/upload-artifact@v4
+        if: always()
         with:
           name: salta-card-artwork-synthetic
           path: |
