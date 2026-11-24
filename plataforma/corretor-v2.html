@@ -47,9 +47,9 @@ let headerState={...DEFAULT_CARD_HEADER,logoWidthMm:22,secondaryLogoWidthMm:22,l
 let currentPage=1,exactScanModel=false,assessmentTitleValue='',assessmentBank=null,privateLibrary=null,privateSelection=null,privateModelLoaded=false;
 const $=id=>document.getElementById(id);
 function syncEconomyPrint(){
- const available=$('cardMode').value==='embedded'&&activeManifest?.mode==='embedded';
+ const mode=$('cardMode').value,available=mode==='embedded'&&activeManifest?.mode==='embedded';
  $('economyOptions').hidden=!available;
- if(!available){$('economyCopies').value='';$('economyPrintStatus').textContent='';return;}
+ if(!available){if(mode!=='embedded')$('economyCopies').value='';$('economyPrintStatus').textContent='';return;}
  const copies=Number($('economyCopies').value||0);
  if(!copies){$('economyPrintStatus').textContent='';return;}
  try{
@@ -425,7 +425,7 @@ function clearPrivateCorrection(){
 }
 function assessmentEditorState(){return {version:1,sections:structuredClone(sections),header:structuredClone(headerState),layoutRevision,nextQuestionNumber,nextSectionOrder,fields:Object.fromEntries(bankFieldIds.map(id=>[id,$(id).value])),showInstructions:$('showInstructions').checked}}
 function clearAssessmentReview(){if(cameraStream)stopCamera();typeof setCameraProgress==='function'&&setCameraProgress();activeObservations=[];activeHistoryEntry=null;scanHistory.length=0;replaceLastCapture=false;renderHistory();$('answers').replaceChildren();$('scanScore').hidden=true;$('status').textContent='';$('file').value='';normalizedRaster=null;rawRaster=null;$('canvas').hidden=true;updateCaptureComparison();}
-function applyAssessmentModel(bundle,{privateAssessment=false}={}){const imported=importCardManifest(bundle.manifest);template=imported.template;activeManifest=imported.manifest;privateModelLoaded=privateAssessment;activeSvg=renderTemplateSvg(template,{manifest:activeManifest});exactScanModel=true;syncScanInputs();$('preview').innerHTML='<div class="omr-page">'+activeSvg+'</div>';$('scanModelStatus').textContent='Avaliação '+bundle.title+' pronta para correção.';setExportAvailability(false);syncEconomyPrint()}
+function applyAssessmentModel(bundle,{privateAssessment=false}={}){const imported=importCardManifest(bundle.manifest);template=imported.template;activeManifest=imported.manifest;privateModelLoaded=privateAssessment;activeSvg=renderTemplateSvg(template,{manifest:activeManifest});exactScanModel=true;syncScanInputs();$('preview').innerHTML='<div class="omr-page">'+activeSvg+'</div>';$('scanModelStatus').textContent='Avaliação '+bundle.title+' pronta para correção.';setExportAvailability(false)}
 assessmentBank=await installAssessmentBank({
  editor:assessmentEditorState,
  questions:()=>sections.flatMap(section=>section.items),
@@ -448,7 +448,7 @@ privateLibrary=mountAssessmentLibrary({
  restoreEditor:restoreAssessmentEditor,
  nominalFields:()=>({name:$('studentName').value,className:$('studentClass').value,code:$('studentCode').value}),
  newEditor:resetAssessmentEditor,
- applyExactModel:bundle=>{applyAssessmentModel(bundle,{privateAssessment:true});updateHeaderPreview();setExportAvailability(true)},
+ applyExactModel:bundle=>{applyAssessmentModel(bundle,{privateAssessment:true});updateHeaderPreview();setExportAvailability(true);syncEconomyPrint()},
  activateSelection:activatePrivateCorrection,
  clearSelection:clearPrivateCorrection
 });

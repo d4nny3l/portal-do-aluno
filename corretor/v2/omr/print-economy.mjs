@@ -41,8 +41,8 @@ function positionedSvg(source,slot){
  const raw=source.trim(),found=/^<svg\b[^>]*>/u.exec(raw);
  if(!found||!/\sviewBox="[^"]+"/u.test(found[0])||!/\swidth="[^"]+"/u.test(found[0])||!/\sheight="[^"]+"/u.test(found[0]))
   throw new TypeError('SVG original sem dimensões e viewBox verificáveis.');
- const open=found[0].replace(/\swidth="[^"]+"/u,' width="'+num(slot.width)+'mm"')
-  .replace(/\sheight="[^"]+"/u,' height="'+num(slot.height)+'mm"')
+ const open=found[0].replace(/\swidth="[^"]+"/u,' width="'+num(slot.width)+'"')
+  .replace(/\sheight="[^"]+"/u,' height="'+num(slot.height)+'"')
   .replace(/^<svg/u,'<svg data-economy-copy="'+slot.index+'" x="'+num(slot.x)+'" y="'+num(slot.y)+'"');
  return open+raw.slice(found[0].length);
 }
