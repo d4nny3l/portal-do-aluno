@@ -23,7 +23,7 @@ const original={
  'corretor/v2/assessments/private-library.mjs':'8eb63a54c83a121d58108af7066be381c7290bd2',
  'corretor/v2/assessments/private-ui.mjs':'f22f6a04ef2248bf28216d1e7764fb89741b0494',
  'corretor/v2/omr/template.mjs':'f3c4bf988101a4e4bb1df37643d76a53f5a12413',
- 'corretor/v2/omr/render.mjs':'cb5839dca51810e766ad9ab361cd921b93960160',
+ 'corretor/v2/omr/render.mjs':'1b3abd4bc61c90fb68a94504cc57b9056365023a',
  'corretor/v2/omr/manifest.mjs':'0a83331c35f467fe3e123daf1775010e5f3e9e0b'
 };
 const fakeKey=letter=>Array(60).fill(letter).join(' ');

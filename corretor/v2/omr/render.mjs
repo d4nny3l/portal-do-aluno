@@ -25,7 +25,7 @@ function sectionVisualFrame(f,questions){
  for(let candidate=width;candidate<=f.width+0.001;candidate=Math.min(f.width,candidate+0.5)){
   let fit=null;
   for(const [size,limit] of [[2.6,f.titleLines.length],[2.25,maxLines]]){
-   try{const lines=wrapText(f.label.replace(/ \(cont\.\)$/,''),candidate-padding*2,size);if(lines.length<=limit){fit={lines,size};break;}}catch{}
+   try{const lines=wrapText(f.heading==null?f.label:f.label.replace(/ \(cont\.\)$/,''),candidate-padding*2,size);if(lines.length<=limit){fit={lines,size};break;}}catch{}
   }
   if(fit){width=candidate;titleLines=fit.lines;titleFont=fit.size;break;}
   if(candidate===f.width){width=f.width;break;}
