@@ -17,15 +17,15 @@ function fillRect(pixels,w,h,x,y,spanW,spanH,value){
  for(let py=Math.max(0,Math.floor(y));py<Math.min(h,Math.ceil(y+spanH));py++)
   for(let px=Math.max(0,Math.floor(x));px<Math.min(w,Math.ceil(x+spanW));px++)pixels[py*w+px]=value;
 }
-function scene(manifest,{left=140,top=100,scale=5,shade=255}={}){
+function scene(manifest,{left=140,top=100,scale=5,shade=255,skew=0}={}){
  const width=1100,height=1250,pixels=new Uint8Array(width*height).fill(shade);
  // A simulated examination text block outside the four embedded fiducials.
  for(let y=18;y<70;y+=14)fillRect(pixels,width,height,40,y,460,2,60);
  for(let y=100;y<700;y+=23)fillRect(pixels,width,height,830,y,170,2,70);
- const spot=({x,y})=>({x:left+x*scale,y:top+y*scale});
+ const spot=({x,y})=>({x:left+x*scale+skew*y,y:top+y*scale+skew*x*.25});
  for(const f of manifest.technicalRegions.fiducials){
-  const x=left+(f.x-f.sizeMm/2)*scale,y=top+(f.y-f.sizeMm/2)*scale;
-  fillRect(pixels,width,height,x,y,f.sizeMm*scale,f.sizeMm*scale,10);
+  const point=spot(f),size=f.sizeMm*scale;
+  fillRect(pixels,width,height,point.x-size/2,point.y-size/2,size,size,10);
  }
  const point=manifest.technicalRegions.fiducials.map(spot);
  return {pixels,width,height,point};
@@ -36,6 +36,9 @@ test('EMBED-ALIGN: physically selected embedded fiducials normalize to manifesto
  assert.equal(manifest.mode,'embedded');
  assert.equal(validateLayoutManifest(manifest).valid,true);
  const raster=scene(manifest);
+ const detected=detectFiducials(raster.pixels,raster.width,raster.height);
+ assert.equal(detected.found,true,'find four embedded markers without selecting external exam text');
+ for(let i=0;i<4;i++)assert.ok(Math.hypot(detected.corners[i].x-raster.point[i].x,detected.corners[i].y-raster.point[i].y)<14,'physical fiducial order');
  const actual=warpFromFiducials(raster.pixels,raster.width,raster.height,raster.point,{outputWidth:700,manifest});
  assert.equal(actual.height,1260);
  const result=readRaster(template,actual.pixels,actual.width,actual.height,{manifest,showCode:false});
@@ -139,7 +142,7 @@ test('EMBED-ALIGN: physical seven-digit ID in wide embedded frame remains readab
 test('EMBED-ALIGN: short/near physical frame, tilted source and less illumination preserve manifest ratio',()=>{
  const {manifest}=embedded('CIÊNCIAS',100,180);
  const compact=scene(manifest,{left:300,top:190,scale:2,shade:210});
- const near=scene(manifest,{left:140,top:100,scale:5,shade:225});
+ const near=scene(manifest,{left:140,top:100,scale:5,shade:225,skew:.12});
  for(const photo of [compact,near]){
   const warped=warpFromFiducials(photo.pixels,photo.width,photo.height,photo.point,{outputWidth:600,manifest});
   assert.equal(warped.height,1080);
