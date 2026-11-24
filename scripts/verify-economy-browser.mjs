@@ -113,7 +113,10 @@ try{
   });
   const p=await uiContext.newPage();p.on('pageerror',e=>errors.push(e.message));p.on('dialog',d=>d.accept());
   await p.goto(origin+'/portal-do-aluno/plataforma/corretor-v2.html');
-  await p.waitForFunction(()=>document.body.classList.contains('salta-auth-ready'));
+  await p.waitForTimeout(700);
+  const authDiag=await p.evaluate(()=>({url:location.href,bodyClass:document.body.className,title:document.title,hasLoading:!!document.getElementById('loading'),loadingHidden:document.getElementById('loading')?.hidden,hasForm:!!document.getElementById('cardMode')}));
+  console.log('PRINT-UI-DIAG '+JSON.stringify({authDiag,errors:[...errors],requests:methods.slice(-30)}));
+  assert(authDiag.bodyClass.includes('salta-auth-ready'), 'Synthetic auth bootstrap did not reach ready state');
   assert.equal(await p.locator('#economyOptions').isHidden(),true,'A4 must not show economic options');
   await p.locator('#assessmentTitle').fill('TESTE ECONÔMICO');
   await p.locator('#assessmentSubject').fill('Matemática');
