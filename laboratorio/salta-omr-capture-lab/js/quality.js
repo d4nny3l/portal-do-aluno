@@ -19,11 +19,12 @@ export function sampleQuality(rgba,width,height,corners=null){
  for(let y=y0;y<=y1;y+=step*2){
   for(let x=x0;x<=x1;x+=step*2){
    const center=lum(x,y);
-   // Sobel-like local two-axis energy, tolerant of shot noise and dark paper.
+   // Laplacian high-frequency energy: blurry edges must score LESS, not more.
    const dx=lum(x+step,y)-lum(x-step,y);
    const dy=lum(x,y+step)-lum(x,y-step);
    const gradient=Math.hypot(dx,dy);
-   contrast+=Math.min(gradient,150);
+   const lap=Math.abs(4*center-lum(x-step,y)-lum(x+step,y)-lum(x,y-step)-lum(x,y+step));
+   contrast+=Math.min(lap*lap,25000);
    if(gradient>=12)edges++;
    brightness+=center;
    if(center<10||center>250)clip++;
@@ -31,12 +32,12 @@ export function sampleQuality(rgba,width,height,corners=null){
   }
  }
  if(!n)return {sharpness:0,edgeDensity:0,brightness:0,clipping:1,score:0};
- const sharpness=contrast/n,edgeDensity=edges/n;
+ const sharpness=Math.sqrt(contrast/n),edgeDensity=edges/n;
  const mean=brightness/n,clipping=clip/n;
  // Brightness is not confused with focus. Penalize only severe under/over-exposure.
  const exposure=clamp((mean-18)/42,0,1)*clamp((252-mean)/25,0,1);
  // Focus comparison is relative within the short burst, never a calibrated DPI.
- const score=sharpness*(.65+.35*Math.min(1,edgeDensity*8))*exposure*(1-.25*clipping);
+ const score=sharpness*exposure*(1-.25*clipping);
  return {sharpness,edgeDensity,brightness:mean,clipping,score};
 }
 
