@@ -55,9 +55,7 @@
       </div>
     </div>
     <div class="controls">
-      <button id="shutter" class="shutter" type="button" aria-label="Capturar documento (espaço)" title="Capturar documento"><span></span></button>
       <div class="ctls">
-        <label class="ctl"><span class="k mono">câmera</span><select id="camera" aria-label="Câmera"></select></label>
         <label class="ctl"><span class="k mono">aparência</span>
           <select id="mode" aria-label="Aparência do documento">
             <option value="color">Cor aprimorada</option>
@@ -71,13 +69,13 @@
             <option value="a4">A4</option>
             <option value="letter">Carta</option>
           </select></label>
-        <label class="ctl chk"><input type="checkbox" id="auto" checked> <span>Captura automática</span></label>
         <label class="ctl chk"><input type="checkbox" id="sound" checked> <span>Som da captura</span></label>
       </div>
       <button id="importbtn2" type="button" class="btn ghost small">Importar foto</button>
-      <span id="res" class="mono res" aria-label="Camera resolution"></span>
+      <button id="closeCamera" type="button" class="btn ghost small" aria-label="Fechar câmera">Fechar câmera</button>
+      <span id="res" class="mono res" aria-label="Resolução da câmera"></span>
     </div>
-    <p class="keys mono">Espaço: fotografar · Backspace: excluir última página · Ctrl/⌘ + S: salvar PDF</p>
+    <p class="keys mono">Captura automática quando o papel estiver estável · Backspace: excluir última página · Ctrl/⌘ + S: salvar PDF</p>
   </div>
 
   <aside class="tray sheet" id="tray" aria-label="Páginas digitalizadas">
@@ -95,7 +93,7 @@
 </section>
 
 <section id="facts" class="facts" aria-label="Como funciona">
- <div class="fact"><h2 class="mono">01 / Detectar</h2><p>Encontre a folha mesmo sobre mesas, pisos ou superfícies com textura. O contorno é indicado em tempo real; há captura manual e automática.</p></div>
+ <div class="fact"><h2 class="mono">01 / Detectar</h2><p>Encontre a folha mesmo sobre mesas, pisos ou superfícies com textura. O contorno é indicado em tempo real e a captura acontece quando a imagem fica estável.</p></div>
  <div class="fact"><h2 class="mono">02 / Corrigir</h2><p>Os quatro cantos endireitam a perspectiva. A limpeza de iluminação busca clarear o papel sem perder textos, carimbos e imagens coloridas.</p></div>
  <div class="fact"><h2 class="mono">03 / Exportar</h2><p>Monte um PDF com várias páginas ou exporte imagens. Nenhuma foto é enviada para servidores. Ajuste os cantos se a detecção errar.</p></div>
 </section>
@@ -104,6 +102,7 @@
 
 <div id="editor" class="modal" hidden role="dialog" aria-modal="true" aria-label="Editar página digitalizada">
   <div class="modal-card sheet">
+    <button id="edcloseX" class="editor-close" type="button" aria-label="Fechar foto" title="Fechar foto">×</button>
     <div class="modal-bar">
       <span id="edtitle" class="mono">Página 1</span>
       <div class="modal-acts">
@@ -126,7 +125,7 @@
     <div class="modal-body">
       <div id="edview"><img id="edimg" alt="Página digitalizada"></div>
       <div id="cornerpane" hidden>
-        <p class="cornerhint mono">drag the corners onto the page's corners</p>
+        <p class="cornerhint mono">Arraste os pontos para os quatro cantos do documento.</p>
         <div class="cornerwrap" id="cornerwrap">
           <canvas id="cornercv"></canvas>
           <svg id="cornersvg" preserveAspectRatio="none" aria-hidden="true" focusable="false">
