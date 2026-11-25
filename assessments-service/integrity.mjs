@@ -4,20 +4,45 @@ import {fileURLToPath} from 'node:url';
 import {readFileSync} from 'node:fs';
 import {ROOT,verifyDependencies,matrix,sha256} from './build.mjs';
 const BASE='719c9f286e269f2b21b4c63f5b395fbc7b88542c';
+// The #81 provenance stays pinned. PR #136 has its own immutable incremental
+// baseline, which already contains the approved lifecycle and unrelated OMR lab.
+export const SCOPE_BASE='0fa1b402cad9d4d84a5376ce1bd132da7df20b7c';
 const allowed=new Set([
- ...['ledger.mjs','worker.mjs','export.mjs','operator.mjs','config.mjs','build.mjs','sources.json'].map(p=>'assessments-service/custody/'+p),
- 'corretor/v2/assessments/private-ui.mjs','corretor/v2/assessments/lifecycle.mjs','corretor/v2/assessments/private-client.mjs','corretor/v2/assessments/private-library.mjs',
- 'plataforma/avaliacoes-biblioteca.mjs','plataforma/avaliacao-excluir-dialog.mjs','plataforma/avaliacao-excluir-dialog.css','plataforma/corretor-v2.html',
- 'plataforma/tests/piloto-avaliacoes-isolado.test.mjs','plataforma/tests/avaliacoes-biblioteca-unificada.test.mjs',
- '.github/workflows/test-direct-pdf.yml','.github/workflows/test-assessments-embedded.yml','docs/avaliacoes/EXCLUSAO_SUBSTITUICAO_81.md',
- ...['test-composition.mjs','worker.mjs','gateway-lifecycle.mjs','custody-client.mjs','restore-fences.mjs','build.mjs','build-gateway.mjs','dependencies.json','integrity.mjs','migrations/0002_assessment_lifecycle.sql'].map(p=>'assessments-service/'+p),
- ...['lifecycle-d1.integration.mjs','custody.test.mjs','custody-fixture.mjs','catalog-pages.test.mjs','embedded-library.integration.mjs','private-bridge.integration.test.mjs','helpers.mjs','build.test.mjs','lifecycle.test.mjs','lifecycle-gateway.test.mjs','lifecycle-browser.mjs','editor-frontend-browser.mjs','embedded-browser.mjs'].map(n=>'assessments-service/tests/'+n)
+ 'assessments-service/worker.mjs',
+ 'assessments-service/dependencies.json',
+ 'assessments-service/integrity.mjs',
+ 'assessments-service/tests/build.test.mjs',
+ 'assessments-service/tests/lifecycle-d1.integration.mjs'
 ]);
-export function assertScope(paths){const denied=paths.filter(p=>!allowed.has(p));if(denied.length)throw Error('Forbidden #81 delta: '+denied.join(', '))}
+export function assertScope(paths){const denied=paths.filter(p=>!allowed.has(p));if(denied.length)throw Error('Forbidden #136 delta: '+denied.join(', '))}
+export function assertMatrixUpdate(before,after){
+ // Only the approved worker's candidate hashes and the bundle hash may change.
+ // All historical identities, origins, graph membership and other digests are fixed.
+ if(!/^[a-f0-9]{64}$/.test(after.expectedBundleSha256)||after.expectedBundleSha256===before.expectedBundleSha256)throw Error('Invalid updated bundle hash');
+ const a=structuredClone(after),b=structuredClone(before);
+ const old=b.inputs.find(row=>row.path==='assessments-service/worker.mjs');
+ const next=a.inputs.find(row=>row.path==='assessments-service/worker.mjs');
+ if(!old||!next||next.comparison!=='modified'||!(/^[a-f0-9]{40}$/.test(next.candidateBlob)&&/^[a-f0-9]{64}$/.test(next.sha256))||next.candidateBlob===old.candidateBlob||next.sha256===old.sha256)throw Error('Invalid updated worker hashes');
+ a.expectedBundleSha256=b.expectedBundleSha256;next.candidateBlob=old.candidateBlob;next.sha256=old.sha256;
+ if(JSON.stringify(a)!==JSON.stringify(b))throw Error('Unauthorized dependency matrix change');
+ return true;
+}
 export function verifyScope(){
  const git=(...a)=>execFileSync('git',a,{cwd:ROOT,stdio:['ignore','pipe','pipe']}).toString().trim();
  if(matrix.main!==BASE||matrix.backendSource!==BASE)throw Error('Reference provenance changed');
- assertScope([...git('diff','--name-only','-z',BASE,'--').split('\0'),...git('ls-files','--others','--exclude-standard','-z').split('\0')].filter(Boolean));
+ git('merge-base','--is-ancestor',BASE,SCOPE_BASE);
+ git('merge-base','--is-ancestor',SCOPE_BASE,'HEAD');
+ // Check committed and working-tree deltas separately: a local edit cannot hide
+ // an unauthorized committed path. The historical reference is not a broad allowlist.
+ assertScope(git('diff','--name-only','-z',SCOPE_BASE,'HEAD','--').split('\0').filter(Boolean));
+ assertScope([...git('diff','--name-only','-z','HEAD','--').split('\0'),...git('ls-files','--others','--exclude-standard','-z').split('\0')].filter(Boolean));
+ const baselineMatrix=JSON.parse(git('show',SCOPE_BASE+':assessments-service/dependencies.json'));
+ assertMatrixUpdate(baselineMatrix,matrix);
+ for(const row of baselineMatrix.inputs){
+  if(git('rev-parse',SCOPE_BASE+':'+row.path)!==row.candidateBlob)throw Error('Integrated dependency provenance mismatch: '+row.path);
+ }
+ // Existing historical frontend, gateway, crypto, schema and runtime checks below
+ // remain in force as well as this stricter incremental scope.
  for(const row of matrix.inputs){
   if(row.comparison==='identical'&&git('rev-parse',BASE+':'+row.path)!==row.candidateBlob)throw Error('Published dependency changed: '+row.path);
   if(row.comparison==='modified'&&row.path!=='assessments-service/worker.mjs')throw Error('Unauthorized runtime input change');
@@ -46,4 +71,4 @@ export function verifyScope(){
  if(newGateway!==oldGateway)throw Error('Gateway changed outside lifecycle namespace delta');
  verifyDependencies();return true;
 }
-if(process.argv[1]===fileURLToPath(import.meta.url)){verifyScope();console.log('#81 scope, 20 runtime inputs, unchanged optics/camera/PDF/Auth/Stats/crypto: PASS')}
+if(process.argv[1]===fileURLToPath(import.meta.url)){verifyScope();console.log('#136 incremental scope + historical #81 checks, 20 pinned runtime inputs, unchanged optics/camera/PDF/Auth/Stats/crypto: PASS')}

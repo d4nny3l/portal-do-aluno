@@ -145,6 +145,10 @@ async function checkPurgeDependencies(db){
  const expected=new Set(['av_revisions:av_assessments:assessment_id:id','av_selections:av_revisions:assessment_id:assessment_id','av_selections:av_revisions:revision:revision','av_retention_holds:av_assessments:assessment_id:id','av_purge_guards:av_assessments:assessment_id:id']);
  const tables=(await db.prepare("SELECT name FROM sqlite_master WHERE type='table'").all()).results;
  for(const {name} of tables){
+  // D1 exposes this provider-owned metadata table in sqlite_master but rejects
+  // foreign_key_list on it (SQLITE_AUTH). Exclude only this exact reserved name;
+  // all application tables, including unfamiliar names, remain fail-closed.
+  if(name==='_cf_KV')continue;
   const foreign=(await db.prepare('PRAGMA foreign_key_list("'+name.replaceAll('"','""')+'")').all()).results;
   if(foreign.some(f=>['av_assessments','av_revisions'].includes(f.table)&&!expected.has([name,f.table,f.from,f.to].join(':'))))
    deny(409,'unreviewed_dependency','Operação bloqueada por vínculo não homologado. Solicite conferência.');
