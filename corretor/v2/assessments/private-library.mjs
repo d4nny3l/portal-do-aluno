@@ -195,6 +195,8 @@ export function createPrivateLibraryController({
    signal('deleted','Avaliação excluída permanentemente.');
   });
  }
+ // Invalidate a correction key without discarding the opened editor or pending CAS.
+ function discardSelection(){s.selection=null;onSelection(null)}
  let selectionVerification=null;
  function verifySelection(){
   secure();const selected=s.selection,context=identity();if(!selected)throw new Error('Selecione novamente a avaliação para corrigir.');
@@ -252,7 +254,7 @@ export function createPrivateLibraryController({
   }catch(error){if(!fresh(g))return null;check(error)}
  }
  return {initialize,useScope,list,nextPage,previousPage,open,history,newDraft,invalidateOpenedRecord,save,retry,abandonPending,duplicate,archive,erase,verifySelection,
-  selectIssued,resumeSelection,
+  selectIssued,resumeSelection,discardSelection,
   view:()=>({phase:s.phase,message:s.message,session:s.session,grants:s.grants,scope:s.scope,rows:s.rows,
    nextCursor:s.nextCursor,pageIndex:s.pageIndex,pageSize:10,hasPrevious:s.pageIndex>0,record:s.record,editorMode:s.editorMode,generation:s.generation,revisions:s.revisions,selection:s.selection,
    pending:s.pending&&{method:s.pending.operation.method,path:s.pending.operation.path,
