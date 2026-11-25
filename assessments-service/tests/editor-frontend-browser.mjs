@@ -133,7 +133,10 @@ async function save(p,title){
  await p.waitForFunction(id=>{
   const host=document.getElementById('savedAssessments');
   return host.querySelector('select[aria-label="Minhas avaliações"]').value===id&&
-   !host.querySelector('button[data-action-icon="correct"]').disabled&&
+   !host.querySelector('button[data-action-icon="save"]').disabled&&
+   document.getElementById('answerKey').readOnly&&
+   document.getElementById('scanModelStatus').textContent===document.getElementById('assessmentTitle').value&&
+   !host.querySelector('button[data-action-icon="correct"]')&&
    !host.innerText.includes('não foram salvas');
  },record.id);
  return record;
@@ -237,7 +240,9 @@ try{
   const host=document.getElementById('savedAssessments');
   return host.querySelector('[role="status"]').dataset.state==='draft'&&/não (?:foram )?salvas/.test(host.innerText);
  });
- assert.equal(await p2.locator('#savedAssessments button[data-action-icon="correct"]').isDisabled(),true);
+ assert.equal(await p2.locator('#savedAssessments button[data-action-icon="correct"]').count(),0);
+ assert.equal(await p2.locator('#answerKey').inputValue(),'');
+ assert.equal(await p2.locator('#answerKey').evaluate(e=>e.readOnly),false);
  await p2.locator('#savedAssessments button[data-action-icon="save"]').click();
  let newer;
  for(let i=0;i<100;i++){

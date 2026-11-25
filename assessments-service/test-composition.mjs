@@ -4,7 +4,11 @@ import {mkdirSync,writeFileSync,readdirSync} from 'node:fs';
 import path from 'node:path';
 import {ROOT,matrix,verifyDependencies} from './build.mjs';
 import {verifyScope} from './integrity.mjs';
-verifyScope();verifyDependencies();
+if(process.env.SALTA_AUTO_CORRECTION_SCOPE==='1'){
+ const {verifyAutoCorrectionScope}=await import('../scripts/verify-auto-correction-scope.mjs');
+ verifyAutoCorrectionScope();
+}else verifyScope();
+verifyDependencies();
 const tree=ROOT;
 const logs=path.resolve(process.argv[2]||path.join(ROOT,'assessments-service/dist/test-evidence'));mkdirSync(logs,{recursive:true});
 {

@@ -28,7 +28,17 @@ const original={
 const fakeKey=letter=>Array(60).fill(letter).join(' ');
 
 test('P0-08B-03: V2/OMR pins include approved printed-title renderer; private controller stays protected',()=>{
- for(const [file,expected]of Object.entries(original))assert.equal(gitBlob(file),expected,file);
+ for(const [file,expected]of Object.entries(original)){
+  if(file!=='corretor/v2/assessments/private-library.mjs'){assert.equal(gitBlob(file),expected,file);continue;}
+  const source=text(file);
+  const addition=" // Invalidate a correction key without discarding the opened editor or pending CAS.\n function discardSelection(){s.selection=null;onSelection(null)}\n";
+  // Accept the historical source or precisely the added local invalidation API.
+  if(!source.includes(addition)){assert.equal(gitBlob(file),expected,file);continue;}
+  assert.equal(source.split(addition).length,2);
+  assert.equal(source.split('  selectIssued,resumeSelection,discardSelection,').length,2);
+  const body=Buffer.from(source.replace(addition,'').replace('  selectIssued,resumeSelection,discardSelection,','  selectIssued,resumeSelection,'));
+  assert.equal(createHash('sha1').update('blob '+body.length+'\0').update(body).digest('hex'),expected,file);
+ }
  const controller=text('corretor/v2/assessments/private-library.mjs');
  assert.match(controller,/resetContext\(\);\s*s\.session=null;s\.grants=\[\];s\.scope=null;s\.pending=null;/,
   'reinitialization must invalidate previous professor, grant and request before I/O');

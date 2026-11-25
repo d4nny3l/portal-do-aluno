@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="pt-BR"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Corretor de avaliações · SALTA</title><meta name="salta-camera-version" content="20261115camera1"><meta name="salta-card-version" content="v2-20261115-assessments-protected"><link rel="icon" href="../favicon.svg"><link rel="stylesheet" href="../salta-theme.css?v=20261110ux1"><link rel="stylesheet" href="./professor-theme.css?v=20261110ux1"><link rel="stylesheet" href="./corretor-v2.css?v=20261121ux79c1"><link rel="stylesheet" href="./avaliacoes-biblioteca.css?v=20261121ux79c1"><style>#corrigir #scanScore{display:none!important}#corrigir #photoGrade{max-width:660px;margin:8px auto;padding:10px 12px;font-size:18px;font-weight:700}#corrigir #photoGrade[hidden]{display:none!important}#corrigir #cameraGrade[hidden],#corrigir #cameraProgress[hidden],#corrigir #cameraLiveBadge[hidden],#corrigir #cameraReadStatus{display:none!important}
+<html lang="pt-BR"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Corretor de avaliações · SALTA</title><meta name="salta-camera-version" content="20261115camera1"><meta name="salta-card-version" content="v2-20261115-assessments-protected"><link rel="icon" href="../favicon.svg"><link rel="stylesheet" href="../salta-theme.css?v=20261110ux1"><link rel="stylesheet" href="./professor-theme.css?v=20261110ux1"><link rel="stylesheet" href="./corretor-v2.css?v=20261121ux79c1"><link rel="stylesheet" href="./avaliacoes-biblioteca.css?v=20261125auto"><style>#corrigir #scanScore{display:none!important}#corrigir #photoGrade{max-width:660px;margin:8px auto;padding:10px 12px;font-size:18px;font-weight:700}#corrigir #photoGrade[hidden]{display:none!important}#corrigir #cameraGrade[hidden],#corrigir #cameraProgress[hidden],#corrigir #cameraLiveBadge[hidden],#corrigir #cameraReadStatus{display:none!important}
 /* Safari iPhone: largura estável, independente da barra dinâmica e sem recalcular escala em cada quadro. */
 #corrigir .camera-stage{width:min(100%,660px);aspect-ratio:auto;height:auto;min-height:0;border:0;border-radius:0;background:transparent;box-shadow:none}
 /* A altura acompanha a resolução intrínseca; fill equivale a contain quando os aspectos correspondem e evita o compositor contain do WebKit. */
@@ -29,7 +29,7 @@ let cameraStream;
 <script type="module">
 import { installAssessmentBank } from '../corretor/v2/assessments/editor.mjs?v=20261115assess2';
 import {EDITOR_FIELD_IDS} from '../corretor/v2/assessments/editor-snapshot.mjs?v=20261124snap120';
-import {mountAssessmentLibrary} from './avaliacoes-biblioteca.mjs?v=20261121ux79c-84-87';
+import {mountAssessmentLibrary} from './avaliacoes-biblioteca.mjs?v=20261125auto';
 import {scoreIntegratedPlan,keyTextForPlan,scoreInputUnits,POINT_SCALE} from '../corretor/v2/assessments/block-scoring.mjs?v=20261121ux79c-84-87';
 import {formatScore} from '../corretor/v2/assessments/score-format.mjs?v=20261121ux79c-84-87';
 import { createTemplate } from '../corretor/v2/omr/template.mjs?v=20261115assess2';
@@ -420,14 +420,17 @@ function activatePrivateCorrection(selection){
   throw Error('O modelo e o gabarito da seleção não correspondem.');
  const completedResults=scanHistory.filter(entry=>entry.grade!==undefined).map(({id,at,readCount,grade,correct,count})=>({id,at,readCount,grade,correct,count}));
  clearAssessmentReview();scanHistory.push(...completedResults);renderHistory();
- applyAssessmentModel({manifest:selection.manifest,title:selection.plan.metadata.title,revision:selection.revision},{privateAssessment:true});
+ // The opened/saved immutable model is already installed by the library.
+ // Do not rebuild the editor preview or change its export eligibility on binding.
+ if(!privateModelLoaded||activeManifest?.contentHash!==selection.manifestHash)
+  applyAssessmentModel({manifest:selection.manifest,title:selection.plan.metadata.title,revision:selection.revision},{privateAssessment:true});
  privateSelection=selection;
  $('answerKey').value=keyTextForPlan(selection.plan);$('answerKey').readOnly=true;
  setPrivateCorrectionUi(true);
  $('scanMaxScore').type='text';
  $('scanMaxScore').value=formatScore(BigInt(selection.plan.totalUnits),POINT_SCALE,selection.plan.scoreDecimals);
  $('scanMaxScore').readOnly=true;
- $('scanModelStatus').textContent=selection.plan.metadata.title+' · avaliação confirmada para correção. Confira se os cartões pertencem a esta avaliação.';
+ $('scanModelStatus').textContent=selection.plan.metadata.title;
 }
 function clearPrivateCorrection(){
  // Opening a private assessment loads its manifest before a selection exists.
@@ -447,11 +450,11 @@ function clearPrivateCorrection(){
   $('preview').replaceChildren();syncScanInputs();
  }
  setExportAvailability(false);
- $('scanModelStatus').textContent='Escolha uma avaliação na aba Criar avaliação para vincular o gabarito.';
+ $('scanModelStatus').textContent='';
 }
 function assessmentEditorState(){return {version:1,sections:structuredClone(sections),header:structuredClone(headerState),layoutRevision,nextQuestionNumber,nextSectionOrder,fields:Object.fromEntries(bankFieldIds.map(id=>[id,$(id).value])),showInstructions:$('showInstructions').checked}}
 function clearAssessmentReview(){if(cameraStream)stopCamera();typeof setCameraProgress==='function'&&setCameraProgress();activeObservations=[];activeHistoryEntry=null;scanHistory.length=0;replaceLastCapture=false;renderHistory();$('answers').replaceChildren();$('scanScore').hidden=true;$('status').textContent='';$('file').value='';normalizedRaster=null;rawRaster=null;$('canvas').hidden=true;updateCaptureComparison();}
-function applyAssessmentModel(bundle,{privateAssessment=false}={}){const imported=importCardManifest(bundle.manifest);template=imported.template;activeManifest=imported.manifest;privateModelLoaded=privateAssessment;activeSvg=renderTemplateSvg(template,{manifest:activeManifest});exactScanModel=true;syncScanInputs();$('preview').innerHTML='<div class="omr-page">'+activeSvg+'</div>';$('scanModelStatus').textContent='Avaliação '+bundle.title+' · Confira se os cartões pertencem a esta avaliação.';setExportAvailability(false)}
+function applyAssessmentModel(bundle,{privateAssessment=false}={}){const imported=importCardManifest(bundle.manifest);template=imported.template;activeManifest=imported.manifest;privateModelLoaded=privateAssessment;activeSvg=renderTemplateSvg(template,{manifest:activeManifest});exactScanModel=true;syncScanInputs();$('preview').innerHTML='<div class="omr-page">'+activeSvg+'</div>';$('scanModelStatus').textContent=privateAssessment?'':bundle.title;setExportAvailability(false)}
 assessmentBank=await installAssessmentBank({
  editor:assessmentEditorState,
  questions:()=>sections.flatMap(section=>section.items),

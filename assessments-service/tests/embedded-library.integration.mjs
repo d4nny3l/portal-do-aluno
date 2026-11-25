@@ -125,7 +125,7 @@ class Node{
 }
 const settle=async fn=>{for(let i=0;i<200;i++){if(fn())return;await new Promise(r=>setTimeout(r,5))}assert(fn(),'UI did not settle')};
 for(const capability of [false,'unknown',true])test(`native library capability ${capability}: no unsupported PUT; supported editor/save/open/selection keeps exact frame`,async()=>{
- const h=await harness();try{
+ const h=await harness({lifecycle:true});try{
   let m=model(),editor=m.editor,selected=null;const host=new Node('section'),panel=new Node('section');let puts=0;
   const doc={getElementById:id=>({savedAssessments:host,criar:panel}[id]||null),createElement:t=>new Node(t)};
   const fetchFn=async(url,init={})=>{const u=new URL(url);if(init.method==='PUT')puts++;const r=await h.request(u.pathname.slice('/assessments/v1'.length)+u.search,{method:init.method||'GET',...(init.body?{data:JSON.parse(init.body)}:{})});if(capability!==true&&u.pathname.endsWith('/session')){const d=await r.json();if(capability==='unknown')d.embeddedLibraryVersion='salta-embedded-library-v9';else delete d.embeddedLibraryVersion;return Response.json(d)}return r};
@@ -133,12 +133,14 @@ for(const capability of [false,'unknown',true])test(`native library capability $
   await settle(()=>ui.controller.view().scope);const actions=host.children[0].children[2],button=icon=>actions.children.find(x=>x.attrs['data-action-icon']===icon);
   if(capability!==true){assert.equal(button('save').disabled,true);assert.throws(()=>ui.getDraft(),/Não é possível salvar/);assert.equal(puts,0);return}
   const scoring=host.children[1];scoring.children[2].children[0].value='1 A\n2 A\n3 A';await scoring.children[3].handlers.click();
-  await button('save').handlers.click();const record=ui.controller.view().record;assert.ok(record?.id);assert.equal(puts,1);
+  await button('save').handlers.click();const record=ui.controller.view().record;assert.ok(record?.id);assert.equal(puts,1);assert.equal(selected?.assessmentId,record.id);assert.equal(selected.manifestHash,m.manifest.contentHash);
   editor={...editor,fields:{...editor.fields,cardMode:'full-page',embeddedWidth:'200',embeddedHeight:'290'}};
-  await ui.controller.open(record.id,1);ui.render();
+  await button('open').handlers.click();
   assert.equal(editor.fields.cardMode,'embedded');assert.equal(editor.fields.embeddedWidth,'120');assert.equal(editor.fields.embeddedHeight,'180');
   assert.deepEqual(ui.getDraft().manifest,m.manifest);
   await button('duplicate').handlers.click();const copy=ui.controller.view().record;assert.notEqual(copy.id,record.id);assert.equal(copy.status,'draft');assert.equal(copy.manifestHash,m.manifest.contentHash);
-  await ui.controller.open(record.id,1);ui.render();await button('correct').handlers.click();assert.equal(selected.manifest.mode,'embedded');assert.equal(selected.manifestHash,m.manifest.contentHash);
+  assert.equal(selected,null,'draft copy must not retain prior correction');
+  const catalog=host.children[0].children[1].children[1].children[0];catalog.value=record.id;await catalog.onchange();
+  assert.equal(button('correct'),undefined);assert.equal(selected?.assessmentId,record.id);assert.equal(selected.manifest.mode,'embedded');assert.equal(selected.manifestHash,m.manifest.contentHash);
  }finally{h.close()}
 });

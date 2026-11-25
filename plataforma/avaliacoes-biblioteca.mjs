@@ -154,11 +154,10 @@ export function mountAssessmentLibrary({
  let authorizedContext='',manualRetryNeeded=false,privateEditorLoaded=false,legacyEditorActive=false;
  // UI edit clock is separate from controller operation generation. Never
  // invalidate that generation during PUT: the original requestId must survive.
- let editVersion=0,unsaved=false,confirmedEarlierSave=false,pendingSave=null,selectionAttempt=null,openAttempt=null,selectionNeedsConfirmation=false;
+ let editVersion=0,unsaved=false,confirmedEarlierSave=false,pendingSave=null,selectionAttempt=null,openAttempt=null;
  const markEdited=()=>{
   deletionConfirmed=false;editVersion++;unsaved=true;savedManifest=null;savedSignature=null;
-  if(selectionAttempt)selectionNeedsConfirmation=true;
-  if(activeSelection){activeSelection=false;clearSelection();}
+  if(activeSelection)controller.discardSelection();
  };
  // Snapshot both the real section model and all editable academic inputs.
  // Button-driven section changes do not necessarily emit input/change events.
@@ -216,7 +215,7 @@ export function mountAssessmentLibrary({
   catalogCache.clear();allRows=[];metadataById.clear();selectedCatalogId='';
   const hadPrivateEditor=privateEditorLoaded;privateEditorLoaded=false;legacyEditorActive=false;
   resetScores();pendingSave=null;selectionAttempt=null;openAttempt=null;
-  unsaved=false;confirmedEarlierSave=false;selectionNeedsConfirmation=false;
+  unsaved=false;confirmedEarlierSave=false;
   manualRetryNeeded=false;scheduledRequestId=null;editVersion++;
   // A manually composed card is not an assessment from the private library.
   if(hadPrivateEditor)newEditor();
@@ -292,7 +291,7 @@ export function mountAssessmentLibrary({
   // assessment model; clearing afterward would erase the just-opened model.
   clearSelection();activeSelection=false;
   applyExactModel({manifest:restored.manifest,title:record.definition.title,revision:record.revision});
-  unsaved=false;confirmedEarlierSave=false;selectionNeedsConfirmation=false;
+  unsaved=false;confirmedEarlierSave=false;
   renderScoring();
 
  }
@@ -302,7 +301,7 @@ export function mountAssessmentLibrary({
    if(!selection){activeSelection=false;clearSelection();return;}
    if(!sameEdit(selectionAttempt)){
     flagUnnoticedEdit(selectionAttempt);
-    activeSelection=false;selectionNeedsConfirmation=true;clearSelection();return;
+    controller.discardSelection();return;
    }
    if(selection.manifest.mode==='embedded'&&!hasEmbeddedLibrary()){
     activeSelection=false;clearSelection();throw new Error(embeddedUnavailable);
@@ -314,11 +313,12 @@ export function mountAssessmentLibrary({
    // Controller clears session/grants/selection before signalling 401/403.
    if(!contextKey())render();
   },
-  confirmBatch:details=>window.confirm('Confirma a avaliação “'+details.title+
-   '” para corrigir este lote? Confira o cartão físico: modelos visualmente iguais podem ter gabaritos diferentes.')
+  // Explicit catalog choice or verified save authorizes the existing selection
+  // protocol; the server receipt and immutable record verification remain mandatory.
+  confirmBatch:()=>true
  });
  const connect=btn('Conectar',async()=>{await connectAndList()},'connect');
- const create=btn('Nova avaliação',async()=>{if(!ready)throw Error('Sua biblioteca não está conectada.');controller.newDraft();privateEditorLoaded=true;resetScores();newEditor();legacyEditorActive=false;editVersion++;unsaved=false;confirmedEarlierSave=false;selectionNeedsConfirmation=false;selectedCatalogId='';renderScoring()},'new');
+ const create=btn('Nova avaliação',async()=>{if(!ready)throw Error('Sua biblioteca não está conectada.');controller.newDraft();privateEditorLoaded=true;resetScores();newEditor();legacyEditorActive=false;editVersion++;unsaved=false;confirmedEarlierSave=false;selectedCatalogId='';renderScoring()},'new');
  const reconcileSaved=async(result,attempt)=>{
   if(!result?.record)return false;
   // A verified immutable revision is real, even if the teacher subsequently
@@ -326,7 +326,7 @@ export function mountAssessmentLibrary({
   pendingSave=null;
   const sync=()=>{
    if(sameEdit(attempt)){
-    unsaved=false;confirmedEarlierSave=false;selectionNeedsConfirmation=false;
+    unsaved=false;confirmedEarlierSave=false;
     savedManifest=result.record.definition.manifest;
     restoredUnits.clear();editedAmountIds.clear();
     for(const block of result.record.definition.blocks)restoredUnits.set(block.blockId,block.valueUnits);
@@ -348,11 +348,17 @@ export function mountAssessmentLibrary({
   }catch{
    // Catalog refresh is secondary; the verified receipt + GET are definitive.
   }
-  sync();return true;
+  if(controller.view().record!==result.record||!contextKey())return false;
+  sync();
+  if(!unsaved){
+   applyExactModel({manifest:result.record.definition.manifest,title:result.record.definition.title,revision:result.record.revision});
+   await bindConfirmedRecord(result.record);
+  }
+  return true;
  };
  const save=btn('Salvar avaliação',async()=>{
   if(!ready)throw Error('Conecte sua biblioteca antes de salvar.');
-  if(activeSelection){clearSelection();activeSelection=false;}
+  if(activeSelection)controller.discardSelection();
   // getDraft() may normalize the model synchronously; capture after the
   // request payload is frozen, before the first possible user edit.
   const saving=controller.save('issued');
@@ -368,13 +374,14 @@ export function mountAssessmentLibrary({
   try{
    const record=await controller.open(id,null);
 
-   if(record)selectedCatalogId=id;
+   if(record){selectedCatalogId=id;await bindConfirmedRecord(record);}
    return record;
   }finally{openAttempt=null;}
  };
  const open=btn('Abrir avaliação',()=>openSelected(catalog.value),'open');
  const duplicate=btn('Duplicar avaliação',async()=>{
   if(controller.view().record?.id!==catalog.value)throw Error('Abra a avaliação antes de duplicar.');
+  controller.discardSelection();
   const result=await controller.duplicate();
   if(result?.record){
    selectedCatalogId=result.record.id;
@@ -386,29 +393,29 @@ export function mountAssessmentLibrary({
  const resolveStaleSelection=()=>{
   if(selectionAttempt&&!sameEdit(selectionAttempt)){
    flagUnnoticedEdit(selectionAttempt);
-   selectionNeedsConfirmation=true;
    // An old selection may be registered server-side, but is not activated in
    // the Corretor. Keep the opened record so the later local edits can still
    // become the next revision without losing their writable context.
-   activeSelection=false;clearSelection();
+   controller.discardSelection();
    return true;
   }
   return false;
  };
- const selectForCorrection=btn('Usar na correção',async()=>{
-  if(controller.view().record?.id!==catalog.value)throw Error('Selecione a avaliação e confira os dados antes de corrigir.');
-  // Even an unreported structural mutation must not reuse a saved key.
+ // Bind only the current issued, verified revision, never a draft or an
+ // editor changed while the server was confirming a different snapshot.
+ async function bindConfirmedRecord(record){
   if(savedSignature&&savedSignature!==editorSignature())markEdited();
-  if(unsaved||!savedSignature)throw Error('Salve suas alterações antes de selecionar uma avaliação para correção.');
-  selectionNeedsConfirmation=false;
+  if(!record||record!==controller.view().record||record.status!=='issued'||record.archived||
+     !hasLifecycle()||unsaved||!savedSignature)return false;
   selectionAttempt=editSnapshot();
   try{
    const result=await controller.selectIssued();
    if(result)resolveStaleSelection();
+   return activeSelection;
   }finally{
    if(!controller.view().pending)selectionAttempt=null;
   }
- },'correct');
+ }
  const prev=btn('Anterior',()=>controller.previousPage(),'previous');
  const next=btn('Próxima',()=>controller.nextPage(),'next');
  const refresh=btn('Atualizar',()=>loadCatalog(),'refresh');
@@ -480,7 +487,7 @@ export function mountAssessmentLibrary({
  const scopeWrap=field(document,'Turma e período',scope);
  const catalogWrap=field(document,'Avaliação',catalog);
  choose.append(scopeWrap,catalogWrap,versionLabel);
- actions.append(create,save,open,duplicate,selectForCorrection);
+ actions.append(create,save,open,duplicate);
  const deletion=btn('Excluir avaliação',async()=>{
   const record=controller.view().record;
   if(!hasLifecycle()||!record||record.id!==catalog.value)throw Error('Reabra a avaliação antes de excluir.');
@@ -488,6 +495,7 @@ export function mountAssessmentLibrary({
   const confirmed=await confirmAssessmentDeletion({document,title:record.definition.title,opener:deletion});
   if(!confirmed)return;
   if(contextKey()!==context||controller.view().generation!==generation||controller.view().record!==record)throw Error('O contexto mudou. Reabra antes de excluir.');
+  controller.discardSelection();
   const result=await controller.erase();
   if(result)await reconcileDeleted(result);
  },'delete');
@@ -514,7 +522,7 @@ export function mountAssessmentLibrary({
   try{const latest=await client.open(current.id);
    if(contextKey()!==context||controller.view().generation!==generation)return false;
    if(latest.revision===current.revision&&latest.manifestHash===current.manifestHash)return true;
-   throw Error('A avaliação foi substituída. Reabra e selecione novamente.');
+   throw Error('A avaliação foi substituída. Reabra a avaliação.');
   }catch(error){
    if(contextKey()===context&&controller.view().generation===generation){
     controller.invalidateOpenedRecord();wipePrivateUi();newEditor();renderScoring();
@@ -575,8 +583,8 @@ export function mountAssessmentLibrary({
   try{
    if(!id){controller.invalidateOpenedRecord();selectedCatalogId='';resetScores();newEditor();legacyEditorActive=false;renderScoring();return;}
    deletionConfirmed=false;selectedCatalogId=id;
-   await openSelected(id);
-  }catch(error){status.textContent=error.message;status.dataset.state='error'}
+   const opening=openSelected(id);render();await opening;
+  }catch(error){status.textContent=error.message;status.dataset.state='error';scheduleRecovery()}
   finally{operationBusy=false;render({preserveError:status.dataset.state==='error'})}
  };
  const fillOptions=(node,items)=>{
@@ -664,7 +672,6 @@ export function mountAssessmentLibrary({
   deletion.disabled=operationBusy||!hasLifecycle()||!opened||current?.id!==catalog.value||Boolean(s.pending);
   open.disabled=operationBusy||!ready||!catalog.value||Boolean(s.pending);
   duplicate.disabled=operationBusy||!ready||!opened||current.id!==catalog.value||Boolean(s.pending);
-  selectForCorrection.disabled=operationBusy||unsaved||!ready||!opened||current.status!=='issued'||current.id!==catalog.value||Boolean(s.pending);
   refresh.textContent=catalogLoadError?'Tentar novamente':'Atualizar';
   refresh.hidden=!(ready&&catalogLoadError&&!catalogBusy&&!operationBusy&&!s.pending);
   refresh.disabled=operationBusy||!ready||!catalogLoadError||catalogBusy||Boolean(s.pending);
@@ -682,7 +689,6 @@ export function mountAssessmentLibrary({
   s.pending?'Conferindo a operação. Alterações recentes não salvas.':
     deletionConfirmed?'Avaliação excluída permanentemente.':
     confirmedEarlierSave?'Alterações não salvas.':
-    selectionNeedsConfirmation?'A avaliação mudou. Salve e selecione novamente para corrigir.':
     unsaved?'Alterações não salvas.':
     s.phase==='deleted'?'Avaliação excluída permanentemente.':
     s.phase==='saved'?'Salvo.':

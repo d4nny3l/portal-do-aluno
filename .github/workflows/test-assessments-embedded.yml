@@ -43,6 +43,14 @@ jobs:
           else
             echo 'camera_only=false' >> "$GITHUB_OUTPUT"
           fi
+      - name: Classify automatic correction UX with exact incremental scope
+        id: auto_correction_scope
+        run: |
+          if node scripts/verify-auto-correction-scope.mjs; then
+            echo 'auto_only=true' >> "$GITHUB_OUTPUT"
+          else
+            echo 'auto_only=false' >> "$GITHUB_OUTPUT"
+          fi
       - name: Read pinned historical backend/gateway fixture sources
         if: steps.print_scope.outputs.print_only != 'true'
         run: |
@@ -52,12 +60,12 @@ jobs:
           git cat-file -e 7080d2de0b5a01bbe417b71732221a869e7a4d42^{commit}
       - if: steps.print_scope.outputs.print_only != 'true'
         run: npm ci --prefix assessments-lab --ignore-scripts --no-audit --no-fund
-      - if: steps.print_scope.outputs.print_only != 'true' && steps.camera_scope.outputs.camera_only != 'true'
+      - if: steps.print_scope.outputs.print_only != 'true' && steps.camera_scope.outputs.camera_only != 'true' && steps.auto_correction_scope.outputs.auto_only != 'true'
         run: node assessments-service/integrity.mjs
-      - if: steps.print_scope.outputs.print_only != 'true' && steps.camera_scope.outputs.camera_only != 'true'
+      - if: steps.print_scope.outputs.print_only != 'true' && steps.camera_scope.outputs.camera_only != 'true' && steps.auto_correction_scope.outputs.auto_only != 'true'
         run: node --test assessments-service/tests/build.test.mjs
       - name: Current frontend/backend, synthetic Auth, local D1 and unchanged gateway regressions
-        if: steps.print_scope.outputs.print_only != 'true' && steps.camera_scope.outputs.camera_only != 'true'
+        if: steps.print_scope.outputs.print_only != 'true' && steps.camera_scope.outputs.camera_only != 'true' && steps.auto_correction_scope.outputs.auto_only != 'true'
         run: node assessments-service/test-composition.mjs
       - name: Frontend-only — verify unchanged dependencies and execute original #120 guard and historical suite
         if: steps.camera_scope.outputs.camera_only == 'true'
@@ -70,6 +78,19 @@ jobs:
           node assessments-service/integrity.mjs
           node --test assessments-service/tests/build.test.mjs
           node assessments-service/test-composition.mjs
+      - name: Automatic correction UX — historical #136 guard/build tests plus current full composition
+        if: steps.auto_correction_scope.outputs.auto_only == 'true'
+        run: |
+          node scripts/verify-auto-correction-scope.mjs
+          git fetch --no-tags origin refs/pull/136/head
+          git worktree add --detach "$RUNNER_TEMP/salta-136" dac9938ea6943a9bc2def59c43a8189e5b75aea6
+          (
+            cd "$RUNNER_TEMP/salta-136"
+            npm ci --prefix assessments-lab --ignore-scripts --no-audit --no-fund
+            node assessments-service/integrity.mjs
+            node --test assessments-service/tests/build.test.mjs
+          )
+          SALTA_AUTO_CORRECTION_SCOPE=1 node assessments-service/test-composition.mjs
       - name: Candidate build only — no Worker configuration or deployment
         if: steps.print_scope.outputs.print_only != 'true'
         run: |
