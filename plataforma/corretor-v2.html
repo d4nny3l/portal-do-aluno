@@ -10,7 +10,8 @@
 #corrigir .camera-grade-title svg{flex:0 0 auto;color:#b9b9ff}
 #corrigir #cameraGradeValue{display:block;margin:5px 0 8px;color:#fff;font-size:30px;font-weight:800;line-height:1.1;font-variant-numeric:tabular-nums}
 #corrigir .camera-grade-accent{display:block;width:54px;height:3px;margin:0 auto;border-radius:99px;background:linear-gradient(90deg,#7474ec,#a8a8ff)}
-#corrigir #cameraGuides{display:none!important}</style></head><body class="professor-layout">
+#corrigir #cameraGuides{display:none!important}</style><link rel="stylesheet" href="avaliacao-excluir-dialog.css">
+</head><body class="professor-layout">
 <div class="session-loading" id="loading" role="status"><span class="session-spinner"></span><span>Verificando acesso…</span></div>
 <div data-salta-admin-shell></div><script type="module" src="./admin-shell.mjs?v=20261115assess2"></script>
 <main id="corretorMain"><div class="corretor-content"><section class="corretor-hero"><h1>Corretor de avaliações</h1></section>
@@ -215,6 +216,7 @@ calculateScore=function(){
   blocked('Vínculo não confirmado','Confira o modelo e o gabarito antes de corrigir.');return;
  }
  if(!result.complete){blocked('Leitura inconclusiva',result.reason||'Confira as respostas.');return}
+ const present=()=>{
  box.hidden=false;box.dataset.review='false';
  box.innerHTML=oldReading+'<strong>'+(stale?'Nota da última leitura':'Nota final')+' '+
   result.total+' / '+result.maximum+'</strong><span>'+result.correct+' acerto(s) em '+
@@ -233,6 +235,14 @@ calculateScore=function(){
   activeHistoryEntry.grade=result.total;activeHistoryEntry.correct=result.correct;
   activeHistoryEntry.count=result.count;renderHistory();
  }
+ };
+ if(privateLibrary?.requiresSelectionValidation()){
+  const selected=privateSelection,observed=JSON.stringify(activeObservations);
+  blocked('Conferindo avaliação','Validando a seleção no servidor.');
+  void privateLibrary.verifySelection().then(ok=>{
+   if(ok&&privateSelection===selected&&JSON.stringify(activeObservations)===observed)present();
+  }).catch(()=>{if(privateSelection===selected)clearPrivateCorrection();});
+ }else present();
 };
 function renderHistory(){const list=$('captureHistory');if(!scanHistory.length){list.replaceChildren(Object.assign(document.createElement('li'),{textContent:'Nenhuma captura realizada.'}));$('rescanLast').hidden=true;return}list.replaceChildren(...scanHistory.slice(-10).reverse().map(entry=>{const item=document.createElement('li');const when=new Date(entry.at).toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'});item.textContent=`Cartão ${entry.id} · ${when} · ${entry.grade?`nota final ${entry.grade}`:`${entry.readCount||0} respostas lidas`}`;return item}));$('rescanLast').hidden=false}
 function renderAnswers(result){$('scanScore').dataset.identity=result.identity?.state||'disabled';$('scanScore').dataset.stale='false';activeObservations=result.observations.map(item=>({...item,reviewed:item.state==='read'||item.state==='double'||item.state==='blank',answer:item.state==='read'?item.answer:null}));const list=$('answers');list.replaceChildren(...activeObservations.map(observation=>{const item=document.createElement('div');item.className=`omr-question ${observation.reviewed?'':'needs-review'}`;const label=document.createElement('label'),select=document.createElement('select'),pending=document.createElement('option'),blank=document.createElement('option');select.id=`omr-answer-${observation.number}`;label.htmlFor=select.id;label.textContent=`Questão ${observation.number} · ${observation.state==='read'?(observation.recognition==='partial'?`${observation.answer} reconhecida · marcação parcial`:'lida'):observation.state==='double'?'Inválida — dupla marcação':observation.state==='blank'?'Sem resposta — inválida':'Leitura inconclusiva — nova captura'}`;pending.value='';pending.textContent=observation.reviewed?'Selecione a resposta…':'Leitura inconclusiva — tente nova captura';blank.value='__blank__';blank.textContent='Sem resposta (confirmar)';const choices=template.questions.find(question=>question.questionId===observation.questionId).choices;select.append(pending);for(const answer of choices){const option=document.createElement('option');option.value=answer;option.textContent=answer;select.append(option)}select.append(blank);const suspects=(observation.state==='review'||observation.state==='double')?choices.filter(choice=>Array.isArray(observation.marks)&&observation.marks.includes(choice)):[];const partialRecognized=observation.state==='read'&&observation.recognition==='partial';const hint=(suspects.length||partialRecognized)?document.createElement('p'):null;if(hint){hint.id=`${select.id}-hint`;hint.className='omr-mark-hint';hint.setAttribute('role','note');hint.textContent=partialRecognized?'Marcação parcial reconhecida automaticamente. Você pode corrigir a resposta.':suspects.length===1?`Possível marcação: ${suspects[0]}. Confira na imagem.`:`Possíveis marcações: ${suspects.slice(0,-1).join(', ')} e ${suspects.at(-1)}. Confira na imagem.`;select.setAttribute('aria-describedby',hint.id)}select.value=observation.reviewed?(observation.answer||'__blank__'):'';select.onchange=()=>{if(!select.value||select.value!=='__blank__'&&!choices.includes(select.value))return;observation.answer=select.value==='__blank__'?null:select.value;observation.reviewed=true;observation.state='reviewed';item.classList.remove('needs-review');label.textContent=`Questão ${observation.number} · conferida`;if(hint){hint.hidden=true;select.removeAttribute('aria-describedby')}const pendingCount=activeObservations.filter(answer=>!answer.reviewed).length;$('status').textContent=pendingCount?`${pendingCount} questão(ões) inconclusiva(s). Faça nova captura.`:'Classificação atualizada. Nenhuma nota foi registrada no Diário.';calculateScore()};item.append(label,select);if(hint)item.append(hint);return item}));calculateScore()}
@@ -408,7 +418,8 @@ function setPrivateCorrectionUi(privateMode){
 function activatePrivateCorrection(selection){
  if(!selection||selection.manifestHash!==selection.manifest?.contentHash)
   throw Error('O modelo e o gabarito da seleção não correspondem.');
- clearAssessmentReview();
+ const completedResults=scanHistory.filter(entry=>entry.grade!==undefined).map(({id,at,readCount,grade,correct,count})=>({id,at,readCount,grade,correct,count}));
+ clearAssessmentReview();scanHistory.push(...completedResults);renderHistory();
  applyAssessmentModel({manifest:selection.manifest,title:selection.plan.metadata.title,revision:selection.revision},{privateAssessment:true});
  privateSelection=selection;
  $('answerKey').value=keyTextForPlan(selection.plan);$('answerKey').readOnly=true;
@@ -424,7 +435,8 @@ function clearPrivateCorrection(){
  if(!privateSelection&&!privateModelLoaded)return;
  const hadPrivateModel=privateModelLoaded;
  privateSelection=null;privateModelLoaded=false;
- clearAssessmentReview();
+ const completedResults=scanHistory.filter(entry=>entry.grade!==undefined).map(({id,at,readCount,grade,correct,count})=>({id,at,readCount,grade,correct,count}));
+ clearAssessmentReview();scanHistory.push(...completedResults);renderHistory();
  // Hidden score markup must also be removed, not merely concealed.
  $('scanScore').replaceChildren();
  $('answerKey').value='';$('answerKey').readOnly=false;

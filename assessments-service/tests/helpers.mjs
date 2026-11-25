@@ -21,8 +21,8 @@ export class D1 {
  prepare(sql) { const d=this; return {args:[],bind(...args){return {...this,args};},async first(){return d.sqlite.prepare(sql).get(...this.args)||null;},async all(){return {results:d.sqlite.prepare(sql).all(...this.args)};},async run(){if(d.failSql?.(sql))throw Error('synthetic transaction failure');return {meta:{changes:Number(d.sqlite.prepare(sql).run(...this.args).changes)}};}}; }
  async batch(statements) { this.beforeBatch?.(); this.sqlite.exec('BEGIN');try {const result=[];for(const s of statements)result.push(await s.run());this.sqlite.exec('COMMIT');return result;}catch(error){this.sqlite.exec('ROLLBACK');throw error;} }
 }
-export async function harness() {
- const db=new D1(); await seed(db);
+export async function harness({lifecycle=false}={}) {
+ const db=new D1();if(lifecycle)db.sqlite.exec(readFileSync(new URL('../migrations/0002_assessment_lifecycle.sql',import.meta.url),'utf8')); await seed(db);
  const entries=new Map(), storage={get:async key=>entries.get(key),put:async(key,value)=>entries.set(key,value),delete:async key=>entries.delete(key),getAlarm:async()=>null,setAlarm:async()=>{},list:async()=>entries};
  const store=new SessionStore({storage});
  const authEnv={SESSIONS:{idFromName:()=>'',get:()=>({fetch:(input,init)=>store.fetch(new Request(input,init))})}};
@@ -32,7 +32,8 @@ export async function harness() {
   await store.fetch(new Request('https://sessions/create',{method:'POST',body:JSON.stringify({id:token,user,expiresAt:Math.floor(Date.now()/1000)+3600})}));
  }
  const env={ENABLE_ASSESSMENTS:'true',PORTAL_ORIGIN:portal,ASSESSMENTS_DB:db,AUTH:{fetch:request=>auth.fetch(request,authEnv)},ASSESSMENT_KEYRING:JSON.stringify({1:secret()}),ASSESSMENT_ACTIVE_KEY_VERSION:'1'};
- const request=(path,{method='GET',actor='a',data,headers={}}={})=>worker.fetch(new Request('https://private-service/assessments/v1'+path,{method,headers:{Origin:portal,...(actor?{Cookie:tokens[actor]||actor}:{}),...(data?{'Content-Type':'application/json'}:{}),...headers},...(data?{body:JSON.stringify(data)}:{})}),env);
+ if(lifecycle)Object.assign(env,{ENABLE_ASSESSMENT_LIFECYCLE:'true',ASSESSMENT_RETENTION_POLICY:'salta-assessment-lifecycle-v1'});
+ const request=(path,{method='GET',actor='a',data,headers={}}={})=>worker.fetch(new Request('https://private-service/assessments/v1'+path,{method,headers:{Origin:portal,...(lifecycle?{'X-Salta-Assessment-Lifecycle':'salta-assessment-lifecycle-v1'}:{}),...(actor?{Cookie:tokens[actor]||actor}:{}),...(data?{'Content-Type':'application/json'}:{}),...headers},...(data?{body:JSON.stringify(data)}:{})}),env);
  return {db,env,request,tokens,entries,close:()=>db.sqlite.close()};
 }
 export function definition({legacy=false}={}) {

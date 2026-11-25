@@ -72,7 +72,9 @@ jobs:
           node assessments-service/test-composition.mjs
       - name: Candidate build only — no Worker configuration or deployment
         if: steps.print_scope.outputs.print_only != 'true'
-        run: node assessments-service/build.mjs
+        run: |
+          node assessments-service/build.mjs
+          node assessments-service/build-gateway.mjs
       - name: Isolated real browser — synthetic sessions, exact frame recovery and optical correction
         if: steps.print_scope.outputs.print_only != 'true'
         shell: bash
@@ -81,6 +83,7 @@ jobs:
           node "$RUNNER_TEMP/salta-browser/node_modules/playwright/cli.js" install --with-deps chromium
           SALTA_PLAYWRIGHT_MODULE="$RUNNER_TEMP/salta-browser/node_modules/playwright/index.mjs" node assessments-service/tests/embedded-browser.mjs
           SALTA_PLAYWRIGHT_MODULE="$RUNNER_TEMP/salta-browser/node_modules/playwright/index.mjs" node assessments-service/tests/editor-frontend-browser.mjs
+          SALTA_PLAYWRIGHT_MODULE="$RUNNER_TEMP/salta-browser/node_modules/playwright/index.mjs" node assessments-service/tests/lifecycle-browser.mjs
       - uses: actions/upload-artifact@v4
         if: steps.print_scope.outputs.print_only != 'true'
         with:

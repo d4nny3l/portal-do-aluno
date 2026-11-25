@@ -10,7 +10,7 @@ export const matrix=JSON.parse(readFileSync(new URL('dependencies.json',import.m
 const require=createRequire(new URL('../assessments-lab/package.json',import.meta.url));
 export const sha256=b=>createHash('sha256').update(b).digest('hex');
 export function verifyDependencies(read=p=>readFileSync(path.join(ROOT,p))){
- if(matrix.inputs.length!==18||new Set(matrix.inputs.map(x=>x.path)).size!==18||matrix.inputs.filter(x=>x.comparison==='identical').length!==15)throw Error('Dependency matrix cardinality');
+ if(matrix.inputs.length!==19||new Set(matrix.inputs.map(x=>x.path)).size!==19||matrix.inputs.filter(x=>x.comparison==='identical').length!==17)throw Error('Dependency matrix cardinality');
  for(const row of matrix.inputs){const b=read(row.path),blob=createHash('sha1').update('blob '+b.length+'\0').update(b).digest('hex');
   if(blob!==row.candidateBlob||sha256(b)!==row.sha256)throw Error('Unapproved runtime input: '+row.path);
   if(row.comparison==='identical'&&row.mainBlob!==row.candidateBlob)throw Error('Main identity mismatch');

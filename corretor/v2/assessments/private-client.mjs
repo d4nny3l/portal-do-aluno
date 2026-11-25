@@ -2,6 +2,8 @@
 // Do not put credentials, correct answers or student records in browser storage.
 import {isUUID,definitionFromLocalPlan,pinnedSelection,planFromPrivateRecord} from './private-contract-adapter.mjs';
 
+import {ASSESSMENT_LIFECYCLE_VERSION} from './lifecycle.mjs';
+
 export class PrivateAssessmentError extends Error {
  constructor(message,{status=0,code='network',retryable=false}={}){
   super(message);this.name='PrivateAssessmentError';this.status=status;this.code=code;this.retryable=retryable;
@@ -51,7 +53,7 @@ export function createPrivateAssessmentClient({enabled=false,baseUrl=null,fetchF
    response.status===401?'Sessão SALTA expirada. Entre novamente pela SALTA.':
    response.status===403?'Acesso ou concessão revogada. Não altere o cofre.':
    response.status===404?'Avaliação, revisão ou seleção indisponível neste contexto.':
-   response.status===409?'Conflito de revisão. Consulte o histórico; não sobrescreva automaticamente.':
+   response.status===409?'Conflito de revisão. Reabra a avaliação; não sobrescreva automaticamente.':
    response.status===429?'Limite temporário de solicitações. Aguarde e tente consultar novamente; não há salvamento confirmado.':
    response.status===503?'Serviço privado indisponível. Nenhuma gravação foi confirmada.':
    'Operação rejeitada pelo contrato privado.',
@@ -105,11 +107,11 @@ export function createPrivateAssessmentClient({enabled=false,baseUrl=null,fetchF
    if(data?.record?.id!==assessmentId||(revision!==null&&data.record.revision!==revision))fail('Revisão recuperada divergente.');
    planFromPrivateRecord(data.record);return data.record},
   async history(assessmentId){idCheck(assessmentId);const data=await read('/assessments/'+assessmentId+'/revisions');if(!Array.isArray(data?.revisions))fail('Histórico inválido.');return data.revisions},
-  prepareSave({plan,manifest,editorSnapshot,scope,assessmentId=null,expectedRevision=0,status='draft'}){
+  prepareSave({plan,manifest,editorSnapshot,scope,assessmentId=null,expectedRevision=0,status='draft',lifecycleVersion=null}){
    scopeCheck(scope);if(!['draft','issued'].includes(status)||!Number.isSafeInteger(expectedRevision)||expectedRevision<0)fail('Situação de revisão inválida.');
    const idValue=assessmentId?idCheck(assessmentId):id(),definition=definitionFromLocalPlan(plan,manifest,editorSnapshot);
    if(status==='issued'&&!definition.date)fail('A data é obrigatória antes de emitir.');
-   return operation('PUT','/assessments/'+idValue,{requestId:id(),expectedRevision,...scope,status,definition});
+   return operation('PUT','/assessments/'+idValue,{requestId:id(),expectedRevision,...scope,status,definition,...(lifecycleVersion?{lifecycleVersion}:{})});
   },
   saveAndVerify,
   prepareDuplicate(assessmentId,sourceRevision){
@@ -122,6 +124,18 @@ export function createPrivateAssessmentClient({enabled=false,baseUrl=null,fetchF
    const record=await this.open(receipt.id,1);
    if(record.status!=='draft'||record.manifestHash!==receipt.manifestHash)fail('Cópia incompatível.');
    return {receipt,record};
+  },
+  prepareDelete(assessmentId,expectedRevision){
+   idCheck(assessmentId);if(!Number.isSafeInteger(expectedRevision)||expectedRevision<1)fail('Revisão inválida.');
+   return operation('POST','/assessments/'+assessmentId+'/delete',{requestId:id(),expectedRevision,lifecycleVersion:ASSESSMENT_LIFECYCLE_VERSION});
+  },
+  async deleteAndVerify(op){
+   const receipt=await confirmOperation(op),assessmentId=op.path.split('/')[2];
+   if(receipt.id!==assessmentId||receipt.revision!==op.payload.expectedRevision||receipt.deleted!==true)fail('Exclusão não confirmada.');
+   const status=await read('/assessments/'+assessmentId+'/status');
+   if(status.id!==assessmentId||status.deleted!==true||status.revision!==receipt.revision)fail('A remoção ainda não foi confirmada.');
+   try{await read('/assessments/'+assessmentId)}catch(e){if(e.status===404)return {receipt};throw e}
+   fail('O conteúdo excluído ainda está acessível.');
   },
   prepareArchive(assessmentId,expectedRevision){
    idCheck(assessmentId);if(!Number.isSafeInteger(expectedRevision)||expectedRevision<1)fail('Revisão inválida.');

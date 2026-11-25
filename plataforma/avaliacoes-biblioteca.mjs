@@ -1,3 +1,5 @@
+import {ASSESSMENT_LIFECYCLE_VERSION} from '../corretor/v2/assessments/lifecycle.mjs';
+import {confirmAssessmentDeletion} from './avaliacao-excluir-dialog.mjs';
 // SALTA: one library inside "Criar avaliação". Uses the original audited private
 // client/controller. No second login, endpoint, storage or optical renderer.
 import {createPrivateAssessmentClient} from '../corretor/v2/assessments/private-client.mjs';
@@ -130,6 +132,7 @@ export function mountAssessmentLibrary({
  let selectedScoreDecimals=DEFAULT_SCORE_DECIMALS,scoreFormatExplicit=false;
  const restoredUnits=new Map(),editedAmountIds=new Set();
  const scoreFormatField=get('scoreFormatField'),scoreFormatSelect=get('scoreFormatSelect');
+ const hasLifecycle=()=>controller.view().session?.assessmentLifecycleVersion===ASSESSMENT_LIFECYCLE_VERSION;
  const hasScoreFormat=()=>controller.view().session?.scoreFormatVersion===SCORE_FORMAT_VERSION;
  const hasEmbeddedLibrary=()=>controller.view().session?.embeddedLibraryVersion===EMBEDDED_LIBRARY_VERSION;
  const hasEditorSnapshot=()=>controller.view().session?.editorSnapshotVersion===EDITOR_SNAPSHOT_CAPABILITY;
@@ -153,7 +156,7 @@ export function mountAssessmentLibrary({
  // invalidate that generation during PUT: the original requestId must survive.
  let editVersion=0,unsaved=false,confirmedEarlierSave=false,pendingSave=null,selectionAttempt=null,openAttempt=null,selectionNeedsConfirmation=false;
  const markEdited=()=>{
-  editVersion++;unsaved=true;savedManifest=null;savedSignature=null;
+  deletionConfirmed=false;editVersion++;unsaved=true;savedManifest=null;savedSignature=null;
   if(selectionAttempt)selectionNeedsConfirmation=true;
   if(activeSelection){activeSelection=false;clearSelection();}
  };
@@ -178,7 +181,7 @@ export function mountAssessmentLibrary({
  const choicesBox=el(document,'div','',{class:'library-choices'});
  const paste=el(document,'textarea','',{placeholder:'1 A\n2 C\n3 D',rows:'4',spellcheck:'false'});
  const actions=el(document,'div','',{class:'omr-actions library-actions'});
- let operationBusy=false;
+ let operationBusy=false,deletionConfirmed=false;
  const aux=el(document,'div','',{class:'omr-actions library-aux'});
  const btn=(label,callback,icon='action')=>{
   const item=el(document,'button',label,{type:'button'});
@@ -192,6 +195,10 @@ export function mountAssessmentLibrary({
     await pendingTask;
     render();
    }catch(e){
+    if([404,409,410].includes(e?.status)&&controller.view().editorMode==='blocked'){
+     wipePrivateUi();newEditor();renderScoring();
+     if(contextKey())try{await loadCatalog()}catch{}
+    }
     // Keep the original pending request visible until it can be reconciled.
     // Never retry synchronously here: its requestId/CAS must remain inspectable.
     status.textContent=e?.message||'Operação não concluída.';
@@ -201,7 +208,7 @@ export function mountAssessmentLibrary({
   });
   return item;
  };
- const resetScores=()=>{values={};answers={};savedManifest=null;savedSignature=null;resetScoreFormat();clearSelection();activeSelection=false};
+ const resetScores=()=>{deletionConfirmed=false;values={};answers={};savedManifest=null;savedSignature=null;resetScoreFormat();clearSelection();activeSelection=false};
  function wipePrivateUi(){
   // No catalog/metadata/answer key may survive revocation or a new principal.
   catalogGeneration++;catalogBusy=false;catalogReady=false;catalogLoadError=false;
@@ -334,8 +341,10 @@ export function mountAssessmentLibrary({
   try{
    selectedCatalogId=result.record.id;
    rememberRecordMetadata(result.record);
+   if(hasLifecycle())broadcastChange(result.record.id);
+   catalogCache.clear();
    await loadCatalog();
-   await controller.history(result.record.id);
+
   }catch{
    // Catalog refresh is secondary; the verified receipt + GET are definitive.
   }
@@ -358,7 +367,7 @@ export function mountAssessmentLibrary({
   openAttempt=editSnapshot();
   try{
    const record=await controller.open(id,null);
-   if(record&&openAttempt.editVersion===editVersion)await controller.history(id);
+
    if(record)selectedCatalogId=id;
    return record;
   }finally{openAttempt=null;}
@@ -437,6 +446,7 @@ export function mountAssessmentLibrary({
   if(!result)return null;
   if(pending.method==='PUT'&&pendingSave?.requestId===pending.requestId)
    await reconcileSaved(result,pendingSave);
+  else if(pending.path.endsWith('/delete'))await reconcileDeleted(result);
   else if(pending.method==='POST'&&pending.path==='/selections'){
    resolveStaleSelection();
    if(!controller.view().pending)selectionAttempt=null;
@@ -471,9 +481,59 @@ export function mountAssessmentLibrary({
  const catalogWrap=field(document,'Avaliação',catalog);
  choose.append(scopeWrap,catalogWrap,versionLabel);
  actions.append(create,save,open,duplicate,selectForCorrection);
- const deletion=el(document,'button','Excluir avaliação',{type:'button'});
- deletion.setAttribute('data-action-icon','delete');
- deletion.hidden=true;deletion.disabled=true;actions.append(deletion);
+ const deletion=btn('Excluir avaliação',async()=>{
+  const record=controller.view().record;
+  if(!hasLifecycle()||!record||record.id!==catalog.value)throw Error('Reabra a avaliação antes de excluir.');
+  const context=contextKey(),generation=controller.view().generation;
+  const confirmed=await confirmAssessmentDeletion({document,title:record.definition.title,opener:deletion});
+  if(!confirmed)return;
+  if(contextKey()!==context||controller.view().generation!==generation||controller.view().record!==record)throw Error('O contexto mudou. Reabra antes de excluir.');
+  const result=await controller.erase();
+  if(result)await reconcileDeleted(result);
+ },'delete');
+ actions.append(deletion);
+ async function reconcileDeleted(result){
+  broadcastChange(result.receipt.id);
+  wipePrivateUi();newEditor();renderScoring();
+  await loadCatalog();deletionConfirmed=true;
+  status.textContent='Avaliação excluída permanentemente.';status.dataset.state='deleted';
+ }
+ function broadcastChange(id){channel?.postMessage({id,context:contextKey()});}
+ const channel=typeof window.BroadcastChannel==='function'?new window.BroadcastChannel('salta-assessment-lifecycle-v1'):null;
+ channel?.addEventListener('message',event=>{
+  const change=event.data,current=controller.view().record;
+  if(typeof change?.id!=='string'||change.context!==contextKey())return;
+  if(current?.id===change.id){controller.invalidateOpenedRecord();wipePrivateUi();newEditor();renderScoring();}
+  catalogCache.clear();metadataById.delete(change.id);
+  if(!operationBusy&&!controller.view().pending)void loadCatalog().catch(()=>{});
+ });
+ async function verifyOpened(){
+  const current=controller.view().record,context=contextKey(),generation=controller.view().generation;
+  if(!hasLifecycle()||!current)return true;
+  if(operationBusy||controller.view().pending)return false;
+  try{const latest=await client.open(current.id);
+   if(contextKey()!==context||controller.view().generation!==generation)return false;
+   if(latest.revision===current.revision&&latest.manifestHash===current.manifestHash)return true;
+   throw Error('A avaliação foi substituída. Reabra e selecione novamente.');
+  }catch(error){
+   if(contextKey()===context&&controller.view().generation===generation){
+    controller.invalidateOpenedRecord();wipePrivateUi();newEditor();renderScoring();
+    status.textContent=error.message;status.dataset.state='error';render({preserveError:true});
+   }return false;
+  }
+ }
+ // Validate controlled exports against current server state before the existing
+ // renderer/print handlers run. Their optical/PDF implementation stays untouched.
+ let approvedExport=null;
+ document.addEventListener?.('click',event=>{
+  const target=event.target?.closest?.('button');
+  if(!target||!['generate','printCard','downloadSvg','downloadPng','downloadJpg','printBatch'].includes(target.id)||!hasLifecycle()||!controller.view().record)return;
+  if(approvedExport===target){approvedExport=null;return;}
+  event.preventDefault();event.stopImmediatePropagation();
+  void verifyOpened().then(valid=>{if(valid){approvedExport=target;target.click();approvedExport=null;}});
+ },true);
+ window.addEventListener?.('focus',()=>{void verifyOpened()});
+ document.addEventListener?.('visibilitychange',()=>{if(document.visibilityState==='visible')void verifyOpened()});
  open.hidden=true;refresh.hidden=true;prev.hidden=true;next.hidden=true;retry.hidden=true;
  manualRetry.hidden=true;
  aux.append(connect,refresh,prev,next,retry,manualRetry);
@@ -514,7 +574,7 @@ export function mountAssessmentLibrary({
   operationBusy=true;
   try{
    if(!id){controller.invalidateOpenedRecord();selectedCatalogId='';resetScores();newEditor();legacyEditorActive=false;renderScoring();return;}
-   selectedCatalogId=id;
+   deletionConfirmed=false;selectedCatalogId=id;
    await openSelected(id);
   }catch(error){status.textContent=error.message;status.dataset.state='error'}
   finally{operationBusy=false;render({preserveError:status.dataset.state==='error'})}
@@ -600,7 +660,8 @@ export function mountAssessmentLibrary({
   revisions.disabled=operationBusy||Boolean(s.pending);
   create.disabled=operationBusy||!ready||Boolean(s.pending);
   const embeddedBlocked=embeddedEditor()&&!hasEmbeddedLibrary();
-  save.disabled=operationBusy||!ready||embeddedBlocked||!hasEditorSnapshot()||(!opened&&s.editorMode!=='new')||Boolean(s.pending);
+  save.disabled=operationBusy||!ready||(opened&&!hasLifecycle())||embeddedBlocked||!hasEditorSnapshot()||(!opened&&s.editorMode!=='new')||Boolean(s.pending);
+  deletion.disabled=operationBusy||!hasLifecycle()||!opened||current?.id!==catalog.value||Boolean(s.pending);
   open.disabled=operationBusy||!ready||!catalog.value||Boolean(s.pending);
   duplicate.disabled=operationBusy||!ready||!opened||current.id!==catalog.value||Boolean(s.pending);
   selectForCorrection.disabled=operationBusy||unsaved||!ready||!opened||current.status!=='issued'||current.id!==catalog.value||Boolean(s.pending);
@@ -619,9 +680,11 @@ export function mountAssessmentLibrary({
     !s.scope?'Selecione uma turma para acessar suas avaliações.':
     s.pending&&manualRetryNeeded?'A operação não foi confirmada. Use Tentar novamente quando houver conexão.':
   s.pending?'Conferindo a operação. Alterações recentes não salvas.':
+    deletionConfirmed?'Avaliação excluída permanentemente.':
     confirmedEarlierSave?'Alterações não salvas.':
     selectionNeedsConfirmation?'A avaliação mudou. Salve e selecione novamente para corrigir.':
     unsaved?'Alterações não salvas.':
+    s.phase==='deleted'?'Avaliação excluída permanentemente.':
     s.phase==='saved'?'Salvo.':
     s.phase==='selected'?'Pronto para corrigir.':
     catalogBusy?'Carregando avaliações…':
@@ -636,6 +699,7 @@ export function mountAssessmentLibrary({
    status.textContent='Não foi possível carregar suas avaliações. Tente novamente.';
   }
   if(ready&&legacyEditorActive&&opened&&!unsaved&&!s.pending&&!catalogLoadError){status.dataset.state='legacy';status.textContent='Alguns campos não foram recuperados. Confira os dados antes de editar.';}
+  if(ready&&opened&&!hasLifecycle()&&!s.pending){status.dataset.state='unsupported';status.textContent='Este servidor ainda não confirma a substituição definitiva. Nada foi salvo.';}
   if(ready&&!hasEditorSnapshot()&&!s.pending&&!catalogLoadError){status.dataset.state='unsupported';status.textContent=snapshotUnavailable;}
   if(ready&&embeddedBlocked&&!s.pending&&!catalogLoadError){
    status.dataset.state='unsupported';status.textContent=embeddedUnavailable;
@@ -747,5 +811,5 @@ export function mountAssessmentLibrary({
  renderScoring();
  render();
  void connectAndList().catch(error=>{status.textContent=error?.message||'Não foi possível preparar o catálogo.';status.dataset.state='error';render({preserveError:true})});
- return Object.freeze({controller,client,onEditorChanged,renderScoring,getDraft,render,loadCatalog});
+ return Object.freeze({controller,client,onEditorChanged,renderScoring,getDraft,render,loadCatalog,verifyOpened,verifySelection:async()=>{try{return await controller.verifySelection()}catch(error){wipePrivateUi();newEditor();renderScoring();status.textContent=error.message;status.dataset.state='error';render({preserveError:true});throw error}},requiresSelectionValidation:()=>hasLifecycle()});
 }

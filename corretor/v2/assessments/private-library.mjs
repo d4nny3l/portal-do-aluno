@@ -1,3 +1,4 @@
+import {ASSESSMENT_LIFECYCLE_VERSION} from './lifecycle.mjs';
 // Private library state machine. Only constructed in explicitly enabled local harnesses.
 // The published Corretor keeps this feature disabled, with no API origin or route.
 export function createPrivateLibraryController({
@@ -144,7 +145,9 @@ export function createPrivateLibraryController({
    if(!sameIdentity(context))return null; // A later context owns the UI; never overwrite it.
    onSuccess(result);
    return result;
-  }catch(error){if(!sameIdentity(context))return null;check(error)}
+  }catch(error){if(!sameIdentity(context))return null;
+   if([404,409,410].includes(error?.status)&&!error.retryable){s.pending=null;invalidateOpenedRecord();}
+   check(error)}
  }
  async function save(status='draft'){
   secure();
@@ -153,12 +156,13 @@ export function createPrivateLibraryController({
   if(s.editorMode!=='new'&&s.editorMode!=='opened')
    throw new Error('Nenhuma avaliação ativa. Reabra a avaliação desejada ou escolha Novo rascunho antes de gravar.');
   if(s.editorMode==='opened'&&!s.record)throw new Error('A avaliação ativa não foi confirmada.');
+  if(s.record&&s.session.assessmentLifecycleVersion!==ASSESSMENT_LIFECYCLE_VERSION)throw new Error('Este servidor ainda não confirma a substituição definitiva. Nada foi salvo.');
   const editor=getDraft();
   const current=s.record;
   const op=client.prepareSave({plan:editor.plan,manifest:editor.manifest,editorSnapshot:editor.editorSnapshot,scope:{...s.scope},
-   assessmentId:current?.id||null,expectedRevision:current?.revision||0,status});
+   assessmentId:current?.id||null,expectedRevision:current?.revision||0,status,lifecycleVersion:s.session.assessmentLifecycleVersion===ASSESSMENT_LIFECYCLE_VERSION?ASSESSMENT_LIFECYCLE_VERSION:null});
   return runPending(op,op0=>client.saveAndVerify(op0),res=>{
-   s.record=res.record;s.editorMode='opened';signal('saved','Salvo · revisão '+res.record.revision+' confirmada pelo recibo e consulta do servidor.');
+   if(s.selection){s.selection=null;onSelection(null);}s.record=res.record;s.editorMode='opened';signal('saved','Salvo · revisão '+res.record.revision+' confirmada pelo recibo e consulta do servidor.');
   });
  }
  async function retry(){
@@ -181,6 +185,27 @@ export function createPrivateLibraryController({
    applyRecord(res.record);s.record=res.record;s.editorMode='opened';
    signal('saved','Cópia privada confirmada com novo ID e revisão 1 em rascunho.');
   });
+ }
+ async function erase(){
+  secure();if(s.session.assessmentLifecycleVersion!==ASSESSMENT_LIFECYCLE_VERSION)throw new Error('Exclusão indisponível neste servidor.');
+  if(s.editorMode!=='opened'||!s.record||s.pending)throw new Error('Reabra a avaliação e conclua operações pendentes antes de excluir.');
+  const op=client.prepareDelete(s.record.id,s.record.revision);
+  return runPending(op,op0=>client.deleteAndVerify(op0),()=>{
+   s.record=null;s.selection=null;s.revisions=[];s.editorMode='blocked';onSelection(null);
+   signal('deleted','Avaliação excluída permanentemente.');
+  });
+ }
+ let selectionVerification=null;
+ function verifySelection(){
+  secure();const selected=s.selection,context=identity();if(!selected)throw new Error('Selecione novamente a avaliação para corrigir.');
+  if(selectionVerification?.selected===selected)return selectionVerification.promise;
+  const pending={selected,promise:null};selectionVerification=pending;
+  pending.promise=(async()=>{try{
+   const verified=await client.resumeSelection(selected.selectionId,{assessmentId:selected.assessmentId,revision:selected.revision,manifestHash:selected.manifestHash});
+   if(!sameIdentity(context)||s.selection!==selected)return false;
+   return verified.selectionId===selected.selectionId;
+  }catch(error){if(sameIdentity(context)){invalidateOpenedRecord();check(error)}return false;}finally{if(selectionVerification===pending)selectionVerification=null;}})();
+  return pending.promise;
  }
  async function archive(){
   secure();if(s.editorMode!=='opened'||!s.record)throw new Error('Abra uma avaliação para arquivar.');
@@ -226,7 +251,7 @@ export function createPrivateLibraryController({
    return selection;
   }catch(error){if(!fresh(g))return null;check(error)}
  }
- return {initialize,useScope,list,nextPage,previousPage,open,history,newDraft,invalidateOpenedRecord,save,retry,abandonPending,duplicate,archive,
+ return {initialize,useScope,list,nextPage,previousPage,open,history,newDraft,invalidateOpenedRecord,save,retry,abandonPending,duplicate,archive,erase,verifySelection,
   selectIssued,resumeSelection,
   view:()=>({phase:s.phase,message:s.message,session:s.session,grants:s.grants,scope:s.scope,rows:s.rows,
    nextCursor:s.nextCursor,pageIndex:s.pageIndex,pageSize:10,hasPrevious:s.pageIndex>0,record:s.record,editorMode:s.editorMode,generation:s.generation,revisions:s.revisions,selection:s.selection,

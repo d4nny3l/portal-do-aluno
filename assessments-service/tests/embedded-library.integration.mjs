@@ -82,7 +82,7 @@ test('embedded input still rejects nominal, CDU, V1, invalid geometry and exchan
  const h=await harness();try{
   const m=model(),a=client(h),p=definitionFromLocalPlan(m.plan,m.manifest);
   assert.throws(()=>assertLibraryModel({...m,nominalFields:{name:'synthetic individual'}}),/nominais|Limpe nome/);
-  const cdu=model({type:'CDU',width:180,height:240});assert.throws(()=>assertLibraryModel(cdu),/não é compatível/);
+  const cdu=model({type:'CDU',width:180,height:240});assert.throws(()=>assertLibraryModel(cdu),/não pode ser salvo/);
   const v1=model({legacy:true});assert.throws(()=>definitionFromLocalPlan(v1.plan,v1.manifest),/não suportado/);
   for(const manifest of [cdu.manifest,v1.manifest]){
    const d={...p,manifest};assert.equal((await h.request('/assessments/'+crypto.randomUUID(),{method:'PUT',data:packet(0,{definition:d})})).status,400);
@@ -131,7 +131,7 @@ for(const capability of [false,'unknown',true])test(`native library capability $
   const fetchFn=async(url,init={})=>{const u=new URL(url);if(init.method==='PUT')puts++;const r=await h.request(u.pathname.slice('/assessments/v1'.length)+u.search,{method:init.method||'GET',...(init.body?{data:JSON.parse(init.body)}:{})});if(capability!==true&&u.pathname.endsWith('/session')){const d=await r.json();if(capability==='unknown')d.embeddedLibraryVersion='salta-embedded-library-v9';else delete d.embeddedLibraryVersion;return Response.json(d)}return r};
   const ui=mountAssessmentLibrary({document:doc,window:{confirm:()=>true},host,fetchFn,getSections:()=>m.sections,getMetadata:()=>m.plan.metadata,getModel:()=>m.manifest,prepareModel:()=>true,snapshotEditor:()=>editor,restoreEditor:e=>{editor=e},applyExactModel:()=>{},nominalFields:()=>({}),newEditor:()=>{},activateSelection:s=>{selected=s},clearSelection:()=>{selected=null}});
   await settle(()=>ui.controller.view().scope);const actions=host.children[0].children[2],button=icon=>actions.children.find(x=>x.attrs['data-action-icon']===icon);
-  if(capability!==true){assert.equal(button('save').disabled,true);assert.throws(()=>ui.getDraft(),/servidor conectado/);assert.equal(puts,0);return}
+  if(capability!==true){assert.equal(button('save').disabled,true);assert.throws(()=>ui.getDraft(),/Não é possível salvar/);assert.equal(puts,0);return}
   const scoring=host.children[1];scoring.children[2].children[0].value='1 A\n2 A\n3 A';await scoring.children[3].handlers.click();
   await button('save').handlers.click();const record=ui.controller.view().record;assert.ok(record?.id);assert.equal(puts,1);
   editor={...editor,fields:{...editor.fields,cardMode:'full-page',embeddedWidth:'200',embeddedHeight:'290'}};

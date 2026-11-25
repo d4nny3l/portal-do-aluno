@@ -9,7 +9,7 @@ import {buildPrintDocument} from '../../corretor/v2/omr/export.mjs';
 import {renderTemplateSvg} from '../../corretor/v2/omr/render.mjs';
 const root=path.resolve(fileURLToPath(new URL('../../',import.meta.url))),out=process.argv[2]||root+'/assessments-service/dist/browser-evidence';mkdirSync(out,{recursive:true});
 const origin='https://d4nny3l.github.io',api='https://salta-stats.dannyel-moises.workers.dev';
-const h=await harness(),trace=[],report={task:'issue-118-candidate',base:'81dfa2a6c404213403cdc7d98a0873b58e789f4c',syntheticOnly:true,sourceServedFromCandidate:true,productionNetworkRequests:0,cases:[],pageErrors:[],blocked:[]};
+const h=await harness({lifecycle:true}),trace=[],report={task:'issue-118-candidate',base:'81dfa2a6c404213403cdc7d98a0873b58e789f4c',syntheticOnly:true,sourceServedFromCandidate:true,productionNetworkRequests:0,cases:[],pageErrors:[],blocked:[]};
 const browser=await chromium.launch({headless:true,...(process.env.SALTA_CHROME?{executablePath:process.env.SALTA_CHROME}:{}),args:['--disable-background-networking','--disable-sync','--no-first-run','--host-resolver-rules=MAP * 0.0.0.0','--no-proxy-server']});
 async function context(){
  const c=await browser.newContext({viewport:{width:1440,height:1000},locale:'pt-BR',serviceWorkers:'block'});

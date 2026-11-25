@@ -12,7 +12,7 @@ const logs=path.resolve(process.argv[2]||path.join(ROOT,'assessments-service/dis
  const dirs=['corretor/v2/tests','plataforma/tests','stats-worker/tests','assessments-lab/tests','assessments-service/tests'];
  const cases=dirs.flatMap(d=>readdirSync(path.join(tree,d)).filter(n=>n.endsWith('.test.mjs')&&!(d==='assessments-service/tests'&&n==='build.test.mjs')).map(n=>d+'/'+n));
  run('regressions',['--test',...cases]);
- run('real-integrations',['--test','assessments-service/tests/d1-auth.integration.mjs','assessments-service/tests/gateway.integration.mjs','assessments-service/tests/frontend88.integration.mjs','assessments-service/tests/embedded-library.integration.mjs']);
+ run('real-integrations',['--test','assessments-service/tests/lifecycle-d1.integration.mjs','assessments-service/tests/d1-auth.integration.mjs','assessments-service/tests/gateway.integration.mjs','assessments-service/tests/frontend88.integration.mjs','assessments-service/tests/embedded-library.integration.mjs']);
  run('legacy-build',['assessments-lab/build.mjs']);run('legacy-http',['--test','assessments-lab/tests/d1-http.integration.mjs']);
  writeFileSync(path.join(logs,'composition.json'),JSON.stringify({frontendBase:matrix.main,backendSource:matrix.backendSource,backendSourceHead:execFileSync('git',['rev-parse','HEAD'],{cwd:ROOT}).toString().trim(),syntheticOnly:true,temporaryD1Only:true,productionOperations:0},null,2)+'\n');
 }

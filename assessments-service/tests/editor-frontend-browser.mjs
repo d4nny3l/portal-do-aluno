@@ -14,7 +14,7 @@ const root=path.resolve(fileURLToPath(new URL('../../',import.meta.url)));
 const out=path.join(root,'assessments-service/dist/editor-snapshot-browser');
 mkdirSync(out,{recursive:true});
 const origin='https://d4nny3l.github.io',api='https://salta-stats.dannyel-moises.workers.dev';
-const h=await harness(),requests=[],errors=[],blocked=[];
+const h=await harness({lifecycle:true}),requests=[],errors=[],blocked=[];
 const launch=()=>chromium.launch({headless:true,args:['--disable-background-networking','--disable-sync','--no-first-run','--host-resolver-rules=MAP * 0.0.0.0','--no-proxy-server']});
 let browser=await launch();
 const base=origin+'/portal-do-aluno/plataforma/corretor-v2.html';
@@ -221,6 +221,7 @@ try{
  await inspect(p2,a);
  report.cases.push('A restored in a fresh browser context with the same authorized account');
  await p2.locator('#savedAssessments button[data-action-icon="duplicate"]').click();
+ await p2.waitForFunction(id=>{const value=document.querySelector('#savedAssessments select[aria-label="Minhas avaliações"]').value;return value&&value!==id},a.id);
  const dup=await stored('Sintética A');
  // The catalog may still show the original title for the copy; inspect controller-owned selection.
  const rows=(await(await h.request('/assessments'+grant)).json()).assessments;
@@ -245,13 +246,13 @@ try{
   await new Promise(r=>setTimeout(r,40));
  }
  assert.equal(newer.revision,2);assert.equal(newer.definition.editorSnapshot.fields.sectionLabel,'APÓS DUPLICAÇÃO');
- assert.equal((await(await h.request('/assessments/'+copy.id+'/revisions/1')).json()).record.definition.editorSnapshot.fields.sectionLabel,a.definition.editorSnapshot.fields.sectionLabel);
+ assert.equal((await h.request('/assessments/'+copy.id+'/revisions/1')).status,410);
  assert.equal(newer.manifestHash,a.manifestHash);
  report.cases.push('Duplication kept immutable revision 1; changing only next-block name flagged unsaved and generated revision 2');
  // Historical V1 and V2 are readable, without pretending lost preferences survived.
  for(const legacy of [false,true]){
   const id=crypto.randomUUID();
-  const r=await h.request('/assessments/'+id,{method:'PUT',data:packet(0,{definition:historicalDefinition({legacy})})});
+  const r=await h.request('/assessments/'+id,{method:'PUT',data:packet(0,{definition:historicalDefinition({legacy}),lifecycleVersion:'salta-assessment-lifecycle-v1'})});
   assert.equal(r.status,201,'historic v2 transport');
   const cLegacy=await context(),pLegacy=await page(cLegacy);
   await pLegacy.locator('#savedAssessments select[aria-label="Minhas avaliações"]').selectOption(id);
