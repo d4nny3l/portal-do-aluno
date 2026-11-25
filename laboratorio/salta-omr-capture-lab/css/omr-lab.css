@@ -56,3 +56,53 @@
  .omr-lab-top{padding:.45rem}
  .omr-reference{width:100%;text-align:center}
 }
+
+/* CAMERA FRAME v2 — só neste laboratório.
+   Abre uma janela vertical sem distorcer bolhas nem desacoplar detecção e foto. */
+body.live #hero{display:none}
+#scanner.camera-on{margin-top:1rem}
+#scanner.camera-on .stage{min-width:0;width:100%;scroll-margin-top:1rem}
+#scanner.camera-on .viewport{
+ display:block;position:relative;width:100%;min-height:0;
+ border-radius:18px;background:#111525;
+ isolation:isolate;overflow:hidden;
+}
+#scanner.camera-on #video{
+ position:absolute;inset:0;width:100%;height:100%;display:block;
+ object-fit:cover;object-position:center center;
+ border-radius:inherit;background:#111525;
+}
+#scanner.camera-on #overlay{
+ position:absolute;inset:auto;pointer-events:none;z-index:4;
+}
+#scanner.camera-on .framing-guide{
+ display:block;position:absolute;inset:7%;
+ border:1px dashed rgba(244,245,255,.64);border-radius:10px;
+ box-shadow:0 0 0 1px rgba(36,36,72,.12);
+ pointer-events:none;z-index:2;
+}
+#scanner.camera-on .pillrow{z-index:6}
+#scanner.camera-on #flash{z-index:5}
+#scanner.camera-on .controls{width:100%;align-items:center;gap:.5rem}
+#framing{border-color:#b8bafa;background:#f6f5ff;color:#4540aa}
+#framing[aria-pressed="true"]{border-color:#d6ddec;background:#fff;color:#666c86}
+#scanner:not(.camera-on) #framing{display:none}
+@media(max-width:1080px){
+ #scanner.camera-on{grid-template-columns:minmax(0,1fr)}
+ #scanner.camera-on .tray{position:static;max-height:none;min-height:0}
+}
+@media(max-width:860px){
+ #scanner.camera-on .viewport{border-radius:16px}
+ #scanner.camera-on .controls{padding:.75rem .1rem .6rem}
+ #scanner.camera-on .controls #res{font-size:.66rem}
+ #scanner.camera-on .framing-guide{inset:6%;border-radius:10px}
+}
+@media(max-width:520px){
+ #scanner.camera-on{gap:.7rem}
+ #scanner.camera-on .controls .ctls{order:2;flex-basis:100%;gap:.6rem}
+ #scanner.camera-on #importbtn2,#scanner.camera-on #framing,#scanner.camera-on #closeCamera{
+  flex:1 1 auto;min-width:0;padding:.65rem .35rem;font-size:.72rem;
+ }
+ #scanner.camera-on #res{order:3;width:100%;margin:0}
+ #scanner.camera-on .keys{font-size:.62rem}
+}
