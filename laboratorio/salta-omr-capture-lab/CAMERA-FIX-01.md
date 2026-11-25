@@ -9,8 +9,12 @@ O proprietário corrigiu expressamente o escopo da missão: atuar somente em
 `laboratorio/salta-omr-capture-lab/?engine=edge`, criado com o Pesquisador.
 Esta correção **não é da câmera oficial do Corretor**. O runtime alterado fica
 inteiramente nesta pasta; a única mudança externa é o workflow de testes do próprio
-laboratório. Nenhuma alteração foi aplicada à main, nenhum merge/deploy foi feito.
-PR de correção para auditoria não constitui integração da pesquisa na câmera oficial.
+laboratório. Na entrega inicial, a alteração ficou na branch `fix/camera-presentation`
+e no PR #135, sem publicação. Posteriormente, o proprietário autorizou expressamente
+a publicação imediata e direta das páginas paralelas, sem PR ou auditoria prévia.
+O PR #135 é encerrado sem utilização para integração. O GitHub Pages serve `main`;
+a publicação direta leva somente a correção do laboratório e seu suporte de testes,
+sem modificar o Corretor oficial.
 PR #133 e issue #132 permanecem fora da missão.
 
 ## Causa e evidências
@@ -133,9 +137,10 @@ Não precisa de câmera, conta, credenciais nem backend.
 
 ## Homologação física obrigatória no iPhone
 
-**Ainda pendente.** Usar uma prévia HTTPS aprovada desta branch; o endereço público
-informado pelo proprietário continua com a versão da main até publicação autorizada.
-Não usar somente `?v=camera-fix-01` na URL antiga como se isso publicasse o código.
+**Ainda pendente; não bloqueia a publicação experimental autorizada.** Depois de
+confirmar a conclusão do build do Pages e os assets `camera-fix-01`, usar a página
+pública do laboratório com `?engine=edge&v=camera-fix-01`. O parâmetro `v` sozinho
+não publica código: conferir que o HTML e os assets novos foram realmente servidos.
 
 1. Registrar modelo do iPhone, versão exata do iOS/Safari, orientação e commit
    servido pela prévia. Usar folha sintética com círculos, grade e marcas nos
@@ -188,9 +193,12 @@ Após recarregar a página, os eventos anteriores deixam de estar disponíveis.
 - Se o vídeo nativo já vier deformado do aparelho, esta correção de apresentação
   não modifica esses pixels. A medição no iPhone é necessária para separar esse caso.
 - A falha estrutural reproduzida está corrigida nos ensaios. **Não declarar o
-  relato físico definitivamente resolvido antes do roteiro acima e da auditoria.**
-- Branch `fix/camera-presentation`; commit, PR e estado final da CI acompanham a
-  entrega da missão. Nenhum merge ou deploy autorizado nesta missão.
+  relato físico definitivamente resolvido antes do roteiro acima.** Auditoria não
+  é exigência do proprietário para páginas paralelas.
+- Implementação: `30ec60e0aa650f82ab3abc85a9ad149ea3484c19`, branch
+  `fix/camera-presentation`. CI aprovada na execução `45609202247`, incluindo os
+  três perfis de navegador em Linux. PR #135 encerrado por orientação do proprietário;
+  publicação direta autorizada posteriormente, sem gate de auditoria.
 - Reversão: reverter o commit desta correção. Não requer migração ou recuperação
   de dados. PRIMARY/EDGE continuam selecionáveis pelos parâmetros existentes.
 

@@ -8,8 +8,15 @@
 Correção exclusiva deste laboratório, a pedido do proprietário. Diagnóstico,
 evidências antes/depois, limites e homologação física pendente em
 [CAMERA-FIX-01.md](./CAMERA-FIX-01.md). Os detectores e a política de captura
-PRIMARY/EDGE permanecem preservados. A versão desta branch não equivale a uma
-publicação na URL da main.
+PRIMARY/EDGE permanecem preservados.
+
+**Orientação expressa do proprietário, 25/11/2026:** páginas paralelas são páginas
+de teste e podem receber publicação direta, sem PR nem auditoria como condição
+prévia. Esta autorização substitui as restrições anteriores de publicação desta
+missão. Preservar o produto oficial e os limites técnicos; registrar os testes
+executados e a homologação física ainda pendente. Como o Pages serve a branch
+`main`, publicar somente os arquivos do laboratório e seu suporte de testes,
+sem modificar as áreas oficiais da plataforma.
 
 ## PESQUISA ATIVA — EDGE-FIRST-01 (25/11/2026)
 
