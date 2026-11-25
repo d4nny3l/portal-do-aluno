@@ -236,8 +236,8 @@ function embeddedGeometry(manifest){
     throw new Error('Modelo de quadro incompatível com a captura.');
   return {horizontal:w-16,vertical:h-16};
 }
-export function detectFiducials(gray, width, height, {manifest=null}={}) {
-  const geometry=embeddedGeometry(manifest);
+export function detectFiducials(gray, width, height, {manifest=null,strictPhysical=false}={}) {
+  const geometry=embeddedGeometry(manifest) || (strictPhysical ? {horizontal:194,vertical:281} : null);
   if (!Number.isInteger(width) || !Number.isInteger(height) || width < 32 || height < 32 || !gray || gray.length !== width * height) {
     throw new TypeError("Imagem inválida para localizar os marcadores.");
   }

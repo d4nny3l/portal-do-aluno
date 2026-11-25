@@ -5,6 +5,7 @@ import * as V from '../../../laboratorio/salta-omr-scan-safe-02/js/vision.js';
 import {enhanceDocument} from '../../../laboratorio/salta-omr-scan-safe-02/js/document-enhance.mjs';
 import {detectFiducials, warpFromFiducials} from '../omr/normalize.mjs';
 import {readRaster} from '../omr/reader.mjs';
+import {bilateralEvidence,verifyPrintedGeometry} from './optical-guard.mjs';
 
 export const MAX_SIDE = 2600;
 const TOKEN_FIELDS = ['captureId', 'sessionId', 'templateId', 'templateRevision', 'contentHash', 'page'];
@@ -51,7 +52,7 @@ export function validateSourceOptical(source) {
     throw new TypeError('Raster óptico geométrico inválido.');
 }
 const failResult = (result, code, message, start, now) => ({...result, error: {code, message}, metrics: {readCalls: 0, durationMs: now() - start}});
-function alignAndRead(payload, sourceOptical, markers, result, {warp, read, now}, start) {
+function alignAndRead(payload, sourceOptical, markers, result, {warp, read, now, verifyGeometry}, start) {
   const {template, manifest, page, showCode = true} = payload;
   const outputWidth = manifest.mode === 'embedded' ? Math.min(1400, Math.floor(2200 * manifest.paper.widthMm / manifest.paper.heightMm)) : 1400;
   let aligned;
@@ -60,7 +61,11 @@ function alignAndRead(payload, sourceOptical, markers, result, {warp, read, now}
   } catch (error) {
     return failResult(result, 'FIDUCIALS_INVALID', error.message || 'Enquadramento dos marcadores inválido.', start, now);
   }
-  const reading = read(template, aligned.pixels, aligned.width, aligned.height, {page, showCode, manifest});
+  // Independent printed geometry is checked on the existing aligned matrix;
+  // no second warp or optical classification is performed.
+  if (!verifyGeometry(aligned, manifest)) return failResult(result, 'FIDUCIALS_INVALID',
+    'Marcadores ou referências impressas incompatíveis. Confira os quatro marcadores e reenquadre.', start, now);
+  const reading = read(template, aligned.pixels, aligned.width, aligned.height, {page, showCode, manifest, reviewEvidence: bilateralEvidence});
   if (reading.contentHash !== manifest.contentHash || reading.templateId !== template.templateId ||
       reading.templateRevision !== template.revision || reading.page !== page || reading.pageCount !== template.pageCount)
     throw new Error('Resultado não corresponde ao modelo confirmado.');
@@ -72,7 +77,7 @@ function alignAndRead(payload, sourceOptical, markers, result, {warp, read, now}
  * caller can keep adjusting the same last photo; document remains with caller.
  */
 export function processManual(payload, {
-  warp = warpFromFiducials, read = readRaster, now = () => performance.now(),
+  warp = warpFromFiducials, read = readRaster, now = () => performance.now(), verifyGeometry = verifyPrintedGeometry,
 } = {}) {
   validateCaptureContext(payload);
   validateSourceOptical(payload.sourceOptical);
@@ -80,7 +85,7 @@ export function processManual(payload, {
   const sourceOptical = payload.sourceOptical;
   const result = {sourceOptical, optical: {pixels: sourceOptical.gray, width: sourceOptical.width, height: sourceOptical.height},
     reading: null, token: {...payload.token}, metrics: {readCalls: 0}};
-  return alignAndRead(payload, sourceOptical, payload.manualFiducials, result, {warp, read, now}, start);
+  return alignAndRead(payload, sourceOptical, payload.manualFiducials, result, {warp, read, now, verifyGeometry}, start);
 }
 
 /** Native RGBA in; document RGBA and ONE aligned optical reading out.
@@ -91,7 +96,7 @@ export function processManual(payload, {
  */
 export function processCapture(payload, {
   vision = V, documentEnhance = enhanceDocument, detect = detectFiducials,
-  warp = warpFromFiducials, read = readRaster, now = () => performance.now(),
+  warp = warpFromFiducials, read = readRaster, now = () => performance.now(), verifyGeometry = verifyPrintedGeometry,
 } = {}) {
   validateCaptureContext(payload);
   const {data, w, h, manifest, manualFiducials} = payload;
@@ -116,7 +121,7 @@ export function processCapture(payload, {
   } else {
     let detection;
     try {
-      detection = detect(sourceOptical.gray, sourceOptical.width, sourceOptical.height, {manifest});
+      detection = detect(sourceOptical.gray, sourceOptical.width, sourceOptical.height, {manifest, strictPhysical: true});
     } catch (error) {
       return fail('FIDUCIALS_NOT_FOUND', error.message || 'Não foi possível localizar os marcadores.');
     }
@@ -124,5 +129,5 @@ export function processCapture(payload, {
       return fail('FIDUCIALS_NOT_FOUND', 'Marcadores insuficientes. Reenquadre a folha ou ajuste os quatro marcadores.');
     markers = detection.corners;
   }
-  return alignAndRead(payload, sourceOptical, markers, result, {warp, read, now}, start);
+  return alignAndRead(payload, sourceOptical, markers, result, {warp, read, now, verifyGeometry}, start);
 }
