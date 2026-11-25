@@ -3,7 +3,25 @@
 ## Acesso
 `https://d4nny3l.github.io/portal-do-aluno/laboratorio/salta-omr-capture-lab/`
 
-## CORREÇÃO VIGENTE — PAPER-SAFE: uma captura por cartão, sem pausas (24/11/2026)
+## ESTADO VIGENTE — PRIMARY STABLE: restauração do motor primário (24/11/2026)
+
+**Decisão do proprietário:** retornar à captura simples e estável do SALTA Scan original. A experiência PAPER-TURBO, seleção de nitidez, disparo com telefone em movimento, busca ampliada, dupla fotografia e detector contínuo via Worker foram **desativados**.
+
+A implementação atual de `js/app.js` foi recomposta a partir do snapshot **intacto** `laboratorio/salta-scan/js/app.js` (SHA Git blob `bc86bae35aa36b241dbe0e3e76268c38543807ee`). O `js/worker.js` também voltou a ser idêntico ao primário. Apenas os seguintes encaixes foram preservados no laboratório OMR:
+
+- **Detecção de folha da versão original:** `V.detectDocument`, quadro de 384 px, intervalo-alvo de 66 ms, suavização 0,45, estabilidade do quadrilátero sob deslocamento máximo de **2% da largura** durante **10 quadros estáveis**; imagem é capturada somente após alcançar essa estabilidade.
+- **Uma foto por disparo:** uma única fotografia do vídeo, sem burst, sem escolher quadro seguinte, sem inventar nitidez ou ampliar artificialmente a origem. O scanner aplica novamente o recorte original `shrinkQuad(...,0.008)` e mantém o Worker original exclusivamente para warp/enhance/rotate.
+- **Imagem completa sem cortes ocultos:** proporção da prévia igual à proporção real do vídeo + `object-fit:contain`. A detecção recebe todo o quadro nativo e o botão de recorte artificial foi retirado do fluxo. Para reduzir cortes por uma borda fora do campo, os quatro cantos devem estar totalmente visíveis (checagem `fullPaperVisible`).
+- **Antirrepetição mínima e independente da estabilidade:** o utilitário `card-flow.js` bloqueia duplicatas da mesma folha enquanto a câmera a visualiza, sem rearmar por mera oscilação de foco. Uma troca real de cena com a folha fora de vista, seguida do término da leitura OMR, libera a próxima automaticamente, sem botão e sem pausa manual.
+- **Leitor original inalterado:** `salta-omr:page` continua emitido após o processamento, e `salta-omr:read-finished` informa que o leitor OMR concluiu. Toda classificação continua em `corretor/v2/omr`, sem gravação de notas ou alteração de gabarito.
+
+Os registros PAPER-SAFE e PAPER-TURBO abaixo são **históricos** e não descrevem os algoritmos de captura em execução. Os módulos antigos de experimentos podem permanecer no repositório para comparação, mas **não são importados pelo scanner primário restaurado**.
+
+**Validação antes de homologação no iPhone:** parsing JS/DOM, simulação do algoritmo real de estabilidade e de retirada da folha, e prova de 0 capturas antes do décimo quadro estável; uma captura após, nenhuma duplicação com a mesma folha, e a próxima somente após retirada real. O Safari físico permanece o teste decisivo.
+
+---
+
+## HISTÓRICO — PAPER-SAFE: proteção adicional contra repetição (24/11/2026)
 
 **O professor não precisa tocar em botões, aguardar uma confirmação manual nem interromper a prévia.** O scanner permanece ativo, fotografa cada folha reconhecida uma vez e só prepara a próxima quando existe evidência real de troca de cartão e a interpretação OMR anterior foi concluída.
 
@@ -26,7 +44,7 @@
 
 ---
 
-## ESTADO VIGENTE — PAPER-TURBO-01 (24/11/2026)
+## HISTÓRICO — PAPER-TURBO-01 (24/11/2026)
 
 **Captura automática voltou à detecção de contorno da FOLHA.** A tentativa anterior de usar os quatro marcadores como condição de disparo (FIDUCIAL-01, documentada abaixo como histórico) foi desativada após teste físico do proprietário, por ser lenta e menos fluida. Os cartões incorporados em provas foram **adiados** por decisão do proprietário.
 
