@@ -40,7 +40,7 @@ function savePrefs() {
 
 /* ---------- worker ---------- */
 
-const worker = new Worker("js/worker.js", { type: "module" });
+const worker = new Worker("js/worker.js?v=fiducial-1", { type: "module" });
 const pending = new Map();
 let wid = 0;
 worker.onmessage = (e) => {
@@ -477,7 +477,7 @@ function drawOverlay(corners, good = true, markers = null) {
   poly.classList.toggle("weak", !good);
   if (dots.childElementCount !== 4) {
     dots.innerHTML = "";
-    for (let i = 0; i < 4; i++) { const c = document.createElementNS("http://www.w3.org/2000/svg", "circle"); c.setAttribute("r", "4"); dots.appendChild(c); }
+    for (let i = 0; i < 4; i++) { const c = document.createElementNS("http://www.w3.org/2000/svg", "circle"); c.setAttribute("r", "7"); dots.appendChild(c); }
   }
   const points=markers?.length===4 ? markers : corners;
   Array.from(dots.children).forEach((c, i) => { c.setAttribute("cx", points[i][0].toFixed(1)); c.setAttribute("cy", points[i][1].toFixed(1)); });
