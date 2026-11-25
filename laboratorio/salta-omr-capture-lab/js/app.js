@@ -2,26 +2,22 @@
 
 import * as V from "./vision.js";
 import { buildPdf } from "./pdf.js";
-import {cameraRegion, cameraStageAspect} from "./framing.js";
-import {sampleQuality, shouldCapture, selectBestFrame} from "./quality.js?v=paper-turbo-3";
-import {createCardFlow,cardCaptured,cardReadFinished,cardNotDetected,cardDetected} from "./card-flow.js?v=paper-safe-2";
-import {fullPaperVisible,addPaperMargin} from "./paper-geometry.js?v=paper-safe-2";
+import {cameraScene,createCardFlow,cardCaptured,cardReadFinished,cardNotDetected,cardDetected} from "./card-flow.js?v=primary-restore-1";
+import {fullPaperVisible} from "./paper-geometry.js?v=primary-restore-1";
 
 const $ = (id) => document.getElementById(id);
 
-const DET_W = 384;           // detector rápido de contorno da folha
-const LOOP_MS = 66;          // alvo ~15 tentativas/s no frame reduzido
-const STEADY_FRAMES = 3;     // janela breve, adaptada à nitidez e ao movimento
-const MIN_SCORE = 0.22;      // mesmo gate validado do SALTA Scan original
-const GOOD_SUPPORT = 0.60;   // qualidade visual do contorno
+const DET_W = 384;           // detection frame width (px)
+const LOOP_MS = 66;          // ~15 detections per second
+const STEADY_FRAMES = 10;    // hold still this many frames to auto-capture
+const MIN_SCORE = 0.22;      // below this a quad is ignored
+const GOOD_SUPPORT = 0.6;    // above this the outline turns teal
 const MAX_SIDE = 2600;       // longest side of a scanned page (px)
 
 const S = {
   stream: null, running: false, pages: [], seq: 0,
   mode: "color", pageSize: "fit", auto: true, sound: true,
   busy: 0, editing: null, corner: null,
-  frameMode: "fit", cameraFrame: null, cameraFrameKey: "",
-  captureEpoch: 0, detectorBusy: false,
   cardFlow: createCardFlow(),
   det: { smooth: null, stable: 0, lost: 99, armed: true, lastCap: null, score: 0, support: 0, ms: 0, w: 0, h: 0 },
 };
@@ -44,7 +40,7 @@ function savePrefs() {
 
 /* ---------- worker ---------- */
 
-const worker = new Worker("js/worker.js?v=paper-safe-2", { type: "module" });
+const worker = new Worker("js/worker.js?v=primary-restore-1", { type: "module" });
 const pending = new Map();
 let wid = 0;
 worker.onmessage = (e) => {
@@ -58,27 +54,19 @@ worker.onerror = (e) => { for (const p of pending.values()) p.reject(new Error(e
 function callWorker(msg, transfer = []) {
   return new Promise((resolve, reject) => {
     const id = ++wid;
-    const timeout=setTimeout(()=>{
-      if(pending.delete(id))reject(new Error("O processamento excedeu o tempo limite."));
-    },msg.op==="detect-paper"?5500:24000);
-    const settle={
-      resolve:value=>{clearTimeout(timeout);resolve(value);},
-      reject:error=>{clearTimeout(timeout);reject(error);}
-    };
-    pending.set(id,settle);
-    try{worker.postMessage({id,...msg},transfer);}
-    catch(error){pending.delete(id);settle.reject(error);}
+    pending.set(id, { resolve, reject });
+    worker.postMessage({ id, ...msg }, transfer);
   });
 }
 
 /* ---------- helpers ---------- */
 function translateScanStatus(text) {
  const m=[
-  [/^looking for a page…$/,"Procurando a folha…"],
+  [/^looking for a page…$/,"Procurando uma folha…"],
   [/^looking for a page — hold it up, fill the frame$/,"Enquadre a folha inteira na câmera."],
-  [/^page found — hold still$/,"Folha detectada. Preparando captura…"],
+  [/^page found — hold still$/,"Folha encontrada. Segure firme."],
   [/^hold still…$/,"Mantenha a câmera estável…"],
-  [/^page found — space to capture$/,"Folha detectada."],
+  [/^page found — space to capture$/,"Folha encontrada. Toque para capturar."],
   [/^captured — move to the next page$/,"Capturado. Retire a folha para a próxima."],
   [/^captured — next page$/,"Capturado. Próxima folha."],
   [/^processing…$/,"Digitalizando…"],
@@ -215,8 +203,7 @@ function stopCameraView() {
   video.pause?.();
   video.srcObject = null;
   resetDetection();
-  S.cameraFrame = null; S.cameraFrameKey = "";
-  S.cardFlow = createCardFlow();
+  S.cardFlow=createCardFlow();
   document.body.classList.remove("live");
   $("scanner").classList.remove("camera-on");
   $("scanner").hidden = S.pages.length === 0;
@@ -248,50 +235,6 @@ function waitForCameraMetadata(video, timeoutMs = 4500) {
   });
 }
 
-// Enquadramento único: a prévia nativa, o detector e o JPG usam o mesmo
-// recorte calculado da fonte REAL. Nenhum zoom é aplicado só no CSS.
-function updateCameraStage(video = $("video")) {
-  const viewport = $("viewport"), button = $("framing");
-  if (!video.videoWidth || !video.videoHeight) return;
-  const portrait = window.matchMedia
-    ? window.matchMedia("(max-width: 860px) and (orientation: portrait)").matches
-    : window.innerWidth <= 860 && window.innerHeight > window.innerWidth;
-  const viewWidth = viewport.getBoundingClientRect().width || viewport.clientWidth || window.innerWidth - 24;
-  const aspect = cameraStageAspect(video.videoWidth, video.videoHeight, {
-    portrait, viewWidth, windowHeight: window.innerHeight, mode: portrait ? "fill" : "fit"
-  });
-  viewport.style.aspectRatio = String(aspect);
-  viewport.dataset.frameMode = S.frameMode;
-  video.style.objectFit = "contain"; // nunca cortar a fonte no modo OMR
-  button.textContent = "Imagem inteira";
-  button.setAttribute("aria-pressed", "true");
-  S.cameraFrame = null; S.cameraFrameKey = "";
-  resetDetection();
-}
-
-function currentCameraFrame(video) {
-  const viewport = $("viewport");
-  const rect = viewport.getBoundingClientRect();
-  const width = rect.width || viewport.clientWidth;
-  const height = rect.height || viewport.clientHeight;
-  if (!video.videoWidth || !video.videoHeight || width < 2 || height < 2) return null;
-  const frame = cameraRegion(video.videoWidth, video.videoHeight, width, height, "fit");
-  const key = [frame.sourceWidth,frame.sourceHeight,S.frameMode,
-    Math.round(width),Math.round(height),Math.round(frame.sx),Math.round(frame.sy),
-    Math.round(frame.sw),Math.round(frame.sh)].join(":");
-  if (S.cameraFrameKey !== key) {
-    S.cameraFrameKey = key;
-    resetDetection();
-    const svg = $("overlay");
-    svg.style.left = frame.dx + "px";
-    svg.style.top = frame.dy + "px";
-    svg.style.width = frame.dw + "px";
-    svg.style.height = frame.dh + "px";
-  }
-  S.cameraFrame = frame;
-  return frame;
-}
-
 async function startCamera() {
   if (S.running && S.stream) return true;
   if (S.cameraStarting) return false;
@@ -316,12 +259,12 @@ async function startCamera() {
     video.setAttribute("playsinline", "");
     showErr("");
 
-    // 4:3 aproveita mais da altura da folha que o antigo 16:9.
-    // Valores são preferências, não imposições: Safari escolhe câmera/lente.
-    const portrait = window.innerWidth <= 860 && window.innerHeight > window.innerWidth;
-    const preferred = portrait
-      ? {facingMode:"environment",width:{ideal:1440},height:{ideal:1920},aspectRatio:{ideal:0.75}}
-      : {facingMode:"environment",width:{ideal:1920},height:{ideal:1440},aspectRatio:{ideal:4/3}};
+    const iosFriendly = isWebKitCamera();
+    // Não exigir resolução 4K no Safari: isso pode custar memória e dificultar negociação.
+    // Outros navegadores continuam podendo escolher resolução alta.
+    const preferred = iosFriendly
+      ? {facingMode:"environment",width:{ideal:1920},height:{ideal:1080}}
+      : {facingMode:"environment",width:{ideal:3840},height:{ideal:2160}};
     try {
       stream = await navigator.mediaDevices.getUserMedia({video:preferred,audio:false});
     } catch (error) {
@@ -363,7 +306,7 @@ async function startCamera() {
     }
 
     const vw=video.videoWidth,vh=video.videoHeight;
-    updateCameraStage(video);
+    $("viewport").style.aspectRatio=`${vw} / ${vh}`;
     $("res").textContent=`${vw}×${vh} · câmera automática`;
     track.addEventListener("ended",()=>{
       if(S.running && request===cameraRequestId){
@@ -394,51 +337,31 @@ async function startCamera() {
 const detCanvas = document.createElement("canvas");
 const detCtx = detCanvas.getContext("2d", { willReadFrequently: true });
 let lastTick = 0;
+
 function resetDetection() {
-  S.captureEpoch++;
-  Object.assign(S.det, { smooth: null, stable: 0, consecutive: 0, firstAt: 0,
-    lost: 0, armed: true, lastCap: null, lastCaptureMs: 0,
-    score: 0, support: 0, sharpness: 0 });
+  Object.assign(S.det, { smooth: null, stable: 0, lost: 99, armed: true, lastCap: null, score: 0, support: 0 });
   drawOverlay(null);
   setRing(null);
 }
 
-async function loop(ts) {
+function loop(ts) {
   if (!S.running) return;
   requestAnimationFrame(loop);
-  if(ts-lastTick<LOOP_MS||document.hidden||S.editing||S.busy||S.detectorBusy)return;
-  const video=$("video");
-  if(video.readyState<2||!video.videoWidth)return;
-  const frame=currentCameraFrame(video);
-  if(!frame)return;
-  lastTick=ts;
-  // Em quadros sem documento, tenta tamanho um pouco maior ocasionalmente.
-  // Evita uma segunda detecção pesada no MESMO ciclo.
-  const distant=S.det.lost>3&&S.det.lost%5===4;
-  const dw=distant?512:DET_W,dh=Math.max(8,Math.round(frame.sh*dw/frame.sw));
-  if(detCanvas.width!==dw||detCanvas.height!==dh){
-    detCanvas.width=dw;detCanvas.height=dh;
-  }
-  detCtx.drawImage(video,frame.sx,frame.sy,frame.sw,frame.sh,0,0,dw,dh);
-  const img=detCtx.getImageData(0,0,dw,dh);
-  const epoch=S.captureEpoch;
-  const started=performance.now();
-  S.detectorBusy=true;
-  try{
-    const result=await callWorker({op:"detect-paper",data:img.data,w:dw,h:dh},[img.data.buffer]);
-    if(!S.running||epoch!==S.captureEpoch||S.editing)return;
-    S.det.ms=performance.now()-started;
-    // Todos os cantos têm coordenadas DO quadro realmente detectado.
-    S.det.w=dw;S.det.h=dh;
-    track(result.detection,dw,dh,result.quality,result.scene);
-  }catch(error){
-    if(S.running&&epoch===S.captureEpoch){
-      console.warn("Detector de folha indisponível:",error);
-      setPill("A câmera está aberta, mas a detecção falhou. Importe uma foto se persistir.","bad",1200);
-    }
-  }finally{
-    S.detectorBusy=false;
-  }
+  if (ts - lastTick < LOOP_MS || document.hidden || S.editing) return;
+  lastTick = ts;
+  const video = $("video");
+  if (video.readyState < 2 || !video.videoWidth) return;
+  const vw = video.videoWidth, vh = video.videoHeight;
+  const dw = DET_W, dh = Math.max(8, Math.round(vh * dw / vw));
+  if (detCanvas.width !== dw || detCanvas.height !== dh) { detCanvas.width = dw; detCanvas.height = dh; }
+  detCtx.drawImage(video, 0, 0, dw, dh);
+  const img = detCtx.getImageData(0, 0, dw, dh);
+  const t0 = performance.now();
+  let q = null;
+  try { q = V.detectDocument(img.data, dw, dh); } catch (e) { console.error(e); }
+  S.det.ms = performance.now() - t0;
+  S.det.w = dw; S.det.h = dh;
+  track(q, dw, dh, cameraScene(img.data,dw,dh));
 }
 
 function maxShift(a, b) {
@@ -447,86 +370,75 @@ function maxShift(a, b) {
   return m;
 }
 
-function track(q,dw,dh,quality=null,scene=null){
+function track(q,dw,dh,scene=null){
   const D=S.det,gate=S.cardFlow;
   if(S.busy){setPill("Processando cartão…");setRing(null);return;}
   const now=performance.now();
-  const candidate=!!(q&&q.score>=MIN_SCORE&&Array.isArray(q.corners)&&q.corners.length===4);
-  const fullyVisible=candidate&&fullPaperVisible(q.corners,dw,dh);
-  if(!fullyVisible){
+  const hasPaper=!!(q&&q.score>=MIN_SCORE&&q.corners?.length===4);
+  const complete=hasPaper&&fullPaperVisible(q.corners,dw,dh);
+  if(!complete){
     D.lost++;
-    if(D.lost>2){
-      D.smooth=null;D.stable=0;D.consecutive=0;D.firstAt=0;
-      D.score=0;D.support=0;D.sharpness=0;
+    if(D.lost>3){
+      D.smooth=null;D.stable=0;D.score=0;D.support=0;
       drawOverlay(null);setRing(null);
     }
-    if(candidate){
-      // Folha visível porém com canto junto ao limite: NÃO disparar.
-      // Também não confundir esse estado com retirada do cartão.
+    if(hasPaper){
+      // Nunca recortar se algum canto da folha estiver fora da imagem.
+      // Também não tratar contorno parcial como folha retirada.
       cardDetected(gate);
-      setPill("Folha cortada. Afaste um pouco para mostrar os quatro cantos.","bad");
+      setPill("Mostre a folha inteira, com os quatro cantos visíveis.","bad");
     }else{
       cardNotDetected(gate,{now,scene});
-      if(gate.phase==="vacant")setPill(gate.readDone?
-        "Pronto para a próxima folha.":
-        "Finalizando leitura anterior; câmera continua aberta.");
-      else if(gate.phase==="locked")setPill(gate.readDone?
-        "Cartão salvo. Troque a folha para continuar.":
-        "Cartão fotografado. Interpretando respostas…");
-      else if(D.lost>2)setPill("Procurando a folha inteira…");
+      if(gate.phase==="locked")setPill(gate.readDone?
+        "Cartão lido. Troque a folha para continuar.":"Cartão capturado. Lendo as respostas…");
+      else if(gate.phase==="vacant")setPill("Pronto para reconhecer o próximo cartão…");
+      else if(D.lost>3)setPill("Procurando a folha inteira…");
     }
     return;
   }
-  const previousPhase=gate.phase;
+  const prior=gate.phase;
   if(!cardDetected(gate)){
-    setRing(null);drawOverlay(null);
-    setPill(gate.readDone?
-      "Este cartão já foi fotografado. Troque a folha.":
-      "Lendo cartão anterior; câmera continua aberta.","ok");
+    setRing(null);
+    setPill(gate.readDone?"Cartão já fotografado. Troque a folha.":"Aguardando a leitura do cartão…","ok");
     return;
   }
-  if(previousPhase==="vacant"){
-    D.smooth=null;D.stable=0;D.consecutive=0;D.firstAt=0;D.armed=true;
+  if(prior==="vacant"){
+    D.smooth=null;D.stable=0;D.armed=true;
   }
-  D.lost=0;D.score=q.score;D.support=q.support;D.scene=scene;
-  D.sharpness=quality?.sharpness||0;
+  D.lost=0;D.score=q.score;D.support=q.support;
+  // EXATAMENTE a interpolação e o critério de estabilidade do SALTA Scan primário.
   if(!D.smooth){
-    D.smooth=q.corners.map(p=>[...p]);D.stable=0;D.consecutive=1;D.firstAt=now;
+    D.smooth=q.corners.map(c=>[c[0],c[1]]);
+    D.stable=0;
   }else{
     const shift=maxShift(q.corners,D.smooth);
-    if(shift>.18*dw){
-      D.smooth=q.corners.map(p=>[...p]);D.stable=0;D.consecutive=1;D.firstAt=now;
-    }else{
-      const alpha=shift>.035*dw?.72:.44;
-      for(let i=0;i<4;i++){
-        D.smooth[i][0]+=(q.corners[i][0]-D.smooth[i][0])*alpha;
-        D.smooth[i][1]+=(q.corners[i][1]-D.smooth[i][1])*alpha;
-      }
-      D.stable=shift<.045*dw?D.stable+1:0;
-      D.consecutive++;
+    for(let i=0;i<4;i++){
+      D.smooth[i][0]+=(q.corners[i][0]-D.smooth[i][0])*.45;
+      D.smooth[i][1]+=(q.corners[i][1]-D.smooth[i][1])*.45;
     }
+    if(shift<.02*dw)D.stable++;
+    else D.stable=0;
   }
   drawOverlay(D.smooth,q.support>=GOOD_SUPPORT);
   if(S.auto&&D.armed){
-    setRing(Math.min(1,D.consecutive/STEADY_FRAMES));
-    setPill(D.stable>0?"Folha completa. Captura automática…":"Buscando quadro nítido…",
+    setRing(D.stable/STEADY_FRAMES);
+    setPill(D.stable<2?"Folha encontrada. Mantenha estável…":"Aguardando estabilidade…",
       q.support>=GOOD_SUPPORT?"ok":"");
-    if(shouldCapture({consecutive:D.consecutive,stable:D.stable,ageMs:now-D.firstAt,
-      score:q.score,support:q.support,sharpness:D.sharpness})){
-      D.armed=false;D.lastCaptureMs=now;
-      D.lastCap=D.smooth.map(p=>[...p]);
-      cardCaptured(gate,{now,scene:D.scene});
+    if(D.stable>=STEADY_FRAMES){
+      D.armed=false;D.stable=0;D.lastCap=D.smooth.map(c=>[c[0],c[1]]);
+      cardCaptured(gate,{scene,now});
       setRing(null);
       void capture("auto").then(page=>{
         if(!page&&S.running&&S.cardFlow===gate){
           S.cardFlow=createCardFlow();
           D.armed=true;
-          setPill("Foto não finalizada. Reposicione a folha.","bad",1500);
+          setPill("Falha na foto. Reposicione a folha.","bad",1500);
         }
       });
     }
   }else{
-    setRing(null);setPill("Processando cartão…","ok");
+    setRing(null);
+    setPill("Cartão capturado. Troque a folha para o próximo.","ok");
   }
 }
 
@@ -554,127 +466,40 @@ function shrinkQuad(corners, frac) {
   return corners.map(([x, y]) => [x + (cx - x) * frac, y + (cy - y) * frac]);
 }
 
-function shortVideoPause(video){
-  return new Promise(resolve=>{
-    let done=false,handle=null;
-    const finish=()=>{
-      if(done)return;
-      done=true;clearTimeout(timer);
-      if(handle!=null&&typeof video?.cancelVideoFrameCallback==="function"){
-        try{video.cancelVideoFrameCallback(handle);}catch{}
-      }
-      resolve();
-    };
-    const timer=setTimeout(finish,115);
-    // Esperar um NOVO frame de câmera, não apenas um repintar do navegador.
-    if(typeof video?.requestVideoFrameCallback==="function"){
-      try{handle=video.requestVideoFrameCallback(finish);return;}catch{}
-    }
-    requestAnimationFrame(()=>requestAnimationFrame(finish));
-  });
-}
-function quadDistance(a,b){
-  if(!a||!b||a.length!==4||b.length!==4)return Infinity;
-  return maxShift(a,b);
-}
-
-// Apenas o laboratório OMR: dois quadros NATIVOS no máximo, segundo só quando
-// a primeira imagem apresenta baixa nitidez/iluminação. O motor nunca inventa
-// pixels e nunca aumenta a resolução real da fonte do Safari.
-async function capture(source = "auto") {
-  const video=$("video");
-  if(!S.running||S.busy||video.readyState<2||!video.videoWidth)return null;
-  const frame=S.cameraFrame;
-  if(!frame||frame.sourceWidth!==video.videoWidth||frame.sourceHeight!==video.videoHeight)return null;
-  const det=S.det.smooth;
-  if(!det||S.det.score<MIN_SCORE)return null;
-  const vw=Math.max(1,Math.round(frame.sw)),vh=Math.max(1,Math.round(frame.sh));
-  const dw=S.det.w||DET_W,dh=S.det.h||Math.max(8,Math.round(vh*dw/vw));
-  const fx=vw/dw,fy=vh/dh;
-  const firstCorners=addPaperMargin(det.map(([x,y])=>[x*fx,y*fy]),vw,vh);
-  const token=S.captureEpoch;
-  const firstStable=S.det.stable;
+async function capture(source = "manual") {
+  const video = $("video");
+  if (!S.running || S.busy || video.readyState < 2 || !video.videoWidth) return null;
+  const vw = video.videoWidth, vh = video.videoHeight;
+  const det = S.det.smooth;
+  const f = vw / (S.det.w || DET_W);
+  const corners = det ? shrinkQuad(det.map(([x, y]) => [x * f, y * f]), 0.008) : V.frameCorners(vw, vh);
+  if (fullCanvas.width !== vw || fullCanvas.height !== vh) { fullCanvas.width = vw; fullCanvas.height = vh; }
+  fullCtx.drawImage(video, 0, 0, vw, vh);
+  const img = fullCtx.getImageData(0, 0, vw, vh);
+  flash();
+  shutterSound();
+  if (source === "manual") { S.det.armed = false; S.det.lastCap = det ? det.map((c) => [c[0], c[1]]) : null; S.det.stable = 0; }
+  const page = { id: ++S.seq, fw: vw, fh: vh, corners, rot: 0, mode: null, frame: null, out: null, url: "", w: 0, h: 0, cropped: !!det };
+  S.cardFlow.cardId=page.id;
+  page.frameReady = new Promise((res) => fullCanvas.toBlob((b) => { page.frame = b; res(b); }, "image/jpeg", 0.92));
   S.busy++;
-  let page=null;
+  setPill("processing…");
   try {
-    if(fullCanvas.width!==vw||fullCanvas.height!==vh){
-      fullCanvas.width=vw;fullCanvas.height=vh;
-    }
-    const snapshot=(corners)=>{
-      fullCtx.drawImage(video,frame.sx,frame.sy,frame.sw,frame.sh,0,0,vw,vh);
-      const img=fullCtx.getImageData(0,0,vw,vh);
-      return {img,corners,quality:sampleQuality(img.data,vw,vh,corners)};
-    };
-    const first=snapshot(firstCorners);
-    let best=first,last=first;
-    // Fast path: se a folha já está nítida, fotografar imediatamente.
-    // Diante de desfoque, uma segunda oportunidade só se a câmera não
-    // estiver se movimentando demais (evita reaproveitar cantos incorretos).
-    if(firstStable>=1&&(first.quality.sharpness<24||first.quality.clipping>.18)){
-      await shortVideoPause(video);
-      if(token!==S.captureEpoch||!S.running)return null;
-      const current=S.cameraFrame;
-      if(current&&current.sourceWidth===video.videoWidth&&
-          current.sourceHeight===video.videoHeight&&
-          Math.abs(current.sx-frame.sx)<1&&Math.abs(current.sy-frame.sy)<1){
-        // A segunda imagem recebe seus próprios cantos. Caso o papel tenha
-        // se movido demais ou sumido, mantém a PRIMEIRA captura confiável.
-        const targetW=DET_W,targetH=Math.max(8,Math.round(frame.sh*targetW/frame.sw));
-        if(detCanvas.width!==targetW||detCanvas.height!==targetH){
-          detCanvas.width=targetW;detCanvas.height=targetH;
-        }
-        detCtx.drawImage(video,frame.sx,frame.sy,frame.sw,frame.sh,0,0,targetW,targetH);
-        let q=null;
-        try{
-          const scan=detCtx.getImageData(0,0,targetW,targetH);
-          const result=await callWorker({op:"detect-paper",data:scan.data,w:targetW,h:targetH},[scan.data.buffer]);
-          q=result.detection;
-        }catch{}
-        if(token!==S.captureEpoch||!S.running)return null;
-        if(q?.score>=MIN_SCORE&&fullPaperVisible(q.corners,targetW,targetH)&&quadDistance(q.corners,det)<.065*targetW){
-          const nextCorners=addPaperMargin(q.corners.map(([x,y])=>[x*vw/targetW,y*vh/targetH]),vw,vh);
-          last=snapshot(nextCorners);
-          best=selectBestFrame(first,last);
-        }
-      }
-    }
-    if(token!==S.captureEpoch||!S.running)return null;
-    // Se o melhor foi o primeiro quadro, restaurá-lo no canvas ANTES de
-    // criar o JPEG; a foto e o buffer do OMR vêm dos MESMOS pixels.
-    if(best!==last)fullCtx.putImageData(best.img,0,0);
-    flash();shutterSound();
-    if(source==="manual"){S.det.armed=false;S.det.stable=0;}
-    const width=best.img.width,height=best.img.height;
-    page={id:++S.seq,fw:width,fh:height,corners:best.corners,rot:0,
-      mode:null,frame:null,out:null,url:"",w:0,h:0,cropped:true,
-      quality:best.quality};
-    page.frameReady=new Promise((resolve,reject)=>{
-      fullCanvas.toBlob(blob=>{
-        if(!blob){reject(new Error("O Safari não conseguiu gerar a fotografia."));return;}
-        page.frame=blob;resolve(blob);
-      },"image/jpeg",.94);
-    });
-    S.cardFlow.cardId=page.id;
-    setPill("Processando perspectiva e imagem…");
-    await processPage(page,best.img);
-    if(token!==S.captureEpoch||!S.running)return null;
+    await processPage(page, img);
     await page.frameReady;
+    if(!page.frame)throw new Error("Fotografia não produzida pelo Safari.");
     S.pages.push(page);
     renderTray();
     window.dispatchEvent(new CustomEvent("salta-omr:page",{detail:{page}}));
-    const shortEdge=Math.min(
-      Math.hypot(...best.corners[0].map((n,i)=>n-best.corners[1][i])),
-      Math.hypot(...best.corners[1].map((n,i)=>n-best.corners[2][i]))
-    );
-    if(best.quality.sharpness<2.5||shortEdge<360)
-      setPill("Capturado. Imagem distante ou pouco nítida: confira as alternativas.","bad",2800);
-    else setPill(`page ${S.pages.length} captured`,"ok",1500);
-    return page;
-  }catch(error){
-    console.error(error);
-    if(S.running){S.det.armed=true;setPill("Falha na captura: "+(error?.message||error),"bad",4000);}
+    setPill(det ? `page ${S.pages.length} captured` : `page ${S.pages.length} captured (whole frame — no page edges found)`, det ? "ok" : "", 1500);
+  } catch (e) {
+    console.error(e);
+    setPill("Não foi possível processar a folha: "+e.message,"bad",4000);
     return null;
-  }finally{S.busy--;}
+  } finally {
+    S.busy--;
+  }
+  return page;
 }
 
 async function frameImageData(page) {
@@ -942,10 +767,9 @@ async function importPhoto(file,{showManual=true}={}) {
  const tc=thumb.getContext("2d",{willReadFrequently:true});
  tc.drawImage(c,0,0,dw,dh);
  let detection=null;
- try{const rgba=tc.getImageData(0,0,dw,dh);detection=V.detectDocument(rgba.data,dw,dh);}
- catch(error){console.warn("Detector de folha indisponível:",error);}
- const found=Boolean(detection&&detection.score>=MIN_SCORE&&detection.corners?.length===4&&fullPaperVisible(detection.corners,dw,dh));
- const pts=found?addPaperMargin(detection.corners.map(p=>[p[0]*fw/dw,p[1]*fh/dh]),fw,fh):V.frameCorners(fw,fh);
+ try{const rgba=tc.getImageData(0,0,dw,dh);detection=V.detectDocument(rgba.data,dw,dh);}catch(error){console.warn("Detecção automática indisponível:",error);}
+ const found=Boolean(detection&&detection.score>=MIN_SCORE&&detection.corners?.length===4);
+ const pts=found?detection.corners.map(p=>[p[0]*fw/dw,p[1]*fh/dh]):V.frameCorners(fw,fh);
  const page={
   id:++S.seq,fw,fh,corners:pts,rot:0,mode:null,frame,
   frameReady:Promise.resolve(frame),out:null,url:"",w:0,h:0,cropped:found
@@ -959,7 +783,7 @@ async function importPhoto(file,{showManual=true}={}) {
   S.pages.push(page);
   renderTray();
   window.dispatchEvent(new CustomEvent("salta-omr:page",{detail:{page}}));
-  importStatus(found?"Folha localizada e digitalizada. O leitor SALTA analisará o cartão.":"Contorno da folha não identificado. Ajuste os quatro cantos manualmente.");
+  importStatus(found?"Foto digitalizada. Revise o recorte e exporte em PDF.":"Nenhum contorno confiável. Ajuste os quatro cantos manualmente.");
   if(!found&&showManual){openEditor(page);await enterCornerMode();}
   return page;
  } finally {S.busy--;}
@@ -980,14 +804,6 @@ function wire() {
     } finally { $("start").disabled = false; }
   });
   $("closeCamera").addEventListener("click", stopCameraView);
-  // OMR: toda a imagem da câmera deve permanecer visível; sem zoom destrutivo.
-  $("video").addEventListener("resize", () => {
-    if (S.running) {
-      updateCameraStage($("video"));
-      $("res").textContent = `${$("video").videoWidth}×${$("video").videoHeight} · câmera automática`;
-    }
-  });
-  window.addEventListener("resize", () => { if (S.running) updateCameraStage($("video")); });
   $("sound").addEventListener("change", (e) => { S.sound = e.target.checked; savePrefs(); });
   $("pagesize").addEventListener("change", (e) => { S.pageSize = e.target.value; savePrefs(); });
   $("mode").addEventListener("change", async (e) => { S.mode = e.target.value; savePrefs(); await reprocessAll(); });
@@ -1056,15 +872,15 @@ function wire() {
   });
 
   document.addEventListener("visibilitychange", () => { if (!document.hidden && S.running) requestAnimationFrame(loop); });
-  window.addEventListener("salta-omr:read-finished",event=>{
-    if(cardReadFinished(S.cardFlow,event.detail?.pageId)){
-      if(S.cardFlow.phase==="locked")setPill("Leitura concluída. Troque a folha quando quiser.","ok",1100);
+  window.addEventListener("salta-omr:read-finished",e=>{
+    if(cardReadFinished(S.cardFlow,e.detail?.pageId)&&S.cardFlow.phase==="locked"){
+      setPill("Leitura concluída. Troque a folha quando quiser.","ok",1200);
     }
   });
   window.addEventListener("pagehide", () => { S.running=false; stopStream(); });
 
   // test hooks
-  window.__scancat = { S, capture, downloadPdf, processPage, V, buildPdf, startCamera, stopCameraView, requestContinuousFocus, importPhoto, currentCameraFrame, updateCameraStage }; window.__saltaScan = window.__scancat;
+  window.__scancat = { S, capture, downloadPdf, processPage, V, buildPdf, startCamera, stopCameraView, requestContinuousFocus, importPhoto }; window.__saltaScan = window.__scancat;
 }
 
 wire();
