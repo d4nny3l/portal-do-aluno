@@ -41,7 +41,9 @@ test('catalog 0/1/10/11/20/31: exact scoped ten/page, stable cursors, owner isol
    assert.ok(assessments.every(x=>!('definition' in x)&&!('answers' in x)&&!('encrypted_json' in x)));
    assert.ok(!JSON.stringify(m.response).includes('"correct"'),'no correct answers in catalog');
    for(const row of assessments){assert.ok(!seen.has(row.id));seen.add(row.id)}
-   assert.ok(m.statements<=3,'expected <=3 local D1 prepare calls, got '+m.statements);
+   // One constant metadata read additionally prevents lifecycle downgrade after 0002.
+   assert.ok(m.statements<=4,'expected <=4 local D1 prepare calls, got '+m.statements);
+   assert.equal(m.sql.filter(sql=>sql.includes("name='av_lifecycle_schema'")).length,1);
    assert.ok(m.sql.some(sql=>/LIMIT 11/.test(sql)&&/JOIN av_revisions/.test(sql)),'one scoped revision query with lookahead');
    if(nextCursor!==null){assert.equal(assessments.length,10);assert.equal(nextCursor,assessments[9].id)}
    results.push({totalSyntheticRecords:size,page:++pages,returned:assessments.length,hasNext:nextCursor!==null,

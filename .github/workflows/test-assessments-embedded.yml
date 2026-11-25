@@ -75,6 +75,8 @@ jobs:
         run: |
           node assessments-service/build.mjs
           node assessments-service/build-gateway.mjs
+          node assessments-service/custody/build.mjs
+          node assessments-service/custody/config.mjs
       - name: Isolated real browser — synthetic sessions, exact frame recovery and optical correction
         if: steps.print_scope.outputs.print_only != 'true'
         shell: bash

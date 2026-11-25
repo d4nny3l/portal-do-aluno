@@ -3,7 +3,7 @@
 // fence manifest + its separately approved SHA-256 and freshness cutoff.
 import {createHash} from 'node:crypto';
 export const fenceHash=manifest=>createHash('sha256').update(JSON.stringify(manifest)).digest('hex');
-export function reconcileRestoredDatabase(sqlite,manifest,{approvedSha256,minimumCapturedAt}={}){
+export function reconcileRestoredDatabase(sqlite,manifest,{approvedSha256,minimumCapturedAt,preserveHeldUnchanged=false}={}){
  if(!/^[a-f0-9]{64}$/.test(approvedSha256||'')||fenceHash(manifest)!==approvedSha256||
     manifest?.schemaVersion!=='salta-lifecycle-fences-v1'||!Number.isFinite(minimumCapturedAt)||
     !Number.isFinite(Date.parse(manifest.capturedAt))||Date.parse(manifest.capturedAt)<minimumCapturedAt||
@@ -25,7 +25,10 @@ export function reconcileRestoredDatabase(sqlite,manifest,{approvedSha256,minimu
    const a=sqlite.prepare('SELECT * FROM av_assessments WHERE id=?').get(f.assessment_id);
    if(a){
     if(['owner_id','institution_id','class_id','period_id'].some(k=>a[k]!==f[k]))throw Error('Restored scope mismatch');
-    if(sqlite.prepare('SELECT 1 FROM av_retention_holds WHERE assessment_id=?').get(a.id))throw Error('Retention hold requires independent decision');
+    if(sqlite.prepare('SELECT 1 FROM av_retention_holds WHERE assessment_id=?').get(a.id)){
+     if(preserveHeldUnchanged&&!f.deleted&&a.current_revision===f.revision_floor&&sqlite.prepare('SELECT 1 FROM av_revisions WHERE assessment_id=? AND revision=?').get(a.id,f.revision_floor))continue;
+     throw Error('Retention hold requires independent decision');
+    }
     if(!f.deleted&&(a.current_revision!==f.revision_floor||!sqlite.prepare('SELECT 1 FROM av_revisions WHERE assessment_id=? AND revision=?').get(a.id,f.revision_floor)))throw Error('Newest definition absent: never fall back to replaced content');
     sqlite.prepare('INSERT INTO av_purge_guards VALUES(?,?,?,?,?)').run(a.id,a.owner_id,a.current_revision,'offline-restore',f.deleted?'delete':'replace');
     sqlite.prepare('DELETE FROM av_selections WHERE assessment_id=?').run(a.id);
@@ -39,4 +42,11 @@ export function reconcileRestoredDatabase(sqlite,manifest,{approvedSha256,minimu
   sqlite.exec('COMMIT');
  }catch(e){sqlite.exec('ROLLBACK');throw e;}
  return {checked:manifest.fences.length,serviceMayBeActivated:false};
+}
+
+// New operational entry: live authenticated custody anchor is mandatory.
+export async function restoreFromCustody(sqlite,bundle,{databaseId,onlineAnchor}={}){
+ const {verifyCustodyExport}=await import('./custody/export.mjs');
+ const manifest=await verifyCustodyExport(bundle,{databaseId,onlineAnchor});
+ return reconcileRestoredDatabase(sqlite,manifest,{approvedSha256:fenceHash(manifest),minimumCapturedAt:Date.parse(onlineAnchor.cutAt),preserveHeldUnchanged:true});
 }

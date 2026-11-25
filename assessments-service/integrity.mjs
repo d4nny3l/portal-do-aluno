@@ -2,15 +2,16 @@
 import {execFileSync} from 'node:child_process';
 import {fileURLToPath} from 'node:url';
 import {readFileSync} from 'node:fs';
-import {ROOT,verifyDependencies,matrix} from './build.mjs';
+import {ROOT,verifyDependencies,matrix,sha256} from './build.mjs';
 const BASE='719c9f286e269f2b21b4c63f5b395fbc7b88542c';
 const allowed=new Set([
+ ...['ledger.mjs','worker.mjs','export.mjs','operator.mjs','config.mjs','build.mjs','sources.json'].map(p=>'assessments-service/custody/'+p),
  'corretor/v2/assessments/private-ui.mjs','corretor/v2/assessments/lifecycle.mjs','corretor/v2/assessments/private-client.mjs','corretor/v2/assessments/private-library.mjs',
  'plataforma/avaliacoes-biblioteca.mjs','plataforma/avaliacao-excluir-dialog.mjs','plataforma/avaliacao-excluir-dialog.css','plataforma/corretor-v2.html',
  'plataforma/tests/piloto-avaliacoes-isolado.test.mjs','plataforma/tests/avaliacoes-biblioteca-unificada.test.mjs',
  '.github/workflows/test-direct-pdf.yml','.github/workflows/test-assessments-embedded.yml','docs/avaliacoes/EXCLUSAO_SUBSTITUICAO_81.md',
- ...['test-composition.mjs','worker.mjs','gateway-lifecycle.mjs','restore-fences.mjs','build.mjs','build-gateway.mjs','dependencies.json','integrity.mjs','migrations/0002_assessment_lifecycle.sql'].map(p=>'assessments-service/'+p),
- ...['lifecycle-d1.integration.mjs','embedded-library.integration.mjs','private-bridge.integration.test.mjs','helpers.mjs','build.test.mjs','lifecycle.test.mjs','lifecycle-gateway.test.mjs','lifecycle-browser.mjs','editor-frontend-browser.mjs','embedded-browser.mjs'].map(n=>'assessments-service/tests/'+n)
+ ...['test-composition.mjs','worker.mjs','gateway-lifecycle.mjs','custody-client.mjs','restore-fences.mjs','build.mjs','build-gateway.mjs','dependencies.json','integrity.mjs','migrations/0002_assessment_lifecycle.sql'].map(p=>'assessments-service/'+p),
+ ...['lifecycle-d1.integration.mjs','custody.test.mjs','custody-fixture.mjs','catalog-pages.test.mjs','embedded-library.integration.mjs','private-bridge.integration.test.mjs','helpers.mjs','build.test.mjs','lifecycle.test.mjs','lifecycle-gateway.test.mjs','lifecycle-browser.mjs','editor-frontend-browser.mjs','embedded-browser.mjs'].map(n=>'assessments-service/tests/'+n)
 ]);
 export function assertScope(paths){const denied=paths.filter(p=>!allowed.has(p));if(denied.length)throw Error('Forbidden #81 delta: '+denied.join(', '))}
 export function verifyScope(){
@@ -22,6 +23,7 @@ export function verifyScope(){
   if(row.comparison==='modified'&&row.path!=='assessments-service/worker.mjs')throw Error('Unauthorized runtime input change');
  }
  for(const p of ['assessments-service/crypto.mjs','assessments-service/migrations/0001_private_library.sql'])if(git('hash-object',p)!==git('rev-parse',BASE+':'+p))throw Error('Historical crypto/schema changed');
+ if(sha256(readFileSync(ROOT+'/assessments-service/migrations/0002_assessment_lifecycle.sql'))!=='2b85a9899b44bf498773941663039a677c4b87c7493d06038160fda990ea2766')throw Error('Audited migration 0002 changed');
  const before=execFileSync('git',['show',BASE+':plataforma/corretor-v2.html'],{cwd:ROOT}).toString();
  let current=readFileSync(ROOT+'/plataforma/corretor-v2.html','utf8');
  const stylesheet='<link rel="stylesheet" href="avaliacao-excluir-dialog.css">\n';
@@ -44,4 +46,4 @@ export function verifyScope(){
  if(newGateway!==oldGateway)throw Error('Gateway changed outside lifecycle namespace delta');
  verifyDependencies();return true;
 }
-if(process.argv[1]===fileURLToPath(import.meta.url)){verifyScope();console.log('#81 scope, 19 runtime inputs, unchanged optics/camera/PDF/Auth/Stats/crypto: PASS')}
+if(process.argv[1]===fileURLToPath(import.meta.url)){verifyScope();console.log('#81 scope, 20 runtime inputs, unchanged optics/camera/PDF/Auth/Stats/crypto: PASS')}

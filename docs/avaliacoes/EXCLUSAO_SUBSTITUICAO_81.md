@@ -64,3 +64,114 @@ Delta exclusivo sobre `77909f8e89164b2dd2cf50165fddd79d3815e815`: interceptor co
 A regressão real de navegador agora cobre **13 cenários**: duas sessões Auth sintéticas independentes do mesmo professor, SVG/JSON válidos como controle, exclusão/substituição na outra sessão sem preinvalidação por foco/broadcast, nenhum Blob/download obsoleto, estilos computados normal/hover, foco no sucesso desktop/mobile e cancelamento preservado. PNGs do diálogo e foco pós-exclusão no artefato CI. Nenhum dado real utilizado.
 
 Main reconferida em `f4621cea08f652fd1a86165c80c288d8d145545b`: avanço restrito a laboratório OMR/documentação, sem sobreposição com este ajuste. Nenhuma incorporação ou mudança nessas frentes. Backend, gateway, contrato, migração, Auth, crypto e HTML/algoritmos ópticos permanecem byte a byte iguais ao HEAD anterior; hashes de bundle e demais gates de retenção/preflight/ativação permanecem os mesmos. Não houve merge, deploy, migração remota, ativação ou exclusão real. Novo HEAD depende de CI completa e reauditorias técnica/visual específicas; nenhum parecer anterior é promovido automaticamente.
+
+## Delta de custódia — parecer 7161037253 / execução 7161064215
+
+Esta seção substitui a exigência abstrata de testemunho manual acima. O delta usa
+um **Worker privado independente com Durable Object SQLite**, não outra tabela do
+D1, nem R2 compartilhado. Identidade exclusiva: `salta-assessments-custody`,
+classe `CustodyLedger`, protocolo `salta-assessment-custody-v1`. Custodiante
+administrativo: proprietário SALTA (alias operacional `SALTA-owner`).
+Não há API de recuperação do professor, nova autenticação ou endpoint público.
+
+### Fronteiras e protocolo implementados
+
+- `CustodyWriter` é o único entrypoint vinculado ao backend. Permite guard,
+  intenção, confirmação e certificado de rollback explícito. Não enumera o
+  journal, não fecha/abre o serviço e não apaga/sobrescreve eventos.
+- `CustodyOperator` é separado e NÃO é vinculado ao backend/gateway. O proprietário
+  usa `custody/operator.mjs` no Mac com seu OAuth Wrangler existente e service
+  binding remoto, sem servidor HTTP local ou Worker público operacional.
+  `status` não imprime identidade integral/intenção; exportação completa é arquivo
+  privado criado com `wx`/0600, nunca GitHub ou logs. O checkpoint é obtido pelo
+  canal operacional autenticado; SHA sozinho não prova autoria/frescura.
+- Um único controlador serializa chamadas com `blockConcurrencyWhile`, inclusive
+  os awaits, e registra eventos append-only em transações SQLite locais. Triggers
+  recusam UPDATE/DELETE do histórico. Índices de operações/fences são projeções.
+  D1 não tem acesso ao armazenamento DO. Restaurar D1 não restaura o journal.
+- Criar, duplicar, substituir e excluir exigem intenção durável ANTES de iniciar
+  o batch. Guarda owner/request, escopo técnico, ID, revisão esperada/seguinte,
+  tipo, versão da chave e MAC do pedido. Nunca guarda gabarito, ciphertext,
+  definição, manifesto integral, nomes de alunos ou material de chave.
+- O batch D1 continua atômico. O retorno 201/200 exige confirmação externa que
+  confere recibo/MAC/versão e fences. Não há atomicidade distribuída alegada.
+  ACK externo perdido: reenvio do MESMO requestId reconcilia, sem nova purga.
+  Replay não depende apenas do recibo D1 e verifica o estado atual independente.
+- Intenção ambígua bloqueia novas purgas e consultas da biblioteca. Ausência de
+  recibo, mesmo após expiração ou restauração antiga, NÃO autoriza ABORT. Somente
+  erro explícito SQLite de constraint/rollback, emitido pelo backend e confrontado
+  com recibo ausente + projeção D1 inalterada, permite o evento de abort.
+  Timeout fica PENDING; operador não dispõe de botão “forçar abort”.
+- Lease de 8 segundos é reavaliado no SQL da mutação. Após fechamento operacional,
+  aguardar drenagem e reconciliar antes do checkpoint. Consulta autenticada só
+  reabre se não houver pendência e a projeção D1 corresponder integralmente ao DO.
+  Configurar lifecycle=false com esquema 0002 instalado falha fechado.
+- Checkpoint somente FECHADO e sem pendências: identidade D1/controlador/custodiante,
+  versão, corte, sequência, hash de cadeia, quantidade de fences; exportação
+  completa paginada. `verifyCustodyExport` reconstitui a máquina de estados e
+  exige o checkpoint ATUAL obtido separadamente pelo operador autenticado.
+  `restoreFromCustody` aplica apenas a projeção comprovada. Eventos ausentes,
+  alterados, antigos, pendências ou ciphertext mais recente ausente impedem abrir.
+  Holds inalterados são preservados, incluindo suas revisões e seleções.
+
+### Isolamento, custo e limites declarados
+
+`custody/config.mjs` gera configurações revisáveis offline: workers.dev=false,
+preview_urls=false, routes=[], sem logs de corpos, sem Auth/DB/DIARIO_DB. Binding
+D1 exclusivo serve somente a conferência de metadados/recibos. O Writer não aceita
+SQL arbitrário. DO usa classe SQLite nova, não migração do D1 acadêmico.
+
+O [plano Free de Durable Objects](https://developers.cloudflare.com/durable-objects/platform/limits/)
+suporta SQLite. [Cloudflare declara ausência de cobrança para usuários Workers Free](https://developers.cloudflare.com/changelog/post/2025-12-12-durable-objects-sqlite-storage-billing/).
+O provisionamento exige reconfirmar o plano efetivo, sem upgrade/contratação;
+quotas excedidas falham em vez de cobrar. Limite preventivo: 100 mil eventos e
+10 mil fences, falhando fechado; preservação permanente dos eventos existentes.
+Não se promete capacidade infinita. Conta/limites reais são gates operacionais,
+não inferidos de `default_usage_model=standard`.
+
+A independência é da aplicação e do restore D1; **não** de um administrador da
+mesma conta Cloudflare. O proprietário ainda pode alterar/deletar infraestrutura.
+A cópia privada do checkpoint exportado deve ter custódia externa sob esse
+responsável. Perda do DO/provedor sem âncora atual autenticada mantém fechado;
+não há reconstrução automática a partir de cópia antiga. Isso não certifica a
+recuperabilidade dos antigos backups/keyring já encerrada administrativamente.
+
+### Sequência operacional e recuperação compatível
+
+1. Auditoria independente SOMENTE deste delta e CI no HEAD exato; preservar os
+   pareceres anteriores do frontend/OMR. Reconfirmar Free e recursos privados.
+2. Provisionar apenas Worker/DO de custódia privados e revisar named bindings;
+   ainda não inicializar nem abrir. Default fetch responde 503 e não administra.
+3. Fechar biblioteca, drenar operações antigas, conferir invariância das contagens.
+   Aplicar SOMENTE a 0002 original, SHA-256
+   `2b85a9899b44bf498773941663039a677c4b87c7493d06038160fda990ea2766`.
+   Sem purga global. Aplicar holds aos objetos preexistentes e semear os fences
+   desses objetos com escopo/revisão atuais; manter todos os dados históricos.
+4. Inicializar journal FECHADO a partir dos fences completos. Exportar checkpoint
+   e conferir cadeia/paginação; manter cópia privada fora da aplicação.
+5. Reservar versão de backend DESTE delta FECHADA com binding `ASSESSMENT_CUSTODY`
+   para `CustodyWriter`, além de AUTH/D1/keyring preservados por referência.
+   Registrar ID/hash. Não usar recovery pré-custódia/antigo A4-only.
+6. Backend/gateway compatíveis ainda fechados; frontend #131 e Pages somente na
+   coordenação autorizada. Ativar protocolo/política e header do gateway;
+   conferir estado completo, então abrir journal e biblioteca. Capability pela
+   sessão SALTA real, negativas 401/403 e smoke somente sintético autorizado.
+7. Falha: ENABLE_ASSESSMENTS=false e fechamento do journal; preservar D1/DO,
+   fences/recibos/holds/chaves. Usar recovery compatível fechado. Reconciliar
+   recibos pendentes e exportar checkpoint antes de qualquer restauração futura.
+   Não retornar a binário antigo nem remover fences/triggers. Não apagar jornal.
+
+Comandos reprodutíveis offline: `node assessments-service/custody/build.mjs`,
+`node assessments-service/custody/config.mjs`, suíte `custody.test.mjs`, guard e
+composição completa. Operação proprietária após gates:
+`SALTA_WRANGLER_MODULE=<wrangler-instalado> node assessments-service/custody/operator.mjs <operator-local.json> <status|initialize|close|reconcile|checkpoint|open|export> [arquivo-privado]`.
+Não repetir initialize em namespace existente nem publicar operator-local.
+
+Testes do delta: intenção indisponível sem escrita; falha antes/depois do ACK;
+commit com resposta perdida; replay concorrente e restart; timeout sem recibo
+permanece PENDING; paginação/cadeia/tamper/corte antigo; restore com tombstone;
+backup sem ciphertext atual; hold/grant; lease; flag de downgrade. Integração
+workerd real usa AUTH existente sintético, D1 SQLite e DO separado persistente.
+Migração 0002, contratos criptográficos, Stats histórico, OMR e UI permanecem
+inalterados por este delta. Esta seção descreve código candidato; implantação e
+aprovação independente devem ser comprovadas nos registros operacionais.

@@ -1,3 +1,4 @@
+import {custodyCall,prepareCustody,confirmCustody,finishCustody,certifyRollback} from './custody-client.mjs';
 import {exact,opaqueId,uuid,validateDefinition,printArtifact} from './definition.mjs';
 import {keyring,seal,open,operationMac} from './crypto.mjs';
 import {SCORE_FORMAT_VERSION} from '../corretor/v2/assessments/score-format.mjs';
@@ -46,9 +47,9 @@ async function root(db,actor,id) {
 }
 // Evaluated again INSIDE every mutation batch. Auth sessions remain owned by Auth;
 // there is no cross-service distributed transaction with logout (see contract).
-function guard(actor,scope,g) {
- return {sql:`EXISTS(SELECT 1 FROM av_principals p JOIN av_grants g ON g.principal_id=p.id WHERE p.id=? AND p.role='teacher' AND p.enabled=1 AND p.epoch=? AND p.expires_at>CAST(unixepoch('subsec')*1000 AS INTEGER) AND g.institution_id=? AND g.class_id=? AND g.period_id=? AND g.enabled=1 AND g.epoch=? AND g.expires_at>CAST(unixepoch('subsec')*1000 AS INTEGER))`,
-  args:[actor.id,actor.epoch,scope.institutionId,scope.classId,scope.periodId,g.epoch]};
+function guard(actor,scope,g,deadline=null) {
+ return {sql:`${deadline!==null?"CAST(unixepoch('subsec')*1000 AS INTEGER)<=? AND ":''}EXISTS(SELECT 1 FROM av_principals p JOIN av_grants g ON g.principal_id=p.id WHERE p.id=? AND p.role='teacher' AND p.enabled=1 AND p.epoch=? AND p.expires_at>CAST(unixepoch('subsec')*1000 AS INTEGER) AND g.institution_id=? AND g.class_id=? AND g.period_id=? AND g.enabled=1 AND g.epoch=? AND g.expires_at>CAST(unixepoch('subsec')*1000 AS INTEGER))`,
+  args:[...(deadline!==null?[deadline]:[]),actor.id,actor.epoch,scope.institutionId,scope.classId,scope.periodId,g.epoch]};
 }
 async function load(db,actor,ring,id,revision) {
  const a=await root(db,actor,id), n=revision??a.current_revision;
@@ -69,6 +70,7 @@ async function replay(db,actor,ring,requestId,operation) {
  const previous=await db.prepare('SELECT * FROM av_requests WHERE owner_id=? AND request_id=?').bind(actor.id,requestId).first();
  if (!previous) return null;
  if (previous.body_mac!==await operationMac(ring,previous.key_version,operation)) deny(409,'idempotency_conflict','Esta operação já foi usada com outro conteúdo.');
+ await confirmCustody(ring,actor,previous,operation);
  const receipt=JSON.parse(previous.receipt_json);
  if(ring.lifecycle){
   const fence=await db.prepare('SELECT * FROM av_lifecycle_fences WHERE assessment_id=? AND owner_id=?').bind(previous.assessment_id,actor.id).first();
@@ -86,9 +88,11 @@ async function commit(db,actor,ring,p,operation,statements,receipt) {
  try { await db.batch(statements); }
  catch (error) {
   const repeated=await replay(db,actor,ring,p.requestId,operation); if (repeated) return repeated;
+  await certifyRollback(ring,error);
   if (/unique constraint failed|not null constraint failed|selection must be current|replacement contract required|deleted assessment/i.test(String(error?.message))) deny(409,'concurrent_change','A versão ou autorização mudou. Reabra antes de tentar novamente.');
   deny(503,'save_unconfirmed','O salvamento não foi confirmado. Reenvie a mesma operação.');
  }
+ await finishCustody(ring,operation);
  return json(receipt,201);
 }
 async function save(db,actor,ring,id,p,operation={kind:'save',id,p}) {
@@ -111,12 +115,18 @@ async function save(db,actor,ring,id,p,operation={kind:'save',id,p}) {
   if (!Object.hasOwn(definition.display,'scoreDecimals')&&Object.hasOwn(previous.definition.display,'scoreDecimals'))
    deny(409,'score_format_required','Reabra com um cliente compatível antes de salvar o formato da nota.');
  }
- const revision=p.expectedRevision+1, now=new Date().toISOString(), record={id,ownerId:actor.id,institutionId:p.institutionId,classId:p.classId,periodId:p.periodId,revision,status:p.status,manifestHash:definition.manifest.contentHash,keyVersion:ring.active};
- const encrypted=await seal(ring,record,definition), statements=[], gate=guard(actor,p,g);
- if (!a) statements.push(db.prepare('INSERT INTO av_assessments(id,owner_id,institution_id,class_id,period_id,updated_at) VALUES(?,?,?,?,?,?)').bind(id,actor.id,p.institutionId,p.classId,p.periodId,now));
  if(ring.lifecycle&&a)await checkPurgeDependencies(db);
  if(ring.lifecycle&&a&&await db.prepare('SELECT 1 FROM av_retention_holds WHERE assessment_id=?').bind(id).first())deny(409,'retention_hold','Substituição bloqueada por vínculo acadêmico ou obrigação de guarda.');
- if(ring.lifecycle&&a)statements.push(purgeGuard(db,actor,p,g,id,p.requestId,'replace'));
+ const revision=p.expectedRevision+1, now=new Date().toISOString(), record={id,ownerId:actor.id,institutionId:p.institutionId,classId:p.classId,periodId:p.periodId,revision,status:p.status,manifestHash:definition.manifest.contentHash,keyVersion:ring.active};
+ const encrypted=await seal(ring,record,definition);
+ const begun=await prepareCustody(ring,actor,p,operation,id,revision,p);
+ if(begun&&!begun.newAttempt){
+  for(let retry=0;retry<40;retry++){const repeated=await replay(db,actor,ring,p.requestId,operation);if(repeated)return repeated;await new Promise(resolve=>setTimeout(resolve,25));}
+  deny(503,'custody_pending','Operação pendente de confirmação independente. Reenvie a mesma solicitação.');
+ }
+ const statements=[],gate=guard(actor,p,g,ring.lifecycle?ring.deadline:null);
+ if (!a) statements.push(db.prepare('INSERT INTO av_assessments(id,owner_id,institution_id,class_id,period_id,updated_at) VALUES(?,?,?,?,?,?)').bind(id,actor.id,p.institutionId,p.classId,p.periodId,now));
+ if(ring.lifecycle&&a)statements.push(purgeGuard(db,actor,p,g,id,p.requestId,'replace',ring.deadline));
  // NULL revision aborts the entire transaction if the CAS or grant changed.
  statements.push(db.prepare(`INSERT INTO av_revisions(assessment_id,revision,status,manifest_hash,key_version,encrypted_json,created_at) VALUES(?,(SELECT CASE WHEN current_revision=? AND state='active' AND ${gate.sql} THEN ? ELSE NULL END FROM av_assessments WHERE id=? AND owner_id=?),?,?,?,?,?)`).bind(id,p.expectedRevision,...gate.args,revision,id,actor.id,p.status,record.manifestHash,ring.active,JSON.stringify(encrypted),now));
  statements.push(db.prepare('UPDATE av_assessments SET current_revision=?,updated_at=? WHERE id=? AND owner_id=? AND current_revision=?').bind(revision,now,id,actor.id,p.expectedRevision));
@@ -141,8 +151,8 @@ async function checkPurgeDependencies(db){
  }
 }
 // A NULL guard aborts the batch on concurrent CAS, revocation or retention hold.
-function purgeGuard(db,actor,p,g,id,requestId,kind){
- const gate=guard(actor,p,g);
+function purgeGuard(db,actor,p,g,id,requestId,kind,deadline){
+ const gate=guard(actor,p,g,deadline);
  return db.prepare(`INSERT INTO av_purge_guards(assessment_id,owner_id,expected_revision,request_id,kind) VALUES(?,(SELECT CASE WHEN current_revision=? AND ${gate.sql} AND NOT EXISTS(SELECT 1 FROM av_retention_holds WHERE assessment_id=?) THEN owner_id ELSE NULL END FROM av_assessments WHERE id=? AND owner_id=?),?,?,?)`).bind(id,p.expectedRevision,...gate.args,id,id,actor.id,p.expectedRevision,requestId,kind);
 }
 function fenceStatement(db,actor,p,id,revision,deleted,now){
@@ -157,7 +167,12 @@ async function erase(db,actor,ring,id,p){
  if(a.current_revision!==p.expectedRevision)deny(409,'revision_conflict','A avaliação mudou. Reabra antes de excluir.');
  const held=await db.prepare('SELECT 1 FROM av_retention_holds WHERE assessment_id=?').bind(id).first();
  if(held)deny(409,'retention_hold','Exclusão bloqueada por vínculo acadêmico ou obrigação de guarda.');
- const scope=rowScope(a),statements=[purgeGuard(db,actor,{...scope,...p},a.grant,id,p.requestId,'delete'),
+ const scope=rowScope(a),begun=await prepareCustody(ring,actor,p,operation,id,a.current_revision,scope);
+ if(begun&&!begun.newAttempt){
+  for(let retry=0;retry<40;retry++){const repeated=await replay(db,actor,ring,p.requestId,operation);if(repeated)return repeated;await new Promise(resolve=>setTimeout(resolve,25));}
+  deny(503,'custody_pending','Exclusão pendente de confirmação independente. Reenvie a mesma operação.');
+ }
+ const statements=[purgeGuard(db,actor,{...scope,...p},a.grant,id,p.requestId,'delete',ring.deadline),
   fenceStatement(db,actor,scope,id,a.current_revision,1,new Date().toISOString()),
   db.prepare('DELETE FROM av_selections WHERE assessment_id=?').bind(id),
   db.prepare('DELETE FROM av_revisions WHERE assessment_id=?').bind(id),
@@ -166,6 +181,7 @@ async function erase(db,actor,ring,id,p){
  return commit(db,actor,ring,p,operation,statements,{ok:true,id,revision:a.current_revision,deleted:true});
 }
 async function archive(db,actor,ring,id,p) {
+ if(ring.lifecycle)deny(410,'archive_removed','Arquivamento não é exclusão.');
  exact(p,['requestId','expectedRevision']); checkRevision(p.expectedRevision);
  const operation={kind:'archive',id,p}, repeated=await replay(db,actor,ring,p.requestId,operation); if (repeated) return repeated;
  if(ring.lifecycle)deny(410,'archive_removed','Arquivamento não é exclusão.');
@@ -197,13 +213,15 @@ async function route(request,env) {
  if (!env.ASSESSMENTS_DB) deny(503,'database_unavailable','Banco indisponível.');
  if (!env.PORTAL_ORIGIN || request.headers.get('Origin')!==env.PORTAL_ORIGIN) deny(403,'origin_denied','Origem não autorizada.');
  const db=env.ASSESSMENTS_DB, actor=await principal(request,env,db), ring=keyring(env), url=new URL(request.url), path=url.pathname;
- ring.lifecycle=env.ENABLE_ASSESSMENT_LIFECYCLE==='true';
+ ring.lifecycle=env.ENABLE_ASSESSMENT_LIFECYCLE==='true';ring.custody=env.ASSESSMENT_CUSTODY;
+ if(!ring.lifecycle&&await db.prepare("SELECT name FROM sqlite_master WHERE type='table' AND name='av_lifecycle_schema'").first())deny(503,'lifecycle_downgrade_blocked','Biblioteca fechada: protocolo compatível obrigatório.');
  if(ring.lifecycle){
   if(env.ASSESSMENT_RETENTION_POLICY!==ASSESSMENT_LIFECYCLE_VERSION)deny(503,'retention_policy_required','Política de retenção ainda não aprovada.');
   const schema=await db.prepare("SELECT name FROM sqlite_master WHERE type='table' AND name='av_lifecycle_schema'").first();
   if(!schema||!(await db.prepare('SELECT version FROM av_lifecycle_schema WHERE version=?').bind(ASSESSMENT_LIFECYCLE_VERSION).first()))deny(503,'lifecycle_schema_required','Atualização estrutural pendente.');
   if(request.headers.get(LIFECYCLE_HEADER)!==ASSESSMENT_LIFECYCLE_VERSION)deny(503,'lifecycle_gateway_required','Gateway compatível ainda indisponível.');
  }
+ if(ring.lifecycle&&(request.method==='GET'||path==='/assessments/v1/selections'))await custodyCall(ring,{action:'guard'});
  if (path==='/assessments/v1/session'&&request.method==='GET') return json({authenticated:true,principalId:actor.id,epoch:actor.epoch,cryptoModel:'server-managed',scoreFormatVersion:SCORE_FORMAT_VERSION,embeddedLibraryVersion:'salta-embedded-library-v1',editorSnapshotVersion:EDITOR_SNAPSHOT_CAPABILITY,...(ring.lifecycle?{assessmentLifecycleVersion:ASSESSMENT_LIFECYCLE_VERSION}:{})});
  if (path==='/assessments/v1/grants'&&request.method==='GET') return json({grants:(await db.prepare('SELECT institution_id AS institutionId,class_id AS classId,period_id AS periodId FROM av_grants WHERE principal_id=? AND enabled=1 AND expires_at>? ORDER BY institution_id,class_id,period_id').bind(actor.id,Date.now()).all()).results});
  if (path==='/assessments/v1/assessments'&&request.method==='GET') {
@@ -285,6 +303,7 @@ async function route(request,env) {
 export default {async fetch(request,env) {
  try { return await route(request,env); }
  catch (error) {
+  if(error?.custodyCode)return json({error:'Custódia independente indisponível. Operação sem confirmação; reenvie a mesma solicitação.',code:error.custodyCode},error.custodyStatus||503);
   if (error instanceof Failure) return json({error:error.message,code:error.code},error.status);
   if (error instanceof TypeError) return json({error:'Revise os campos e o contrato da avaliação.',code:'invalid_contract'},400);
   // Never log raw exception, body, cookies, plaintext, keys or SQL parameters.

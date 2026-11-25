@@ -16,7 +16,7 @@ test('capability requires migration, owner policy, trusted gateway; old clients/
  h.env.ASSESSMENT_RETENTION_POLICY=version;
  await put(h,crypto.randomUUID(),packet(),409);
  h.env.ENABLE_ASSESSMENT_LIFECYCLE='false';
- await put(h,crypto.randomUUID(),pkt(),400);
+ await put(h,crypto.randomUUID(),pkt(),503);
  assert.equal((await (await h.request('/session')).json()).assessmentLifecycleVersion,undefined);
 });
 test('N saves preserve identity, exact newest definition and hash; purge all history and invalidate selection',async t=>{
@@ -71,7 +71,7 @@ test('migration preserves old A4 content and receipts until targeted replacement
  const {readFileSync}=await import('node:fs');h.db.sqlite.exec(readFileSync(new URL('../migrations/0002_assessment_lifecycle.sql',import.meta.url),'utf8'));
  assert.equal(count(h,'av_revisions'),3);assert.equal(count(h,'av_requests'),3);
  assert.throws(()=>h.db.sqlite.prepare('DELETE FROM av_revisions').run(),/unguarded/);
- Object.assign(h.env,{ENABLE_ASSESSMENT_LIFECYCLE:'true',ASSESSMENT_RETENTION_POLICY:version});
+ Object.assign(h.env,{ENABLE_ASSESSMENT_LIFECYCLE:'true',ASSESSMENT_RETENTION_POLICY:version});await h.enableCustody();
  // Existing harness simulates the new trusted service-binding gateway explicitly.
  const p=pkt(3),res=await h.request('/assessments/'+id,{method:'PUT',data:p,headers:{'X-Salta-Assessment-Lifecycle':version}});
  assert.equal(res.status,201,await res.clone().text());assert.equal(count(h,'av_revisions'),1);assert.equal(count(h,'av_requests'),4);
@@ -86,7 +86,10 @@ test('save/delete/select race at batch boundary never changes a stale definition
  };
  const stale=h.request('/assessments/'+id,{method:'PUT',data:pkt(1)});
  while(!waiting)await new Promise(resolve=>setTimeout(resolve,1));
- const removed=await erase(h,id,deletion(1));assert.equal(removed.deleted,true);assert.equal((await stale).status,409);
+ await erase(h,id,deletion(1),409); // independent controller serializes fence mutations
+ const queued=waiting;waiting=null;h.db.batch=original;queued.resolve(await original(queued.statements));
+ assert.equal((await stale).status,201);
+ await erase(h,id,deletion(1),409);await erase(h,id,deletion(2));
  assert.equal((await h.request('/assessments/'+id)).status,404);assert.equal(count(h,'av_revisions'),0);
  // Selection that raced a replacement must fail its transactional current check.
  const second=crypto.randomUUID();await put(h,second,pkt());
@@ -110,7 +113,7 @@ test('restore of an older synthetic database honors independently held tombstone
  // A complete witness must include every fence already present in this restored DB.
  onlyDeleted.fences.push(...restored.db.sqlite.prepare('SELECT * FROM av_lifecycle_fences WHERE assessment_id=?').all(changed));
  reconcileRestoredDatabase(restored.db.sqlite,onlyDeleted,{...options,approvedSha256:fenceHash(onlyDeleted)});
- assert.equal((await restored.request('/assessments/'+deleted)).status,404);
+ assert.equal((await restored.request('/assessments/'+deleted)).status,503,'independent controller rejects a restored primary until full journal reconciliation');
  await put(restored,deleted,pkt(),409);
  assert.throws(()=>reconcileRestoredDatabase(restored.db.sqlite,onlyDeleted,{...options,approvedSha256:'0'.repeat(64)}),/evidence/);
 });

@@ -2,7 +2,7 @@
   "schemaVersion": "salta-backend-source-matrix-v2",
   "main": "719c9f286e269f2b21b4c63f5b395fbc7b88542c",
   "backendSource": "719c9f286e269f2b21b4c63f5b395fbc7b88542c",
-  "expectedBundleSha256": "53b6d50944f03166835bc6a3e2263b66ca4377826422fee79aee5d9f56dd6949",
+  "expectedBundleSha256": "020bef574306dad0b27ca9955a9f3e87ddaa2b12319b25dd252d8cfc915b6dd6",
   "inputs": [
     {
       "path": "assessments-lab/crypto/crypto-format.js",
@@ -50,6 +50,15 @@
       "comparison": "identical"
     },
     {
+      "path": "assessments-service/custody-client.mjs",
+      "origin": "719c9f286e269f2b21b4c63f5b395fbc7b88542c",
+      "originBlob": null,
+      "mainBlob": null,
+      "candidateBlob": "9a42a520946c4eead0d5b30f6b5d1218c85fb7dd",
+      "sha256": "a867e6a823671f19171e159f6cd0579e9cfde20b5b65c5ca792d57f82e4a4617",
+      "comparison": "new"
+    },
+    {
       "path": "assessments-service/definition.mjs",
       "origin": "719c9f286e269f2b21b4c63f5b395fbc7b88542c",
       "originBlob": "979bf40fd5007f9b6362f4a1032e51c9e2e0bf33",
@@ -63,8 +72,8 @@
       "origin": "719c9f286e269f2b21b4c63f5b395fbc7b88542c",
       "originBlob": "413ea85f92d07c980f52990035856d39e7dd8273",
       "mainBlob": "413ea85f92d07c980f52990035856d39e7dd8273",
-      "candidateBlob": "449c31adf13e9615d320b6849d9a7a560ec32cc8",
-      "sha256": "babd94cc74d363883a10b11e6fd28fbcbc02397f8045f53d8ea38e4928bd0b98",
+      "candidateBlob": "afee6f39a3208ed39edb38a369e00dd878dcad02",
+      "sha256": "0424559526e4b6feea65fe55bce4b6c94fcbb020e685bb4bad311566e2c19884",
       "comparison": "modified"
     },
     {
