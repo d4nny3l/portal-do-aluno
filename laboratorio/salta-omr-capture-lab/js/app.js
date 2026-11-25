@@ -944,7 +944,7 @@ async function importPhoto(file,{showManual=true}={}) {
  let detection=null;
  try{const rgba=tc.getImageData(0,0,dw,dh);detection=V.detectDocument(rgba.data,dw,dh);}
  catch(error){console.warn("Detector de folha indisponível:",error);}
- const found=Boolean(detection&&detection.score>=MIN_SCORE&&detection.corners?.length===4);
+ const found=Boolean(detection&&detection.score>=MIN_SCORE&&detection.corners?.length===4&&fullPaperVisible(detection.corners,dw,dh));
  const pts=found?addPaperMargin(detection.corners.map(p=>[p[0]*fw/dw,p[1]*fh/dh]),fw,fh):V.frameCorners(fw,fh);
  const page={
   id:++S.seq,fw,fh,corners:pts,rot:0,mode:null,frame,
