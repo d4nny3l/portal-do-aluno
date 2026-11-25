@@ -9,7 +9,7 @@
 <link rel="icon" href="favicon.svg" type="image/svg+xml">
 <link rel="stylesheet" href="css/style.css">
 <link rel="stylesheet" href="css/salta-scan.css">
-<link rel="stylesheet" href="css/omr-lab.css">
+<link rel="stylesheet" href="css/omr-lab.css?v=omr-framing-2">
 </head>
 <body>
 
@@ -46,6 +46,7 @@
         <polygon id="quad" points=""/>
         <g id="dots"></g>
       </svg>
+      <div class="framing-guide" aria-hidden="true"></div>
       <div id="flash" aria-hidden="true"></div>
       <div class="pillrow">
         <div id="pill" class="pill mono" role="status" aria-live="polite">Iniciando câmera…</div>
@@ -73,6 +74,7 @@
         <label class="ctl chk"><input type="checkbox" id="sound" checked> <span>Som da captura</span></label>
       </div>
       <button id="importbtn2" type="button" class="btn ghost small">Importar foto</button>
+      <button id="framing" type="button" class="btn ghost small" aria-pressed="false" title="Alternar entre prévia ampliada e imagem completa">Ver imagem inteira</button>
       <button id="closeCamera" type="button" class="btn ghost small" aria-label="Fechar câmera">Fechar câmera</button>
       <span id="res" class="mono res" aria-label="Resolução da câmera"></span>
     </div>
@@ -198,7 +200,7 @@
 
 <footer class="foot mono">SALTA OMR Capture Lab · Laboratório experimental, sem gravação de notas · Tecnologia de detecção e processamento adaptada de <a href="https://github.com/nipunbatra/scancat" target="_blank" rel="noopener noreferrer">Scancat (Nipun Batra)</a>, licença <a href="./LICENSE-SCANCAT-MIT.txt">MIT</a>. Resultados de qualidade dependem da foto, luz, foco e planicidade do papel.</footer>
 
-<script type="module" src="js/app.js?v=omr-capture-1"></script>
+<script type="module" src="js/app.js?v=omr-framing-2"></script>
 <script type="module" src="omr-lab.mjs?v=omr-capture-1"></script>
 </body>
 </html>
