@@ -591,7 +591,7 @@ async function capture(source = "auto") {
   const vw=Math.max(1,Math.round(frame.sw)),vh=Math.max(1,Math.round(frame.sh));
   const dw=S.det.w||DET_W,dh=S.det.h||Math.max(8,Math.round(vh*dw/vw));
   const fx=vw/dw,fy=vh/dh;
-  const firstCorners=shrinkQuad(det.map(([x,y])=>[x*fx,y*fy]),.008);
+  const firstCorners=addPaperMargin(det.map(([x,y])=>[x*fx,y*fy]),vw,vh);
   const token=S.captureEpoch;
   const firstStable=S.det.stable;
   S.busy++;
@@ -631,8 +631,8 @@ async function capture(source = "auto") {
           q=result.detection;
         }catch{}
         if(token!==S.captureEpoch||!S.running)return null;
-        if(q?.score>=MIN_SCORE&&quadDistance(q.corners,det)<.065*targetW){
-          const nextCorners=shrinkQuad(q.corners.map(([x,y])=>[x*vw/targetW,y*vh/targetH]),.008);
+        if(q?.score>=MIN_SCORE&&fullPaperVisible(q.corners,targetW,targetH)&&quadDistance(q.corners,det)<.065*targetW){
+          const nextCorners=addPaperMargin(q.corners.map(([x,y])=>[x*vw/targetW,y*vh/targetH]),vw,vh);
           last=snapshot(nextCorners);
           best=selectBestFrame(first,last);
         }
@@ -654,7 +654,8 @@ async function capture(source = "auto") {
         page.frame=blob;resolve(blob);
       },"image/jpeg",.94);
     });
-    setPill("processing…");
+    S.cardFlow.cardId=page.id;
+    setPill("Processando perspectiva e imagem…");
     await processPage(page,best.img);
     if(token!==S.captureEpoch||!S.running)return null;
     await page.frameReady;
@@ -944,7 +945,7 @@ async function importPhoto(file,{showManual=true}={}) {
  try{const rgba=tc.getImageData(0,0,dw,dh);detection=V.detectDocument(rgba.data,dw,dh);}
  catch(error){console.warn("Detector de folha indisponível:",error);}
  const found=Boolean(detection&&detection.score>=MIN_SCORE&&detection.corners?.length===4);
- const pts=found?detection.corners.map(p=>[p[0]*fw/dw,p[1]*fh/dh]):V.frameCorners(fw,fh);
+ const pts=found?addPaperMargin(detection.corners.map(p=>[p[0]*fw/dw,p[1]*fh/dh]),fw,fh):V.frameCorners(fw,fh);
  const page={
   id:++S.seq,fw,fh,corners:pts,rot:0,mode:null,frame,
   frameReady:Promise.resolve(frame),out:null,url:"",w:0,h:0,cropped:found
@@ -1000,6 +1001,7 @@ function wire() {
     closeEditor();
     renderTray();
     resetDetection();
+    S.cardFlow=createCardFlow();
     setPill("cleared", "", 1500);
   });
 
@@ -1054,6 +1056,11 @@ function wire() {
   });
 
   document.addEventListener("visibilitychange", () => { if (!document.hidden && S.running) requestAnimationFrame(loop); });
+  window.addEventListener("salta-omr:read-finished",event=>{
+    if(cardReadFinished(S.cardFlow,event.detail?.pageId)){
+      if(S.cardFlow.phase==="locked")setPill("Leitura concluída. Troque a folha quando quiser.","ok",1100);
+    }
+  });
   window.addEventListener("pagehide", () => { S.running=false; stopStream(); });
 
   // test hooks
