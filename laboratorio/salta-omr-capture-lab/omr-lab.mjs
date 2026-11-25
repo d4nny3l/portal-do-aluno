@@ -127,8 +127,9 @@ async function loadCatalog(){
    matches?'Encontrada'+(matches===1?'':'s')+' '+matches+' avaliação(ões) com Bloco e Matemática. Confira e escolha a prova correspondente ao papel.':
    'Nenhuma prova nomeada Bloco de Matemática neste contexto. Confira o título das avaliações ou importe o manifesto exato.',
    rows.length?'ok':'warn');
-  if(rows.length===1){
-   $('omrAssessment').value=rows[0].id;
+  const preferred=rows.filter(isMathBlock);
+  if(preferred.length===1 || rows.length===1){
+   $('omrAssessment').value=(preferred[0]||rows[0]).id;
    await loadRevisions();
   }
  }catch(error){if(generation===libraryGeneration)reportError(error)}
