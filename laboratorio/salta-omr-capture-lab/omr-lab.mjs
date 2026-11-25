@@ -268,6 +268,7 @@ async function analyze(page){
  if(!selected||!page)return;
  const request=++readGeneration;
  const model=selected;
+ state.lastResult=null;
  status(readStatus,'Analisando página em dois caminhos ópticos…');
  $('omrSummary').hidden=true;$('omrDiff').hidden=true;$('omrReread').disabled=true;
  let baseline,scanner;
@@ -289,11 +290,11 @@ async function analyze(page){
   renderResult(model,baseline,scanner);
   addCell($('omrSummary'),'p',safe.complete?(score?.complete?'Nota local consensual: '+score.total+' / '+score.maximum:model.template.pageCount>1?'Página lida; nota multipágina não calculada neste laboratório.':'Leitura consensual; sem nota definitiva.'):'SEM NOTA: '+safe.reason,'omr-legend');
   const count=[baseline,scanner].filter(x=>x.ok).length;
-  status(readStatus,count===2?
+  status(readStatus,count===2&&!safe.complete?'Divergência ou identificação pendente. Nenhuma nota emitida.':count===2?
    'Comparação concluída. Divergências são sinalizadas; não significam, isoladamente, que uma leitura é correta.':
    count===1?'Um caminho conseguiu ler a folha; outro falhou. Confira a imagem e os marcadores.':
    'Nenhum dos dois caminhos localizou os marcadores. Use uma fotografia mais nítida, com toda a folha visível.',
-   count===2?'ok':'warn');
+   count===2&&safe.complete?'ok':'warn');
  }catch(error){if(request===readGeneration)status(readStatus,error?.message||'Falha ao analisar a captura.','error')}
  finally{
   if(request===readGeneration)$('omrReread').disabled=false;
@@ -375,6 +376,7 @@ function bootstrap(){
  $('omrBind').addEventListener('click',()=>void bindAssessment());
  $('omrReread').addEventListener('click',()=>void analyze(latestPage));
  $('omrPageNumber').addEventListener('change',()=>{readGeneration++;state.lastResult=null;$('omrSummary').hidden=true;$('omrDiff').hidden=true;$('omrReread').disabled=!latestPage;});
+ window.addEventListener('salta-omr:optical-invalidated',e=>{if(latestPage?.id===e.detail?.pageId){readGeneration++;state.lastResult=null;$('omrSummary').hidden=true;$('omrDiff').hidden=true;$('omrReread').disabled=true;status(readStatus,'Geometria visual editada. Capture novamente para uma leitura óptica verificável.','warn');}});
  window.addEventListener('salta-omr:discard',e=>{if(latestPage?.id===e.detail?.pageId){readGeneration++;latestPage=null;state.lastResult=null;$('omrSummary').hidden=true;$('omrDiff').hidden=true;$('omrReread').disabled=true;}});
  $('omrManifest').addEventListener('change',event=>{
   const file=event.target.files?.[0];

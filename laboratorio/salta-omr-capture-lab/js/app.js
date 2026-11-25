@@ -21,7 +21,7 @@ const MAX_SIDE = 2600;       // longest side of a scanned page (px)
 const S = {
   stream: null, running: false, pages: [], seq: 0,
   mode: "color", pageSize: "fit", auto: true, sound: true,
-  busy: 0, editing: null, corner: null,
+  busy: 0, editing: null, corner: null, storageFull:false,
   cardFlow: createCardFlow(),
   det: { smooth: null, stable: 0, lost: 99, armed: true, lastCap: null, score: 0, support: 0, ms: 0, w: 0, h: 0 },
 };
@@ -370,12 +370,12 @@ function resetDetection() {
 function loop(ts) {
   if (!S.running) return;
   cameraLoopFrame=requestAnimationFrame(loop);
-  if (ts - lastTick < LOOP_MS || document.hidden || S.editing) return;
+  if (ts - lastTick < LOOP_MS || document.hidden || S.editing || S.busy) return;
   lastTick = ts;
   const video = $("video");
   const live=video.readyState>=2&&video.videoWidth>0&&!video.paused&&!S.stream?.getVideoTracks()[0]?.muted;
   const fresh=frameFresh(frameClock,video.currentTime,ts,live);
-  if(fresh.reset){S.det.stable=0;S.det.smooth=null;}
+  if(fresh.reset){S.det.stable=0;S.det.smooth=null;drawOverlay(null);setRing(null);}
   if(!fresh.fresh)return;
   cameraPresentation.sync('detection-frame');
   const vw = video.videoWidth, vh = video.videoHeight;
@@ -399,7 +399,7 @@ function maxShift(a, b) {
 
 function track(q,dw,dh,scene=null){
   const D=S.det,gate=S.cardFlow;
-  if(S.pages.length>=100){setPill("Limite da sessão atingido. Exporte ou remova páginas antes de continuar.","bad");return;}
+  if(S.storageFull||!canRetain(S.pages,{})){setPill("Limite da sessão atingido. Exporte ou remova páginas antes de continuar.","bad");return;}
   if(S.busy){setPill("Processando cartão…");setRing(null);return;}
   const now=performance.now();
   const hasPaper=!!(q&&q.score>=MIN_SCORE&&q.corners?.length===4);
@@ -547,11 +547,18 @@ async function frameImageData(page) {
 }
 
 function retainPage(page){
- if(!canRetain(S.pages,page))throw new Error("Limite de memória da sessão. Exporte ou remova páginas antes de continuar.");
+ if(!canRetain(S.pages,page)){S.storageFull=true;throw new Error("Limite de memória da sessão. Exporte ou remova páginas antes de continuar.");}
  for(const old of S.pages)old.optical=null;
  S.pages.push(page);
 }
 async function processPage(page, img = null) {
+  const geometry=JSON.stringify([page.corners,page.rot]);
+  // Visual filters cannot update the immutable optical observation. If the
+  // geometry changes, invalidate it explicitly rather than show stale marks.
+  if(page.optical&&page.opticalGeometry!==geometry){
+    page.optical=null;
+    window.dispatchEvent(new CustomEvent("salta-omr:optical-invalidated",{detail:{pageId:page.id}}));
+  }
   img = img || await frameImageData(page);
   const res = await callWorker({
     op: "process", data: img.data, w: img.width, h: img.height,
@@ -562,7 +569,8 @@ async function processPage(page, img = null) {
   c.getContext("2d").putImageData(new ImageData(res.data, res.w, res.h), 0, 0);
   const blob = await new Promise((r) => c.toBlob(r, "image/jpeg", 0.9));
   if(!blob)throw new Error("Não foi possível gerar a imagem.");
-  if(res.optical)page.optical=res.optical;
+  if(page.out&&!canRetain(S.pages.filter(p=>p!==page),{frame:page.frame,out:blob}))throw new Error("Limite de memória. A imagem anterior foi preservada.");
+  if(res.optical){page.optical=res.optical;page.opticalGeometry=geometry;}
   if (page.url) URL.revokeObjectURL(page.url);
   page.out = blob; page.url = URL.createObjectURL(blob); page.w = res.w; page.h = res.h;
   return page;
@@ -590,6 +598,7 @@ function removePage(page) {
   const i = S.pages.indexOf(page);
   if (i < 0) return;
   S.pages.splice(i, 1);
+  S.storageFull=false;
   page.optical=null;
   window.dispatchEvent(new CustomEvent("salta-omr:discard",{detail:{pageId:page.id}}));
   if (page.url) URL.revokeObjectURL(page.url);
@@ -784,6 +793,7 @@ function importStatus(message, isError=false) {
  if(el){el.textContent=message;el.dataset.error=String(isError);}
 }
 async function importPhoto(file,{showManual=true}={}) {
+ if(S.storageFull||!canRetain(S.pages,{}))throw new Error("Limite da sessão. Exporte ou remova páginas.");
  if(!file||!(file.type.startsWith("image/")||/\.(heic|heif)$/i.test(file.name))) throw new Error("Selecione uma imagem.");
  const url=URL.createObjectURL(file);
  let image;
@@ -856,6 +866,7 @@ function wire() {
     if (!S.pages.length) return;
     if (!confirm(`Excluir ${S.pages.length} página${S.pages.length===1?"":"s"} digitalizada${S.pages.length===1?"":"s"}?`)) return;
     for (const p of S.pages.splice(0)){p.optical=null;if(p.url) URL.revokeObjectURL(p.url);window.dispatchEvent(new CustomEvent("salta-omr:discard",{detail:{pageId:p.id}}));}
+    S.storageFull=false;
     closeEditor();
     renderTray();
     resetDetection();
@@ -919,11 +930,12 @@ function wire() {
     }
   });
   $("omrNextSheet").addEventListener("click",()=>{
-    if(S.busy||!S.cardFlow.readDone||!S.running)return;
+    if(S.busy||!S.cardFlow.readDone||!S.running){setPill("Aguarde a conclusão da leitura com a câmera aberta.","bad");return;}
+    if(S.cardFlow.phase==="ready")return;
     if(!confirm("Confirma que a folha anterior foi retirada e deseja liberar outra captura?"))return;
     S.cardFlow=createCardFlow();resetDetection();
   });
-  window.addEventListener("pagehide",()=>{stopCameraView();resetWorker(new Error("Sessão encerrada"));for(const p of S.pages.splice(0)){p.optical=null;if(p.url)URL.revokeObjectURL(p.url);}});
+  window.addEventListener("pagehide",e=>{stopCameraView();resetWorker(new Error("Sessão encerrada"));if(!e.persisted)for(const p of S.pages.splice(0)){p.optical=null;if(p.url)URL.revokeObjectURL(p.url);}});
 
   // test hooks
   window.__scancat = { S, capture, downloadPdf, processPage, V, buildPdf, startCamera, stopCameraView, requestContinuousFocus, importPhoto, detectorMode: DETECTOR_MODE, cameraPresentation }; window.__saltaScan = window.__scancat;
