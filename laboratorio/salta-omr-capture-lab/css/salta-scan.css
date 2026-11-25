@@ -1,0 +1,155 @@
+/* SALTA SCAN LAB — standalone visual layer. Underlying MIT scanner styles remain attributed. */
+:root {
+ --desk:#f3f5ff; --paper:#ffffff; --ink:#18203d; --grey:#5e6680; --rule:#dfe4f4;
+ --stamp:#5b5bd6; --scan:#2f9976; --weak:#bd7c18;
+ --display:system-ui,-apple-system,"Segoe UI",sans-serif;
+ --body:system-ui,-apple-system,"Segoe UI",sans-serif;
+ --mono:ui-monospace,"SF Mono",Menlo,monospace;
+}
+html { background-color:var(--desk); scroll-behavior:smooth; }
+body {
+ background:
+  linear-gradient(rgba(88,98,180,.038) 1px, transparent 1px),
+  linear-gradient(90deg,rgba(88,98,180,.038) 1px,transparent 1px),
+  radial-gradient(ellipse at 8% -18%,rgba(130,122,253,.15),transparent 47%),
+  var(--desk);
+ background-size:28px 28px,28px 28px,auto,auto;
+}
+.top {
+ position:relative; z-index:2; background:rgba(255,255,255,.86);
+ border-bottom:1px solid var(--rule); backdrop-filter:blur(16px);
+ padding:1rem clamp(1rem,4vw,3rem); flex-wrap:wrap;
+}
+.brand { gap:.74rem; }
+.salta-monogram {
+ width:43px;height:43px; display:grid;place-items:center;
+ border-radius:13px; color:#fff; background:linear-gradient(145deg,#7977eb,#4646b7);
+ font-size:1.6rem; font-weight:900; transform:rotate(-4deg);
+ box-shadow:0 9px 20px rgba(91,91,214,.25);
+}
+.brandstack{display:flex; flex-direction:column; gap:.05rem;}
+.wordmark {font-weight:850;font-size:1.16rem;letter-spacing:-.035em;text-transform:none;line-height:1;}
+.brand-accent {font-weight:500; color:#5b5bd6;}
+.brandsub {font-size:.58rem;font-weight:700;letter-spacing:.13em;color:var(--grey);}
+.stamp {border:1px solid #dfe0fb;border-radius:11px;padding:.44rem .75rem;transform:none;background:#f7f7ff;letter-spacing:.075em;color:#4b4baf;font-size:.67rem;}
+.stamp span{font-size:.58rem;letter-spacing:.02em;text-transform:none;}
+.srclink{font-size:.72rem;color:var(--grey);}
+main{width:min(1240px,100% - 2.2rem);padding-bottom:3.2rem;}
+.eyebrow {display:inline-flex;gap:.6rem;align-items:center;margin-top:clamp(1.3rem,3vw,2.3rem);padding:.43rem .75rem;border-radius:999px;border:1px solid #d8ddf9;background:#fdfdff;color:#5356af;font-size:.69rem;font-weight:750;letter-spacing:.1em;}
+.eyebrow-dot{width:8px;height:8px;border-radius:50%;background:#6c6de8;box-shadow:0 0 0 3px #e6e6ff;}
+h1{font-weight:820;font-size:clamp(2.05rem,5.2vw,4.15rem);line-height:1.08;letter-spacing:-.055em;margin:1.04rem 0 1.05rem;}
+h1 .hl{color:#4f50c6;background:none;padding:0;}
+.lede{max-width:80ch;color:#596079;font-size:clamp(.95rem,1.65vw,1.08rem);line-height:1.65;margin-bottom:1.4rem;}
+.lede strong{color:var(--ink);}
+.startrow{gap:.65rem;margin-bottom:1.25rem;}
+.hint{width:100%;font-size:.66rem;color:#727997;}
+.sheet{border:1px solid #dfe3f2;border-radius:17px;box-shadow:0 18px 55px -28px rgba(48,51,100,.29);}
+.btn {border-radius:11px;font-family:var(--body);font-weight:700;letter-spacing:0;padding:.75rem 1rem;min-height:43px;}
+.btn.big{font-size:.94rem;min-height:50px;padding:.8rem 1.35rem;}
+.btn.primary{background:linear-gradient(115deg,#6463dd,#4a4bc0);border-color:#5655c7;color:white;box-shadow:0 10px 22px -10px rgba(82,82,207,.65);}
+.btn.primary:hover:not(:disabled){background:#4545ba;}
+.btn.ghost{background:#fff;color:#474d7b;border-color:#dbe0ef;}
+.btn.ghost:hover:not(:disabled){background:#f3f4ff;}
+button,select,input{touch-action:manipulation;}
+:focus-visible{outline:3px solid #827de9;outline-offset:3px;}
+#scanner{gap:1.1rem;}
+#scanner:not(.camera-on){grid-template-columns:1fr;}
+#scanner:not(.camera-on) .stage{display:none;}
+#scanner:not(.camera-on) .tray{position:static;max-height:none;}
+#scanner:not(.camera-on) .tray-head{background:#fbfbff;}
+.viewport{overflow:hidden;border-radius:15px;background:#131729; box-shadow:0 17px 35px -16px #1d244f44;}
+.viewport video{object-fit:contain;}
+.controls{border-radius:0 0 13px 13px;padding:.95rem .4rem .35rem;gap:.7rem;}
+.ctl{font-size:.78rem;}
+.ctl select{background:#fff;border:1px solid #d9def0;border-radius:9px;min-height:42px;color:var(--ink);font-size:.79rem;}
+.shutter{border-color:#4c49bb;width:66px;height:66px;box-shadow:0 0 0 6px #eeeefd;}
+.shutter span{background:linear-gradient(145deg,#7375ee,#514cce);}
+.pill {border-radius:12px!important;backdrop-filter:blur(10px);}
+.tray{background:rgba(255,255,255,.98);}
+.tray-head{padding:1rem 1.1rem;font-size:.78rem;font-weight:780;letter-spacing:.04em;}
+.pages{padding:1rem;gap:.85rem;}
+.page{border-radius:10px;background:#f5f6fb;border-color:#dde2f1;}
+.page .num{padding:.26rem .49rem;border-radius:7px;background:#4d4bb8;color:#fff;}
+.page .acts {display:flex;top:.35rem;right:.35rem;}
+.page .acts button {width:32px;height:32px;border-radius:7px;}
+.trayhint{padding:0 1.1rem 1.3rem;font-size:.81rem;}
+.tray-foot{padding:1rem;gap:.6rem;}
+#facts{margin-top:2rem;padding-top:.7rem;gap:1rem;}
+.fact{background:#fff;border:1px solid var(--rule);padding:1.1rem;border-radius:15px;}
+.fact h2{border-top:0;color:#5054b9;font-size:.74rem;padding-top:0;}
+.fact p{font-size:.87rem;color:#5b617a;line-height:1.7;}
+.modal{backdrop-filter:blur(5px);padding:max(1rem,env(safe-area-inset-top)) 1rem;}
+.modal-card{border-radius:17px;overflow:hidden;}
+.modal-bar{padding:.9rem 1rem;gap:.6rem;}
+.modal-acts{gap:.45rem;}
+.modal-acts .btn{padding:.59rem .82rem;min-height:42px;}
+.modal-body{background:#f6f7fd;}
+#cornersvg .h{r:12;stroke:#524dcc;stroke-width:2.8;fill:white;touch-action:none;}
+#cornerpoly{fill:rgba(88,82,219,.10);stroke:#5956d6;}
+.cornerbar .btn{white-space:nowrap;}
+.foot{border-top:1px solid #dde1f1;background:#fdfdff;font-size:.67rem;line-height:1.7;}
+.keys{line-height:1.6;}
+#importbtn2{white-space:nowrap;}
+@media(max-width:860px){
+ main{width:min(720px,100% - 1.25rem);}
+ .tray{max-height:none;}
+ .pages{grid-template-columns:repeat(3,1fr);}
+ .stamp{margin-left:auto;}
+}
+@media(max-width:540px){
+ .top{gap:.45rem;padding:.75rem .85rem;}
+ .stamp{padding:.3rem .5rem;font-size:.6rem;}
+ .stamp span{display:none;}
+ .salta-monogram{width:37px;height:37px;font-size:1.3rem;border-radius:10px;}
+ .wordmark{font-size:1.03rem;}
+ .brandsub{font-size:.48rem;}
+ .eyebrow{font-size:.56rem;letter-spacing:.07em;}
+ h1{font-size:clamp(1.98rem,8.3vw,2.7rem);}
+ .lede{font-size:.92rem;}
+ .startrow>.btn{flex:1;min-width:132px;}
+ .controls{flex-wrap:wrap;}
+ .ctls{flex-wrap:wrap;gap:.6rem;}
+ .ctl select{min-height:44px;}
+ .pages{grid-template-columns:repeat(2,1fr);}
+ .tray-foot{flex-wrap:wrap;}
+ .tray-foot .btn{min-height:48px;flex:1 1 120px;}
+ .modal{padding:6px;}
+ .modal-card{max-height:calc(100dvh - 12px);}
+ .modal-acts{width:100%;display:flex;overflow-x:auto;padding:.3rem 0;flex-wrap:nowrap;}
+ .modal-acts .btn{flex:0 0 auto;}
+ .modal-body{min-height:220px;padding:.65rem;}
+ .cornerbar{flex-wrap:wrap;}
+ .cornerbar .grow{display:none;}
+ .cornerbar .btn{flex:1 1 42%;font-size:.76rem;padding:.55rem .4rem;}
+ .keys{font-size:.62rem;}
+}
+@media(prefers-reduced-motion:reduce){*,*::before,*::after{animation-duration:.01ms!important;transition-duration:.01ms!important;scroll-behavior:auto!important;}}
+
+.import-status{font-size:.78rem;font-weight:620;min-height:1.15rem;color:#2b7b5e;margin-top:-.35rem;margin-bottom:.8rem;}
+.import-status:empty{display:none;}
+.import-status[data-error="true"]{color:#a23b45;}
+#scanner:not(.camera-on){margin-top:1rem;}
+@media(max-width:540px){.import-status{font-size:.75rem;}}
+
+/* SALTA Scan Lab — câmera e foco automático; visualização com fechar explícito. */
+.editor-close{
+ position:absolute;top:.54rem;right:.55rem;z-index:25;
+ display:grid;place-items:center;width:44px;height:44px;min-width:44px;
+ border:1px solid #d9dff4;border-radius:12px;
+ background:#fff;color:#282e5e;font-size:1.8rem;line-height:1;
+ box-shadow:0 5px 14px rgba(30,37,74,.14);cursor:pointer;
+}
+.editor-close:hover,.editor-close:focus-visible{background:#f1f0ff;color:#4546ba;}
+.modal-card{position:relative;}
+.modal-card>.modal-bar{padding-right:3.65rem;}
+#closeCamera{border-color:#e2e4ee;color:#6b5166;background:#fefcff;}
+#closeCamera:hover{background:#fff2f7;border-color:#ebc6d1;}
+.controls{justify-content:flex-start;}
+.controls .ctls{flex:1 1 auto;}
+.controls #res{margin-left:auto;}
+@media(max-width:540px){
+ .editor-close{top:.38rem;right:.38rem;width:42px;height:42px;}
+ .modal-card>.modal-bar{padding-right:3.2rem;}
+ .controls #res{width:100%;margin:0;}
+ #closeCamera{margin-left:auto;}
+}
