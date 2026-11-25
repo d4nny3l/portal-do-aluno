@@ -47,9 +47,9 @@ test('real workerd D1 migration + atomic replacement/delete, concurrent saves, r
   const req=(p,method='GET',data)=>mf.dispatchFetch('http://localhost/assessments/v1'+p,{method,headers:{Origin:portal,Cookie:'__Host-salta_session='+token,'X-Salta-Assessment-Lifecycle':version,...(data?{'Content-Type':'application/json'}:{})},...(data?{body:JSON.stringify(data)}:{})});
   const id=crypto.randomUUID(),route='/assessments/'+id,p={...packet(),lifecycleVersion:version};assert.equal((await req(route,'PUT',p)).status,201);
   // An unfamiliar application table must still block replacement and deletion,
-  // even if its name resembles provider metadata.
-  await db.exec('CREATE TABLE _cf_KV_application_dependency (assessment_id TEXT REFERENCES av_assessments(id) ON DELETE CASCADE);');
-  await db.prepare('INSERT INTO _cf_KV_application_dependency (assessment_id) VALUES (?)').bind(id).run();
+  // independently of the reserved provider table.
+  await db.exec('CREATE TABLE synthetic_unreviewed_dependency (assessment_id TEXT REFERENCES av_assessments(id) ON DELETE CASCADE);');
+  await db.prepare('INSERT INTO synthetic_unreviewed_dependency (assessment_id) VALUES (?)').bind(id).run();
   for(const response of [
    await req(route,'PUT',{...packet(1),lifecycleVersion:version}),
    await req(route+'/delete','POST',{requestId:crypto.randomUUID(),expectedRevision:1,lifecycleVersion:version})
@@ -57,9 +57,9 @@ test('real workerd D1 migration + atomic replacement/delete, concurrent saves, r
    assert.equal(response.status,409);
    assert.equal((await response.json()).code,'unreviewed_dependency');
   }
-  assert.equal(await db.prepare('SELECT count(*) n FROM _cf_KV_application_dependency').first('n'),1);
+  assert.equal(await db.prepare('SELECT count(*) n FROM synthetic_unreviewed_dependency').first('n'),1);
   assert.equal(await db.prepare('SELECT count(*) n FROM av_revisions').first('n'),1);
-  await db.exec('DROP TABLE _cf_KV_application_dependency;');
+  await db.exec('DROP TABLE synthetic_unreviewed_dependency;');
   const race=await Promise.all([1,2].map(()=>req(route,'PUT',{...packet(1),lifecycleVersion:version})));assert.deepEqual(race.map(r=>r.status).sort(),[201,409]);
   assert.equal(await db.prepare('SELECT count(*) n FROM av_revisions').first('n'),1);assert.equal((await req(route+'/revisions/1')).status,410);
   const before=(await (await req(route)).json()).record;
