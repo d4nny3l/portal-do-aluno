@@ -167,28 +167,32 @@ function cameraError(e) {
   }
 }
 
-// A câmera/lente traseira é escolhida pelo navegador e pelo sistema, nunca por deviceId fixo.
-// focusMode é opcional: Safari pode não expor a capacidade e nesse caso mantém o foco nativo.
+// Safari/WebKit: preferir foco nativo e não reconfigurar o MediaStreamTrack.
+// applyConstraints() pode reinicializar ou interromper a prévia nesses aparelhos.
+const isWebKitCamera = () => /AppleWebKit/i.test(navigator.userAgent || "");
+let cameraRequestId = 0;
+
 async function requestContinuousFocus(track) {
-  if (!track || typeof track.getCapabilities !== "function" || typeof track.applyConstraints !== "function") return false;
+  if (isWebKitCamera() || !track || typeof track.getCapabilities !== "function" ||
+      typeof track.applyConstraints !== "function") return false;
   try {
     const capabilities = track.getCapabilities();
     if (!Array.isArray(capabilities?.focusMode) || !capabilities.focusMode.includes("continuous")) return false;
-    const constraints = typeof track.getConstraints === "function" ? track.getConstraints() : {};
-    const advanced = Array.isArray(constraints.advanced) ? constraints.advanced : [];
-    await track.applyConstraints({ ...constraints, advanced: [...advanced, {focusMode:"continuous"}] });
+    // Nunca replicar width/height/facingMode pelo applyConstraints: só o foco opcional.
+    await track.applyConstraints({advanced:[{focusMode:"continuous"}]});
     return true;
   } catch {
-    // Nunca interromper o scanner nem trocar de câmera por falha de foco opcional.
     return false;
   }
 }
 
 function stopCameraView() {
+  cameraRequestId++; // invalida permissões/resoluções de câmera em andamento
   S.running = false;
+  S.cameraStarting = false;
   stopStream();
   const video = $("video");
-  video.pause();
+  video.pause?.();
   video.srcObject = null;
   resetDetection();
   document.body.classList.remove("live");
@@ -197,58 +201,125 @@ function stopCameraView() {
   $("res").textContent = "";
 }
 
+function waitForCameraMetadata(video, timeoutMs = 4500) {
+  if (video.videoWidth > 0 && video.videoHeight > 0) return Promise.resolve(true);
+  return new Promise(resolve => {
+    let completed = false;
+    let timeout;
+    const events = ["loadedmetadata", "loadeddata", "resize", "canplay"];
+    function cleanup() {
+      events.forEach(event => video.removeEventListener(event, check));
+      clearTimeout(timeout);
+    }
+    function finish(ok) {
+      if (completed) return;
+      completed = true;
+      cleanup();
+      resolve(ok);
+    }
+    function check() {
+      if (video.videoWidth > 0 && video.videoHeight > 0) finish(true);
+    }
+    events.forEach(event => video.addEventListener(event, check));
+    timeout = setTimeout(() => finish(false), timeoutMs);
+    check();
+  });
+}
+
 async function startCamera() {
   if (S.running && S.stream) return true;
+  if (S.cameraStarting) return false;
   if (!navigator.mediaDevices?.getUserMedia) {
-    showErr("Este navegador não permite abrir a câmera. Importe uma foto ou tente no Safari/Chrome atualizado.");
+    showErr("O Safari não disponibilizou a câmera. Abra o link diretamente no Safari ou importe uma foto.");
     return false;
   }
-  stopStream();
-  // facingMode ideal permite escolher automaticamente o conjunto traseiro,
-  // mantendo o dispositivo/lente sob controle do navegador (Safari/Android).
-  const constraints = {
-    facingMode: { ideal: "environment" },
-    width: { ideal: 3840 },
-    height: { ideal: 2160 }
-  };
-  let stream;
-  try {
-    stream = await navigator.mediaDevices.getUserMedia({video:constraints,audio:false});
-  } catch (e) {
-    showErr(cameraError(e));
-    return false;
-  }
-  const track = stream.getVideoTracks()[0];
-  if (!track) {
-    stream.getTracks().forEach(t=>t.stop());
-    showErr("A câmera não forneceu vídeo.");
-    return false;
-  }
-  showErr("");
-  S.stream = stream;
+  const request = ++cameraRequestId;
+  S.cameraStarting = true;
   const video = $("video");
-  video.srcObject = stream;
-  await new Promise(res=>{
-    if(video.readyState>=1 && video.videoWidth)return res();
-    video.addEventListener("loadedmetadata",res,{once:true});
-  });
-  try { await video.play(); } catch { /* vídeo mudo + playsinline; sem bloqueio do scanner */ }
-  const vw=video.videoWidth,vh=video.videoHeight;
-  $("viewport").style.aspectRatio=`${vw} / ${vh}`;
-  $("res").textContent=`${vw}×${vh} · câmera automática`;
-  track.addEventListener("ended",()=>{
-    if(S.running){stopCameraView();showErr("A câmera foi desconectada. Toque em Abrir câmera para tentar novamente.");}
-  },{once:true});
-  document.body.classList.add("live");
-  $("scanner").hidden=false;
-  $("scanner").classList.add("camera-on");
-  S.running=true;
-  resetDetection();
-  setPill("looking for a page…");
-  requestAnimationFrame(loop);
-  // Melhor esforço; nunca bloqueia a primeira prévia ou captura.
-  void requestContinuousFocus(track);
-  return true;
+  let stream = null;
+  try {
+    stopStream();
+    // Tornar o vídeo visível ANTES de anexar o stream e chamar play().
+    // iOS Safari pode suspender metadados e reprodução de vídeo oculto.
+    document.body.classList.add("live");
+    $("scanner").hidden = false;
+    $("scanner").classList.add("camera-on");
+    $("res").textContent = "Iniciando câmera…";
+    video.muted = true;
+    video.playsInline = true;
+    video.setAttribute("playsinline", "");
+    showErr("");
+
+    const iosFriendly = isWebKitCamera();
+    // Não exigir resolução 4K no Safari: isso pode custar memória e dificultar negociação.
+    // Outros navegadores continuam podendo escolher resolução alta.
+    const preferred = iosFriendly
+      ? {facingMode:"environment",width:{ideal:1920},height:{ideal:1080}}
+      : {facingMode:"environment",width:{ideal:3840},height:{ideal:2160}};
+    try {
+      stream = await navigator.mediaDevices.getUserMedia({video:preferred,audio:false});
+    } catch (error) {
+      // Uma configuração incompatível não deve bloquear a câmera. Negação de
+      // permissão, porém, não deve disparar uma segunda solicitação.
+      if (!["OverconstrainedError","NotFoundError","NotReadableError","AbortError"].includes(error?.name)) throw error;
+      stream = await navigator.mediaDevices.getUserMedia({
+        video:{facingMode:"environment"},audio:false
+      });
+    }
+    if (request !== cameraRequestId) {
+      stream.getTracks().forEach(track=>track.stop());
+      return false;
+    }
+    const track = stream.getVideoTracks()[0];
+    if (!track) throw new Error("Nenhum vídeo retornado pela câmera.");
+    S.stream = stream;
+    video.srcObject = stream;
+
+    // Não esperar por play() antes de aguardar metadados: no iOS a promessa
+    // pode ficar pendente. Erros são tratados sem rejeição não observada.
+    try {
+      const playing = video.play();
+      if (playing?.catch) playing.catch(()=>{});
+    } catch { /* metadados e timeout vão decidir o resultado */ }
+
+    let ready = await waitForCameraMetadata(video);
+    if (!ready && request === cameraRequestId) {
+      // WebKit pode manter o track ativo, mas perder a camada de vídeo.
+      // Remontar apenas o elemento é menos invasivo que reiniciar getUserMedia.
+      video.srcObject = null;
+      video.srcObject = stream;
+      try { const playing = video.play(); if (playing?.catch) playing.catch(()=>{}); } catch {}
+      ready = await waitForCameraMetadata(video, 3000);
+    }
+    if (request !== cameraRequestId) return false;
+    if (!ready || !video.videoWidth || !video.videoHeight) {
+      throw new Error("A câmera foi autorizada, mas o vídeo não iniciou no Safari. Feche outros aplicativos com câmera e tente novamente.");
+    }
+
+    const vw=video.videoWidth,vh=video.videoHeight;
+    $("viewport").style.aspectRatio=`${vw} / ${vh}`;
+    $("res").textContent=`${vw}×${vh} · câmera automática`;
+    track.addEventListener("ended",()=>{
+      if(S.running && request===cameraRequestId){
+        stopCameraView();
+        showErr("A câmera foi desconectada. Abra novamente para tentar.");
+      }
+    },{once:true});
+    S.running=true;
+    resetDetection();
+    setPill("looking for a page…");
+    requestAnimationFrame(loop);
+    void requestContinuousFocus(track); // nunca aplica foco manual no WebKit
+    return true;
+  } catch(error) {
+    if (request === cameraRequestId) {
+      stopCameraView();
+      showErr(error?.name ? cameraError(error) : String(error?.message || error));
+    }
+    return false;
+  } finally {
+    if (request===cameraRequestId) S.cameraStarting=false;
+  }
 }
 
 /* ---------- detection loop ---------- */
@@ -677,9 +748,10 @@ function wire() {
 
   $("start").addEventListener("click", async () => {
     $("start").disabled = true;
-    const ok = await startCamera();
-    $("start").disabled = false;
-    if (ok) $("closeCamera").focus();
+    try {
+      const ok = await startCamera();
+      if (ok) $("closeCamera").focus();
+    } finally { $("start").disabled = false; }
   });
   $("closeCamera").addEventListener("click", stopCameraView);
   $("sound").addEventListener("change", (e) => { S.sound = e.target.checked; savePrefs(); });
