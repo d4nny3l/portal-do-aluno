@@ -9,7 +9,7 @@
 <link rel="icon" href="favicon.svg" type="image/svg+xml">
 <link rel="stylesheet" href="css/style.css">
 <link rel="stylesheet" href="css/salta-scan.css">
-<link rel="stylesheet" href="css/omr-lab.css?v=paper-turbo-3">
+<link rel="stylesheet" href="css/omr-lab.css?v=paper-controlled-1">
 </head>
 <body>
 
@@ -27,7 +27,7 @@
 <section id="hero">
   <div class="eyebrow"><span class="eyebrow-dot"></span> SALTA OMR · LABORATÓRIO DE CAPTURA</div>
   <h1>Uma captura.<br><span class="hl">Duas leituras OMR.</span></h1>
-  <p class="lede">Aponte para a <strong>folha inteira</strong>. O scanner reconhece o contorno com rapidez, escolhe o quadro mais nítido quando necessário e corrige a perspectiva. Depois comparamos a fotografia original com a leitura OMR da imagem tratada. <strong>Experimento isolado: nenhuma nota será publicada.</strong></p>
+  <p class="lede">Aponte para a <strong>folha inteira</strong>. Uma única captura automática reconhece o contorno, escolhe a foto mais nítida e processa o cartão. Depois confira a leitura OMR e decida quando fotografar o próximo. <strong>Experimento isolado: nenhuma nota será publicada.</strong></p>
   <div class="startrow">
     <button id="start" class="btn primary big" type="button">Abrir câmera</button>
     <button id="importbtn" class="btn ghost big" type="button">Importar foto</button>
@@ -75,10 +75,12 @@
       </div>
       <button id="importbtn2" type="button" class="btn ghost small">Importar foto</button>
       <button id="framing" type="button" class="btn ghost small" aria-pressed="false" title="Alternar entre prévia ampliada e imagem completa">Ver imagem inteira</button>
+      <button id="nextCard" type="button" class="btn primary small next-card" hidden disabled aria-label="Preparar a câmera para o próximo cartão">Próximo cartão</button>
       <button id="closeCamera" type="button" class="btn ghost small" aria-label="Fechar câmera">Fechar câmera</button>
       <span id="res" class="mono res" aria-label="Resolução da câmera"></span>
     </div>
-    <p class="keys mono">Enquadre a folha inteira. Não precisa imobilizar completamente o aparelho. Se faltar alguma borda, use “Ver imagem inteira”.</p>
+    <p class="keys mono">Enquadre a folha inteira. A captura é automática e acontece uma única vez por cartão. Após a leitura, toque em “Próximo cartão” para continuar.</p>
+    <p id="scanWorkflowStatus" class="scan-workflow-status" role="status" aria-live="polite" hidden></p>
   </div>
 
   <aside class="tray sheet" id="tray" aria-label="Páginas digitalizadas">
@@ -200,7 +202,7 @@
 
 <footer class="foot mono">SALTA OMR Capture Lab · Laboratório experimental, sem gravação de notas · Tecnologia de detecção e processamento adaptada de <a href="https://github.com/nipunbatra/scancat" target="_blank" rel="noopener noreferrer">Scancat (Nipun Batra)</a>, licença <a href="./LICENSE-SCANCAT-MIT.txt">MIT</a>. Resultados de qualidade dependem da foto, luz, foco e planicidade do papel.</footer>
 
-<script type="module" src="js/app.js?v=paper-turbo-3"></script>
-<script type="module" src="omr-lab.mjs?v=paper-turbo-3"></script>
+<script type="module" src="js/app.js?v=paper-controlled-1"></script>
+<script type="module" src="omr-lab.mjs?v=paper-controlled-1"></script>
 </body>
 </html>
