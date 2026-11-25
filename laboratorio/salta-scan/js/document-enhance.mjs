@@ -23,7 +23,7 @@ export function enhanceDocument(data,w,h,mode="color"){
     // Only bright, near-neutral samples can inform global white balance.
     for(let y=y0;y<y1;y+=stride)for(let x=x0;x<x1;x+=stride){
       const j=(y*w+x)*4,r=data[j],g=data[j+1],b=data[j+2],l=Y(r,g,b);
-      if(l>=Math.max(100,q-8)&&Math.max(r,g,b)-Math.min(r,g,b)<45){
+      if(l>=Math.max(100,q-8)&&Math.max(r,g,b)-Math.min(r,g,b)<Math.min(70,l*.33)){
         rs+=r/l;gs+=g/l;bs+=b/l;cs++;
       }
     }
@@ -37,6 +37,25 @@ export function enhanceDocument(data,w,h,mode="color"){
     coarse[ty*nx+tx]=neighbors[Math.floor((neighbors.length-1)*.65)];
   }
   // Reject isolated dark/ink-heavy tiles; retain coherent shadow regions.
+  // Preserve enclosed dark panels in continuous-tone modes rather than erase content.
+  const sorted=Array.from(bg).sort((a,b)=>a-b);
+  const globalPaper=sorted[Math.floor((sorted.length-1)*.85)];
+  if(mode!=="bw"&&globalPaper>=150){
+    const visited=new Uint8Array(bg.length);
+    for(let k=0;k<bg.length;k++){
+      if(visited[k]||bg[k]>=globalPaper*.76)continue;
+      const q=[k];visited[k]=1;let touches=false;
+      for(let j=0;j<q.length;j++){
+        const i=q[j],x=i%nx,y=Math.floor(i/nx);
+        if(x===0||y===0||x===nx-1||y===ny-1)touches=true;
+        for(const z of [x>0?i-1:-1,x<nx-1?i+1:-1,y>0?i-nx:-1,y<ny-1?i+nx:-1]){
+          if(z>=0&&!visited[z]&&bg[z]<globalPaper*.76){visited[z]=1;q.push(z);}
+        }
+      }
+      if(!touches&&q.length>=4)for(const i of q)bg[i]=Math.max(bg[i],globalPaper*.94);
+    }
+  }
+  const fine=bg.slice();
   for(let i=0;i<bg.length;i++)bg[i]=Math.max(bg[i],coarse[i]*.70);
   const wr=cs?clamp(cs/Math.max(rs,1),.86,1.16):1;
   const wg=cs?clamp(cs/Math.max(gs,1),.86,1.16):1;
@@ -47,11 +66,20 @@ export function enhanceDocument(data,w,h,mode="color"){
     for(let x=0;x<w;x++){
       const i=y*w+x,j=i*4,gx=clamp((x+.5)/tile-.5,0,nx-1),x0=Math.floor(gx),x1=Math.min(nx-1,x0+1),fx=gx-x0;
       const a=bg[y0*nx+x0]*(1-fx)+bg[y0*nx+x1]*fx,b=bg[y1*nx+x0]*(1-fx)+bg[y1*nx+x1]*fx;
-      const paper=Math.max(35,a*(1-fy)+b*fy);
+      let paper=Math.max(35,a*(1-fy)+b*fy);
       const r=data[j]*wr,g=data[j+1]*wg,bl=data[j+2]*wb,l=Y(r,g,bl);
       const raw=Y(data[j],data[j+1],data[j+2]);
       const chroma=Math.max(data[j],data[j+1],data[j+2])-Math.min(data[j],data[j+1],data[j+2]);
-      const ratio=raw/paper;
+      // Only paper-like neutral pixels can use a nearby dark-side estimate.
+      if(chroma<35&&paper-raw>35){
+        let match=paper;
+        for(let yy=Math.max(0,y0-1);yy<=Math.min(ny-1,y1+1);yy++)
+          for(let xx=Math.max(0,x0-1);xx<=Math.min(nx-1,x1+1);xx++){
+            const z=fine[yy*nx+xx];
+            if(z>=55&&Math.abs(raw-z)<Math.abs(raw-match))match=z;
+          }
+        if(paper-match>35&&Math.abs(raw-match)<8)paper=match;
+      }
       // Preserve dark strokes and saturated graphics; brighten paper more aggressively.
       const gain=clamp(246/paper,.85,3.0);
       const mix=1-.45*clamp(chroma/100,0,1);

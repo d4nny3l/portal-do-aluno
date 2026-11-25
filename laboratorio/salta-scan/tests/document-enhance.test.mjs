@@ -1,5 +1,7 @@
 import { enhanceDocument } from '../js/document-enhance.mjs';
 import { test } from 'node:test';
+import { enhance as legacy } from '../js/vision.js';
+import assert from 'node:assert/strict';
 function checks(enhance){
   const assert=(condition,name)=>{if(!condition)throw new Error(name);results.push(name)};
   const results=[],w=360,h=480;
@@ -27,3 +29,14 @@ function checks(enhance){
   return {results,measurements:{gradientSpreadBefore:Math.abs(at(image,40,7)-at(image,320,7)),gradientSpreadAfter:spread}};
 }
 test('DOC-ENHANCE-01 synthetic regression checks',()=>{console.log(checks(enhanceDocument));});
+
+function additionalTests(candidate,legacy){
+ const w=360,h=480,pix=(a,x,y,c=0)=>a[(y*w+x)*4+c],make=(f)=>{const a=new Uint8ClampedArray(w*h*4);for(let y=0;y<h;y++)for(let x=0;x<w;x++)a.set([...f(x,y),255],(y*w+x)*4);return a;};
+ const panel=make((x,y)=>x>110&&x<260&&y>180&&y<320?[130,130,130]:[220,220,220]),shadow=make((x,y)=>{let v=x<180?90:230;return [v,v,v]}),warm=make(()=>[215,190,160]);
+ const outputs={};
+ for(const [key,im,pt] of [["panel",panel,[185,250]],["shadowBoundary",shadow,[175,7]],["warm",warm,[40,7]]]){
+   const values=[legacy,candidate].map(f=>{const a=f(im,w,h,"color");return [0,1,2].map(c=>pix(a,...pt,c))});outputs[key]={legacy:values[0],candidate:values[1]};
+ }
+ return outputs;
+}
+test('document content and lighting comparison',()=>{const m=additionalTests(enhanceDocument,legacy);assert.ok(m.panel.candidate[0]<=185);assert.ok(m.shadowBoundary.candidate[0]>=210);assert.ok(Math.max(...m.warm.candidate)-Math.min(...m.warm.candidate)<=25);});
