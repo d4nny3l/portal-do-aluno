@@ -37,7 +37,7 @@ function savePrefs() {
 
 /* ---------- worker ---------- */
 
-const worker = new Worker("js/worker.js", { type: "module" });
+const worker = new Worker("js/worker.js?v=doc-enhance-01", { type: "module" });
 const pending = new Map();
 let wid = 0;
 worker.onmessage = (e) => {
@@ -474,6 +474,7 @@ async function processPage(page, img = null) {
   const res = await callWorker({
     op: "process", data: img.data, w: img.width, h: img.height,
     corners: page.corners, mode: page.mode || S.mode, rot: page.rot, maxSide: MAX_SIDE,
+    enhancement: new URLSearchParams(location.search).get("enhance") === "primary" ? "primary" : "document",
   }, [img.data.buffer]);
   const c = document.createElement("canvas");
   c.width = res.w; c.height = res.h;
