@@ -52,6 +52,31 @@ jobs:
           git cat-file -e 7080d2de0b5a01bbe417b71732221a869e7a4d42^{commit}
       - if: steps.print_scope.outputs.print_only != 'true'
         run: npm ci --prefix assessments-lab --ignore-scripts --no-audit --no-fund
+      - name: PR 136 diagnostic — independently rebuild pinned baseline and candidate twice (no approval or deployment)
+        if: github.event.pull_request.number == 136
+        run: |
+          node --input-type=module <<'NODE'
+          import {createRequire} from 'node:module';
+          import {readFileSync} from 'node:fs';
+          import {createHash} from 'node:crypto';
+          import {execFileSync} from 'node:child_process';
+          import path from 'node:path';
+          const root=process.cwd(),require=createRequire(path.join(root,'assessments-lab/package.json'));
+          const {build,version}=require('esbuild');
+          const hash=b=>createHash('sha256').update(b).digest('hex');
+          const worker='assessments-service/worker.mjs',base='0fa1b402cad9d4d84a5376ce1bd132da7df20b7c';
+          const matrix=JSON.parse(readFileSync('assessments-service/dependencies.json'));
+          const original=execFileSync('git',['show',base+':'+worker]);
+          const current=readFileSync(worker);
+          const baseline=async()=>build({absWorkingDir:root,entryPoints:[path.join(root,worker)],bundle:true,write:false,format:'esm',platform:'browser',target:'es2022',keepNames:true,metafile:true,plugins:[{name:'baseline-worker-bytes',setup(b){b.onLoad({filter:/assessments-service[\\/]worker\.mjs$/},()=>({contents:original.toString(),loader:'js'}))}}]});
+          const candidate=async()=>build({absWorkingDir:root,entryPoints:[path.join(root,worker)],bundle:true,write:false,format:'esm',platform:'browser',target:'es2022',keepNames:true,metafile:true});
+          const prior=await baseline(),a=await candidate(),b=await candidate();
+          const graph=x=>Object.keys(x.metafile.inputs).map(p=>path.relative(root,path.resolve(root,p.split('?')[0])).split(path.sep).join('/')).sort();
+          for(const x of [prior,a,b])if(JSON.stringify(graph(x))!==JSON.stringify(matrix.inputs.map(y=>y.path).sort()))throw Error('Unexpected graph');
+          if(hash(prior.outputFiles[0].text)!==matrix.expectedBundleSha256)throw Error('Historical bundle mismatch');
+          if(a.outputFiles[0].text!==b.outputFiles[0].text)throw Error('Non-reproducible candidate');
+          console.log('PR136-CANDIDATE-HASHES '+JSON.stringify({version,baselineBundle:hash(prior.outputFiles[0].text),bundle:hash(a.outputFiles[0].text),workerSha256:hash(current),workerBlob:execFileSync('git',['hash-object',worker],{encoding:'utf8'}).trim(),inputs:graph(a).length,repeated:true}));
+          NODE
       - if: steps.print_scope.outputs.print_only != 'true' && steps.camera_scope.outputs.camera_only != 'true'
         run: node assessments-service/integrity.mjs
       - if: steps.print_scope.outputs.print_only != 'true' && steps.camera_scope.outputs.camera_only != 'true'
