@@ -1,13 +1,15 @@
 // Scancat — UI: camera, live detection, capture, tray, editor, export.
 
 import * as V from "./vision.js";
+import {experimentalPaperDetector} from "./experimental-detector.mjs?v=edge-first-lab-1";
 import { buildPdf } from "./pdf.js";
 import {cameraScene,createCardFlow,cardCaptured,cardReadFinished,cardNotDetected,cardDetected} from "./card-flow.js?v=primary-restore-1";
 import {fullPaperVisible} from "./paper-geometry.js?v=primary-restore-1";
 
 const $ = (id) => document.getElementById(id);
 
-const DET_W = 384;           // detection frame width (px)
+const DET_W = 384;           // same detection frame for proven camera geometry
+const DETECTOR_MODE = new URLSearchParams(window.location.search).get("engine")==="primary" ? "primary" : "edge";
 const LOOP_MS = 66;          // ~15 detections per second
 const STEADY_FRAMES = 10;    // hold still this many frames to auto-capture
 const MIN_SCORE = 0.22;      // below this a quad is ignored
@@ -358,7 +360,7 @@ function loop(ts) {
   const img = detCtx.getImageData(0, 0, dw, dh);
   const t0 = performance.now();
   let q = null;
-  try { q = V.detectDocument(img.data, dw, dh); } catch (e) { console.error(e); }
+  try { q = experimentalPaperDetector(img.data,dw,dh,{mode:DETECTOR_MODE,misses:S.det.lost}); } catch (e) { console.error(e); }
   S.det.ms = performance.now() - t0;
   S.det.w = dw; S.det.h = dh;
   track(q, dw, dh, cameraScene(img.data,dw,dh));
@@ -767,7 +769,7 @@ async function importPhoto(file,{showManual=true}={}) {
  const tc=thumb.getContext("2d",{willReadFrequently:true});
  tc.drawImage(c,0,0,dw,dh);
  let detection=null;
- try{const rgba=tc.getImageData(0,0,dw,dh);detection=V.detectDocument(rgba.data,dw,dh);}catch(error){console.warn("Detecção automática indisponível:",error);}
+ try{const rgba=tc.getImageData(0,0,dw,dh);detection=experimentalPaperDetector(rgba.data,dw,dh,{mode:DETECTOR_MODE,fullResolution:true});}catch(error){console.warn("Detecção automática indisponível:",error);}
  const found=Boolean(detection&&detection.score>=MIN_SCORE&&detection.corners?.length===4);
  const pts=found?detection.corners.map(p=>[p[0]*fw/dw,p[1]*fh/dh]):V.frameCorners(fw,fh);
  const page={
@@ -880,7 +882,7 @@ function wire() {
   window.addEventListener("pagehide", () => { S.running=false; stopStream(); });
 
   // test hooks
-  window.__scancat = { S, capture, downloadPdf, processPage, V, buildPdf, startCamera, stopCameraView, requestContinuousFocus, importPhoto }; window.__saltaScan = window.__scancat;
+  window.__scancat = { S, capture, downloadPdf, processPage, V, buildPdf, startCamera, stopCameraView, requestContinuousFocus, importPhoto, detectorMode: DETECTOR_MODE }; window.__saltaScan = window.__scancat;
 }
 
 wire();
