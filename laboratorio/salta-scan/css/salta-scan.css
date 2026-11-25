@@ -130,3 +130,26 @@ button,select,input{touch-action:manipulation;}
 .import-status[data-error="true"]{color:#a23b45;}
 #scanner:not(.camera-on){margin-top:1rem;}
 @media(max-width:540px){.import-status{font-size:.75rem;}}
+
+/* SALTA Scan Lab — câmera e foco automático; visualização com fechar explícito. */
+.editor-close{
+ position:absolute;top:.54rem;right:.55rem;z-index:25;
+ display:grid;place-items:center;width:44px;height:44px;min-width:44px;
+ border:1px solid #d9dff4;border-radius:12px;
+ background:#fff;color:#282e5e;font-size:1.8rem;line-height:1;
+ box-shadow:0 5px 14px rgba(30,37,74,.14);cursor:pointer;
+}
+.editor-close:hover,.editor-close:focus-visible{background:#f1f0ff;color:#4546ba;}
+.modal-card{position:relative;}
+.modal-card>.modal-bar{padding-right:3.65rem;}
+#closeCamera{border-color:#e2e4ee;color:#6b5166;background:#fefcff;}
+#closeCamera:hover{background:#fff2f7;border-color:#ebc6d1;}
+.controls{justify-content:flex-start;}
+.controls .ctls{flex:1 1 auto;}
+.controls #res{margin-left:auto;}
+@media(max-width:540px){
+ .editor-close{top:.38rem;right:.38rem;width:42px;height:42px;}
+ .modal-card>.modal-bar{padding-right:3.2rem;}
+ .controls #res{width:100%;margin:0;}
+ #closeCamera{margin-left:auto;}
+}
