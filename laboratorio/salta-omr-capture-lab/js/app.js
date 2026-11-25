@@ -3,7 +3,7 @@
 import * as V from "./vision.js";
 import { buildPdf } from "./pdf.js";
 import {cameraRegion, cameraStageAspect} from "./framing.js";
-import {sampleQuality, shouldCapture, selectBestFrame} from "./quality.js?v=paper-turbo-2";
+import {sampleQuality, shouldCapture, selectBestFrame} from "./quality.js?v=paper-turbo-3";
 
 const $ = (id) => document.getElementById(id);
 
@@ -41,7 +41,7 @@ function savePrefs() {
 
 /* ---------- worker ---------- */
 
-const worker = new Worker("js/worker.js?v=paper-turbo-2", { type: "module" });
+const worker = new Worker("js/worker.js?v=paper-turbo-3", { type: "module" });
 const pending = new Map();
 let wid = 0;
 worker.onmessage = (e) => {
