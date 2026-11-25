@@ -2,48 +2,123 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {CAMERA_POLICY,cameraConstraints,createPaperTracker,createSafeCamera} from '../camera.mjs';
 import {createCaptureSession} from '../session.mjs';
+import {withdrawalFrame} from '../withdrawal.mjs';
+const W=384,H=540;
 const paper={score:.9,support:.8,corners:[[30,30],[354,30],[354,500],[30,500]]};
-const partial={...paper,corners:[[0,0],[354,30],[354,500],[30,500]]};
-const scene=n=>({valid:true,energy:.1,edges:Array(264).fill(n)});
-function leaf(t,now=0){let r;for(let i=0;i<11;i++)r=t.observe(paper,384,540,scene(0),now+i*66);return r;}
-function withdraw(t,now){for(const dt of [0,200,450,700])t.observe(null,384,540,scene(.5),now+dt);}
+const shift=(q,dx,dy=0)=>({...q,corners:q.corners.map(([x,y])=>[x+dx,y+dy])});
+const partial=shift(paper,-100),moved=shift(paper,-22),nudge=shift(paper,-4);
+function fixture(desk=[37,51,67]){
+ function frame(q,{cover=null,shadow=false,variant=0}={}){
+  const rgba=new Uint8ClampedArray(W*H*4),[x0,y0]=q?.corners[0]||[0,0],x1=q?.corners[2][0]||0,y1=q?.corners[2][1]||0;
+  for(let y=0;y<H;y++)for(let x=0;x<W;x++){
+   let color=desk;
+   if(q&&x>=x0&&x<x1&&y>=y0&&y<y1){
+    const u=(x-x0)/(x1-x0),v=(y-y0)/(y1-y0);
+    const mark=(u>.15&&u<.85&&Math.floor(v*12)%3===1&&Math.floor(u*12)%4!==variant);
+    const shade=shadow&&x>W*.45?70:0;
+    color=mark?[30,30,30]:[242-shade,242-shade,242-shade];
+   }
+   if(cover)color=cover;
+   rgba.set([...color,255],(y*W+x)*4);
+  }
+  return withdrawalFrame(rgba,W,H,q?.corners);
+ }
+ return {still:frame(paper),moved:frame(moved),partial:frame(partial),nudge:frame(nudge),other:frame(paper,{variant:1}),
+  otherMoved:frame(moved,{variant:1}),desk:frame(null),black:frame(null,{cover:[0,0,0]}),
+  darkCover:frame(null,{cover:[10,10,10]}),brightCover:frame(null,{cover:[245,245,245]}),
+  shadow:frame(paper,{shadow:true}),shadowMoved:frame(moved,{shadow:true})};
+}
+const normal=fixture();
+function observe(t,q,frame,now){return t.observe(q,W,H,frame,now)}
+function leaf(t,now=0,f=normal,frame=f.still){let r;for(let i=0;i<11;i++)r=observe(t,paper,frame,now+i*66);return r;}
+function deskFrames(t,now,f=normal,offsets=[0,200,450,700]){for(const dt of offsets)observe(t,null,f.desk,now+dt);}
+function withdraw(t,now,f=normal,{slow=false}={}){
+ if(slow)observe(t,nudge,f.nudge,now-180);
+ observe(t,moved,f.moved,now-132);
+ if(slow)observe(t,partial,f.partial,now-66);
+ deskFrames(t,now,f);
+}
 test('exact frozen parameters and native browser negotiation, no forced aspect ratio',()=>{
  assert.deepEqual(CAMERA_POLICY,{STEADY_FRAMES:10,DET_W:384,LOOP_MS:66,MIN_SCORE:.22,SMOOTH:.45,MAX_SIDE:2600});
  for(const ua of ['iPhone AppleWebKit CriOS','Macintosh AppleWebKit Safari'])assert.equal(cameraConstraints(ua).video.width.ideal,1920);
  assert.equal(cameraConstraints('Chrome AppleWebKit').video.width.ideal,3840);
  assert.equal(cameraConstraints('Chrome').video.aspectRatio,undefined);
 });
-test('ten stable observations; stationary paper and clock alone never rearm',()=>{
- const t=createPaperTracker();const capture=leaf(t);assert.equal(capture.captureId,1);
- t.finish(1);for(let i=0;i<100;i++)assert.equal(t.observe(paper,384,540,scene(0),i*1000).captureId,undefined);
- for(let i=0;i<100;i++)t.observe(null,384,540,scene(0),i*1000);
- assert.equal(t.snapshot().phase,'locked');
+test('stationary paper, missing contour and time alone never rearm',()=>{
+ const t=createPaperTracker();assert.equal(leaf(t).captureId,1);t.finish(1);
+ for(let i=0;i<100;i++)assert.equal(observe(t,paper,normal.still,1000+i*1000).captureId,undefined);
+ for(let i=0;i<100;i++)observe(t,null,normal.still,102000+i*1000);
+ deskFrames(t,210000);assert.equal(t.snapshot().phase,'locked','desk with no observed movement is ambiguous');
+ assert.equal(leaf(t,212000).captureId,undefined);
 });
-test('transient absence, partial paper, slow reader and orientation do not bypass lock',()=>{
- const t=createPaperTracker();leaf(t);
- t.observe(null,384,540,scene(.5),1000);t.observe(null,384,540,scene(.5),1300);
- t.observe(partial,384,540,scene(.5),1400);assert.equal(t.snapshot().phase,'locked');
- withdraw(t,2000);assert.equal(t.snapshot().phase,'vacant');
- assert.equal(t.observe(paper,384,540,scene(0),3000).captureId,undefined);
- assert.equal(t.snapshot().phase,'vacant');t.finish(1);assert.equal(leaf(t,4000).captureId,2);
- t.finish(2);t.resetGeometry();withdraw(t,6000);assert.equal(t.snapshot().phase,'locked','first changed-geometry scene becomes reference, not proof');
+test('temporary black, dark and bright obstruction, invalid frame, partial sheet, intense shadow cannot rearm',()=>{
+ for(const obstruction of [normal.black,normal.darkCover,normal.brightCover,null,normal.shadow,normal.partial]){
+  const t=createPaperTracker();leaf(t);t.finish(1);
+  for(const dt of [0,220,440,660,1000])observe(t,null,obstruction,1000+dt);
+  assert.equal(t.snapshot().phase,'locked');assert.equal(leaf(t,3000).captureId,undefined);
+ }
+ const t=createPaperTracker();leaf(t);t.finish(1);
+ observe(t,moved,normal.shadowMoved,1000); // changed pattern, not reliable displacement
+ observe(t,partial,normal.partial,1200);
+ for(const dt of [0,220,440,660])observe(t,null,normal.partial,1400+dt);
+ assert.equal(t.snapshot().phase,'locked');
+ assert.equal(leaf(t,3000).captureId,undefined);
+});
+test('no blackout can complete a previously observed displacement or carry evidence across it',()=>{
+ const t=createPaperTracker();leaf(t);t.finish(1);
+ observe(t,moved,normal.moved,1000);
+ for(const dt of [0,220,440,660])observe(t,null,normal.black,1100+dt);
+ deskFrames(t,2200);
+ assert.equal(t.snapshot().phase,'locked','blackout cancels motion evidence');
+ assert.equal(leaf(t,4000).captureId,undefined);
+});
+for(const [name,color] of [['light',[230,230,230]],['dark',[18,22,26]],['blue',[37,51,67]]]){
+ test('legitimate quick and slow withdrawal on '+name+' desk; similar and identical next cards',()=>{
+  const f=fixture(color);
+  for(const slow of [false,true]){
+   const t=createPaperTracker();assert.equal(leaf(t,0,f).captureId,1);t.finish(1);
+   withdraw(t,1000,f,{slow});assert.equal(t.snapshot().phase,'vacant');
+   assert.equal(leaf(t,2000,f,slow?f.other:f.still).captureId,2);
+   t.finish(2);assert.equal(leaf(t,4000,f,slow?f.other:f.still).captureId,undefined);
+  }
+ });
+}
+test('four observations AND original evidence span; partial or detected paper resets absence',()=>{
+ const t=createPaperTracker();leaf(t);t.finish(1);observe(t,moved,normal.moved,1000);
+ deskFrames(t,1100,normal,[0,100,200,300]);assert.equal(t.snapshot().phase,'locked');
+ observe(t,partial,normal.partial,1500);
+ deskFrames(t,1600,normal,[0,200,450]);assert.equal(t.snapshot().phase,'locked');
+ observe(t,null,normal.desk,2300);assert.equal(t.snapshot().phase,'vacant');
+});
+test('slow read completion cannot let a new sheet cross the in-flight capture',()=>{
+ const t=createPaperTracker();leaf(t);withdraw(t,2000);assert.equal(t.snapshot().phase,'vacant');
+ assert.equal(leaf(t,3000).captureId,undefined);assert.equal(t.snapshot().phase,'vacant');
+ assert.equal(t.finish(99),false);assert.equal(leaf(t,5000).captureId,undefined);
+ assert.equal(t.finish(1),true);assert.equal(leaf(t,6000).captureId,2);
 });
 test('100 sequential cards with proven withdrawals and unique IDs, no arbitrary cap',()=>{
  const t=createPaperTracker();
  for(let i=1;i<=100;i++){
   assert.equal(leaf(t,i*3000).captureId,i);assert.equal(t.finish(i),true);
-  withdraw(t,i*3000+800);
+  withdraw(t,i*3000+1000);
  }
  assert.equal(t.snapshot().phase,'vacant');
  assert.equal(leaf(t,400000).captureId,101,'no 100-card retention/capture ceiling');
 });
-test('slow Worker gap keeps the paper reference; dimension reset never treats an empty desk as paper',()=>{
+test('slow Worker gap and orientation reset invalidate motion; new geometry needs new paper evidence',()=>{
  const t=createPaperTracker();leaf(t);t.finish(1);
- t.resetGeometry({preserveReference:true});withdraw(t,10000);assert.equal(t.snapshot().phase,'vacant');
- assert.equal(leaf(t,12000).captureId,2);t.finish(2);t.resetGeometry();
- withdraw(t,14000);assert.equal(t.snapshot().phase,'locked');
- t.observe(paper,384,540,scene(0),16000);withdraw(t,17000);assert.equal(t.snapshot().phase,'vacant');
- assert.equal(leaf(t,19000).captureId,3);
+ observe(t,moved,normal.moved,1000);t.resetGeometry({preserveReference:true});
+ deskFrames(t,10000);assert.equal(t.snapshot().phase,'locked');
+ assert.equal(leaf(t,12000).captureId,undefined);
+ withdraw(t,14000);assert.equal(t.snapshot().phase,'vacant');
+ assert.equal(leaf(t,16000).captureId,2);t.finish(2);t.resetGeometry();
+ deskFrames(t,18000);assert.equal(t.snapshot().phase,'locked');
+ observe(t,paper,normal.still,20000);withdraw(t,21000);assert.equal(t.snapshot().phase,'vacant');
+ assert.equal(leaf(t,23000).captureId,3);
+});
+test('featureless or fully black supporting scene remains ambiguous, never time-rearms',()=>{
+ const f=fixture([0,0,0]),t=createPaperTracker();leaf(t,0,f);t.finish(1);
+ withdraw(t,2000,f);assert.equal(t.snapshot().phase,'locked');assert.equal(leaf(t,4000,f).captureId,undefined);
 });
 test('capture/session/hash/revision/page pin prevents delayed identity/result crossing',()=>{
  const s=createCaptureSession(),model={templateId:'synthetic',revision:1,pageCount:1},manifest={templateId:'synthetic',revision:1,contentHash:'hash'};

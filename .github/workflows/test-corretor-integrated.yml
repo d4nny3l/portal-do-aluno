@@ -46,7 +46,7 @@ jobs:
         run: |
           node --test corretor/v2/scan-safe/tests/*.test.mjs
           node --test laboratorio/salta-omr-scan-safe-02/integration/single-optical.test.mjs
-          echo '::warning::Scan integration G3/G6 BLOCKED: shaded double marks become a definitive single answer; camera obstruction can rearm the same card. Passing counterexample tests are not safety approval. No deployment in this workflow.'
+          echo '::warning::Scan integration remains publication-blocked: G3 optical counterexamples and G6 unobservable/ambiguous withdrawal and physical validation. Passing synthetic regressions does not authorize deployment.'
       - name: Check OMR modules and inline scripts
         run: |
           node --check plataforma/admin-shell.mjs

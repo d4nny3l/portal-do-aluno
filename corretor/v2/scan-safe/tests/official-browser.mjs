@@ -45,10 +45,13 @@ try{
    });
    await c.addInitScript(()=>{
     const canvas=document.createElement('canvas');canvas.width=1000;canvas.height=1500;
-    const ctx=canvas.getContext('2d');let image=null,timer=null,stream=null;
+    const ctx=canvas.getContext('2d');let image=null,timer=null,stream=null,offset=80,blocked=false;
     const fixture={requests:[],constraints:[],stopped:0};
-    const draw=()=>{ctx.fillStyle='#253343';ctx.fillRect(0,0,1000,1500);if(image)ctx.drawImage(image,80,100,840,1188);stream?.getVideoTracks()[0]?.requestFrame?.();};
-    fixture.show=async src=>{if(!src){image=null;draw();return;}const next=new Image();next.src=src;await next.decode();image=next;draw();};
+    const draw=()=>{ctx.fillStyle=blocked?'#000':'#253343';ctx.fillRect(0,0,1000,1500);if(image&&!blocked)ctx.drawImage(image,offset,100,840,1188);stream?.getVideoTracks()[0]?.requestFrame?.();};
+    fixture.show=async src=>{offset=80;blocked=false;if(!src){image=null;draw();return;}const next=new Image();next.src=src;await next.decode();image=next;draw();};
+    fixture.cover=value=>{blocked=value;draw();};
+    // Observe actual translated paper pixels before the exposed original desk.
+    fixture.withdraw=async()=>{offset=25;draw();await new Promise(r=>setTimeout(r,330));offset=-420;draw();await new Promise(r=>setTimeout(r,140));image=null;draw();};
     Object.defineProperty(navigator,'mediaDevices',{configurable:true,value:{async getUserMedia(options){
      fixture.requests.push(options);
      if(!canvas.captureStream)throw Error('Synthetic captureStream unavailable');
@@ -121,7 +124,11 @@ try{
    await before.close();
    const count=await p.locator('#captureHistory li').count();
    await p.waitForTimeout(1000);assert.equal(await p.locator('#captureHistory li').count(),count,'same paper cannot duplicate');
-   await p.evaluate(()=>window.__scanFixture.show(null));await p.waitForTimeout(900);
+   await p.evaluate(()=>window.__scanFixture.cover(true));await p.waitForTimeout(900);
+   await p.evaluate(()=>window.__scanFixture.cover(false));await p.waitForTimeout(1000);
+   assert.equal(await p.locator('#captureHistory li').count(),count,'fresh black obstruction must not recapture the same sheet');
+   assert.equal(await p.locator('#cameraLiveBadge').getAttribute('data-phase'),'locked');
+   await p.evaluate(()=>window.__scanFixture.withdraw());await p.waitForFunction(()=>document.getElementById('cameraLiveBadge').dataset.phase==='vacant',null,{timeout:10000});
    assert.equal(await p.locator('#cameraGradeValue').innerText(),'1,00','grade persists during withdrawal');
    await p.evaluate(src=>window.__scanFixture.show(src),origin+'/corretor/v2/scan-safe/validation/moderate-AB.png');
    await p.waitForFunction(n=>document.querySelectorAll('#captureHistory li').length===n,count+1,{timeout:15000});
@@ -138,7 +145,7 @@ try{
     const cdp=await c.newCDPSession(p),memory=[];
     for(let cycle=1;cycle<=Number(process.env.SALTA_SCAN_CYCLES);cycle++){
      const previous=await p.locator('#captureHistory li').first().textContent();
-     await p.evaluate(()=>window.__scanFixture.show(null));
+     await p.evaluate(()=>window.__scanFixture.withdraw());
      await p.waitForFunction(()=>document.getElementById('cameraLiveBadge').dataset.phase==='vacant',null,{timeout:10000});
      await p.evaluate(src=>window.__scanFixture.show(src),origin+'/corretor/v2/scan-safe/validation/moderate-A.png');
      await p.waitForFunction(old=>document.querySelector('#captureHistory li').textContent!==old&&!document.getElementById('cameraGrade').hidden,previous,{timeout:15000});
@@ -151,7 +158,7 @@ try{
     console.log('Camera → grade median/p95',report.performance.medianMs,report.performance.p95Ms);
    }
    await p.locator('#camera').click();assert.equal(await p.locator('#video').evaluate(v=>v.srcObject),null);
-   report.results.push({name,photoGrade,native,continuousSamePaperSuppressed:true,automaticWithdrawalRearmed:true});
+   report.results.push({name,photoGrade,native,continuousSamePaperSuppressed:true,blackObstructionSuppressed:true,automaticWithdrawalRearmed:true});
    await c.close();
   }finally{await browser.close();}
  }
