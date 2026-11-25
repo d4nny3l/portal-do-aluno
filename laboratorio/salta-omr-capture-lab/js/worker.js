@@ -1,11 +1,19 @@
 // Scancat — page processing off the main thread: warp → enhance → rotate.
 
 import * as V from "./vision.js";
+import {sampleQuality} from "./quality.js";
 
 
 self.onmessage = (e) => {
   const { id, op } = e.data;
   try {
+    if (op === "detect-paper") {
+      const {data,w,h}=e.data;
+      const result=V.detectDocument(data,w,h);
+      const quality=result?sampleQuality(data,w,h,result.corners):null;
+      self.postMessage({id,detection:result,quality});
+      return;
+    }
     if (op === "process") {
       const { data, w, h, corners, mode, rot, maxSide } = e.data;
       const size = V.outputSize(corners, maxSide || 2600);
