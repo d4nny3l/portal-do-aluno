@@ -4,6 +4,8 @@ import * as V from "./vision.js";
 import { buildPdf } from "./pdf.js";
 import {cameraRegion, cameraStageAspect} from "./framing.js";
 import {sampleQuality, shouldCapture, selectBestFrame} from "./quality.js?v=paper-turbo-3";
+import {createCardFlow,cardCaptured,cardReadFinished,cardNotDetected,cardDetected} from "./card-flow.js";
+import {fullPaperVisible,addPaperMargin} from "./paper-geometry.js";
 
 const $ = (id) => document.getElementById(id);
 
@@ -20,6 +22,7 @@ const S = {
   busy: 0, editing: null, corner: null,
   frameMode: "fit", cameraFrame: null, cameraFrameKey: "",
   captureEpoch: 0, detectorBusy: false,
+  cardFlow: createCardFlow(),
   det: { smooth: null, stable: 0, lost: 99, armed: true, lastCap: null, score: 0, support: 0, ms: 0, w: 0, h: 0 },
 };
 
@@ -213,6 +216,7 @@ function stopCameraView() {
   video.srcObject = null;
   resetDetection();
   S.cameraFrame = null; S.cameraFrameKey = "";
+  S.cardFlow = createCardFlow();
   document.body.classList.remove("live");
   $("scanner").classList.remove("camera-on");
   $("scanner").hidden = S.pages.length === 0;
@@ -368,6 +372,7 @@ async function startCamera() {
       }
     },{once:true});
     S.running=true;
+    S.cardFlow=createCardFlow();
     resetDetection();
     setPill("looking for a page…");
     requestAnimationFrame(loop);
@@ -425,7 +430,7 @@ async function loop(ts) {
     S.det.ms=performance.now()-started;
     // Todos os cantos têm coordenadas DO quadro realmente detectado.
     S.det.w=dw;S.det.h=dh;
-    track(result.detection,dw,dh,result.quality);
+    track(result.detection,dw,dh,result.quality,result.scene);
   }catch(error){
     if(S.running&&epoch===S.captureEpoch){
       console.warn("Detector de folha indisponível:",error);
@@ -442,30 +447,53 @@ function maxShift(a, b) {
   return m;
 }
 
-function track(q, dw, dh, quality=null) {
-  const D=S.det;
-  if(S.busy){setPill("processing…");setRing(null);return;}
-  if(!q || q.score<MIN_SCORE || !Array.isArray(q.corners) || q.corners.length!==4){
+function track(q,dw,dh,quality=null,scene=null){
+  const D=S.det,gate=S.cardFlow;
+  if(S.busy){setPill("Processando cartão…");setRing(null);return;}
+  const now=performance.now();
+  const candidate=!!(q&&q.score>=MIN_SCORE&&Array.isArray(q.corners)&&q.corners.length===4);
+  const fullyVisible=candidate&&fullPaperVisible(q.corners,dw,dh);
+  if(!fullyVisible){
     D.lost++;
     if(D.lost>2){
       D.smooth=null;D.stable=0;D.consecutive=0;D.firstAt=0;
       D.score=0;D.support=0;D.sharpness=0;
       drawOverlay(null);setRing(null);
     }
-    // Requer ausência da folha para fotografar a seguinte; evita cópias
-    // quando o usuário move o telefone sobre o MESMO cartão.
-    if(D.lost>4)D.armed=true; // folha retirada por ~5 ciclos: próxima pronta sem espera fixa
-    if(D.lost>2)setPill(D.armed?"looking for a page — hold it up, fill the frame":"captured — next page");
+    if(candidate){
+      // Folha visível porém com canto junto ao limite: NÃO disparar.
+      // Também não confundir esse estado com retirada do cartão.
+      cardDetected(gate);
+      setPill("Folha cortada. Afaste um pouco para mostrar os quatro cantos.","bad");
+    }else{
+      cardNotDetected(gate,{now,scene});
+      if(gate.phase==="vacant")setPill(gate.readDone?
+        "Pronto para a próxima folha.":
+        "Finalizando leitura anterior; câmera continua aberta.");
+      else if(gate.phase==="locked")setPill(gate.readDone?
+        "Cartão salvo. Troque a folha para continuar.":
+        "Cartão fotografado. Interpretando respostas…");
+      else if(D.lost>2)setPill("Procurando a folha inteira…");
+    }
     return;
   }
-  const now=performance.now();
-  D.lost=0;D.score=q.score;D.support=q.support;D.sharpness=quality?.sharpness||0;
+  const previousPhase=gate.phase;
+  if(!cardDetected(gate)){
+    setRing(null);drawOverlay(null);
+    setPill(gate.readDone?
+      "Este cartão já foi fotografado. Troque a folha.":
+      "Lendo cartão anterior; câmera continua aberta.","ok");
+    return;
+  }
+  if(previousPhase==="vacant"){
+    D.smooth=null;D.stable=0;D.consecutive=0;D.firstAt=0;D.armed=true;
+  }
+  D.lost=0;D.score=q.score;D.support=q.support;D.scene=scene;
+  D.sharpness=quality?.sharpness||0;
   if(!D.smooth){
     D.smooth=q.corners.map(p=>[...p]);D.stable=0;D.consecutive=1;D.firstAt=now;
   }else{
     const shift=maxShift(q.corners,D.smooth);
-    // Um salto grande inicia novo ciclo; pequenas oscilações não precisam
-    // imobilizar completamente o professor para capturar um quadro nítido.
     if(shift>.18*dw){
       D.smooth=q.corners.map(p=>[...p]);D.stable=0;D.consecutive=1;D.firstAt=now;
     }else{
@@ -481,18 +509,24 @@ function track(q, dw, dh, quality=null) {
   drawOverlay(D.smooth,q.support>=GOOD_SUPPORT);
   if(S.auto&&D.armed){
     setRing(Math.min(1,D.consecutive/STEADY_FRAMES));
-    setPill(D.stable>0?"Folha reconhecida. Captura automática…":"Folha detectada. Buscando quadro nítido…",
+    setPill(D.stable>0?"Folha completa. Captura automática…":"Buscando quadro nítido…",
       q.support>=GOOD_SUPPORT?"ok":"");
     if(shouldCapture({consecutive:D.consecutive,stable:D.stable,ageMs:now-D.firstAt,
       score:q.score,support:q.support,sharpness:D.sharpness})){
       D.armed=false;D.lastCaptureMs=now;
       D.lastCap=D.smooth.map(p=>[...p]);
+      cardCaptured(gate,{now,scene:D.scene});
       setRing(null);
-      void capture("auto");
+      void capture("auto").then(page=>{
+        if(!page&&S.running&&S.cardFlow===gate){
+          S.cardFlow=createCardFlow();
+          D.armed=true;
+          setPill("Foto não finalizada. Reposicione a folha.","bad",1500);
+        }
+      });
     }
   }else{
-    setRing(null);
-    setPill("captured — next page",q.support>=GOOD_SUPPORT?"ok":"");
+    setRing(null);setPill("Processando cartão…","ok");
   }
 }
 
