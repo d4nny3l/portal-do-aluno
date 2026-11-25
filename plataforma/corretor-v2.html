@@ -180,7 +180,7 @@ function invalidateScan(){
  modelLoadGeneration++;
  scanContext.invalidate();scanWorker.cancel();scoreGeneration++;pageReadings.clear();captureBusy=false;importBusy=false;
  currentReading=null;manualMode=false;manualPoints=[];showCameraGrade(null);
- activeObservations=[];activeHistoryEntry=null;$('answers').replaceChildren();$('scanScore').hidden=true;$('scanScore').dataset.stale='true';
+ activeObservations=[];activeHistoryEntry=null;$('answers').replaceChildren();$('scanScore').hidden=true;$('scanScore').dataset.stale='true';$('status').textContent='';
  currentDocument=null;rawRaster=null;normalizedRaster=null;$('canvas').hidden=true;$('canvas').width=$('canvas').height=0;
 }
 function scanPage(){const page=Number($('scanPage').value);if(!Number.isSafeInteger(page)||page<1||page>template.pageCount)throw Error('Confirme a página impressa antes da captura.');return page;}
@@ -190,7 +190,7 @@ function beginPhoto(){
  const token=scanContext.begin(template,activeManifest,scanPage());scanWorker.cancel();markLastReadingPending();
  normalizedRaster=null;rawRaster=null;currentDocument=null;manualMode=false;manualPoints=[];
  $('manualAlign').hidden=true;$('manualHelp').hidden=true;$('canvas').hidden=true;$('canvas').width=$('canvas').height=0;
- $('canvas').classList.remove('manual-align');captureBusy=true;return token;
+ $('canvas').classList.remove('manual-align');$('status').textContent='Processando cartão…';captureBusy=true;return token;
 }
 async function processPhoto(photo,{source='camera',token=null}={}){
  token=token||beginPhoto();
@@ -233,7 +233,7 @@ function syncScanInputs(){const field=$('scanPageField'),select=$('scanPage');fi
 function resetScanDefault(){if(exactScanModel)return;stopCamera();invalidateScan();template=null;activeManifest=null;activeObservations=[];activeHistoryEntry=null;$('answers').replaceChildren();$('scanScore').hidden=true;$('scanModelStatus').textContent=''}
 function ensureScanTemplate(){if(!template){const type=$('scanType').value,count=Number($('scanCount').value);if(!Number.isInteger(count)||count<1||count>150)throw new Error('Informe de 1 a 150 questões.');template=createTemplate([{type,count,label:'Questões objetivas'}],{layoutVersion:'v2'});activeManifest=createCardManifest(template);$('scanModelStatus').textContent='';currentPage=Math.min(currentPage,template.pageCount);syncScanInputs();}}
 function parseKey(){return parseAnswerKey($('answerKey').value,template.questions)}
-function calculateScore(){const scoreBox=$('scanScore');typeof showCameraGrade==='function'&&showCameraGrade(null);if(!activeObservations.length){scoreBox.hidden=true;return}const stale=scoreBox.dataset.stale==='true',lastReading=stale?'<span class="scan-last-reading">Última leitura bem-sucedida — nova leitura não concluída</span>':'';const block=(title,message)=>{scoreBox.hidden=false;scoreBox.dataset.review='true';scoreBox.innerHTML=lastReading+`<strong>${title}</strong><span>${message}</span>`};if(template.pageCount>1){block('Aguardando as demais páginas','A nota final requer todas as páginas conferidas e reunidas.');return}const provisional=scoreBox.dataset.identity==='review';if(provisional&&activeObservations.some(o=>o.state==='read'&&o.recognition==='partial')){block('Leitura inconclusiva','Confira a marcação parcial antes da nota provisória.');return}if(activeObservations.length!==template.questions.length||new Set(activeObservations.map(item=>item.questionId)).size!==template.questions.length){block('Leitura incompleta','A nota exige todas as questões deste cartão.');return}const unresolved=activeObservations.filter(item=>!item.reviewed).length;if(unresolved){block(`Leitura inconclusiva: ${unresolved} questão(ões)`,'Evidência insuficiente. Faça nova captura ou corrija manualmente se houver confirmação.');return}const key=parseKey();if(!key.valid){block('Gabarito necessário',key.error);return}let maxUnits;try{maxUnits=/^0(?:[.,]0{1,4})?$/.test($('scanMaxScore').value)?0n:BigInt(scoreInputUnits($('scanMaxScore').value,2))}catch{block('Valor inválido','Informe valor máximo compatível com a nota.');return}const correct=activeObservations.filter(item=>item.answer&&key.answers.get(item.questionId)===item.answer).length;const grade=formatScore(maxUnits*BigInt(correct),POINT_SCALE*BigInt(template.questions.length));scoreBox.hidden=false;scoreBox.dataset.review='false';scoreBox.dataset.provisional=String(provisional);scoreBox.innerHTML=lastReading+`<strong>${provisional?'Nota provisória':stale?'Nota da última leitura':'Nota final'} ${grade} / ${formatScore(maxUnits,POINT_SCALE)}</strong><span>${correct} acerto(s) em ${template.questions.length} questão(ões). Branco, dupla e erro valem zero. Nota não registrada no Diário.</span>`;if(!stale&&typeof showCameraGrade==='function')showCameraGrade(grade);if(activeHistoryEntry){activeHistoryEntry.provisional=provisional;activeHistoryEntry.grade=grade;activeHistoryEntry.correct=correct;activeHistoryEntry.count=template.questions.length;renderHistory()}}
+function calculateScore(){const scoreBox=$('scanScore');typeof showCameraGrade==='function'&&showCameraGrade(null);if(!activeObservations.length){scoreBox.hidden=true;return}const stale=scoreBox.dataset.stale==='true',lastReading=stale?'<span class="scan-last-reading">Última leitura bem-sucedida — nova leitura não concluída</span>':'';const block=(title,message)=>{scoreBox.hidden=false;scoreBox.dataset.review='true';scoreBox.innerHTML=lastReading+`<strong>${title}</strong><span>${message}</span>`;$('status').textContent=title+'. '+message;};if(template.pageCount>1){block('Aguardando as demais páginas','A nota final requer todas as páginas conferidas e reunidas.');return}const provisional=scoreBox.dataset.identity==='review';if(provisional&&activeObservations.some(o=>o.state==='read'&&o.recognition==='partial')){block('Leitura inconclusiva','Confira a marcação parcial antes da nota provisória.');return}if(activeObservations.length!==template.questions.length||new Set(activeObservations.map(item=>item.questionId)).size!==template.questions.length){block('Leitura incompleta','A nota exige todas as questões deste cartão.');return}const unresolved=activeObservations.filter(item=>!item.reviewed).length;if(unresolved){block(`Leitura inconclusiva: ${unresolved} questão(ões)`,'Evidência insuficiente. Faça nova captura ou corrija manualmente se houver confirmação.');return}const key=parseKey();if(!key.valid){block('Gabarito necessário',key.error);return}let maxUnits;try{maxUnits=/^0(?:[.,]0{1,4})?$/.test($('scanMaxScore').value)?0n:BigInt(scoreInputUnits($('scanMaxScore').value,2))}catch{block('Valor inválido','Informe valor máximo compatível com a nota.');return}const correct=activeObservations.filter(item=>item.answer&&key.answers.get(item.questionId)===item.answer).length;const grade=formatScore(maxUnits*BigInt(correct),POINT_SCALE*BigInt(template.questions.length));scoreBox.hidden=false;scoreBox.dataset.review='false';scoreBox.dataset.provisional=String(provisional);scoreBox.innerHTML=lastReading+`<strong>${provisional?'Nota provisória':stale?'Nota da última leitura':'Nota final'} ${grade} / ${formatScore(maxUnits,POINT_SCALE)}</strong><span>${correct} acerto(s) em ${template.questions.length} questão(ões). Branco, dupla e erro valem zero. Nota não registrada no Diário.</span>`;if(!stale&&typeof showCameraGrade==='function')showCameraGrade(grade);$('status').textContent=provisional?'Identificação pendente. Nota provisória sem vínculo.':activeObservations.some(o=>o.state==='reviewed')?'Classificação atualizada. Nenhuma nota foi registrada no Diário.':'';if(activeHistoryEntry){activeHistoryEntry.provisional=provisional;activeHistoryEntry.grade=grade;activeHistoryEntry.correct=correct;activeHistoryEntry.count=template.questions.length;renderHistory()}}
 // The public scorer uses exact integer arithmetic; an explicitly selected,
 // server-verified private revision uses weighted block sums and its pinned format.
 const scoreWithoutPrivateSelection=calculateScore;
@@ -244,7 +244,7 @@ calculateScore=function(){
  if(!activeObservations.length){box.hidden=true;return}
  const stale=box.dataset.stale==='true';
  const oldReading=stale?'<span class="scan-last-reading">Última leitura bem-sucedida — nova leitura não concluída</span>':'';
- const blocked=(name,message)=>{box.hidden=false;box.dataset.review='true';box.innerHTML=oldReading+'<strong>'+name+'</strong><span>'+message+'</span>'};
+ const blocked=(name,message)=>{box.hidden=false;box.dataset.review='true';box.innerHTML=oldReading+'<strong>'+name+'</strong><span>'+message+'</span>';$('status').textContent=name+'. '+message;};
  if(!template||!activeManifest||
     activeManifest.contentHash!==privateSelection.manifestHash||
     template.questionCount!==privateSelection.template.questionCount){
@@ -278,6 +278,7 @@ calculateScore=function(){
   box.append(details);
  }
  if(!stale&&typeof showCameraGrade==='function')showCameraGrade(result.total);
+ $('status').textContent=result.provisional?'Identificação pendente. Nota provisória sem vínculo.':activeObservations.some(o=>o.state==='reviewed')?'Classificação atualizada. Nenhuma nota foi registrada no Diário.':'';
  if(activeHistoryEntry){
   activeHistoryEntry.provisional=result.provisional===true;activeHistoryEntry.grade=result.total;activeHistoryEntry.correct=result.correct;
   activeHistoryEntry.count=result.count;renderHistory();
@@ -309,7 +310,7 @@ function readNormalized(result,{token=scanContext.current}={}){
  }
  activeHistoryEntry={id:token.captureId,at:Date.now(),readCount:result.observations.filter(o=>o.state==='read').length,identityPending:result.identity?.state==='review'};
  scanHistory.push(activeHistoryEntry);renderAnswers(result);renderHistory();
- $('status').textContent=result.identity?.state==='review'?'Identificação pendente. A nota provisória não está vinculada a um estudante.':result.observations.some(o=>o.state==='review')?'Confira as respostas inconclusivas.':'';
+ $('status').textContent=result.identity?.state==='review'?'Identificação pendente. A nota provisória não está vinculada a um estudante.':result.observations.some(o=>o.state==='review')?'Confira as respostas inconclusivas.':$('scanScore').dataset.review==='true'?$('scanScore').textContent:'';
  setCameraProgress(true,true,!result.needsReview);return result;
 }
 $('manualAlign').onclick=()=>{

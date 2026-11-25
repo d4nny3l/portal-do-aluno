@@ -61,11 +61,18 @@ try{
    });
    const p=await c.newPage();p.on('pageerror',e=>report.errors.push(name+': '+e.message));
    await p.goto(url);await p.waitForFunction(()=>document.body.classList.contains('salta-auth-ready'));
+   await p.locator('#teacherShellToggle').waitFor();
+   // Complete the viewport movement before a real pointer click: WebKit's
+   // smooth document scrolling can otherwise leave the tab under the fixed bar.
+   await p.locator('[data-view="corrigir"]').evaluate(e=>e.scrollIntoView({block:'center',behavior:'instant'}));
+   await p.evaluate(()=>new Promise(resolve=>requestAnimationFrame(()=>requestAnimationFrame(resolve))));
    await p.locator('[data-view="corrigir"]').click();
    await p.locator('#loadManifest').setInputFiles({name:'modelo-sintetico.json',mimeType:'application/json',buffer:Buffer.from(JSON.stringify(model.manifest))});
    await p.waitForFunction(()=>document.querySelector('#scanModelStatus').textContent.includes('Modelo importado'));
-   await p.locator('#answerKey').evaluate((e,text)=>{e.value=text;e.dispatchEvent(new Event('input',{bubbles:true}));},model.template.questions.map(q=>q.number+' A').join('\n'));
    await p.locator('#file').setInputFiles(path.join(root,'corretor/v2/scan-safe/validation/moderate-A.png'));
+   await p.waitForFunction(()=>document.getElementById('status').textContent.includes('Gabarito necessário'));
+   assert.equal(await p.locator('#photoGrade').getAttribute('hidden'),'');
+   await p.locator('#answerKey').evaluate((e,text)=>{e.value=text;e.dispatchEvent(new Event('input',{bubbles:true}));},model.template.questions.map(q=>q.number+' A').join('\n'));
    await p.waitForFunction(()=>document.querySelector('#captureHistory').textContent.includes('nota final'));
    const photoGrade=await p.locator('#photoGrade').innerText();assert.equal(photoGrade,'Nota 1,00');
    assert.equal(await p.locator('#canvas').getAttribute('hidden'),null);
