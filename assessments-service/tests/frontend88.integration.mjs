@@ -29,8 +29,9 @@ for(const places of [0,1,2])test(`#88 real UI + candidate Auth/D1: authenticated
   await button('Salvar avaliação').handlers.click();const saved=ui.controller.view().record;
   assert.ok(saved?.id);assert.equal(saved.definition.display.scoreDecimals,places);assert.equal(saved.totalUnits,'100000');
   const persisted=(await(await h.request('/assessments/'+saved.id)).json()).record;assert.deepEqual(persisted.definition,saved.definition);
-  await button('Usar na correção').handlers.click();assert.equal(selected.plan.scoreDecimals,places);assert.equal(selected.manifestHash,manifest.contentHash);
-  await button('Duplicar avaliação').handlers.click();const copy=ui.controller.view().record;assert.notEqual(copy.id,saved.id);assert.equal(copy.definition.display.scoreDecimals,places);
+  assert.equal(button('Usar na correção'),undefined);assert.equal(selected?.assessmentId,saved.id);assert.equal(selected.plan.scoreDecimals,places);assert.equal(selected.manifestHash,manifest.contentHash);
+  await button('Abrir avaliação').handlers.click();assert.equal(selected?.assessmentId,saved.id);assert.equal(selected.revision,saved.revision);
+  await button('Duplicar avaliação').handlers.click();const copy=ui.controller.view().record;assert.notEqual(copy.id,saved.id);assert.equal(copy.definition.display.scoreDecimals,places);assert.equal(selected,null,'draft copy does not carry the original key');
   assert.equal((await(await h.request('/assessments/'+saved.id+'/revisions/1')).json()).record.definition.display.scoreDecimals,places);
  }finally{h.close()}
 });

@@ -11,6 +11,7 @@ const allowed=new Set([
  'plataforma/corretor-v2.html','corretor/v2/assessments/private-library.mjs',
  'plataforma/tests/avaliacoes-biblioteca-unificada.test.mjs','plataforma/tests/corretor-ux-ready-01.test.mjs','plataforma/tests/piloto-avaliacoes-isolado.test.mjs',
  'assessments-service/tests/embedded-browser.mjs','assessments-service/tests/editor-frontend-browser.mjs',
+ 'assessments-service/tests/embedded-library.integration.mjs','assessments-service/tests/frontend88.integration.mjs',
  'assessments-service/test-composition.mjs','scripts/verify-auto-correction-scope.mjs',
  '.github/workflows/test-assessments-embedded.yml','.github/workflows/test-avaliacoes-biblioteca.yml','.github/workflows/test-direct-pdf.yml'
 ]);
