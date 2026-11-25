@@ -47,7 +47,7 @@ try{
     const canvas=document.createElement('canvas');canvas.width=1000;canvas.height=1500;
     const ctx=canvas.getContext('2d');let image=null,timer=null,stream=null,offset=80,blocked=false;
     const fixture={requests:[],constraints:[],stopped:0};
-    const draw=()=>{ctx.fillStyle=blocked?'#000':'#253343';ctx.fillRect(0,0,1000,1500);if(image&&!blocked)ctx.drawImage(image,offset,100,840,1188);stream?.getVideoTracks()[0]?.requestFrame?.();};
+    const draw=()=>{ctx.fillStyle=blocked?'#000':'#253343';ctx.fillRect(0,0,1000,1500);if(!blocked){ctx.fillStyle='#394757';ctx.fillRect(0,240,42,300);ctx.fillRect(958,645,42,375);ctx.fillRect(200,0,230,63);ctx.fillRect(570,1437,230,63);}if(image&&!blocked)ctx.drawImage(image,offset,100,840,1188);stream?.getVideoTracks()[0]?.requestFrame?.();};
     fixture.show=async src=>{offset=80;blocked=false;if(!src){image=null;draw();return;}const next=new Image();next.src=src;await next.decode();image=next;draw();};
     fixture.cover=value=>{blocked=value;draw();};
     // Observe actual translated paper pixels before the exposed original desk.

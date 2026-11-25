@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
 import vm from 'node:vm';
 import {CAMERA_POLICY, createPaperTracker} from '../../corretor/v2/scan-safe/camera.mjs';
+import {normal as removal,moved as movedPaper} from '../../corretor/v2/scan-safe/tests/rearm-fixture.mjs';
 import {createCaptureSession} from '../../corretor/v2/scan-safe/session.mjs';
 
 const html = readFileSync(new URL('../corretor-v2.html', import.meta.url), 'utf8');
@@ -18,7 +19,7 @@ const source = [
 ].join('\n');
 const paper = {score: .9, support: .8, corners: [[30, 30], [354, 30], [354, 500], [30, 500]]};
 const landscape = {score: .9, support: .8, corners: [[30, 30], [500, 30], [500, 354], [30, 354]]};
-const scene = edge => ({valid: true, energy: .1, edges: Array(264).fill(edge)});
+const scene = edge => edge === 0 ? removal.still : edge === .1 ? removal.desk : null;
 const photo = () => ({data: new Uint8ClampedArray(20 * 30 * 4), w: 20, h: 30,
   corners: [[1, 1], [19, 1], [19, 29], [1, 29]]});
 
@@ -162,7 +163,7 @@ test('inconclusive or identity-pending reading never claims recognized; a foreig
   }
 });
 
-test('structural withdrawal clears capture progress; brief losses and unchanged desk structure preserve the lock', async () => {
+test('observed withdrawal clears capture progress; brief losses and unchanged desk structure preserve the lock', async () => {
   const h = setup(), first = h.ready();
   const pending = h.callbacks.onCapture(photo()); h.resolve(h.jobs[0]); await pending;
   h.tracker.finish(first.captureId);
@@ -175,6 +176,7 @@ test('structural withdrawal clears capture progress; brief losses and unchanged 
   h.observe({quad: null, signature: scene(.1), at: 90100});
   h.observe({quad: null, signature: scene(.1), at: 90400});
   assert.equal(h.observe({at: 90450}).phase, 'locked', 'Sheet returning interrupts structural withdrawal proof');
+  h.observe({quad: movedPaper, signature: removal.moved, at: 90800});
   for (const at of [91000, 91200, 91450, 91700]) h.observe({quad: null, signature: scene(.1), at});
   assert.equal(h.tracker.snapshot().phase, 'vacant');
   assert.deepEqual(indicators(h), [false, false, false]);

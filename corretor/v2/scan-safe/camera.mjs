@@ -7,7 +7,7 @@ import {fullPaperVisible,addPaperMargin} from '../../../laboratorio/salta-omr-sc
 import {frameFresh} from '../../../laboratorio/salta-omr-scan-safe-02/js/safe-scan.mjs';
 import {createCardFlow,cardCaptured,cardReadFinished,cardDetected} from '../../../laboratorio/salta-omr-scan-safe-02/js/card-flow-safe.mjs';
 
-import {withdrawalFrame,withdrawalReference,withdrawalMotion,withdrawalSurface,usableWithdrawalFrame} from './withdrawal.mjs';
+import {withdrawalFrame,withdrawalReference,withdrawalMotion,withdrawalSurface,usableWithdrawalFrame,withdrawalContinuity} from './withdrawal.mjs';
 
 export const CAMERA_POLICY=Object.freeze({STEADY_FRAMES:10,DET_W:384,LOOP_MS:66,MIN_SCORE:.22,SMOOTH:.45,MAX_SIDE:2600});
 export const isWebKit=ua=>/iPhone|iPad|iPod/i.test(ua)||(/AppleWebKit/i.test(ua)&&!/Chrome|Chromium|CriOS|FxiOS|Edg|OPR|SamsungBrowser/i.test(ua));
@@ -26,20 +26,23 @@ export function createPaperTracker(){
   observe(q,w,h,scene,now){
    const paper=!!(q&&q.score>=CAMERA_POLICY.MIN_SCORE&&q.corners?.length===4);
    const entire=paper&&fullPaperVisible(q.corners,w,h);
+   const frame=()=>typeof scene==='function'?scene():scene;
    if(flow.phase==='locked'){
     // The frozen structural signature alone cannot prove a sheet was removed.
     // Require a coherent translation of the observed sheet AND its original
     // surroundings to be visibly exposed. No contour, darkness or time alone
     // is never a withdrawal. Unknown frames break the evidence sequence.
-    if(!usableWithdrawalFrame(scene,w,h)){
+    const evidence=frame();
+    if(!usableWithdrawalFrame(evidence,w,h)){
      moved=false;flow.absentSince=null;flow.absentFrames=0;
     }else if(!flow.reference||flow.reference.w!==w||flow.reference.h!==h){
-     flow.reference=entire?withdrawalReference(scene,q.corners):null;
+     flow.reference=entire?withdrawalReference(evidence,q.corners):null;
      moved=false;flow.absentSince=null;flow.absentFrames=0;
     }else if(entire){
-     moved=withdrawalMotion(flow.reference,scene,q.corners);
+     moved=withdrawalMotion(flow.reference,evidence,q.corners);
      flow.absentSince=null;flow.absentFrames=0;
-    }else if(q||!moved||!withdrawalSurface(flow.reference,scene)){
+    }else if(q||!moved||!withdrawalSurface(flow.reference,evidence)){
+     if(!withdrawalContinuity(flow.reference,evidence))moved=false;
      flow.absentSince=null;flow.absentFrames=0;
     }else{
      // Exactly the original four fresh observations spanning >=650 ms.
@@ -50,7 +53,7 @@ export function createPaperTracker(){
     if(!entire){misses++;if(misses>3){smooth=null;stable=0;}}
     return {corners:entire?smooth:null,stable:0,phase:flow.phase,
      message:flow.phase==='vacant'?'Retirada confirmada. Apresente a próxima folha.':!flow.readDone?'Lendo as respostas…':
-      !flow.reference?'Mostre uma folha inteira e retire-a para retomar com segurança.':'Retire a folha mantendo a mesa visível.'};
+      !flow.reference?'Retirada não comprovada. Mostre a folha inteira e referências da mesa.':'Retire a folha mantendo a mesa visível.'};
    }
    if(!entire){
     misses++;if(misses>3){smooth=null;stable=0;}
@@ -69,7 +72,7 @@ export function createPaperTracker(){
    }
    const result={corners:smooth.map(p=>[...p]),stable,phase:flow.phase,message:'Mantenha a folha estável…'};
    if(stable>=CAMERA_POLICY.STEADY_FRAMES){
-    const id=++sequence;cardCaptured(flow,{scene:withdrawalReference(scene,q.corners),cardId:id});moved=false;stable=0;
+    const id=++sequence;cardCaptured(flow,{scene:withdrawalReference(frame(),q.corners),cardId:id});moved=false;stable=0;
     result.captureId=id;result.message='Capturando cartão…';result.phase='locked';
    }
    return result;
@@ -125,7 +128,7 @@ export function createSafeCamera({video,preview,onCapture,onStatus=()=>{},onCont
   try{
    ctx.drawImage(video,0,0,w,h);const image=ctx.getImageData(0,0,w,h);
    const q=experimentalPaperDetector(image.data,w,h,{mode:'edge',misses:tracker.snapshot().misses});
-   const observation=tracker.observe(q,w,h,withdrawalFrame(image.data,w,h,q?.corners),ts);
+   const observation=tracker.observe(q,w,h,()=>withdrawalFrame(image.data,w,h,q?.corners),ts);
    onContour(observation.corners,w,h);onStatus(observation.message,observation);
    if(!observation.captureId)return;
    const request=epoch,id=observation.captureId;

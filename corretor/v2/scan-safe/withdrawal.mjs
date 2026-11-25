@@ -1,7 +1,7 @@
 // Candidate-only G6 evidence. No optical reading, timing, camera negotiation
 // or frozen laboratory changes. Conservative: unknown/ambiguous surfaces block.
 const GRID=24,PATTERN=12;
-const COLOR_TOL=24,FOREGROUND_TOL=32;
+const COLOR_TOL=24,FOREGROUND_TOL=32,LANDMARK_MIN=14,LANDMARK_TOL=7;
 const distance=(a,b)=>Math.max(...a.map((x,i)=>Math.abs(x-b[i])));
 const mean=a=>a.reduce((s,x)=>s+x,0)/a.length;
 const luminance=c=>.299*c[0]+.587*c[1]+.114*c[2];
@@ -51,7 +51,7 @@ const boundary=(q,w,h)=>Math.min(...q.flatMap(([x,y])=>[x,w-x,y,h-y]));
 export function withdrawalReference(frame,corners){
  if(!frame||!usableWithdrawalFrame(frame,frame.w,frame.h)||!frame.pattern||
     Math.max(...frame.pattern)-Math.min(...frame.pattern)<18)return null;
- const q=corners.map(p=>[...p]),margin=Math.min(frame.w,frame.h)*.018;
+ const q=corners.map(p=>[...p]),margin=Math.hypot(frame.w,frame.h)/(2*GRID)+2;
  const sides=Array.from({length:4},()=>[]),inside=[];
  for(let i=0;i<frame.cells.length;i++){
   const cell=frame.cells[i],d=edgeDistances(q,cell);
@@ -67,12 +67,23 @@ export function withdrawalReference(frame,corners){
  // objects. Mild material/lighting variations remain acceptable.
  const center=[0,1,2].map(k=>{const v=palette.map(c=>c[k]).sort((a,b)=>a-b);return v[Math.floor(v.length/2)];});
  if(palette.filter(c=>distance(c,center)<=COLOR_TOL).length<palette.length*.95)return null;
+ // A uniform desk cannot distinguish paper movement from camera movement.
+ // Retain contrast-bearing cells on at least three independent edges. The
+ // cell footprint is entirely outside the paper; edge ink is not a landmark.
+ const landmarks=sides.map(side=>side.filter(i=>{const d=distance(frame.cells[i].color,center);return d>=LANDMARK_MIN&&d<=COLOR_TOL;})).filter(group=>group.length>=2);
+ if(landmarks.length<3)return null;
  const foreground=inside.filter(i=>distance(frame.cells[i].color,center)>FOREGROUND_TOL);
  if(foreground.length<4)return null;
- return {w:frame.w,h:frame.h,q,pattern:[...frame.pattern],sides,anchors:frame.cells.map(c=>c.color),center,foreground};
+ return {w:frame.w,h:frame.h,q,pattern:[...frame.pattern],sides,landmarks,anchors:frame.cells.map(c=>c.color),center,foreground};
+}
+function matchedLandmarkGroups(ref,frame){
+ return ref.landmarks.filter(group=>group.filter(i=>distance(frame.cells[i].color,ref.anchors[i])<=LANDMARK_TOL).length>=group.length*.9).length;
+}
+export function withdrawalContinuity(ref,frame){
+ return !!ref&&usableWithdrawalFrame(frame,ref.w,ref.h)&&matchedLandmarkGroups(ref,frame)>=2;
 }
 export function withdrawalMotion(ref,frame,q){
- if(!ref||!frame?.pattern||q?.length!==4||!q.every(finitePoint))return false;
+ if(!ref||!frame?.pattern||q?.length!==4||!q.every(finitePoint)||!withdrawalContinuity(ref,frame))return false;
  const scale=Math.min(ref.w,ref.h);
  const dx=mean(q.map((p,i)=>p[0]-ref.q[i][0])),dy=mean(q.map((p,i)=>p[1]-ref.q[i][1]));
  // Require coherent displacement towards an edge, not jitter, rotation,
@@ -80,11 +91,12 @@ export function withdrawalMotion(ref,frame,q){
  if(Math.hypot(dx,dy)<.035*scale||q.some((p,i)=>Math.hypot(p[0]-ref.q[i][0]-dx,p[1]-ref.q[i][1]-dy)>.025*scale)||
     boundary(ref.q,ref.w,ref.h)-boundary(q,ref.w,ref.h)<.015*scale)return false;
  const error=mean(frame.pattern.map((v,i)=>Math.abs(v-ref.pattern[i])));
- const features=ref.pattern.map((v,i)=>({v,i})).filter(p=>Math.abs(p.v-mean(ref.pattern))>=16);
+ const average=mean(ref.pattern);
+ const features=ref.pattern.map((v,i)=>({v,i})).filter(p=>Math.abs(p.v-average)>=16);
  return features.length>=3&&error<=20&&features.filter(p=>Math.abs(frame.pattern[p.i]-p.v)<=32).length>=features.length*.75;
 }
 export function withdrawalSurface(ref,frame){
- if(!ref||!usableWithdrawalFrame(frame,ref.w,ref.h))return false;
+ if(!ref||!usableWithdrawalFrame(frame,ref.w,ref.h)||matchedLandmarkGroups(ref,frame)!==ref.landmarks.length)return false;
  // Verify the actual stationary surroundings independently on all four sides.
  if(ref.sides.some(side=>side.filter(i=>distance(frame.cells[i].color,ref.anchors[i])<=COLOR_TOL).length<side.length*.9))return false;
  // All sampled cells must look like the exposed support; in particular the

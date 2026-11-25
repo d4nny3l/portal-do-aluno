@@ -2,33 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {CAMERA_POLICY,cameraConstraints,createPaperTracker,createSafeCamera} from '../camera.mjs';
 import {createCaptureSession} from '../session.mjs';
-import {withdrawalFrame} from '../withdrawal.mjs';
-const W=384,H=540;
-const paper={score:.9,support:.8,corners:[[30,30],[354,30],[354,500],[30,500]]};
-const shift=(q,dx,dy=0)=>({...q,corners:q.corners.map(([x,y])=>[x+dx,y+dy])});
-const partial=shift(paper,-100),moved=shift(paper,-22),nudge=shift(paper,-4);
-function fixture(desk=[37,51,67]){
- function frame(q,{cover=null,shadow=false,variant=0}={}){
-  const rgba=new Uint8ClampedArray(W*H*4),[x0,y0]=q?.corners[0]||[0,0],x1=q?.corners[2][0]||0,y1=q?.corners[2][1]||0;
-  for(let y=0;y<H;y++)for(let x=0;x<W;x++){
-   let color=desk;
-   if(q&&x>=x0&&x<x1&&y>=y0&&y<y1){
-    const u=(x-x0)/(x1-x0),v=(y-y0)/(y1-y0);
-    const mark=(u>.15&&u<.85&&Math.floor(v*12)%3===1&&Math.floor(u*12)%4!==variant);
-    const shade=shadow&&x>W*.45?70:0;
-    color=mark?[30,30,30]:[242-shade,242-shade,242-shade];
-   }
-   if(cover)color=cover;
-   rgba.set([...color,255],(y*W+x)*4);
-  }
-  return withdrawalFrame(rgba,W,H,q?.corners);
- }
- return {still:frame(paper),moved:frame(moved),partial:frame(partial),nudge:frame(nudge),other:frame(paper,{variant:1}),
-  otherMoved:frame(moved,{variant:1}),desk:frame(null),black:frame(null,{cover:[0,0,0]}),
-  darkCover:frame(null,{cover:[10,10,10]}),brightCover:frame(null,{cover:[245,245,245]}),
-  shadow:frame(paper,{shadow:true}),shadowMoved:frame(moved,{shadow:true})};
-}
-const normal=fixture();
+import {W,H,paper,partial,moved,nudge,normal,makeWithdrawalFixture as fixture} from './rearm-fixture.mjs';
 function observe(t,q,frame,now){return t.observe(q,W,H,frame,now)}
 function leaf(t,now=0,f=normal,frame=f.still){let r;for(let i=0;i<11;i++)r=observe(t,paper,frame,now+i*66);return r;}
 function deskFrames(t,now,f=normal,offsets=[0,200,450,700]){for(const dt of offsets)observe(t,null,f.desk,now+dt);}
@@ -117,8 +91,19 @@ test('slow Worker gap and orientation reset invalidate motion; new geometry need
  assert.equal(leaf(t,23000).captureId,3);
 });
 test('featureless or fully black supporting scene remains ambiguous, never time-rearms',()=>{
- const f=fixture([0,0,0]),t=createPaperTracker();leaf(t,0,f);t.finish(1);
- withdraw(t,2000,f);assert.equal(t.snapshot().phase,'locked');assert.equal(leaf(t,4000,f).captureId,undefined);
+ for(const color of [[0,0,0],[37,51,67],[230,230,230]]){
+  const f=fixture(color,false),t=createPaperTracker();leaf(t,0,f);t.finish(1);
+  withdraw(t,2000,f);assert.equal(t.snapshot().phase,'locked');assert.equal(leaf(t,4000,f).captureId,undefined);
+ }
+});
+test('camera pan and interruption by a bright obstruction do not establish withdrawal',()=>{
+ for(const interruption of ['panned','brightCover']){
+  const t=createPaperTracker();leaf(t);t.finish(1);
+  if(interruption==='panned')observe(t,moved,normal.panned,1000);
+  else {observe(t,moved,normal.moved,1000);observe(t,null,normal.brightCover,1100);}
+  deskFrames(t,2000);assert.equal(t.snapshot().phase,'locked');
+  assert.equal(leaf(t,4000).captureId,undefined);
+ }
 });
 test('capture/session/hash/revision/page pin prevents delayed identity/result crossing',()=>{
  const s=createCaptureSession(),model={templateId:'synthetic',revision:1,pageCount:1},manifest={templateId:'synthetic',revision:1,contentHash:'hash'};

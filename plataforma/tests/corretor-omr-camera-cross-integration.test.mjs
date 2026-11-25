@@ -7,6 +7,7 @@ import {scorePlanPreview,scoreIntegratedPages} from '../../corretor/v2/scan-safe
 import {createCaptureSession} from '../../corretor/v2/scan-safe/session.mjs';
 import {processCapture} from '../../corretor/v2/scan-safe/processor.mjs';
 import {createPaperTracker,CAMERA_POLICY,cameraConstraints} from '../../corretor/v2/scan-safe/camera.mjs';
+import {normal as removal,moved as movedPaper} from '../../corretor/v2/scan-safe/tests/rearm-fixture.mjs';
 import {createCameraPresentation} from '../../laboratorio/salta-omr-scan-safe-02/js/camera-presentation.mjs';
 import {createTemplate} from '../../corretor/v2/omr/template.mjs';
 import {createCardManifest} from '../../corretor/v2/omr/render.mjs';
@@ -168,7 +169,7 @@ test('one captured RGBA produces independent document and optical products with 
 test('ten stable observations capture once; transient absence and unchanged scenery never rearm; proven withdrawal admits the next sheet',async()=>{
  const h=integrationHarness();h.$('read').disabled=false;const tracker=createPaperTracker();
  const paper={score:.9,support:.8,corners:[[30,30],[354,30],[354,500],[30,500]]};
- const scene=n=>({valid:true,energy:.1,edges:Array(264).fill(n)});
+ const scene=n=>n===0?removal.still:removal.desk;
  async function frame(p,signature,time){const o=tracker.observe(p,384,540,signature,time);h.editor.frame(o.message,o);
   if(o.captureId){await h.editor.capture(h.photo);tracker.finish(o.captureId)}return o;}
  for(let i=0;i<10;i++)await frame(paper,scene(0),i*66);
@@ -181,6 +182,7 @@ test('ten stable observations capture once; transient absence and unchanged scen
  await frame(paper,scene(0),3400);
  for(const t of [4000,5000,10000])await frame(null,scene(0),t);
  assert.equal(tracker.snapshot().phase,'locked','elapsed time cannot prove withdrawal');
+ await frame(movedPaper,removal.moved,10800);
  for(const t of [11000,11200,11450,11700])await frame(null,scene(.5),t);
  assert.equal(tracker.snapshot().phase,'vacant');assert.equal(h.$('cameraGradeValue').textContent,'10,00');
  for(let i=0;i<11;i++)await frame(paper,scene(0),12000+i*66);
