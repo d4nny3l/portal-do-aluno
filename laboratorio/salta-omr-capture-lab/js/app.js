@@ -441,7 +441,7 @@ function track(q, dw, dh, quality=null) {
     }
     // Requer ausência da folha para fotografar a seguinte; evita cópias
     // quando o usuário move o telefone sobre o MESMO cartão.
-    if(D.lost>4 && performance.now()-D.lastCaptureMs>1200)D.armed=true;
+    if(D.lost>4)D.armed=true; // folha retirada por ~5 ciclos: próxima pronta sem espera fixa
     if(D.lost>2)setPill(D.armed?"looking for a page — hold it up, fill the frame":"captured — next page");
     return;
   }
