@@ -106,3 +106,13 @@ body.live #hero{display:none}
  #scanner.camera-on #res{order:3;width:100%;margin:0}
  #scanner.camera-on .keys{font-size:.62rem}
 }
+
+/* FIDUCIAL-01: o polígono delimita o papel extrapolado; as quatro bolinhas
+   indicam os centros reais dos quadrados pretos SALTA. */
+#scanner.camera-on #quad{stroke:#736dff;stroke-width:3;fill:rgba(106,104,235,.09)}
+#scanner.camera-on #dots circle{
+ fill:#7468ff;stroke:#fff;stroke-width:3;
+ paint-order:stroke;vector-effect:non-scaling-stroke;
+ filter:drop-shadow(0 0 2px #101329a8)
+}
+#scanner.camera-on .pill{max-width:min(92%,430px);white-space:normal;line-height:1.4}
