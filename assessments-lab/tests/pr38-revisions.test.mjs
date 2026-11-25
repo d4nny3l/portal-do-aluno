@@ -42,7 +42,7 @@ function editorFixture(){
 
 function provisionalScore(bundle){
  const template=importCardManifest(bundle.manifest).template;
- const fields={answerKey:{value:bundleKeyText(bundle)},scanMaxScore:{value:'10'},scanScore:{hidden:true,dataset:{},innerHTML:''}};
+ const fields={status:{textContent:''},answerKey:{value:bundleKeyText(bundle)},scanMaxScore:{value:'10'},scanScore:{hidden:true,dataset:{},innerHTML:''}};
  const answers=new Map(bundle.answerKey.questions.map(q=>[q.questionId,q.correct]));
  const observations=template.questions.map((q,index)=>({
   questionId:q.questionId,

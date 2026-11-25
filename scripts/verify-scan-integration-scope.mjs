@@ -25,7 +25,7 @@ export function verifyScanIntegrationScope(){
   'plataforma/tests/corretor-camera-progress-p1.test.mjs','plataforma/tests/corretor-omr-camera-cross-integration.test.mjs',
   'plataforma/tests/int-scan-01-frame-choice.test.mjs','plataforma/tests/corretor-interface.test.mjs',
   'plataforma/tests/corretor-visual-flow.test.mjs','plataforma/tests/corretor-ux-ready-01.test.mjs',
-  'scripts/verify-scan-integration-scope.mjs','assessments-service/tests/embedded-browser.mjs','assessments-lab/tests/editor-contract.test.mjs',
+  'scripts/verify-scan-integration-scope.mjs','assessments-service/tests/embedded-browser.mjs','assessments-lab/tests/editor-contract.test.mjs','assessments-lab/tests/pr38-revisions.test.mjs',
   'plataforma/tests/corretor-review-suggestions.test.mjs',
   '.github/workflows/test-corretor-integrated.yml','.github/workflows/test-assessments-embedded.yml',
   '.github/workflows/test-avaliacoes-biblioteca.yml','.github/workflows/test-direct-pdf.yml',
