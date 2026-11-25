@@ -63,7 +63,7 @@ function verified(q,rgba,w,h,method){
  if(!q||q.score<.22||q.corners?.length!==4)return null;
  const evidence=borderEvidence(rgba,w,h,q.corners);
  if(!evidence.valid)return null;
- return{found:true,corners:q.corners,source:method,score:q.score,evidence};
+ return{found:true,corners:q.corners,source:method,score:q.score, support:q.support ?? 0, areaFrac:q.areaFrac ?? 0, evidence};
 }
 /** Candidate only. Call from an isolated benchmark.
  * allowFullResolution=true requests an expensive second pass ONLY on misses;
