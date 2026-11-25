@@ -66,7 +66,7 @@ Medições feitas com execução JS de teste (V8 de ferramenta), três execuçõ
 
 Há ruído/estampas simples e cenas idealizadas nesses rasters; o cenário de fundo complexo não representa um benchmark padronizado. O custo de reduzir os pixels pode diminuir a precisão dos cantos em ~1–2 px nos exemplos claros, o que precisa ser validado contra OMR real. Não aceitar melhora de tempo à custa de resultados incorretos.
 
-**Regressões do protótipo:** 13 casos de teste, 45 asserções aprovadas no executor JS isolado, incluindo claro, escuro, baixo contraste, inclinado, fundo com linhas, ausência de folha, escala de coordenadas e preservação dos pixels. O caso de folha minúscula foi registrado como `TODO`, não como falha que deve permanecer para sempre.
+**Regressões do protótipo:** 12 testes aprovados, 44 asserções aprovadas e 1 caso TODO (folha extremamente distante), em executor JS isolado, incluindo claro, escuro, baixo contraste, inclinado, fundo com linhas, ausência de folha, escala de coordenadas e preservação dos pixels. O caso de folha minúscula foi registrado como `TODO`, não como falha que deve permanecer para sempre.
 
 ## 6. Exclusões e gates para uma adoção futura
 
