@@ -3,6 +3,8 @@
 
 **Snapshot de código para todos os links:** `ca3216112c45860743bfa21ee9efcac7035263ac`, branch `main` **antes** do registro documental.  
 **Status:** fontes já versionadas e disponíveis para leitura integral no GitHub; **integração no Corretor ainda NÃO implementada**.  
+**Issue de coordenação:** [#132 — DIRETOR / OMR-SCAN-20Q](https://github.com/d4nny3l/portal-do-aluno/issues/132).  
+
 **Documento de comando:** [encaminhamento ao Diretor](SALTA_OMR_SCAN_20Q_ENCAMINHAMENTO_DIRETOR_20261124.md).  
 **Manifesto legível por máquina:** [lista de arquivos, SHA dos blobs, papéis e links](SALTA_OMR_SCAN_20Q_FONTES_AUDITORIA_20261124.json).
 
