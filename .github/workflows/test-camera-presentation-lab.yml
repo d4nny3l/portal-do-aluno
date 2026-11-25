@@ -1,0 +1,40 @@
+name: SALTA laboratory camera presentation
+on:
+  pull_request:
+    paths:
+      - 'laboratorio/salta-omr-capture-lab/**'
+      - '.github/workflows/test-camera-presentation-lab.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  camera-presentation:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+      - name: Laboratory regression and existing Corretor contracts
+        run: |
+          node --test laboratorio/salta-omr-capture-lab/tests/*.test.mjs
+          node --test corretor/v2/tests/*.test.mjs stats-worker/tests/*.test.mjs plataforma/tests/*.test.mjs
+          node --check laboratorio/salta-omr-capture-lab/js/app.js
+          node --check laboratorio/salta-omr-capture-lab/js/camera-presentation.mjs
+          git diff --check
+      - name: Prepare isolated browser test tools
+        run: |
+          npm install --prefix "$RUNNER_TEMP/camera-browser" --no-save --ignore-scripts --no-audit --no-fund playwright@1.65.1
+          node "$RUNNER_TEMP/camera-browser/node_modules/playwright/cli.js" install --with-deps chromium webkit
+      - name: WebKit EDGE / PRIMARY and Chromium with synthetic MediaStream
+        env:
+          SALTA_PLAYWRIGHT_MODULE: ${{ runner.temp }}/camera-browser/node_modules/playwright/index.mjs
+          SALTA_CAMERA_OUT: ${{ runner.temp }}/camera-presentation
+        run: node laboratorio/salta-omr-capture-lab/tests/camera-presentation-browser.mjs
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: laboratory-camera-synthetic-evidence
+          path: ${{ runner.temp }}/camera-presentation/
+          retention-days: 7

@@ -5,6 +5,7 @@ import {experimentalPaperDetector} from "./experimental-detector.mjs?v=edge-firs
 import { buildPdf } from "./pdf.js";
 import {cameraScene,createCardFlow,cardCaptured,cardReadFinished,cardNotDetected,cardDetected} from "./card-flow.js?v=primary-restore-1";
 import {fullPaperVisible} from "./paper-geometry.js?v=primary-restore-1";
+import {createCameraPresentation} from "./camera-presentation.mjs?v=camera-fix-01";
 
 const $ = (id) => document.getElementById(id);
 
@@ -23,6 +24,19 @@ const S = {
   cardFlow: createCardFlow(),
   det: { smooth: null, stable: 0, lost: 99, armed: true, lastCap: null, score: 0, support: 0, ms: 0, w: 0, h: 0 },
 };
+
+const cameraPresentation=createCameraPresentation({
+  video:$("video"),debug:new URLSearchParams(window.location.search).get("cameraDebug")==="1",
+  onDimensionsChanged({width,height,previous}){
+    $("res").textContent=`${width}×${height} · câmera automática`;
+    if(previous.width && (width!==previous.width || height!==previous.height)){
+      // Old detector coordinates belong to another frame. Preserve the capture gate
+      // and armed state: a source resize must never rearm the same physical sheet.
+      const armed=S.det.armed;
+      resetDetection();S.det.armed=armed;S.det.w=0;S.det.h=0;
+    }
+  }
+});
 
 /* ---------- prefs ---------- */
 
@@ -181,6 +195,7 @@ const isWebKitCamera = () => {
     (/AppleWebKit/i.test(ua) && !/Chrome|Chromium|CriOS|FxiOS|Edg|OPR|SamsungBrowser/i.test(ua));
 };
 let cameraRequestId = 0;
+let cameraLoopFrame = 0;
 
 async function requestContinuousFocus(track) {
   if (isWebKitCamera() || !track || typeof track.getCapabilities !== "function" ||
@@ -200,6 +215,8 @@ function stopCameraView() {
   cameraRequestId++; // invalida permissões/resoluções de câmera em andamento
   S.running = false;
   S.cameraStarting = false;
+  cancelAnimationFrame(cameraLoopFrame);cameraLoopFrame=0;
+  cameraPresentation.stop();
   stopStream();
   const video = $("video");
   video.pause?.();
@@ -285,6 +302,7 @@ async function startCamera() {
     if (!track) throw new Error("Nenhum vídeo retornado pela câmera.");
     S.stream = stream;
     video.srcObject = stream;
+    cameraPresentation.start(stream);
 
     // Não esperar por play() antes de aguardar metadados: no iOS a promessa
     // pode ficar pendente. Erros são tratados sem rejeição não observada.
@@ -307,9 +325,7 @@ async function startCamera() {
       throw new Error("A câmera foi autorizada, mas o vídeo não iniciou no Safari. Feche outros aplicativos com câmera e tente novamente.");
     }
 
-    const vw=video.videoWidth,vh=video.videoHeight;
-    $("viewport").style.aspectRatio=`${vw} / ${vh}`;
-    $("res").textContent=`${vw}×${vh} · câmera automática`;
+    cameraPresentation.sync('camera-ready');
     track.addEventListener("ended",()=>{
       if(S.running && request===cameraRequestId){
         stopCameraView();
@@ -320,7 +336,7 @@ async function startCamera() {
     S.cardFlow=createCardFlow();
     resetDetection();
     setPill("looking for a page…");
-    requestAnimationFrame(loop);
+    cameraLoopFrame=requestAnimationFrame(loop);
     void requestContinuousFocus(track); // nunca aplica foco manual no WebKit
     return true;
   } catch(error) {
@@ -348,11 +364,12 @@ function resetDetection() {
 
 function loop(ts) {
   if (!S.running) return;
-  requestAnimationFrame(loop);
+  cameraLoopFrame=requestAnimationFrame(loop);
   if (ts - lastTick < LOOP_MS || document.hidden || S.editing) return;
   lastTick = ts;
   const video = $("video");
   if (video.readyState < 2 || !video.videoWidth) return;
+  cameraPresentation.sync('detection-frame');
   const vw = video.videoWidth, vh = video.videoHeight;
   const dw = DET_W, dh = Math.max(8, Math.round(vh * dw / vw));
   if (detCanvas.width !== dw || detCanvas.height !== dh) { detCanvas.width = dw; detCanvas.height = dh; }
@@ -471,6 +488,7 @@ function shrinkQuad(corners, frac) {
 async function capture(source = "manual") {
   const video = $("video");
   if (!S.running || S.busy || video.readyState < 2 || !video.videoWidth) return null;
+  cameraPresentation.sync('capture-frame');
   const vw = video.videoWidth, vh = video.videoHeight;
   const det = S.det.smooth;
   const f = vw / (S.det.w || DET_W);
@@ -873,16 +891,15 @@ function wire() {
     }
   });
 
-  document.addEventListener("visibilitychange", () => { if (!document.hidden && S.running) requestAnimationFrame(loop); });
   window.addEventListener("salta-omr:read-finished",e=>{
     if(cardReadFinished(S.cardFlow,e.detail?.pageId)&&S.cardFlow.phase==="locked"){
       setPill("Leitura concluída. Troque a folha quando quiser.","ok",1200);
     }
   });
-  window.addEventListener("pagehide", () => { S.running=false; stopStream(); });
+  window.addEventListener("pagehide", stopCameraView);
 
   // test hooks
-  window.__scancat = { S, capture, downloadPdf, processPage, V, buildPdf, startCamera, stopCameraView, requestContinuousFocus, importPhoto, detectorMode: DETECTOR_MODE }; window.__saltaScan = window.__scancat;
+  window.__scancat = { S, capture, downloadPdf, processPage, V, buildPdf, startCamera, stopCameraView, requestContinuousFocus, importPhoto, detectorMode: DETECTOR_MODE, cameraPresentation }; window.__saltaScan = window.__scancat;
 }
 
 wire();

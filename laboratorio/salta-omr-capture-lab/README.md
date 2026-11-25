@@ -3,6 +3,14 @@
 ## Acesso
 `https://d4nny3l.github.io/portal-do-aluno/laboratorio/salta-omr-capture-lab/`
 
+## CAMERA-FIX-01 — apresentação do vídeo (25/11/2026)
+
+Correção exclusiva deste laboratório, a pedido do proprietário. Diagnóstico,
+evidências antes/depois, limites e homologação física pendente em
+[CAMERA-FIX-01.md](./CAMERA-FIX-01.md). Os detectores e a política de captura
+PRIMARY/EDGE permanecem preservados. A versão desta branch não equivale a uma
+publicação na URL da main.
+
 ## PESQUISA ATIVA — EDGE-FIRST-01 (25/11/2026)
 
 **Pesquisa exclusiva no laboratório paralelo. Não alterar o Corretor SALTA oficial. Não abrir PR para integração nesta fase.**

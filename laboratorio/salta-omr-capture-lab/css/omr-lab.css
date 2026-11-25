@@ -57,23 +57,22 @@
  .omr-reference{width:100%;text-align:center}
 }
 
-/* CAMERA FRAME v2 — só neste laboratório.
-   Abre uma janela vertical sem distorcer bolhas nem desacoplar detecção e foto. */
+/* Full native video owns layout; no frozen aspect ratio or viewport-height sizing. */
 body.live #hero{display:none}
 #scanner.camera-on{margin-top:1rem}
 #scanner.camera-on .stage{min-width:0;width:100%;scroll-margin-top:1rem}
 #scanner.camera-on .viewport{
- display:block;position:relative;width:100%;min-height:0;
+ display:block;position:relative;width:100%;min-height:0;aspect-ratio:auto;
  border-radius:18px;background:#111525;
  isolation:isolate;overflow:hidden;
 }
 #scanner.camera-on #video{
- position:absolute;inset:0;width:100%;height:100%;display:block;
- object-fit:cover;object-position:center center;
+ position:relative;inset:auto;width:100%;height:auto;display:block;
+ aspect-ratio:auto;object-fit:contain;object-position:center center;
  border-radius:inherit;background:#111525;
 }
 #scanner.camera-on #overlay{
- position:absolute;inset:auto;pointer-events:none;z-index:4;
+ position:absolute;inset:0;width:100%;height:100%;pointer-events:none;z-index:4;
 }
 #scanner.camera-on .framing-guide{
  display:block;position:absolute;inset:7%;
@@ -116,6 +115,5 @@ body.live #hero{display:none}
 }
 #scanner.camera-on .pill{max-width:min(92%,430px);white-space:normal;line-height:1.4}
 
-/* PRIMARY-RESTORE: camera and overlay show ALL pixels, no digital crop. */
-#scanner.camera-on #video{object-fit:contain!important}
+/* No second framing rectangle: the full frame is the presentation contract. */
 #scanner.camera-on .framing-guide{display:none!important}
