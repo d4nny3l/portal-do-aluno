@@ -11,7 +11,7 @@ seletor nativo (inclusive cancelamento) e a superfície de apresentação do Web
 Nesse navegador, um canvas exibe o quadro nativo inteiro; vídeo, stream e captura
 continuam sendo os mesmos. Nenhuma geometria OMR ou política de captura foi alterada.
 
-Teste publicado: `?engine=edge&v=camera-json-return-02`. Repetir abrir câmera →
+Teste publicado: `?engine=edge&v=camera-json-return-03`. Repetir abrir câmera →
 importar JSON → voltar ao visor; selecionar novamente e cancelar também. A
 reprodução da corrupção interna do compositor no iPhone depende do aparelho do
 proprietário; os testes locais não equivalem a essa confirmação física.

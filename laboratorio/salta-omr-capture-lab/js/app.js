@@ -5,7 +5,7 @@ import {experimentalPaperDetector} from "./experimental-detector.mjs?v=edge-firs
 import { buildPdf } from "./pdf.js";
 import {cameraScene,createCardFlow,cardCaptured,cardReadFinished,cardNotDetected,cardDetected} from "./card-flow.js?v=primary-restore-1";
 import {fullPaperVisible} from "./paper-geometry.js?v=primary-restore-1";
-import {createCameraPresentation} from "./camera-presentation.mjs?v=camera-json-return-02";
+import {createCameraPresentation} from "./camera-presentation.mjs?v=camera-json-return-03";
 
 const $ = (id) => document.getElementById(id);
 

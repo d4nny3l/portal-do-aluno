@@ -1,13 +1,12 @@
 // Presentation only: never requests a stream, constraints, crop or optical processing.
 export function createCameraPresentation({video, preview=null, onDimensionsChanged, window:win=window, document:doc=document, debug=false}) {
   let stream=null, width=0, height=0, epoch=0, playing=null;
-  let frameHandle=null, frameKind='', previewFrames=0, pickerPending=false;
+  let frameHandle=null, lastPaintTime=null, previewFrames=0, pickerPending=false;
   const context=preview?.getContext('2d',{alpha:false});
   const listeners=[], events=[];
   function cancelFrame(){
     if(frameHandle===null)return;
-    if(frameKind==='video')video.cancelVideoFrameCallback?.(frameHandle);
-    else win.cancelAnimationFrame?.(frameHandle);
+    win.cancelAnimationFrame?.(frameHandle);
     frameHandle=null;
   }
   function paint(){
@@ -23,14 +22,19 @@ export function createCameraPresentation({video, preview=null, onDimensionsChang
   function scheduleFrame(){
     if(!context||!stream||doc.hidden||frameHandle!==null)return;
     const request=epoch;
-    const next=()=>{
+    const next=time=>{
       if(request!==epoch)return;
       frameHandle=null;sync('preview-frame');
-      try{paint();}catch{record('preview-frame-unavailable');}
+      // A covered/offscreen native video may stop compositor callbacks in WebKit.
+      // Pull decoded pixels on the page's presentation clock, at most 30 Hz;
+      // detector scheduling and capture policy are completely independent.
+      if(lastPaintTime===null||time-lastPaintTime>=1000/30){
+        lastPaintTime=time;
+        try{paint();}catch{record('preview-frame-unavailable');}
+      }
       scheduleFrame();
     };
-    if(video.requestVideoFrameCallback){frameKind='video';frameHandle=video.requestVideoFrameCallback(next);}
-    else{frameKind='animation';frameHandle=win.requestAnimationFrame(next);}
+    frameHandle=win.requestAnimationFrame(next);
   }
   function snapshot(reason='snapshot') {
     const rect=element=>{
@@ -81,7 +85,7 @@ export function createCameraPresentation({video, preview=null, onDimensionsChang
   function listen(target,event,callback){target?.addEventListener?.(event,callback);listeners.push(()=>target?.removeEventListener?.(event,callback));}
   function stop(){
     record('detach');epoch++;listeners.splice(0).forEach(remove=>remove());
-    cancelFrame();pickerPending=false;previewFrames=0;
+    cancelFrame();lastPaintTime=null;pickerPending=false;previewFrames=0;
     if(preview){preview.hidden=true;preview.width=0;preview.height=0;video.parentElement.classList.remove('canvas-preview');}
     stream=null;width=0;height=0;playing=null;
   }

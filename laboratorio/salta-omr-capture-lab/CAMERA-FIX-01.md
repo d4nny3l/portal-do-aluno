@@ -36,8 +36,8 @@ compensar sua transformação com escala CSS. A detecção e a fotografia contin
 lendo o vídeo original, sem passar pelo novo canvas. Chromium permanece com vídeo
 nativo na apresentação.
 
-O ciclo usa `requestVideoFrameCallback` (RAF somente como fallback), uma única
-assinatura cancelável, e conserva o último frame válido enquanto o seletor suspende
+O ciclo usa um único RAF cancelável, com apresentação limitada a 30 Hz, e conserva
+o último frame válido enquanto o seletor suspende
 a fonte. A volta por seleção, cancelamento, foco ou unmute renova a assinatura e
 retoma o mesmo elemento/stream quando pausado; não chama getUserMedia novamente.
 Ao fechar, remove listeners, cancela o callback e libera o bitmap. O diagnóstico
@@ -51,16 +51,23 @@ do iOS são simuladas; **o diálogo UIKit e a corrupção interna do compositor 
 foram reproduzidos fisicamente neste ambiente**. A versão anterior reprova a
 retomada e o tamanho de fonte; a nova passa nesses casos.
 
-Quatro novos testes unitários cobrem o seletor, cópia integral do frame, dimensão
-temporariamente zero, cancelamento de sessão, assinatura única e fallback RAF.
-Conjunto atual: **371 testes aprovados, 1 TODO preexistente**, mais os três perfis
+O primeiro ensaio de CI desta rodada identificou dimensões estagnadas em um stream
+sintético WebKit mesmo com `paused=false`. A apresentação foi desacoplada também
+dos callbacks do compositor nativo: o RAF lê os pixels decodificados mesmo quando
+o vídeo fica coberto pelo canvas ou fora da área visível. Não se espera um callback
+de apresentação de vídeo para desenhar a própria apresentação substituta.
+
+Cinco novos testes unitários cobrem o seletor, cópia integral do frame, dimensão
+temporariamente zero, cancelamento de sessão, assinatura única e independência dos
+callbacks do compositor nativo.
+Conjunto atual: **372 testes aprovados, 1 TODO preexistente**, mais os três perfis
 de navegador (WebKit EDGE, WebKit PRIMARY, Chromium EDGE). A CI também passa a rodar
 em push da página paralela, sem depender de PR. O custo adicional do canvas é um
 buffer nativo e uma cópia de apresentação por frame; consumo/fluidez no iPhone
 precisam ser observados no teste do proprietário. Nenhuma garantia de desempenho
 ou de resolução física definitiva é inferida dos ensaios sintéticos.
 
-Homologação objetiva desta rodada: abrir a URL com `v=camera-json-return-02`, abrir
+Homologação objetiva desta rodada: abrir a URL com `v=camera-json-return-03`, abrir
 a câmera, importar o JSON e voltar ao visor; repetir cinco vezes, cancelar a seleção,
 girar o aparelho e fotografar folhas consecutivas. Confirmar círculos proporcionais,
 prévia em movimento, quatro bordas e contorno alinhados. Se persistir, coletar apenas

@@ -100,9 +100,12 @@ body.live #hero{display:none}
  #scanner.camera-on{grid-template-columns:minmax(0,1fr)}
  #scanner.camera-on .tray{position:static;max-height:none;min-height:0}
 }
-@media(max-width:860px){
- /* Avoid Safari's focus zoom when opening the native JSON/file picker. */
+/* Touch phones can exceed 860 CSS px in landscape; keep file controls readable
+   there too, without disabling the user's own pinch zoom. */
+@media(max-width:860px),(pointer:coarse){
  .omr-field input,.omr-field select{font-size:max(16px,1rem)}
+}
+@media(max-width:860px){
  #scanner.camera-on .viewport{border-radius:16px}
  #scanner.camera-on .controls{padding:.75rem .1rem .6rem}
  #scanner.camera-on .controls #res{font-size:.66rem}

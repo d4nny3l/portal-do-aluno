@@ -4,7 +4,7 @@ import {createCameraPresentation} from '../js/camera-presentation.mjs';
 
 function fixture(debug=false,withPreview=false,useVideoFrameCallback=true){
   const video=new EventTarget(),win=new EventTarget(),doc=new EventTarget(),changes=[];
-  const input=new EventTarget(),callbacks=new Map(),draws=[],classes=new Set();let nextId=0;
+  const input=new EventTarget(),callbacks=new Map(),draws=[],classes=new Set();let nextId=0,now=0,videoFrameRequests=0;
   doc.querySelectorAll=()=>[input];
   win.visualViewport=new EventTarget();Object.assign(win,{innerWidth:390,innerHeight:844});
   Object.assign(doc,{hidden:false});
@@ -16,12 +16,12 @@ function fixture(debug=false,withPreview=false,useVideoFrameCallback=true){
     plays:0,play(){this.plays++;this.paused=false;return Promise.resolve();}});
   const schedule=cb=>{callbacks.set(++nextId,cb);return nextId;},cancel=id=>callbacks.delete(id);
   Object.assign(win,{requestAnimationFrame:schedule,cancelAnimationFrame:cancel});
-  if(useVideoFrameCallback)Object.assign(video,{requestVideoFrameCallback:schedule,cancelVideoFrameCallback:cancel});
+  if(useVideoFrameCallback)Object.assign(video,{requestVideoFrameCallback:cb=>{videoFrameRequests++;return schedule(cb);},cancelVideoFrameCallback:cancel});
   const preview=withPreview?{hidden:true,width:0,height:0,getContext:()=>({drawImage:(...args)=>draws.push(args)})}:null;
   const p=createCameraPresentation({video,preview,window:win,document:doc,debug,onDimensionsChanged:d=>changes.push(d)});
   p.start(stream);
-  function frame(){const [id,callback]=callbacks.entries().next().value;callbacks.delete(id);callback();}
-  return {p,video,win,doc,changes,stream,input,preview,callbacks,draws,classes,frame};
+  function frame(){const [id,callback]=callbacks.entries().next().value;callbacks.delete(id);now+=40;callback(now);}
+  return {p,video,win,doc,changes,stream,input,preview,callbacks,draws,classes,frame,get videoFrameRequests(){return videoFrameRequests;}};
 }
 test('actual video dimensions drive geometry, never track settings or viewport dimensions',()=>{
   const {p,video,win,changes}=fixture();
@@ -108,8 +108,14 @@ test('picker returns coalesce preview subscriptions, and late frames from a clos
   assert.equal(callbacks.size,1);assert.equal(video.plays,1);
   p.stop();stale();assert.equal(draws.length,1);assert.equal(callbacks.size,0);
 });
-test('canvas fallback without video frame callbacks uses one cancellable animation subscription',()=>{
+test('canvas without video frame callbacks uses one cancellable animation subscription',()=>{
   const {p,callbacks,draws,frame}=fixture(false,true,false);
   frame();assert.equal(draws.length,1);assert.equal(callbacks.size,1);
   p.stop();assert.equal(callbacks.size,0);
+});
+test('preview advances without waiting for a native video compositor callback',()=>{
+  const f=fixture(false,true);
+  assert.equal(f.videoFrameRequests,0);
+  f.frame();f.frame();assert.equal(f.draws.length,2);
+  assert.equal(f.callbacks.size,1);f.p.stop();
 });

@@ -203,10 +203,11 @@ for (const profile of [
       const after=await sample('capture-'+i);
       check(Math.abs(before.video.width-after.video.width)<1&&Math.abs(before.video.height-after.video.height)<1,'capture resized video');
     }
-    for(const viewport of [{width:844,height:390},{width:390,height:680},{width:390,height:844}]){
+    for(const viewport of [{width:844,height:390},{width:932,height:430},{width:390,height:680},{width:390,height:844}]){
       await page.setViewportSize(viewport);
       await page.evaluate(()=>{window.dispatchEvent(new Event('orientationchange'));window.visualViewport?.dispatchEvent(new Event('resize'));});
-      await page.waitForTimeout(180);await sample('window-'+viewport.width+'x'+viewport.height);
+      await page.waitForTimeout(180);const resized=await sample('window-'+viewport.width+'x'+viewport.height);
+      if(profile.name.startsWith('iphone'))check(parseFloat(resized.manifestFont)>=16,'file input avoids focus zoom in portrait and wide landscape');
     }
     await page.evaluate(()=>{document.getElementById('video').pause();document.dispatchEvent(new Event('visibilitychange'));});
     await page.waitForTimeout(200);
