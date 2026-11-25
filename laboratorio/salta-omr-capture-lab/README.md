@@ -70,3 +70,27 @@ A versão experimental adotou uma solução **independente da câmera do Correto
 - O scanner independente original permanece intacto.
 
 **Limitação:** ainda não houve homologação visual/captura física no Safari deste iPhone. Se o Safari mudar a orientação da fonte durante a execução, `video.resize` recalcula o enquadramento, mas precisa de teste real. Com fonte horizontal, a prévia ampliada pode cortar partes periféricas; use **Ver imagem inteira** ou afaste um pouco o aparelho.
+
+## FIDUCIAL-01 — captura por quatro quadradinhos pretos (24/11/2026)
+
+A nova captura automática **não detecta bordas de papel**. O gatilho usa somente os quatro marcadores pretos do cartão, preservando a homografia, o processamento de imagem, os modelos OMR e a comparação A/B.
+
+### Lógica
+
+1. A prévia compartilha a mesma região da câmera com a captura, incluindo o modo **Ver imagem inteira**.
+2. A cada ~250 ms, a câmera envia um quadro de até 640 px de largura ao Worker. O Worker roda o **detector oficial** `corretor/v2/omr/normalize.mjs::detectFiducials`, sem modificar esse código.
+3. O detector localiza centros dos quatro marcadores pretos de **5,5 mm**, posicionados a **8 mm** das bordas. Se houver modelo confirmado, o Worker recebe apenas `paper`, `schemaVersion`, `mode` e os quatro centros do manifesto. Sem modelo, usa geometria pública A4 padrão de 210×297 mm.
+4. Uma homografia de quatro pontos mapeia os centros físicos dos marcadores aos centros observados e **extrapola os quatro cantos externos do papel**. Não recortar o retângulo ligando diretamente os centros dos marcadores, pois isso excluiria as margens e deslocaria o leitor OMR.
+5. Sem quatro marcadores válidos, confiança mínima 0,70 ou folha suficientemente enquadrada, **nenhuma captura automática**. A UI pede para afastar o telefone ou alternar **Ver imagem inteira** se a borda estiver cortada.
+6. Após quatro quadros confiáveis e estáveis, o scanner salva a foto e realiza o mesmo recorte/perspectiva/tratamento de antes. O retângulo na prévia mostra as bordas projetadas; quatro pontos violetas mostram onde os marcadores foram encontrados.
+7. A importação de fotos também usa os quatro marcadores; se falhar, mantém a edição manual de cantos em vez de presumir o contorno da folha.
+8. A leitura `detectFiducials → warpFromFiducials → readRaster` e a pontuação experimental continuam intactas. Não há alterações no scanner original, no Corretor, nos Workers oficiais, no Diário, na autenticação ou nos dados acadêmicos.
+
+### Testes até esta versão
+
+- Sintaxe de app, Worker, detector e ponte privada verificada; IDs HTML consistentes.
+- Detector SALTA original exercitado em rasters sintéticos A4 com fundo cinza, iluminação baixa, sem borda contrastante, cartão distante e folha cortada.
+- Cartões **embedded 100×160 e 120×180 mm** testados com manifesto geométrico específico; projeção de bordas externas com erro máximo aproximado de 1,1 px nas amostras sintéticas.
+- Homografia perspectiva testada com quatro marcadores matematicamente projetados; erro numérico da ordem de 1e-13 px na amostra.
+- Máquina de estados testada com quatro quadros estáveis (uma captura), ausência de marcadores (nenhuma), marcadores instáveis (nenhuma), borda cortada (nenhuma).
+- **Acurácia real no Safari/iPhone permanece não homologada.** Os testes sintéticos não demonstram desempenho de câmera física ou redução da taxa de erro das alternativas.
