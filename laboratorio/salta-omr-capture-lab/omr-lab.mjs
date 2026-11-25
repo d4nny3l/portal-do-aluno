@@ -9,6 +9,7 @@ import {importCardManifest} from '../../corretor/v2/omr/manifest.mjs';
 import {detectFiducials,warpFromFiducials} from '../../corretor/v2/omr/normalize.mjs';
 import {readRaster,READER_VERSION} from '../../corretor/v2/omr/reader.mjs';
 import {scoreIntegratedPlan} from '../../corretor/v2/assessments/block-scoring.mjs';
+import {reconcile} from './js/safe-scan.mjs';
 
 const GATEWAY = 'https://salta-stats.dannyel-moises.workers.dev/assessments/v1';
 const $ = id => document.getElementById(id);
@@ -29,6 +30,7 @@ function options(select,items,placeholder='Selecione…'){
 function privacyReset(reason='Seleção anterior descartada.'){
  readGeneration++;
  selected=null;state.lastResult=null;state.modelOrigin=null;
+ $('omrPageNumber').disabled=true;$('omrPageNumber').replaceChildren();
 
  $('omrPinned').hidden=true;
  $('omrSummary').hidden=true;$('omrDiff').hidden=true;
@@ -213,6 +215,7 @@ function setPinned(){
    (s.manifest.mode==='embedded'?'quadro incorporado':'folha inteira')+' · revisão '+s.revision+
    ' · modelo '+String(s.manifest.contentHash||'').slice(0,16);
  node.append(title,details);node.hidden=false;
+ const select=$('omrPageNumber');options(select,Array.from({length:s.template.pageCount},(_,i)=>({label:'Página '+(i+1),value:i+1})),'Confirme a página');select.disabled=false;select.value=s.template.pageCount===1?'1':'';
  $('omrReread').disabled=!latestPage;
 }
 function toGray(data){
@@ -235,7 +238,7 @@ async function rasterFromBlob(blob,maxSide=1850){
   return {gray:toGray(rgba.data),width,height};
  }finally{image.close?.()}
 }
-function candidateRead(raster,s){
+function candidateRead(raster,s,pageNumber){
  const {template,manifest}=s;
  const detection=detectFiducials(raster.gray,raster.width,raster.height,{manifest});
  if(!detection.found||detection.confidence<.7)throw new Error('Marcadores insuficientes ('+
@@ -244,19 +247,13 @@ function candidateRead(raster,s){
  const outputWidth=embedded?Math.min(1400,Math.floor(2200*manifest.paper.widthMm/manifest.paper.heightMm)):1400;
  const aligned=warpFromFiducials(raster.gray,raster.width,raster.height,detection.corners,{outputWidth,manifest});
  const reading=readRaster(template,aligned.pixels,aligned.width,aligned.height,{
-  page:1,showCode:template.identity.mode==='seven-digit-code',manifest
+  page:pageNumber,showCode:template.identity.mode==='seven-digit-code',manifest
  });
  if(reading.contentHash!==manifest.contentHash||reading.templateId!==template.templateId)
   throw new Error('O leitor retornou modelo geométrico diferente do selecionado.');
  const stats={read:0,blank:0,double:0,review:0};
  for(const o of reading.observations){if(o.state in stats)stats[o.state]++;}
- let score=null;
- if(s.plan){
-  const provisional=reading.observations.map(o=>({...o,reviewed:o.state!=='review'}));
-  try{score=scoreIntegratedPlan(s.plan,provisional,{manifest,template,
-   identityState:reading.identity.state,identityMode:template.identity.mode,pageCount:template.pageCount});}
-  catch(error){score={complete:false,reason:error?.message||'Pontuação inconclusiva.'}}
- }
+ const score=null; // diagnostics never produce a grade
  return {ok:true,stats,reading,detectionConfidence:detection.confidence,
    normalizedWidth:aligned.width,normalizedHeight:aligned.height,score,
    outputDetail:Math.min(raster.width,raster.height)};
@@ -275,23 +272,22 @@ async function analyze(page){
  $('omrSummary').hidden=true;$('omrDiff').hidden=true;$('omrReread').disabled=true;
  let baseline,scanner;
  try{
-  // Exatamente a mesma captura de origem. Caminho A: JPEG completo,
-  // caminho B: resultado do scanner com cantos/perspectiva e tratamento.
-  await page.frameReady;
-  if(!page.frame||!page.out)throw new Error('A página está incompleta. Capture novamente.');
-  let raw;
-  try{raw=await rasterFromBlob(page.frame)}catch(error){baseline=failed(error)}
-  if(raw){
-   try{baseline=candidateRead(raw,model)}catch(error){baseline=failed(error)}
+  const pageNumber=Number($('omrPageNumber').value);
+  if(!Number.isInteger(pageNumber)||pageNumber<1||pageNumber>model.template.pageCount)throw new Error('Confirme a página impressa antes de ler.');
+  // No JPEG or Magic Scan pixels enter the optical reader.
+  if(!page.optical)throw new Error('Raster óptico não disponível. Capture novamente.');
+  try{baseline=candidateRead(page.optical.source,model,pageNumber)}catch(error){baseline=failed(error)}
+  try{scanner=candidateRead(page.optical.rectified,model,pageNumber)}catch(error){scanner=failed(error)}
+  if(request!==readGeneration||model!==selected)return;
+  const safe=reconcile(baseline,scanner);
+  let score=null;
+  if(safe.complete&&model.plan&&model.template.pageCount===1){
+   try{score=scoreIntegratedPlan(model.plan,safe.reading.observations,{manifest:model.manifest,template:model.template,identityState:safe.reading.identity.state,identityMode:model.template.identity.mode,pageCount:1});}
+   catch(error){score={complete:false,reason:error?.message||'Pontuação inconclusiva.'};}
   }
-  if(request!==readGeneration||model!==selected)return;
-  try{
-   const cleaned=await rasterFromBlob(page.out);
-   scanner=candidateRead(cleaned,model);
-  }catch(error){scanner=failed(error)}
-  if(request!==readGeneration||model!==selected)return;
-  state.lastResult={baseline,scanner};
+  state.lastResult={baseline,scanner,safe,score};
   renderResult(model,baseline,scanner);
+  addCell($('omrSummary'),'p',safe.complete?(score?.complete?'Nota local consensual: '+score.total+' / '+score.maximum:model.template.pageCount>1?'Página lida; nota multipágina não calculada neste laboratório.':'Leitura consensual; sem nota definitiva.'):'SEM NOTA: '+safe.reason,'omr-legend');
   const count=[baseline,scanner].filter(x=>x.ok).length;
   status(readStatus,count===2?
    'Comparação concluída. Divergências são sinalizadas; não significam, isoladamente, que uma leitura é correta.':
@@ -311,7 +307,7 @@ function addCell(parent,tag,txt,className){
 }
 function renderResult(model,a,b){
  const wrap=$('omrSummary');wrap.replaceChildren();
- for(const [label,r] of [['Fotografia original',a],['Scanner SALTA',b]]){
+ for(const [label,r] of [['Fotografia original',a],['Scanner óptico (sem Magic Scan)',b]]){
   const card=document.createElement('div');card.className='omr-result-card';
   if(!r.ok){
    card.dataset.failed='true';
@@ -324,8 +320,7 @@ function renderResult(model,a,b){
    addCell(card,'small','Em revisão: '+r.stats.review+' · Em branco: '+r.stats.blank+' · Duplas: '+r.stats.double);
    addCell(card,'small','Marcadores: '+Math.round(r.detectionConfidence*100)+'% · '+r.normalizedWidth+' px');
    addCell(card,'small',r.reading.identity.state==='read'?'Identificação lida':'Identificação: '+r.reading.identity.state);
-   if(r.score?.complete)addCell(card,'small','Nota local experimental: '+r.score.total+' / '+r.score.maximum);
-   else if(model.plan)addCell(card,'small','Nota não conclusiva: '+(r.score?.reason||'revisão necessária'));
+   addCell(card,'small','Diagnóstico óptico — não representa nota definitiva.');
   }
   wrap.append(card);
  }
@@ -379,6 +374,8 @@ function bootstrap(){
  $('omrAssessment').addEventListener('change',()=>void loadRevisions());
  $('omrBind').addEventListener('click',()=>void bindAssessment());
  $('omrReread').addEventListener('click',()=>void analyze(latestPage));
+ $('omrPageNumber').addEventListener('change',()=>{readGeneration++;state.lastResult=null;$('omrSummary').hidden=true;$('omrDiff').hidden=true;$('omrReread').disabled=!latestPage;});
+ window.addEventListener('salta-omr:discard',e=>{if(latestPage?.id===e.detail?.pageId){readGeneration++;latestPage=null;state.lastResult=null;$('omrSummary').hidden=true;$('omrDiff').hidden=true;$('omrReread').disabled=true;}});
  $('omrManifest').addEventListener('change',event=>{
   const file=event.target.files?.[0];
   if(file)void bindLocalManifest(file);

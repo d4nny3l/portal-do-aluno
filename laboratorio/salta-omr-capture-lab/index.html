@@ -136,6 +136,8 @@
    <h3 id="omrResultTitle">2. Captura e comparação</h3>
    <p class="omr-help">A captura reconhece o contorno da folha; a leitura usa os marcadores da prova depois da fotografia. São etapas independentes e o algoritmo OMR oficial continua igual.</p>
    <div class="omr-actions">
+    <label class="omr-field">Página impressa <select id="omrPageNumber" disabled></select></label>
+    <button id="omrNextSheet" class="btn ghost" type="button">Liberar próxima folha</button>
     <button id="omrReread" class="btn ghost" type="button" disabled>Ler última página novamente</button>
     <span id="omrCaptureCount" class="omr-mini">Nenhuma página recebida</span>
    </div>
@@ -201,7 +203,7 @@
 
 <footer class="foot mono">SALTA OMR Capture Lab · Laboratório experimental, sem gravação de notas · Tecnologia de detecção e processamento adaptada de <a href="https://github.com/nipunbatra/scancat" target="_blank" rel="noopener noreferrer">Scancat (Nipun Batra)</a>, licença <a href="./LICENSE-SCANCAT-MIT.txt">MIT</a>. Resultados de qualidade dependem da foto, luz, foco e planicidade do papel.</footer>
 
-<script type="module" src="js/app.js?v=camera-json-return-03"></script>
-<script type="module" src="omr-lab.mjs?v=paper-safe-2"></script>
+<script type="module" src="js/app.js?v=omr-scan-safe-02"></script>
+<script type="module" src="omr-lab.mjs?v=omr-scan-safe-02"></script>
 </body>
 </html>

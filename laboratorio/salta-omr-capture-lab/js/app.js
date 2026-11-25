@@ -3,8 +3,9 @@
 import * as V from "./vision.js";
 import {experimentalPaperDetector} from "./experimental-detector.mjs?v=edge-first-lab-1";
 import { buildPdf } from "./pdf.js";
-import {cameraScene,createCardFlow,cardCaptured,cardReadFinished,cardNotDetected,cardDetected} from "./card-flow.js?v=primary-restore-1";
-import {fullPaperVisible} from "./paper-geometry.js?v=primary-restore-1";
+import {createCardFlow,cardCaptured,cardReadFinished,cardNotDetected,cardDetected} from "./card-flow-safe.mjs";
+import {fullPaperVisible,addPaperMargin} from "./paper-geometry.js?v=primary-restore-1";
+import {frameFresh,sceneSignature,canRetain} from "./safe-scan.mjs";
 import {createCameraPresentation} from "./camera-presentation.mjs?v=camera-json-return-03";
 
 const $ = (id) => document.getElementById(id);
@@ -57,24 +58,25 @@ function savePrefs() {
 
 /* ---------- worker ---------- */
 
-const worker = new Worker("js/worker.js?v=primary-restore-1", { type: "module" });
+let worker;
+const WORKER_TIMEOUT=30000;
 const pending = new Map();
 let wid = 0;
-worker.onmessage = (e) => {
-  const { id, error } = e.data;
-  const p = pending.get(id);
-  if (!p) return;
-  pending.delete(id);
-  if (error) p.reject(new Error(error)); else p.resolve(e.data);
-};
-worker.onerror = (e) => { for (const p of pending.values()) p.reject(new Error(e.message || "worker failed")); pending.clear(); };
-function callWorker(msg, transfer = []) {
-  return new Promise((resolve, reject) => {
-    const id = ++wid;
-    pending.set(id, { resolve, reject });
-    worker.postMessage({ id, ...msg }, transfer);
-  });
+function resetWorker(error){
+ worker?.terminate();worker=null;
+ for(const p of pending.values()){clearTimeout(p.timer);p.reject(error);}pending.clear();
 }
+function ensureWorker(){
+ if(worker)return;
+ worker=new Worker("js/worker.js?v=omr-scan-safe-02",{type:"module"});const current=worker;
+ worker.onmessage=e=>{if(worker!==current)return;const {id,error}=e.data,p=pending.get(id);if(!p)return;pending.delete(id);clearTimeout(p.timer);if(error)p.reject(new Error(error));else p.resolve(e.data);};
+ worker.onerror=e=>{if(worker===current)resetWorker(new Error(e.message||"Falha no processamento"));};
+ worker.onmessageerror=()=>{if(worker===current)resetWorker(new Error("Resposta inválida do processador"));};
+}
+function callWorker(msg,transfer=[]){return new Promise((resolve,reject)=>{
+ ensureWorker();const id=++wid,timer=setTimeout(()=>resetWorker(new Error("Tempo de processamento excedido. Tente novamente.")),WORKER_TIMEOUT);
+ pending.set(id,{resolve,reject,timer});try{worker.postMessage({id,...msg},transfer);}catch(error){clearTimeout(timer);pending.delete(id);reject(error);}
+});}
 
 /* ---------- helpers ---------- */
 function translateScanStatus(text) {
@@ -215,6 +217,7 @@ async function requestContinuousFocus(track) {
 function stopCameraView() {
   cameraRequestId++; // invalida permissões/resoluções de câmera em andamento
   S.running = false;
+  frameClock.time=null;frameClock.at=null;
   S.cameraStarting = false;
   cancelAnimationFrame(cameraLoopFrame);cameraLoopFrame=0;
   cameraPresentation.stop();
@@ -356,6 +359,7 @@ async function startCamera() {
 const detCanvas = document.createElement("canvas");
 const detCtx = detCanvas.getContext("2d", { willReadFrequently: true });
 let lastTick = 0;
+const frameClock={time:null,at:null};
 
 function resetDetection() {
   Object.assign(S.det, { smooth: null, stable: 0, lost: 99, armed: true, lastCap: null, score: 0, support: 0 });
@@ -369,7 +373,10 @@ function loop(ts) {
   if (ts - lastTick < LOOP_MS || document.hidden || S.editing) return;
   lastTick = ts;
   const video = $("video");
-  if (video.readyState < 2 || !video.videoWidth) return;
+  const live=video.readyState>=2&&video.videoWidth>0&&!video.paused&&!S.stream?.getVideoTracks()[0]?.muted;
+  const fresh=frameFresh(frameClock,video.currentTime,ts,live);
+  if(fresh.reset){S.det.stable=0;S.det.smooth=null;}
+  if(!fresh.fresh)return;
   cameraPresentation.sync('detection-frame');
   const vw = video.videoWidth, vh = video.videoHeight;
   const dw = DET_W, dh = Math.max(8, Math.round(vh * dw / vw));
@@ -381,7 +388,7 @@ function loop(ts) {
   try { q = experimentalPaperDetector(img.data,dw,dh,{mode:DETECTOR_MODE,misses:S.det.lost}); } catch (e) { console.error(e); }
   S.det.ms = performance.now() - t0;
   S.det.w = dw; S.det.h = dh;
-  track(q, dw, dh, cameraScene(img.data,dw,dh));
+  track(q, dw, dh, sceneSignature(img.data,dw,dh));
 }
 
 function maxShift(a, b) {
@@ -392,6 +399,7 @@ function maxShift(a, b) {
 
 function track(q,dw,dh,scene=null){
   const D=S.det,gate=S.cardFlow;
+  if(S.pages.length>=100){setPill("Limite da sessão atingido. Exporte ou remova páginas antes de continuar.","bad");return;}
   if(S.busy){setPill("Processando cartão…");setRing(null);return;}
   const now=performance.now();
   const hasPaper=!!(q&&q.score>=MIN_SCORE&&q.corners?.length===4);
@@ -492,8 +500,8 @@ async function capture(source = "manual") {
   cameraPresentation.sync('capture-frame');
   const vw = video.videoWidth, vh = video.videoHeight;
   const det = S.det.smooth;
-  const f = vw / (S.det.w || DET_W);
-  const corners = det ? shrinkQuad(det.map(([x, y]) => [x * f, y * f]), 0.008) : V.frameCorners(vw, vh);
+  if(source==="auto"&&!det)return null;
+  const corners = det ? addPaperMargin(det.map(([x,y])=>[x*vw/S.det.w,y*vh/S.det.h]),vw,vh) : V.frameCorners(vw,vh);
   if (fullCanvas.width !== vw || fullCanvas.height !== vh) { fullCanvas.width = vw; fullCanvas.height = vh; }
   fullCtx.drawImage(video, 0, 0, vw, vh);
   const img = fullCtx.getImageData(0, 0, vw, vh);
@@ -502,6 +510,7 @@ async function capture(source = "manual") {
   if (source === "manual") { S.det.armed = false; S.det.lastCap = det ? det.map((c) => [c[0], c[1]]) : null; S.det.stable = 0; }
   const page = { id: ++S.seq, fw: vw, fh: vh, corners, rot: 0, mode: null, frame: null, out: null, url: "", w: 0, h: 0, cropped: !!det };
   S.cardFlow.cardId=page.id;
+  const sessionAtCapture=cameraRequestId;
   page.frameReady = new Promise((res) => fullCanvas.toBlob((b) => { page.frame = b; res(b); }, "image/jpeg", 0.92));
   S.busy++;
   setPill("processing…");
@@ -509,11 +518,14 @@ async function capture(source = "manual") {
     await processPage(page, img);
     await page.frameReady;
     if(!page.frame)throw new Error("Fotografia não produzida pelo Safari.");
-    S.pages.push(page);
+    if(sessionAtCapture!==cameraRequestId)throw new Error("Sessão da câmera encerrada.");
+    retainPage(page);
     renderTray();
     window.dispatchEvent(new CustomEvent("salta-omr:page",{detail:{page}}));
     setPill(det ? `page ${S.pages.length} captured` : `page ${S.pages.length} captured (whole frame — no page edges found)`, det ? "ok" : "", 1500);
   } catch (e) {
+    if(page.url)URL.revokeObjectURL(page.url);
+    page.optical=null;
     console.error(e);
     setPill("Não foi possível processar a folha: "+e.message,"bad",4000);
     return null;
@@ -534,16 +546,23 @@ async function frameImageData(page) {
   return ctx.getImageData(0, 0, c.width, c.height);
 }
 
+function retainPage(page){
+ if(!canRetain(S.pages,page))throw new Error("Limite de memória da sessão. Exporte ou remova páginas antes de continuar.");
+ for(const old of S.pages)old.optical=null;
+ S.pages.push(page);
+}
 async function processPage(page, img = null) {
   img = img || await frameImageData(page);
   const res = await callWorker({
     op: "process", data: img.data, w: img.width, h: img.height,
-    corners: page.corners, mode: page.mode || S.mode, rot: page.rot, maxSide: MAX_SIDE,
+    corners: page.corners, mode: page.mode || S.mode, rot: page.rot, maxSide: MAX_SIDE, optical: !page.out,
   }, [img.data.buffer]);
   const c = document.createElement("canvas");
   c.width = res.w; c.height = res.h;
   c.getContext("2d").putImageData(new ImageData(res.data, res.w, res.h), 0, 0);
   const blob = await new Promise((r) => c.toBlob(r, "image/jpeg", 0.9));
+  if(!blob)throw new Error("Não foi possível gerar a imagem.");
+  if(res.optical)page.optical=res.optical;
   if (page.url) URL.revokeObjectURL(page.url);
   page.out = blob; page.url = URL.createObjectURL(blob); page.w = res.w; page.h = res.h;
   return page;
@@ -571,6 +590,8 @@ function removePage(page) {
   const i = S.pages.indexOf(page);
   if (i < 0) return;
   S.pages.splice(i, 1);
+  page.optical=null;
+  window.dispatchEvent(new CustomEvent("salta-omr:discard",{detail:{pageId:page.id}}));
   if (page.url) URL.revokeObjectURL(page.url);
   if (S.editing === page) closeEditor();
   renderTray();
@@ -789,8 +810,8 @@ async function importPhoto(file,{showManual=true}={}) {
  tc.drawImage(c,0,0,dw,dh);
  let detection=null;
  try{const rgba=tc.getImageData(0,0,dw,dh);detection=experimentalPaperDetector(rgba.data,dw,dh,{mode:DETECTOR_MODE,fullResolution:true});}catch(error){console.warn("Detecção automática indisponível:",error);}
- const found=Boolean(detection&&detection.score>=MIN_SCORE&&detection.corners?.length===4);
- const pts=found?detection.corners.map(p=>[p[0]*fw/dw,p[1]*fh/dh]):V.frameCorners(fw,fh);
+ const found=Boolean(detection&&detection.score>=MIN_SCORE&&fullPaperVisible(detection.corners,dw,dh));
+ const pts=found?addPaperMargin(detection.corners.map(p=>[p[0]*fw/dw,p[1]*fh/dh]),fw,fh):V.frameCorners(fw,fh);
  const page={
   id:++S.seq,fw,fh,corners:pts,rot:0,mode:null,frame,
   frameReady:Promise.resolve(frame),out:null,url:"",w:0,h:0,cropped:found
@@ -801,7 +822,7 @@ async function importPhoto(file,{showManual=true}={}) {
  try{
   const input=ctx.getImageData(0,0,fw,fh);
   await processPage(page,input);
-  S.pages.push(page);
+   try{retainPage(page);}catch(error){if(page.url)URL.revokeObjectURL(page.url);page.optical=null;throw error;}
   renderTray();
   window.dispatchEvent(new CustomEvent("salta-omr:page",{detail:{page}}));
   importStatus(found?"Foto digitalizada. Revise o recorte e exporte em PDF.":"Nenhum contorno confiável. Ajuste os quatro cantos manualmente.");
@@ -834,7 +855,7 @@ function wire() {
   $("clear").addEventListener("click", () => {
     if (!S.pages.length) return;
     if (!confirm(`Excluir ${S.pages.length} página${S.pages.length===1?"":"s"} digitalizada${S.pages.length===1?"":"s"}?`)) return;
-    for (const p of S.pages.splice(0)) if (p.url) URL.revokeObjectURL(p.url);
+    for (const p of S.pages.splice(0)){p.optical=null;if(p.url) URL.revokeObjectURL(p.url);window.dispatchEvent(new CustomEvent("salta-omr:discard",{detail:{pageId:p.id}}));}
     closeEditor();
     renderTray();
     resetDetection();
@@ -897,7 +918,12 @@ function wire() {
       setPill("Leitura concluída. Troque a folha quando quiser.","ok",1200);
     }
   });
-  window.addEventListener("pagehide", stopCameraView);
+  $("omrNextSheet").addEventListener("click",()=>{
+    if(S.busy||!S.cardFlow.readDone||!S.running)return;
+    if(!confirm("Confirma que a folha anterior foi retirada e deseja liberar outra captura?"))return;
+    S.cardFlow=createCardFlow();resetDetection();
+  });
+  window.addEventListener("pagehide",()=>{stopCameraView();resetWorker(new Error("Sessão encerrada"));for(const p of S.pages.splice(0)){p.optical=null;if(p.url)URL.revokeObjectURL(p.url);}});
 
   // test hooks
   window.__scancat = { S, capture, downloadPdf, processPage, V, buildPdf, startCamera, stopCameraView, requestContinuousFocus, importPhoto, detectorMode: DETECTOR_MODE, cameraPresentation }; window.__saltaScan = window.__scancat;
