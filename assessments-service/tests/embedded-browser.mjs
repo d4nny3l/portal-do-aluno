@@ -82,8 +82,7 @@ try{
   svg=svg.replace('</svg>',marks+'</svg>');
   const png=await p.evaluate(async ({svg,width,height})=>{const image=new Image();image.src='data:image/svg+xml;base64,'+btoa(unescape(encodeURIComponent(svg)));await image.decode();const canvas=document.createElement('canvas');canvas.width=1400;canvas.height=Math.round(1400*height/width);canvas.getContext('2d').drawImage(image,0,0,canvas.width,canvas.height);return canvas.toDataURL('image/png').split(',')[1]},{svg,width,height});
   await p.locator('#file').setInputFiles({name:'synthetic-card.png',mimeType:'image/png',buffer:Buffer.from(png,'base64')});
-  await p.waitForFunction(()=>!document.getElementById('captureComparison').hidden);
-  await p.locator('#read').evaluate(e=>e.click());
+  await p.locator('#canvas:not([hidden])').waitFor(); // Worker commits automatically; no second read or comparison.
   await p.locator('#photoGrade:not([hidden])').waitFor();assert.equal(await p.locator('#photoGrade').innerText(),'Nota '+['7','6,7','6,67'][places]);
   const score=await p.locator('#scanScore').textContent();assert(score.includes('Nota final '+['7 / 10','6,7 / 10,0','6,67 / 10,00'][places]),score);
   const history=await p.locator('#captureHistory').innerText();assert(history.includes(['nota final 7','nota final 6,7','nota final 6,67'][places]));

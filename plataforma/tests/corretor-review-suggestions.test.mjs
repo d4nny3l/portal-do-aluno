@@ -135,7 +135,7 @@ test('P1 final classification: blank and double automatically count as zero and 
  assert.match(fields.scanScore.innerHTML,/Nota final 6,00 \/ 10,00/);
 });
 
-test('P1 code unreadable blocks final grade despite otherwise definitive strong answers',()=>{
+test('D05 code unreadable permits only provisional local grade; valid identity restores final presentation',()=>{
  const {fields,editor}=setup();
  const obs=[
   {number:1,questionId:'q1',state:'read',answer:'A',marks:['A']},
@@ -145,8 +145,10 @@ test('P1 code unreadable blocks final grade despite otherwise definitive strong 
   {number:5,questionId:'q5',state:'read',answer:'B',marks:['B']},
  ];
  editor.render({identity:{state:'review',code:null},observations:obs});
- assert.equal(fields.scanScore.dataset.review,'true');
- assert.match(fields.scanScore.innerHTML,/Identificação inconclusiva/);
+ assert.equal(fields.scanScore.dataset.review,'false');
+ assert.equal(fields.scanScore.dataset.identity,'review');
+ assert.equal(fields.scanScore.dataset.provisional,'true');
+ assert.match(fields.scanScore.innerHTML,/Nota provisória/);
  assert.doesNotMatch(fields.scanScore.innerHTML,/Nota final/);
  editor.render({identity:{state:'read',code:'0001123'},observations:obs});
  assert.equal(fields.scanScore.dataset.review,'false');

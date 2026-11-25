@@ -1,0 +1,1560 @@
+{
+  "schemaVersion": "salta-candidate-optical-validation-v1",
+  "generatedAt": "2026-11-25T20:42:11.097Z",
+  "scope": "100 consecutive synthetic cards through actual processCapture versus 100 paired frozen dual reads; three pre-generated synthetic inputs repeated. Processing to optical result only.",
+  "limitations": [
+    "Synthetic SVG rasterization and procedural lighting are not physical photographs.",
+    "No iPhone, temperature, camera acquisition, UI, browser freeze, sensor noise or physical ink performance was measured.",
+    "Benchmark is processing until optical reading, not capture to displayed grade.",
+    "No labelled physical corpus was found among versioned repository fixtures; existing UI screenshots were not opened or reused.",
+    "Current official generator has one page; this harness does not claim multipage optical coverage."
+  ],
+  "referenceHashes": {
+    "laboratorio/salta-omr-scan-safe-02/omr-lab.mjs": "8f1227c8ef5f6f23506e297357ff7582c22bad0a799cbc51409aa62920d4b821",
+    "laboratorio/salta-omr-scan-safe-02/js/worker.js": "73fa76300d35f510874b64d111893e71cf8c4ae9b83661eb699e804acbfe8a02",
+    "laboratorio/salta-omr-scan-safe-02/js/vision.js": "88dde333483611dcb77eb0595b64a80ef14155517c80e92142a38d0b73a8062f",
+    "laboratorio/salta-omr-scan-safe-02/js/document-enhance.mjs": "f1e1f8aa9737d23d3e36100f587acc39f7f66da025e281f9aead2be1310e443e",
+    "laboratorio/salta-omr-scan-safe-02/js/safe-scan.mjs": "d067bebe9cdfd2ae2a504b9e07d0be55ede82287487d03394f91fa566e267d77",
+    "corretor/v2/omr/normalize.mjs": "8bc9b5fcf94dfaf2583819014a9ca532d4170ff0e6663916fa45c1f443349a61",
+    "corretor/v2/omr/reader.mjs": "8516cf5f75f4b2f176a121a20177833dbaeeca955bc169c87213ba7cd16d298f"
+  },
+  "processorSha256": "e599234535da531b1aafddd1de2f1e4757b5675a654429ba01f5429e9bccf2af",
+  "labelledEvidenceSha256": "999677a7a28c119128d17b53ba942fa114febf778aba7ed6e486acad442827bc",
+  "node": "v24.21.0",
+  "baselineMemory": {
+    "rss": 96944128,
+    "heapUsed": 7075688,
+    "external": 26752003,
+    "arrayBuffers": 24575265
+  },
+  "peakMemory": {
+    "rss": 284557312,
+    "heapUsed": 22919088,
+    "external": 105605073,
+    "arrayBuffers": 103429734
+  },
+  "samples": [
+    {
+      "index": 1,
+      "id": "moderate-A",
+      "productionMs": 157.67124999999987,
+      "frozenDualMs": 172.63841700000012,
+      "readCalls": 1,
+      "memory": {
+        "rss": 253771776,
+        "heapUsed": 10132448,
+        "external": 38924064,
+        "arrayBuffers": 36749826
+      }
+    },
+    {
+      "index": 2,
+      "id": "moderate-AB",
+      "productionMs": 143.43225000000007,
+      "frozenDualMs": 168.93279200000006,
+      "readCalls": 1,
+      "memory": {
+        "rss": 253853696,
+        "heapUsed": 7366696,
+        "external": 80399596,
+        "arrayBuffers": 78225358
+      }
+    },
+    {
+      "index": 3,
+      "id": "shadow-AB-130",
+      "productionMs": 159.75895800000012,
+      "frozenDualMs": 172.59354099999996,
+      "readCalls": 1,
+      "memory": {
+        "rss": 253870080,
+        "heapUsed": 8372656,
+        "external": 64578716,
+        "arrayBuffers": 62404478
+      }
+    },
+    {
+      "index": 4,
+      "id": "moderate-A",
+      "productionMs": 154.4039170000001,
+      "frozenDualMs": 168.2282499999999,
+      "readCalls": 1,
+      "memory": {
+        "rss": 253902848,
+        "heapUsed": 10034336,
+        "external": 83197768,
+        "arrayBuffers": 81023530
+      }
+    },
+    {
+      "index": 5,
+      "id": "moderate-AB",
+      "productionMs": 152.9593749999999,
+      "frozenDualMs": 147.31012499999997,
+      "readCalls": 1,
+      "memory": {
+        "rss": 253935616,
+        "heapUsed": 8847800,
+        "external": 87272772,
+        "arrayBuffers": 85098534
+      }
+    },
+    {
+      "index": 6,
+      "id": "shadow-AB-130",
+      "productionMs": 174.15650000000005,
+      "frozenDualMs": 165.54429200000004,
+      "readCalls": 1,
+      "memory": {
+        "rss": 253984768,
+        "heapUsed": 9098688,
+        "external": 64866568,
+        "arrayBuffers": 62692330
+      }
+    },
+    {
+      "index": 7,
+      "id": "moderate-A",
+      "productionMs": 200.20445800000016,
+      "frozenDualMs": 138.29662499999995,
+      "readCalls": 1,
+      "memory": {
+        "rss": 254001152,
+        "heapUsed": 8459952,
+        "external": 64577692,
+        "arrayBuffers": 62403454
+      }
+    },
+    {
+      "index": 8,
+      "id": "moderate-AB",
+      "productionMs": 133.4532079999999,
+      "frozenDualMs": 138.4090409999999,
+      "readCalls": 1,
+      "memory": {
+        "rss": 254001152,
+        "heapUsed": 6597912,
+        "external": 78613944,
+        "arrayBuffers": 76439706
+      }
+    },
+    {
+      "index": 9,
+      "id": "shadow-AB-130",
+      "productionMs": 132.17704099999992,
+      "frozenDualMs": 148.1875839999998,
+      "readCalls": 1,
+      "memory": {
+        "rss": 254017536,
+        "heapUsed": 8072048,
+        "external": 78342460,
+        "arrayBuffers": 76168222
+      }
+    },
+    {
+      "index": 10,
+      "id": "moderate-A",
+      "productionMs": 131.998959,
+      "frozenDualMs": 136.40758400000004,
+      "readCalls": 1,
+      "memory": {
+        "rss": 254017536,
+        "heapUsed": 9054536,
+        "external": 60282744,
+        "arrayBuffers": 58108506
+      }
+    },
+    {
+      "index": 11,
+      "id": "moderate-AB",
+      "productionMs": 133.7945840000002,
+      "frozenDualMs": 137.00270799999998,
+      "readCalls": 1,
+      "memory": {
+        "rss": 254033920,
+        "heapUsed": 8517472,
+        "external": 64577692,
+        "arrayBuffers": 62403454
+      }
+    },
+    {
+      "index": 12,
+      "id": "shadow-AB-130",
+      "productionMs": 135.13287500000024,
+      "frozenDualMs": 145.60429099999965,
+      "readCalls": 1,
+      "memory": {
+        "rss": 254148608,
+        "heapUsed": 6773272,
+        "external": 60283768,
+        "arrayBuffers": 58109530
+      }
+    },
+    {
+      "index": 13,
+      "id": "moderate-A",
+      "productionMs": 130.67208400000072,
+      "frozenDualMs": 135.61433299999953,
+      "readCalls": 1,
+      "memory": {
+        "rss": 254148608,
+        "heapUsed": 10430040,
+        "external": 78342460,
+        "arrayBuffers": 76168222
+      }
+    },
+    {
+      "index": 14,
+      "id": "moderate-AB",
+      "productionMs": 135.28187499999967,
+      "frozenDualMs": 136.4960000000001,
+      "readCalls": 1,
+      "memory": {
+        "rss": 254164992,
+        "heapUsed": 8765848,
+        "external": 60282744,
+        "arrayBuffers": 58108506
+      }
+    },
+    {
+      "index": 15,
+      "id": "shadow-AB-130",
+      "productionMs": 148.31108399999994,
+      "frozenDualMs": 142.90887500000008,
+      "readCalls": 1,
+      "memory": {
+        "rss": 254164992,
+        "heapUsed": 9203280,
+        "external": 82925260,
+        "arrayBuffers": 80751022
+      }
+    },
+    {
+      "index": 16,
+      "id": "moderate-A",
+      "productionMs": 129.80954099999963,
+      "frozenDualMs": 134.58758399999988,
+      "readCalls": 1,
+      "memory": {
+        "rss": 262586368,
+        "heapUsed": 12891368,
+        "external": 60282744,
+        "arrayBuffers": 58108506
+      }
+    },
+    {
+      "index": 17,
+      "id": "moderate-AB",
+      "productionMs": 129.87362500000017,
+      "frozenDualMs": 134.78629100000035,
+      "readCalls": 1,
+      "memory": {
+        "rss": 262586368,
+        "heapUsed": 8266904,
+        "external": 87273796,
+        "arrayBuffers": 85099558
+      }
+    },
+    {
+      "index": 18,
+      "id": "shadow-AB-130",
+      "productionMs": 130.79325000000063,
+      "frozenDualMs": 141.20316699999967,
+      "readCalls": 1,
+      "memory": {
+        "rss": 262586368,
+        "heapUsed": 7318056,
+        "external": 60282744,
+        "arrayBuffers": 58108506
+      }
+    },
+    {
+      "index": 19,
+      "id": "moderate-A",
+      "productionMs": 128.2054589999998,
+      "frozenDualMs": 133.39325000000008,
+      "readCalls": 1,
+      "memory": {
+        "rss": 262619136,
+        "heapUsed": 14355168,
+        "external": 82925260,
+        "arrayBuffers": 80751022
+      }
+    },
+    {
+      "index": 20,
+      "id": "moderate-AB",
+      "productionMs": 129.8150829999995,
+      "frozenDualMs": 133.54975000000013,
+      "readCalls": 1,
+      "memory": {
+        "rss": 262619136,
+        "heapUsed": 9109296,
+        "external": 69449368,
+        "arrayBuffers": 67275130
+      }
+    },
+    {
+      "index": 21,
+      "id": "shadow-AB-130",
+      "productionMs": 132.1922080000004,
+      "frozenDualMs": 143.98891699999967,
+      "readCalls": 1,
+      "memory": {
+        "rss": 262930432,
+        "heapUsed": 14547128,
+        "external": 64578793,
+        "arrayBuffers": 62403454
+      }
+    },
+    {
+      "index": 22,
+      "id": "moderate-A",
+      "productionMs": 129.33266699999967,
+      "frozenDualMs": 134.9777090000007,
+      "readCalls": 1,
+      "memory": {
+        "rss": 262930432,
+        "heapUsed": 9106664,
+        "external": 69450469,
+        "arrayBuffers": 67275130
+      }
+    },
+    {
+      "index": 23,
+      "id": "moderate-AB",
+      "productionMs": 128.88337500000034,
+      "frozenDualMs": 135.36504200000036,
+      "readCalls": 1,
+      "memory": {
+        "rss": 262946816,
+        "heapUsed": 8581928,
+        "external": 64578793,
+        "arrayBuffers": 62403454
+      }
+    },
+    {
+      "index": 24,
+      "id": "shadow-AB-130",
+      "productionMs": 131.9133329999995,
+      "frozenDualMs": 143.43537500000002,
+      "readCalls": 1,
+      "memory": {
+        "rss": 262963200,
+        "heapUsed": 7785960,
+        "external": 60283845,
+        "arrayBuffers": 58108506
+      }
+    },
+    {
+      "index": 25,
+      "id": "moderate-A",
+      "productionMs": 128.9192920000005,
+      "frozenDualMs": 133.03808300000037,
+      "readCalls": 1,
+      "memory": {
+        "rss": 262963200,
+        "heapUsed": 14374984,
+        "external": 82926361,
+        "arrayBuffers": 80751022
+      }
+    },
+    {
+      "index": 26,
+      "id": "moderate-AB",
+      "productionMs": 128.8785829999997,
+      "frozenDualMs": 133.70645799999966,
+      "readCalls": 1,
+      "memory": {
+        "rss": 262963200,
+        "heapUsed": 9118248,
+        "external": 69450469,
+        "arrayBuffers": 67275130
+      }
+    },
+    {
+      "index": 27,
+      "id": "shadow-AB-130",
+      "productionMs": 132.0344580000001,
+      "frozenDualMs": 143.39733399999932,
+      "readCalls": 1,
+      "memory": {
+        "rss": 262995968,
+        "heapUsed": 14516432,
+        "external": 64578793,
+        "arrayBuffers": 62403454
+      }
+    },
+    {
+      "index": 28,
+      "id": "moderate-A",
+      "productionMs": 128.91100000000006,
+      "frozenDualMs": 135.75983300000007,
+      "readCalls": 1,
+      "memory": {
+        "rss": 262995968,
+        "heapUsed": 9093160,
+        "external": 69450469,
+        "arrayBuffers": 67275130
+      }
+    },
+    {
+      "index": 29,
+      "id": "moderate-AB",
+      "productionMs": 128.92945800000052,
+      "frozenDualMs": 134.99887499999932,
+      "readCalls": 1,
+      "memory": {
+        "rss": 262995968,
+        "heapUsed": 8552896,
+        "external": 64578793,
+        "arrayBuffers": 62403454
+      }
+    },
+    {
+      "index": 30,
+      "id": "shadow-AB-130",
+      "productionMs": 132.6894999999986,
+      "frozenDualMs": 143.30258400000093,
+      "readCalls": 1,
+      "memory": {
+        "rss": 262995968,
+        "heapUsed": 7586504,
+        "external": 60283845,
+        "arrayBuffers": 58108506
+      }
+    },
+    {
+      "index": 31,
+      "id": "moderate-A",
+      "productionMs": 127.95237499999894,
+      "frozenDualMs": 132.60658300000068,
+      "readCalls": 1,
+      "memory": {
+        "rss": 262995968,
+        "heapUsed": 14376920,
+        "external": 82926361,
+        "arrayBuffers": 80751022
+      }
+    },
+    {
+      "index": 32,
+      "id": "moderate-AB",
+      "productionMs": 126.35829099999864,
+      "frozenDualMs": 273.50333300000057,
+      "readCalls": 1,
+      "memory": {
+        "rss": 263012352,
+        "heapUsed": 9060072,
+        "external": 69450469,
+        "arrayBuffers": 67275130
+      }
+    },
+    {
+      "index": 33,
+      "id": "shadow-AB-130",
+      "productionMs": 129.64095799999996,
+      "frozenDualMs": 141.0853330000009,
+      "readCalls": 1,
+      "memory": {
+        "rss": 263012352,
+        "heapUsed": 14624440,
+        "external": 64578793,
+        "arrayBuffers": 62403454
+      }
+    },
+    {
+      "index": 34,
+      "id": "moderate-A",
+      "productionMs": 126.82879200000025,
+      "frozenDualMs": 132.3857080000016,
+      "readCalls": 1,
+      "memory": {
+        "rss": 263028736,
+        "heapUsed": 9118768,
+        "external": 69450469,
+        "arrayBuffers": 67275130
+      }
+    },
+    {
+      "index": 35,
+      "id": "moderate-AB",
+      "productionMs": 126.06983299999956,
+      "frozenDualMs": 132.4905830000007,
+      "readCalls": 1,
+      "memory": {
+        "rss": 263028736,
+        "heapUsed": 8579848,
+        "external": 64578793,
+        "arrayBuffers": 62403454
+      }
+    },
+    {
+      "index": 36,
+      "id": "shadow-AB-130",
+      "productionMs": 208.91804199999933,
+      "frozenDualMs": 142.12345900000037,
+      "readCalls": 1,
+      "memory": {
+        "rss": 263045120,
+        "heapUsed": 9124856,
+        "external": 60283845,
+        "arrayBuffers": 58108506
+      }
+    },
+    {
+      "index": 37,
+      "id": "moderate-A",
+      "productionMs": 365.8404580000006,
+      "frozenDualMs": 298.93020799999977,
+      "readCalls": 1,
+      "memory": {
+        "rss": 265076736,
+        "heapUsed": 6893096,
+        "external": 105605073,
+        "arrayBuffers": 103429734
+      }
+    },
+    {
+      "index": 38,
+      "id": "moderate-AB",
+      "productionMs": 196.7246670000004,
+      "frozenDualMs": 236.50950000000012,
+      "readCalls": 1,
+      "memory": {
+        "rss": 267091968,
+        "heapUsed": 10057720,
+        "external": 64867669,
+        "arrayBuffers": 62692330
+      }
+    },
+    {
+      "index": 39,
+      "id": "shadow-AB-130",
+      "productionMs": 159.31262500000048,
+      "frozenDualMs": 172.35216600000058,
+      "readCalls": 1,
+      "memory": {
+        "rss": 267124736,
+        "heapUsed": 8405664,
+        "external": 82926361,
+        "arrayBuffers": 80751022
+      }
+    },
+    {
+      "index": 40,
+      "id": "moderate-A",
+      "productionMs": 143.61495800000012,
+      "frozenDualMs": 151.55591599999934,
+      "readCalls": 1,
+      "memory": {
+        "rss": 267124736,
+        "heapUsed": 7340304,
+        "external": 84983497,
+        "arrayBuffers": 82808158
+      }
+    },
+    {
+      "index": 41,
+      "id": "moderate-AB",
+      "productionMs": 145.49208399999952,
+      "frozenDualMs": 147.84941700000127,
+      "readCalls": 1,
+      "memory": {
+        "rss": 267124736,
+        "heapUsed": 8366944,
+        "external": 59995993,
+        "arrayBuffers": 57820654
+      }
+    },
+    {
+      "index": 42,
+      "id": "shadow-AB-130",
+      "productionMs": 149.46970800000054,
+      "frozenDualMs": 162.52004099999976,
+      "readCalls": 1,
+      "memory": {
+        "rss": 267124736,
+        "heapUsed": 8584608,
+        "external": 83215237,
+        "arrayBuffers": 81039898
+      }
+    },
+    {
+      "index": 43,
+      "id": "moderate-A",
+      "productionMs": 141.61583299999984,
+      "frozenDualMs": 145.8117919999986,
+      "readCalls": 1,
+      "memory": {
+        "rss": 267141120,
+        "heapUsed": 7324344,
+        "external": 91857697,
+        "arrayBuffers": 89682358
+      }
+    },
+    {
+      "index": 44,
+      "id": "moderate-AB",
+      "productionMs": 133.49504200000047,
+      "frozenDualMs": 145.17041599999902,
+      "readCalls": 1,
+      "memory": {
+        "rss": 267141120,
+        "heapUsed": 9136568,
+        "external": 64867669,
+        "arrayBuffers": 62692330
+      }
+    },
+    {
+      "index": 45,
+      "id": "shadow-AB-130",
+      "productionMs": 139.41600000000108,
+      "frozenDualMs": 150.06262500000048,
+      "readCalls": 1,
+      "memory": {
+        "rss": 267141120,
+        "heapUsed": 13895064,
+        "external": 78343561,
+        "arrayBuffers": 76168222
+      }
+    },
+    {
+      "index": 46,
+      "id": "moderate-A",
+      "productionMs": 135.34166699999878,
+      "frozenDualMs": 136.94879199999923,
+      "readCalls": 1,
+      "memory": {
+        "rss": 267141120,
+        "heapUsed": 9234968,
+        "external": 60283845,
+        "arrayBuffers": 58108506
+      }
+    },
+    {
+      "index": 47,
+      "id": "moderate-AB",
+      "productionMs": 132.9633329999997,
+      "frozenDualMs": 139.1287080000002,
+      "readCalls": 1,
+      "memory": {
+        "rss": 267157504,
+        "heapUsed": 14430192,
+        "external": 82926361,
+        "arrayBuffers": 80751022
+      }
+    },
+    {
+      "index": 48,
+      "id": "shadow-AB-130",
+      "productionMs": 140.7066249999989,
+      "frozenDualMs": 147.84349999999904,
+      "readCalls": 1,
+      "memory": {
+        "rss": 267173888,
+        "heapUsed": 6915552,
+        "external": 60284869,
+        "arrayBuffers": 58109530
+      }
+    },
+    {
+      "index": 49,
+      "id": "moderate-A",
+      "productionMs": 137.61175000000003,
+      "frozenDualMs": 141.89612500000112,
+      "readCalls": 1,
+      "memory": {
+        "rss": 267173888,
+        "heapUsed": 7733160,
+        "external": 55413193,
+        "arrayBuffers": 53237854
+      }
+    },
+    {
+      "index": 50,
+      "id": "moderate-AB",
+      "productionMs": 135.34912500000064,
+      "frozenDualMs": 140.73216700000012,
+      "readCalls": 1,
+      "memory": {
+        "rss": 267173888,
+        "heapUsed": 8264832,
+        "external": 60284869,
+        "arrayBuffers": 58109530
+      }
+    },
+    {
+      "index": 51,
+      "id": "shadow-AB-130",
+      "productionMs": 141.2776670000003,
+      "frozenDualMs": 151.88204199999927,
+      "readCalls": 1,
+      "memory": {
+        "rss": 267190272,
+        "heapUsed": 13476184,
+        "external": 78326169,
+        "arrayBuffers": 76150830
+      }
+    },
+    {
+      "index": 52,
+      "id": "moderate-A",
+      "productionMs": 135.94395799999802,
+      "frozenDualMs": 140.9825409999994,
+      "readCalls": 1,
+      "memory": {
+        "rss": 267190272,
+        "heapUsed": 9152024,
+        "external": 69450469,
+        "arrayBuffers": 67275130
+      }
+    },
+    {
+      "index": 53,
+      "id": "moderate-AB",
+      "productionMs": 135.69262499999968,
+      "frozenDualMs": 140.30666700000074,
+      "readCalls": 1,
+      "memory": {
+        "rss": 267190272,
+        "heapUsed": 14950280,
+        "external": 91857697,
+        "arrayBuffers": 89682358
+      }
+    },
+    {
+      "index": 54,
+      "id": "shadow-AB-130",
+      "productionMs": 136.7544999999991,
+      "frozenDualMs": 150.52870899999834,
+      "readCalls": 1,
+      "memory": {
+        "rss": 267206656,
+        "heapUsed": 7841168,
+        "external": 69450469,
+        "arrayBuffers": 67275130
+      }
+    },
+    {
+      "index": 55,
+      "id": "moderate-A",
+      "productionMs": 136.4690410000003,
+      "frozenDualMs": 142.4022909999985,
+      "readCalls": 1,
+      "memory": {
+        "rss": 267223040,
+        "heapUsed": 14911368,
+        "external": 91857697,
+        "arrayBuffers": 89682358
+      }
+    },
+    {
+      "index": 56,
+      "id": "moderate-AB",
+      "productionMs": 126.1819579999974,
+      "frozenDualMs": 141.6994999999988,
+      "readCalls": 1,
+      "memory": {
+        "rss": 267223040,
+        "heapUsed": 8871752,
+        "external": 60283845,
+        "arrayBuffers": 58108506
+      }
+    },
+    {
+      "index": 57,
+      "id": "shadow-AB-130",
+      "productionMs": 130.5034169999999,
+      "frozenDualMs": 140.9546249999985,
+      "readCalls": 1,
+      "memory": {
+        "rss": 267223040,
+        "heapUsed": 13795336,
+        "external": 82926361,
+        "arrayBuffers": 80751022
+      }
+    },
+    {
+      "index": 58,
+      "id": "moderate-A",
+      "productionMs": 127.26904099999956,
+      "frozenDualMs": 131.16233300000022,
+      "readCalls": 1,
+      "memory": {
+        "rss": 267223040,
+        "heapUsed": 9056128,
+        "external": 69450469,
+        "arrayBuffers": 67275130
+      }
+    },
+    {
+      "index": 59,
+      "id": "moderate-AB",
+      "productionMs": 127.28187500000058,
+      "frozenDualMs": 132.5282499999994,
+      "readCalls": 1,
+      "memory": {
+        "rss": 267223040,
+        "heapUsed": 8314208,
+        "external": 64578793,
+        "arrayBuffers": 62403454
+      }
+    },
+    {
+      "index": 60,
+      "id": "shadow-AB-130",
+      "productionMs": 130.8754169999993,
+      "frozenDualMs": 142.6471249999995,
+      "readCalls": 1,
+      "memory": {
+        "rss": 267239424,
+        "heapUsed": 7611368,
+        "external": 60283845,
+        "arrayBuffers": 58108506
+      }
+    },
+    {
+      "index": 61,
+      "id": "moderate-A",
+      "productionMs": 127.33124999999927,
+      "frozenDualMs": 132.33291699999972,
+      "readCalls": 1,
+      "memory": {
+        "rss": 267239424,
+        "heapUsed": 14537576,
+        "external": 87273873,
+        "arrayBuffers": 85098534
+      }
+    },
+    {
+      "index": 62,
+      "id": "moderate-AB",
+      "productionMs": 125.40799999999945,
+      "frozenDualMs": 132.47999999999956,
+      "readCalls": 1,
+      "memory": {
+        "rss": 267239424,
+        "heapUsed": 9170392,
+        "external": 69450469,
+        "arrayBuffers": 67275130
+      }
+    },
+    {
+      "index": 63,
+      "id": "shadow-AB-130",
+      "productionMs": 129.67554100000052,
+      "frozenDualMs": 141.16129200000069,
+      "readCalls": 1,
+      "memory": {
+        "rss": 267239424,
+        "heapUsed": 14275112,
+        "external": 64578793,
+        "arrayBuffers": 62403454
+      }
+    },
+    {
+      "index": 64,
+      "id": "moderate-A",
+      "productionMs": 125.95791699999972,
+      "frozenDualMs": 132.4319170000017,
+      "readCalls": 1,
+      "memory": {
+        "rss": 267255808,
+        "heapUsed": 6730136,
+        "external": 80399673,
+        "arrayBuffers": 78224334
+      }
+    },
+    {
+      "index": 65,
+      "id": "moderate-AB",
+      "productionMs": 126.59525000000212,
+      "frozenDualMs": 130.18824999999924,
+      "readCalls": 1,
+      "memory": {
+        "rss": 267255808,
+        "heapUsed": 8266208,
+        "external": 64578793,
+        "arrayBuffers": 62403454
+      }
+    },
+    {
+      "index": 66,
+      "id": "shadow-AB-130",
+      "productionMs": 129.64804200000071,
+      "frozenDualMs": 140.79370800000106,
+      "readCalls": 1,
+      "memory": {
+        "rss": 267255808,
+        "heapUsed": 6861056,
+        "external": 60284869,
+        "arrayBuffers": 58109530
+      }
+    },
+    {
+      "index": 67,
+      "id": "moderate-A",
+      "productionMs": 126.59775000000081,
+      "frozenDualMs": 133.35537499999919,
+      "readCalls": 1,
+      "memory": {
+        "rss": 267255808,
+        "heapUsed": 7722952,
+        "external": 55413193,
+        "arrayBuffers": 53237854
+      }
+    },
+    {
+      "index": 68,
+      "id": "moderate-AB",
+      "productionMs": 127.57137500000317,
+      "frozenDualMs": 133.52270799999678,
+      "readCalls": 1,
+      "memory": {
+        "rss": 267272192,
+        "heapUsed": 8264136,
+        "external": 60284869,
+        "arrayBuffers": 58109530
+      }
+    },
+    {
+      "index": 69,
+      "id": "shadow-AB-130",
+      "productionMs": 129.24012500000026,
+      "frozenDualMs": 140.26754199999777,
+      "readCalls": 1,
+      "memory": {
+        "rss": 267272192,
+        "heapUsed": 13498720,
+        "external": 78326169,
+        "arrayBuffers": 76150830
+      }
+    },
+    {
+      "index": 70,
+      "id": "moderate-A",
+      "productionMs": 127.44166700000278,
+      "frozenDualMs": 131.3512499999997,
+      "readCalls": 1,
+      "memory": {
+        "rss": 267304960,
+        "heapUsed": 9147120,
+        "external": 69450469,
+        "arrayBuffers": 67275130
+      }
+    },
+    {
+      "index": 71,
+      "id": "moderate-AB",
+      "productionMs": 126.93929199999911,
+      "frozenDualMs": 133.19104199999856,
+      "readCalls": 1,
+      "memory": {
+        "rss": 267304960,
+        "heapUsed": 8327352,
+        "external": 64578793,
+        "arrayBuffers": 62403454
+      }
+    },
+    {
+      "index": 72,
+      "id": "shadow-AB-130",
+      "productionMs": 129.95037500000035,
+      "frozenDualMs": 140.8769170000014,
+      "readCalls": 1,
+      "memory": {
+        "rss": 267321344,
+        "heapUsed": 7169176,
+        "external": 60283845,
+        "arrayBuffers": 58108506
+      }
+    },
+    {
+      "index": 73,
+      "id": "moderate-A",
+      "productionMs": 127.97525000000314,
+      "frozenDualMs": 132.55075000000215,
+      "readCalls": 1,
+      "memory": {
+        "rss": 267321344,
+        "heapUsed": 7742112,
+        "external": 55413193,
+        "arrayBuffers": 53237854
+      }
+    },
+    {
+      "index": 74,
+      "id": "moderate-AB",
+      "productionMs": 127.00420799999847,
+      "frozenDualMs": 133.20941700000185,
+      "readCalls": 1,
+      "memory": {
+        "rss": 267321344,
+        "heapUsed": 8279000,
+        "external": 60284869,
+        "arrayBuffers": 58109530
+      }
+    },
+    {
+      "index": 75,
+      "id": "shadow-AB-130",
+      "productionMs": 129.28762500000084,
+      "frozenDualMs": 140.403624999999,
+      "readCalls": 1,
+      "memory": {
+        "rss": 267321344,
+        "heapUsed": 13668256,
+        "external": 78326169,
+        "arrayBuffers": 76150830
+      }
+    },
+    {
+      "index": 76,
+      "id": "moderate-A",
+      "productionMs": 126.53962500000125,
+      "frozenDualMs": 131.87262499999997,
+      "readCalls": 1,
+      "memory": {
+        "rss": 267337728,
+        "heapUsed": 9170080,
+        "external": 69450469,
+        "arrayBuffers": 67275130
+      }
+    },
+    {
+      "index": 77,
+      "id": "moderate-AB",
+      "productionMs": 127.04437500000131,
+      "frozenDualMs": 132.76037499999802,
+      "readCalls": 1,
+      "memory": {
+        "rss": 267337728,
+        "heapUsed": 8283352,
+        "external": 64578793,
+        "arrayBuffers": 62403454
+      }
+    },
+    {
+      "index": 78,
+      "id": "shadow-AB-130",
+      "productionMs": 129.27229100000113,
+      "frozenDualMs": 140.3841250000005,
+      "readCalls": 1,
+      "memory": {
+        "rss": 267337728,
+        "heapUsed": 6869816,
+        "external": 60284869,
+        "arrayBuffers": 58109530
+      }
+    },
+    {
+      "index": 79,
+      "id": "moderate-A",
+      "productionMs": 127.61650000000009,
+      "frozenDualMs": 133.4447500000024,
+      "readCalls": 1,
+      "memory": {
+        "rss": 267337728,
+        "heapUsed": 7777488,
+        "external": 55413193,
+        "arrayBuffers": 53237854
+      }
+    },
+    {
+      "index": 80,
+      "id": "moderate-AB",
+      "productionMs": 126.47862499999974,
+      "frozenDualMs": 133.3025830000006,
+      "readCalls": 1,
+      "memory": {
+        "rss": 267370496,
+        "heapUsed": 8285944,
+        "external": 60284869,
+        "arrayBuffers": 58109530
+      }
+    },
+    {
+      "index": 81,
+      "id": "shadow-AB-130",
+      "productionMs": 129.53508299999885,
+      "frozenDualMs": 140.4985830000005,
+      "readCalls": 1,
+      "memory": {
+        "rss": 267370496,
+        "heapUsed": 13959520,
+        "external": 78326169,
+        "arrayBuffers": 76150830
+      }
+    },
+    {
+      "index": 82,
+      "id": "moderate-A",
+      "productionMs": 126.80199999999968,
+      "frozenDualMs": 132.05295800000022,
+      "readCalls": 1,
+      "memory": {
+        "rss": 267370496,
+        "heapUsed": 9150608,
+        "external": 69450469,
+        "arrayBuffers": 67275130
+      }
+    },
+    {
+      "index": 83,
+      "id": "moderate-AB",
+      "productionMs": 126.46329200000037,
+      "frozenDualMs": 132.63124999999854,
+      "readCalls": 1,
+      "memory": {
+        "rss": 267370496,
+        "heapUsed": 8313416,
+        "external": 64578793,
+        "arrayBuffers": 62403454
+      }
+    },
+    {
+      "index": 84,
+      "id": "shadow-AB-130",
+      "productionMs": 130.94808299999931,
+      "frozenDualMs": 141.53554200000144,
+      "readCalls": 1,
+      "memory": {
+        "rss": 267386880,
+        "heapUsed": 7532352,
+        "external": 60283845,
+        "arrayBuffers": 58108506
+      }
+    },
+    {
+      "index": 85,
+      "id": "moderate-A",
+      "productionMs": 127.10858299999745,
+      "frozenDualMs": 132.71279200000208,
+      "readCalls": 1,
+      "memory": {
+        "rss": 267386880,
+        "heapUsed": 14763936,
+        "external": 87273873,
+        "arrayBuffers": 85098534
+      }
+    },
+    {
+      "index": 86,
+      "id": "moderate-AB",
+      "productionMs": 124.66387499999837,
+      "frozenDualMs": 132.10904200000004,
+      "readCalls": 1,
+      "memory": {
+        "rss": 267403264,
+        "heapUsed": 9171112,
+        "external": 69450469,
+        "arrayBuffers": 67275130
+      }
+    },
+    {
+      "index": 87,
+      "id": "shadow-AB-130",
+      "productionMs": 129.867166,
+      "frozenDualMs": 141.23883299999943,
+      "readCalls": 1,
+      "memory": {
+        "rss": 284508160,
+        "heapUsed": 14309144,
+        "external": 64555133,
+        "arrayBuffers": 62379794
+      }
+    },
+    {
+      "index": 88,
+      "id": "moderate-A",
+      "productionMs": 128.02829199999906,
+      "frozenDualMs": 135.38675000000148,
+      "readCalls": 1,
+      "memory": {
+        "rss": 284508160,
+        "heapUsed": 17602408,
+        "external": 69426809,
+        "arrayBuffers": 67251470
+      }
+    },
+    {
+      "index": 89,
+      "id": "moderate-AB",
+      "productionMs": 126.671957999999,
+      "frozenDualMs": 132.5817500000012,
+      "readCalls": 1,
+      "memory": {
+        "rss": 284508160,
+        "heapUsed": 8326552,
+        "external": 64555133,
+        "arrayBuffers": 62379794
+      }
+    },
+    {
+      "index": 90,
+      "id": "shadow-AB-130",
+      "productionMs": 129.7402089999996,
+      "frozenDualMs": 140.91254200000185,
+      "readCalls": 1,
+      "memory": {
+        "rss": 284524544,
+        "heapUsed": 6922456,
+        "external": 60284869,
+        "arrayBuffers": 58109530
+      }
+    },
+    {
+      "index": 91,
+      "id": "moderate-A",
+      "productionMs": 128.50679200000013,
+      "frozenDualMs": 132.71420800000124,
+      "readCalls": 1,
+      "memory": {
+        "rss": 284524544,
+        "heapUsed": 7827952,
+        "external": 55413193,
+        "arrayBuffers": 53237854
+      }
+    },
+    {
+      "index": 92,
+      "id": "moderate-AB",
+      "productionMs": 126.80870900000082,
+      "frozenDualMs": 132.40079100000003,
+      "readCalls": 1,
+      "memory": {
+        "rss": 284524544,
+        "heapUsed": 16691944,
+        "external": 60284869,
+        "arrayBuffers": 58109530
+      }
+    },
+    {
+      "index": 93,
+      "id": "shadow-AB-130",
+      "productionMs": 129.71545799999876,
+      "frozenDualMs": 139.8953330000004,
+      "readCalls": 1,
+      "memory": {
+        "rss": 284524544,
+        "heapUsed": 13755136,
+        "external": 78302509,
+        "arrayBuffers": 76127170
+      }
+    },
+    {
+      "index": 94,
+      "id": "moderate-A",
+      "productionMs": 125.99858300000051,
+      "frozenDualMs": 131.51112499999726,
+      "readCalls": 1,
+      "memory": {
+        "rss": 284524544,
+        "heapUsed": 17516168,
+        "external": 69426809,
+        "arrayBuffers": 67251470
+      }
+    },
+    {
+      "index": 95,
+      "id": "moderate-AB",
+      "productionMs": 125.87916600000244,
+      "frozenDualMs": 132.07845799999996,
+      "readCalls": 1,
+      "memory": {
+        "rss": 284524544,
+        "heapUsed": 8275368,
+        "external": 64555133,
+        "arrayBuffers": 62379794
+      }
+    },
+    {
+      "index": 96,
+      "id": "shadow-AB-130",
+      "productionMs": 130.077959000002,
+      "frozenDualMs": 140.7300409999989,
+      "readCalls": 1,
+      "memory": {
+        "rss": 284540928,
+        "heapUsed": 7263528,
+        "external": 60260185,
+        "arrayBuffers": 58084846
+      }
+    },
+    {
+      "index": 97,
+      "id": "moderate-A",
+      "productionMs": 127.11683300000004,
+      "frozenDualMs": 131.265625,
+      "readCalls": 1,
+      "memory": {
+        "rss": 284540928,
+        "heapUsed": 22919088,
+        "external": 87226553,
+        "arrayBuffers": 85051214
+      }
+    },
+    {
+      "index": 98,
+      "id": "moderate-AB",
+      "productionMs": 124.54254200000287,
+      "frozenDualMs": 131.30679099999907,
+      "readCalls": 1,
+      "memory": {
+        "rss": 284557312,
+        "heapUsed": 17586512,
+        "external": 69426809,
+        "arrayBuffers": 67251470
+      }
+    },
+    {
+      "index": 99,
+      "id": "shadow-AB-130",
+      "productionMs": 129.8022920000003,
+      "frozenDualMs": 140.92383300000074,
+      "readCalls": 1,
+      "memory": {
+        "rss": 284557312,
+        "heapUsed": 22681048,
+        "external": 64555133,
+        "arrayBuffers": 62379794
+      }
+    },
+    {
+      "index": 100,
+      "id": "moderate-A",
+      "productionMs": 127.40254099999947,
+      "frozenDualMs": 131.49045800000022,
+      "readCalls": 1,
+      "memory": {
+        "rss": 284557312,
+        "heapUsed": 16659408,
+        "external": 60284869,
+        "arrayBuffers": 58109530
+      }
+    }
+  ],
+  "cases": [
+    {
+      "id": "moderate-A",
+      "exactReadingParity": true,
+      "readCalls": 1,
+      "metrics": {
+        "questions": 10,
+        "truthSingle": 1,
+        "truthBlank": 9,
+        "truthMultiple": 0,
+        "read": 1,
+        "blank": 9,
+        "double": 0,
+        "review": 0,
+        "unavailable": 0,
+        "truePositiveMarks": 1,
+        "falsePositiveMarks": 0,
+        "falseNegativeMarks": 0,
+        "correctDefinitiveAnswers": 1,
+        "incorrectDefinitiveAnswers": 0,
+        "incorrectDefinitiveBlanks": 0,
+        "correctClassifications": 10,
+        "incorrectClassifications": 0,
+        "requiresReviewNotReviewed": 0,
+        "answerCoverage": 1,
+        "definitiveAnswerPrecision": 1,
+        "reviewRate": 0,
+        "mismatches": []
+      },
+      "first": {
+        "questionId": "section-1-q1",
+        "number": 1,
+        "page": 1,
+        "marks": [
+          "A"
+        ],
+        "answer": "A",
+        "confidence": 0.2418842093050238,
+        "state": "read",
+        "recognition": "partial"
+      },
+      "consensusFirst": {
+        "questionId": "section-1-q1",
+        "number": 1,
+        "page": 1,
+        "marks": [
+          "A"
+        ],
+        "answer": "A",
+        "confidence": 0.23104768534632786,
+        "state": "read",
+        "recognition": "partial",
+        "reviewed": true
+      }
+    },
+    {
+      "id": "moderate-AB",
+      "exactReadingParity": true,
+      "readCalls": 1,
+      "metrics": {
+        "questions": 10,
+        "truthSingle": 0,
+        "truthBlank": 9,
+        "truthMultiple": 1,
+        "read": 0,
+        "blank": 9,
+        "double": 1,
+        "review": 0,
+        "unavailable": 0,
+        "truePositiveMarks": 2,
+        "falsePositiveMarks": 0,
+        "falseNegativeMarks": 0,
+        "correctDefinitiveAnswers": 0,
+        "incorrectDefinitiveAnswers": 0,
+        "incorrectDefinitiveBlanks": 0,
+        "correctClassifications": 10,
+        "incorrectClassifications": 0,
+        "requiresReviewNotReviewed": 0,
+        "answerCoverage": null,
+        "definitiveAnswerPrecision": null,
+        "reviewRate": 0,
+        "mismatches": []
+      },
+      "first": {
+        "questionId": "section-1-q1",
+        "number": 1,
+        "page": 1,
+        "marks": [
+          "A",
+          "B"
+        ],
+        "answer": null,
+        "confidence": 0.12549019607843137,
+        "state": "double",
+        "recognition": null
+      },
+      "consensusFirst": {
+        "questionId": "section-1-q1",
+        "number": 1,
+        "page": 1,
+        "marks": [
+          "A",
+          "B"
+        ],
+        "answer": null,
+        "confidence": 0.11764705882352941,
+        "state": "double",
+        "recognition": null,
+        "reviewed": true
+      }
+    },
+    {
+      "id": "shadow-AB-130",
+      "exactReadingParity": true,
+      "readCalls": 1,
+      "metrics": {
+        "questions": 10,
+        "truthSingle": 0,
+        "truthBlank": 9,
+        "truthMultiple": 1,
+        "read": 1,
+        "blank": 9,
+        "double": 0,
+        "review": 0,
+        "unavailable": 0,
+        "truePositiveMarks": 1,
+        "falsePositiveMarks": 0,
+        "falseNegativeMarks": 1,
+        "correctDefinitiveAnswers": 0,
+        "incorrectDefinitiveAnswers": 1,
+        "incorrectDefinitiveBlanks": 0,
+        "correctClassifications": 9,
+        "incorrectClassifications": 1,
+        "requiresReviewNotReviewed": 0,
+        "answerCoverage": null,
+        "definitiveAnswerPrecision": 0,
+        "reviewRate": 0,
+        "mismatches": [
+          {
+            "expected": {
+              "questionId": "section-1-q1",
+              "number": 1,
+              "marks": [
+                "A",
+                "B"
+              ],
+              "state": "double",
+              "answer": null,
+              "requiresReview": false
+            },
+            "actual": {
+              "questionId": "section-1-q1",
+              "number": 1,
+              "page": 1,
+              "marks": [
+                "A"
+              ],
+              "answer": "A",
+              "confidence": 0.30558069381598785,
+              "state": "read",
+              "recognition": "strong"
+            }
+          }
+        ]
+      },
+      "first": {
+        "questionId": "section-1-q1",
+        "number": 1,
+        "page": 1,
+        "marks": [
+          "A"
+        ],
+        "answer": "A",
+        "confidence": 0.30558069381598785,
+        "state": "read",
+        "recognition": "strong"
+      },
+      "consensusFirst": {
+        "questionId": "section-1-q1",
+        "number": 1,
+        "page": 1,
+        "marks": [
+          "A",
+          "B"
+        ],
+        "answer": null,
+        "confidence": 0.15776772247360493,
+        "state": "review",
+        "recognition": null,
+        "reviewed": false
+      }
+    }
+  ],
+  "times": {
+    "production": {
+      "medianMs": 129.7402089999996,
+      "p95Ms": 159.75895800000012
+    },
+    "frozenDual": {
+      "medianMs": 139.1287080000002,
+      "p95Ms": 172.35216600000058
+    }
+  },
+  "endMemory": {
+    "rss": 284557312,
+    "heapUsed": 16763192,
+    "external": 60284869,
+    "arrayBuffers": 58109530
+  },
+  "afterOptionalGc": {
+    "rss": 284327936,
+    "heapUsed": 6501448,
+    "external": 60284869,
+    "arrayBuffers": 30349002
+  },
+  "gate": {
+    "singleReadPerCapture": true,
+    "exactFrozenRectifiedParity": true,
+    "newIncorrectDefinitiveAnswersVersusConsensus": 1,
+    "zeroNewIncorrectDefinitiveAnswers": false,
+    "reason": "Production parity preserves known shadow A+B -> A blocker; no optical safety approval."
+  }
+}

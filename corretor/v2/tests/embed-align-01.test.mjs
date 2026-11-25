@@ -1,11 +1,11 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {readFileSync} from 'node:fs';
 import {createTemplate,layoutTemplate,createLegacyTemplate} from '../omr/template.mjs';
 import {createCardManifest,renderTemplateSvg} from '../omr/render.mjs';
 import {normalizeCard,warpFromFiducials,detectFiducials} from '../omr/normalize.mjs';
 import {readRaster} from '../omr/reader.mjs';
 import {validateLayoutManifest} from '../omr/layout.mjs';
+import {processCapture} from '../scan-safe/processor.mjs';
 
 function embedded(label='MATEMÁTICA',widthMm=100,heightMm=180,code=false){
  const template=createTemplate([{label,type:'A-E',count:10}],{
@@ -63,12 +63,22 @@ test('EMBED-ALIGN: embedded manifest mismatch and malformed fiducial positions f
  assert.ok(layoutTemplate(a4,{width:420,height:594}));
 });
 
-test('EMBED-ALIGN: manifest selection, single-shot capture and Safari recovery remain present',()=>{
- const html=readFileSync(new URL('../../../plataforma/corretor-v2.html',import.meta.url),'utf8');
- assert.match(html,/validateLayoutManifest\(manifest\)\.valid/);
- assert.match(html,/manualCorners:actual\.corners/);
- assert.doesNotMatch(html,/scanBestFrame|sampleScanFrame/);
- assert.match(html,/function recoverSafariVideo\(\)/);
+test('EMBED-ALIGN: capture requires the exact selected manifest, page and capture token before reading',()=>{
+ const {template,manifest}=embedded(),photo=captureResolutionScene(260,manifest);
+ const payload=capturePayload(photo,template,manifest,1);
+ let reads=0;
+ const dependencies={read:(...args)=>{reads++;return readRaster(...args);}};
+ for(const invalid of [
+  {...payload,manifest:{...manifest,templateId:'other-model'}},
+  {...payload,page:2},
+  {...payload,token:{...payload.token,contentHash:'different-revision'}},
+  {...payload,token:{...payload.token,captureId:0}},
+ ])assert.throws(()=>processCapture(invalid,dependencies),/manifesto|página|Contexto/i);
+ assert.equal(reads,0,'invalid model/session context cannot reach the real reader');
+ const result=processCapture(payload,dependencies);
+ assert.equal(result.error,undefined);assert.equal(result.metrics.readCalls,1);assert.equal(reads,1);
+ assert.equal(result.reading.contentHash,manifest.contentHash);assert.equal(result.reading.templateId,template.templateId);
+ assert.deepEqual(result.token,payload.token);
 });
 
 for(const mode of ['full-page','embedded']){
@@ -197,54 +207,48 @@ test('CAM-EMBED-01: small A4 source continues through V1 and V2 readers',()=>{
   }
  }
 });
-test('CAM-EMBED-01: real frontend capture and import flow rejects, never reads or scores rejected frame, and retries same selected model',async()=>{
- const {template,manifest}=embedded();
- const html=readFileSync(new URL('../../../plataforma/corretor-v2.html',import.meta.url),'utf8');
- // Execute production functions; browser decoding/drawing and UI sinks are synthetic.
- const from=(start,end)=>{const a=html.indexOf(start),b=html.indexOf(end,a+start.length);assert.ok(a>=0&&b>a);return html.slice(a,b)};
- const source=[
-  from('function markLastReadingPending()','function toPageRaster('),
-  from('function toPageRaster(','async function loadPhoto('),
-  from('async function loadPhoto(',"$('file').onchange="),
-  from('function readNormalized(',"$('manualAlign').onclick=")
- ].join('\n');
- const prelude=[
- "let rawRaster=null,normalizedRaster=null,manualMode=false,manualPoints=[],currentPage=1,assessmentBank=null,headerState={showStudentCode:false},replaceLastCapture=false,activeHistoryEntry=null,scanHistory=[],reads=0,scores=0,message='';",
- "const elements=new Map();",
- "const $=id=>{if(!elements.has(id))elements.set(id,{hidden:true,disabled:false,textContent:'',innerHTML:'',dataset:{review:'false'},value:'1',classList:{remove(){}}});return elements.get(id)};",
- "const setScanMessage=m=>{message=m};",
- "const updateCaptureComparison=()=>{},paintGray=()=>{},showCameraGrade=()=>{},ensureScanTemplate=()=>{},renderHistory=()=>{};",
- "const renderAnswers=result=>{reads++;$('scanScore').hidden=false;$('scanScore').dataset.stale='false';$('scanScore').dataset.review=String(result.needsReview)};",
- "const calculateScore=()=>{scores++};",
- "const createImageBitmap=async file=>({width:file.scene.width,height:file.scene.height,scene:file.scene,close(){}});",
- "const document={createElement(){const canvas={width:0,height:0};canvas.getContext=()=>({canvas,drawImage(bitmap){canvas.scene=bitmap.scene},getImageData(){return {data:canvas.scene.pixels}}});return canvas}};",
- "const grayFromRgba=data=>data;"
- ].join('\n');
- const make=new Function('template','activeManifest','detectFiducials','normalizeCard','warpFromFiducials','readRaster','validateLayoutManifest',prelude+'\n'+source+
-  '\nreturn {prepareImage,loadPhoto,readNormalized,snapshot:()=>({template,activeManifest,normalizedRaster,scanHistory:[...scanHistory],reads,scores,status:$("status").textContent,message,stale:$("scanScore").dataset.stale})};');
- const ui=make(template,manifest,detectFiducials,normalizeCard,warpFromFiducials,readRaster,validateLayoutManifest);
- const small=resolutionScene(219),valid=resolutionScene(220);
- const file=scene=>({type:'image/png',size:scene.pixels.length,scene});
- await ui.loadPhoto(file(small));
- let state=ui.snapshot();
- assert.equal(state.status,tooSmall);assert.equal(state.message,tooSmall);
- assert.equal(state.normalizedRaster,null);assert.equal(state.reads,0);assert.equal(state.scores,0);assert.equal(state.scanHistory.length,0);
- assert.equal(ui.readNormalized(),null,'read button cannot bypass rejection');
- assert.equal(ui.snapshot().reads,0);assert.equal(ui.snapshot().scores,0);
- await ui.loadPhoto(file(valid));
- state=ui.snapshot();
- assert.ok(state.normalizedRaster);assert.equal(state.reads,1);assert.equal(state.scores,1);assert.equal(state.scanHistory.length,1);
- assert.equal(state.template,template);assert.equal(state.activeManifest,manifest);
- for(const automatic of [true,false]){
-  const prior=ui.snapshot();
-  assert.equal(ui.prepareImage(small.pixels,small.width,small.height,{automatic,manualCorners:small.point}),null);
-  state=ui.snapshot();
-  assert.equal(state.status,tooSmall);assert.equal(state.normalizedRaster,null);assert.equal(state.stale,'true');
-  assert.equal(state.reads,prior.reads);assert.equal(state.scores,prior.scores);assert.equal(state.scanHistory.length,prior.scanHistory.length);
-  assert.equal(ui.readNormalized(),null);
-  assert.ok(ui.prepareImage(valid.pixels,valid.width,valid.height,{automatic,manualCorners:valid.point}));
-  if(!automatic)assert.ok(ui.readNormalized());
-  state=ui.snapshot();assert.equal(state.reads,prior.reads+1);assert.equal(state.scores,prior.scores+1);
-  assert.equal(state.template,template);assert.equal(state.activeManifest,manifest);
+function captureResolutionScene(side,manifest){
+ const width=600,height=700,pixels=new Uint8Array(width*height).fill(255);
+ const fiducials=manifest.technicalRegions.fiducials;
+ const scale=side/(fiducials[1].x-fiducials[0].x);
+ const point=fiducials.map(f=>({x:100+(f.x-fiducials[0].x)*scale,y:80+(f.y-fiducials[0].y)*scale}));
+ for(const [i,{x,y}] of point.entries()){
+  const size=fiducials[i].sizeMm*scale;
+  fillRect(pixels,width,height,x-size/2,y-size/2,size,size,0);
  }
+ return {pixels,width,height,point};
+}
+function capturePayload(photo,template,manifest,captureId,manual=false){
+ const data=new Uint8ClampedArray(photo.width*photo.height*4);
+ for(let i=0;i<photo.pixels.length;i++)data.set([photo.pixels[i],photo.pixels[i],photo.pixels[i],255],i*4);
+ return {data,w:photo.width,h:photo.height,corners:[[0,0],[photo.width,0],[photo.width,photo.height],[0,photo.height]],
+  template,manifest,page:1,showCode:false,
+  token:{captureId,sessionId:1,templateId:template.templateId,templateRevision:template.revision,contentHash:manifest.contentHash,page:1},
+  ...(manual?{manualFiducials:photo.point}:{})};
+}
+test('CAM-EMBED-01: real capture pipeline rejects undersampled RGBA before reading and retries the same selected model',()=>{
+ const {template,manifest}=embedded(),snapshot=structuredClone(manifest);
+ let reads=0,captureId=0;
+ // Only count the call; all enhancement, detection, alignment and reading are real.
+ const dependencies={read:(...args)=>{reads++;return readRaster(...args);}};
+ for(const manual of [false,true]){
+  for(const side of [219,220,219,260]){
+   const photo=captureResolutionScene(side,manifest),payload=capturePayload(photo,template,manifest,++captureId,manual),prior=reads;
+   const result=processCapture(payload,dependencies);
+   assert.deepEqual(result.token,payload.token);
+   assert.equal(payload.template,template);assert.equal(payload.manifest,manifest);
+   assert.deepEqual(manifest,snapshot,'failed/retried captures never mutate the selected manifest');
+   if(side<220){
+    assert.equal(result.error?.code,'FIDUCIALS_INVALID');assert.equal(result.error.message,tooSmall);
+    assert.equal(result.reading,null);assert.equal(result.metrics.readCalls,0);assert.equal(reads,prior);
+    assert.equal(result.optical.pixels,result.sourceOptical.gray,'rejected frame has no aligned/definitive reading');
+   }else{
+    assert.equal(result.error,undefined);assert.equal(result.metrics.readCalls,1);assert.equal(reads,prior+1);
+    assert.equal(result.reading.contentHash,manifest.contentHash);assert.equal(result.reading.templateId,template.templateId);
+    assert.equal(result.reading.observations.length,10);assert.ok(result.reading.observations.every(q=>q.state==='blank'));
+    assert.equal(result.optical.width,Math.min(1400,Math.floor(2200*manifest.paper.widthMm/manifest.paper.heightMm)));
+   }
+  }
+ }
+ assert.equal(reads,4,'one real read per valid capture, zero for all four rejected frames');
 });

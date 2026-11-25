@@ -111,6 +111,10 @@ export function scoreIntegratedPlan(plan,observations,{manifest,template,identit
  assertPlanBinding(plan,manifest,template);
  if(identityMode==='seven-digit-code'&&identityState!=='read')return {complete:false,reason:'Identificação de sete dígitos inconclusiva.'};
  if(pageCount!==1)return {complete:false,reason:'Aguarde todas as páginas para calcular nota final.'};
+ return calculatePlanScore(plan,observations);
+}
+// Shared exact arithmetic. Only the guarded public entry points may call this.
+function calculatePlanScore(plan,observations){
  const expected=plan.blocks.flatMap(b=>b.questions);
  if(!Array.isArray(observations)||observations.length!==expected.length)return {complete:false,reason:'Questões não correspondem à avaliação.'};
  const provided=new Map();
@@ -139,6 +143,114 @@ export function scoreIntegratedPlan(plan,observations,{manifest,template,identit
  }
  return Object.freeze({complete:true,total:formatScore(sum.n,sum.d,plan.scoreDecimals),maximum:formatScore(BigInt(plan.totalUnits),POINT_SCALE,plan.scoreDecimals),
   correct:correctAll,blank:blanks,double:doubles,count:expected.length,display:plan.display,blocks:Object.freeze(blocks)});
+}
+// This result can only be displayed locally. It is never an academic completion
+// and cannot be handed to integratedScoreHtml or an identity binding operation.
+export function scoreProvisionalPlan(plan,observations,{manifest,template,identityState,identityMode,pageCount}={}){
+ assertPlanBinding(plan,manifest,template);
+ const pending=reason=>Object.freeze({complete:false,provisional:true,calculable:false,
+  bindingAllowed:false,publicationAllowed:false,scope:'local-capture',reason});
+ if(template.templateId!==manifest.templateId||template.revision!==manifest.revision)
+  return pending('Template incompatível com o modelo exato.');
+ if(identityState!=='review'||identityMode!=='seven-digit-code'||
+   template?.identity?.mode!=='seven-digit-code'||manifest?.identity?.mode!=='seven-digit-code')
+  return pending('A prévia exige identificação de sete dígitos realmente pendente.');
+ if(pageCount!==1||template.pageCount!==1||!Array.isArray(manifest.pages)||
+   manifest.pages.length!==1||manifest.pages[0]?.page!==1)
+  return pending('Aguarde todas as páginas; a prévia local não agrega capturas.');
+ const invalid=previewPlanError(plan);
+ if(invalid)return pending(invalid);
+ // A read observation without an alternative is missing, rather than a blank.
+ if(Array.isArray(observations)&&observations.some(o=>o?.state==='read'&&o.answer==null))
+  return pending('Resposta lida sem alternativa.');
+ if(Array.isArray(observations)&&observations.some(o=>o?.page!==1))
+  return pending('Questão sem a página explícita da captura.');
+ if(Array.isArray(observations)&&observations.some(o=>o?.state==='read'&&o.recognition==='partial'))
+  return pending('Reconhecimento parcial exige revisão com identificação pendente.');
+ const score=calculatePlanScore(plan,observations);
+ if(!score.complete)return pending(score.reason);
+ return Object.freeze({...score,complete:false,provisional:true,calculable:true,
+  bindingAllowed:false,publicationAllowed:false,identityState:'review',scope:'local-capture'});
+}
+function previewPlanError(plan){
+ // Historical four-decimal weights remain intact; validate without rescaling.
+ let total=0n;
+ normalizeBlocks(plan.blocks);
+ validScoreDecimals(plan.scoreDecimals);
+ if(!DISPLAY_MODES.includes(plan.display))return 'Exibição inválida.';
+ for(const block of plan.blocks){
+  if(typeof block.valueUnits!=='string'||!/^[1-9]\d{0,7}$/.test(block.valueUnits))
+   return 'Valor de bloco inválido.';
+  total+=BigInt(block.valueUnits);
+  for(const q of block.questions){
+   if(!QUESTION_TYPES[q.type].includes(q.correct))return 'Gabarito ausente ou incompatível na questão '+q.number+'.';
+  }
+ }
+ if(total>100000000n||total.toString()!==plan.totalUnits)return 'Valor total incompatível com os blocos.';
+ return null;
+}
+const captureToken=value=>Number.isSafeInteger(value)&&value>0||
+ typeof value==='string'&&value.trim().length>0&&value.length<=160&&!/[\u0000-\u001f\u007f]/.test(value);
+// Separate contract for an explicitly declared page partition. Current official
+// one-page models cannot be turned into multi-page models by changing an option.
+// Every multi-page manifest must declare pages[].questionIds before use here.
+export function scoreIntegratedPages(plan,readings,{manifest,template}={}){
+ assertPlanBinding(plan,manifest,template);
+ const pending=reason=>Object.freeze({complete:false,provisional:false,calculable:false,
+  bindingAllowed:false,publicationAllowed:false,reason});
+ if(template.templateId!==manifest.templateId||template.revision!==manifest.revision)
+  return pending('Template incompatível com o modelo exato.');
+ if(template?.identity?.mode!=='seven-digit-code'||manifest?.identity?.mode!=='seven-digit-code')
+  return pending('A reunião de páginas exige o mesmo código válido de sete dígitos.');
+ const count=template.pageCount,pages=manifest.pages;
+ if(!Number.isSafeInteger(count)||count<2||!Array.isArray(pages)||pages.length!==count)
+  return pending('Modelo sem contrato explícito de múltiplas páginas.');
+ const expected=new Set(plan.blocks.flatMap(b=>b.questions.map(q=>q.questionId)));
+ const assigned=new Set(),pageMap=new Map();
+ for(const p of pages){
+  if(!Number.isInteger(p?.page)||p.page<1||p.page>count||pageMap.has(p.page)||
+    !Array.isArray(p.questionIds)||!p.questionIds.length)return pending('Contrato de páginas incompleto ou duplicado.');
+  const ids=new Set();
+  for(const id of p.questionIds){
+   if(!expected.has(id)||assigned.has(id))return pending('Questões duplicadas ou incompatíveis no contrato de páginas.');
+   ids.add(id);assigned.add(id);
+  }
+  pageMap.set(p.page,ids);
+ }
+ if(assigned.size!==expected.size)return pending('Contrato de páginas não cobre a avaliação.');
+ if(!Array.isArray(readings)||readings.length!==count)return pending('Aguarde o conjunto completo de páginas.');
+ const captures=new Set(),seenPages=new Set(),observations=[];
+ let identityCode,sessionId;
+ for(const r of readings){
+  if(!r||!captureToken(r.captureId)||!captureToken(r.sessionId)||captures.has(r.captureId))
+   return pending('Captura ausente ou duplicada.');
+  captures.add(r.captureId);
+  if(sessionId===undefined)sessionId=r.sessionId;
+  if(r.sessionId!==sessionId)return pending('Páginas pertencem a sessões diferentes.');
+  if(r.templateId!==manifest.templateId||r.templateRevision!==manifest.revision||
+    r.contentHash!==manifest.contentHash||r.pageCount!==count)return pending('Modelo ou revisão de página incompatível.');
+  if(!pageMap.has(r.page)||seenPages.has(r.page))return pending('Página ausente, inválida ou duplicada.');
+  seenPages.add(r.page);
+  const code=r.identity?.code;
+  if(r.identity?.state!=='read'||typeof code!=='string'||!/^\d{7}$/.test(code))
+   return pending('Identificação de sete dígitos inconclusiva.');
+  if(identityCode===undefined)identityCode=code;
+  if(code!==identityCode)return pending('As páginas não têm o mesmo código do aluno.');
+  const ids=pageMap.get(r.page),seenQuestions=new Set();
+  if(!Array.isArray(r.observations)||r.observations.length!==ids.size)return pending('Página com questões faltantes.');
+  for(const o of r.observations){
+   if(!o||o.page!==r.page||!ids.has(o.questionId)||seenQuestions.has(o.questionId))
+    return pending('Questão duplicada ou incompatível com a página.');
+   if(o.state==='read'&&o.answer==null)return pending('Resposta lida sem alternativa.');
+   seenQuestions.add(o.questionId);observations.push(o);
+  }
+ }
+ const invalid=previewPlanError(plan);
+ if(invalid)return pending(invalid);
+ const score=calculatePlanScore(plan,observations);
+ if(!score.complete)return pending(score.reason);
+ return Object.freeze({...score,provisional:false,calculable:true,bindingAllowed:true,
+  publicationAllowed:false,identityCode,pageCount:count});
 }
 export function keyTextForPlan(plan){
  return plan.blocks.flatMap(b=>b.questions).sort((a,b)=>a.number-b.number).map(q=>q.number+' '+q.correct).join('\n');

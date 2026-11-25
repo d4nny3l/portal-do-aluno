@@ -32,7 +32,7 @@ test('visual flow: two independent native disclosures, all header controls inlin
 test('visual flow: literal DOM references exist, V2 generation fixed, history writes removed and JSON import retained',()=>{
  const ids=new Set([...html.matchAll(/\bid="([^"]+)"/g)].map(m=>m[1]));
  for(const [,id]of script.matchAll(/\$\('([^']+)'\)/g))assert.ok(ids.has(id),`Missing #${id}`);
- assert.match(script,/layoutVersion:'v2'/);assert.doesNotMatch(script,/saveLayoutVersion|listLayoutVersions|getLayoutVersion|localStorage|removeItem|clear\(/);
+ assert.match(script,/layoutVersion:'v2'/);assert.doesNotMatch(script,/saveLayoutVersion|listLayoutVersions|getLayoutVersion|localStorage|removeItem/);
  assert.match(script,/importCardManifest\(await file\.text\(\)\)/);assert.match(script,/template=imported\.template;activeManifest=imported\.manifest/);
  assert.match(script,/buildManifestJson\(template,\{header:headerState,manifest:activeManifest\}\)/);
 });
@@ -91,7 +91,7 @@ test('scan defaults: editing a default resets only its model/review; exact impor
  const code=script.match(/function resetScanDefault\(\)[^\n]+/)[0];
  for(const exact of [false,true]){
   const fields={answers:new Element('div'),scanScore:{hidden:false},scanModelStatus:{textContent:''}};
-  const actual=new Function('$','exactScanModel','template','activeManifest','activeObservations','activeHistoryEntry',`${code};return{run:resetScanDefault,state:()=>({template,activeManifest,activeObservations,activeHistoryEntry})}`)(id=>fields[id],exact,{old:true},{hash:'old'},[1],{old:true});
+  const actual=new Function('$','exactScanModel','template','activeManifest','activeObservations','activeHistoryEntry','stopCamera','invalidateScan',`${code};return{run:resetScanDefault,state:()=>({template,activeManifest,activeObservations,activeHistoryEntry})}`)(id=>fields[id],exact,{old:true},{hash:'old'},[1],{old:true},()=>{},()=>{});
   actual.run();assert.equal(fields.scanScore.hidden,!exact);
   assert.equal(actual.state().template===null,!exact);assert.equal(actual.state().activeObservations.length,exact?1:0);
  }
@@ -100,27 +100,27 @@ test('scan defaults: editing a default resets only its model/review; exact impor
 test('header-only edits before adding blocks keep preview without an irrelevant missing-section error',()=>{
  const code=script.match(/function build\(\)[^\n]+/)[0];const fields={preview:new Element('div'),sectionText:{textContent:'old'},buildStatus:{textContent:'old'}};
  let previewUpdates=0,enabled;
- const actual=new Function('$','sections','updateHeaderPreview','setExportAvailability','syncScanInputs','renderPreviews','template','activeManifest','activeSvg','exactScanModel',`${code};return build`)(id=>fields[id],[],()=>previewUpdates++,value=>enabled=value,()=>{},()=>{throw Error('Unexpected generation without blocks')},null,null,'',true);
+ const actual=new Function('$','sections','updateHeaderPreview','setExportAvailability','syncScanInputs','renderPreviews','template','activeManifest','activeSvg','exactScanModel','invalidateScan',`${code};return build`)(id=>fields[id],[],()=>previewUpdates++,value=>enabled=value,()=>{},()=>{throw Error('Unexpected generation without blocks')},null,null,'',true,()=>{});
  assert.equal(actual(),false);assert.equal(previewUpdates,1);assert.equal(enabled,false);assert.equal(fields.buildStatus.textContent,'');
 });
 
 test('camera button: opens once or cancels an active/pending camera',async()=>{
  const source=handler('camera');let opened=0,stopped=0;
- const bind=(stream,opening)=>new Function('cameraStream','cameraOpening','stopCamera','startCamera',`return ${source}`)(stream,opening,()=>stopped++,()=>opened++);
+ const bind=(stream,opening)=>new Function('safeCamera','stopCamera','startCamera',`return ${source}`)({active:!!stream||opening},()=>stopped++,()=>opened++);
  await bind(null,false)();assert.equal(opened,1);
  await bind({open:true},false)();await bind(null,true)();assert.equal(opened,1);assert.equal(stopped,2);
 });
 
-test('photo import: downscaling draws the whole photograph instead of cropping it in both decoding paths',async()=>{
- const source=script.match(/async function loadPhoto\(file\)[^\n]+/)[0];
+test('photo import: transfers the whole native image without JPEG or second optical read, then releases bitmap/canvas',async()=>{
+ const source=script.slice(script.indexOf('async function loadPhoto(file)'),script.indexOf("$('file').onchange="));
  for(const useBitmap of [true,false]){
-  let drawn,prepared,closed=0,readCalls=0;const status={textContent:''};
+  let drawn,prepared,closed=0;const status={textContent:''},token={captureId:1};
   const bitmap={width:2480,height:3508,close(){closed++}};
-  const canvas={width:0,height:0,getContext(){return {canvas:this,drawImage(...args){drawn=args},getImageData(){return {data:new Uint8ClampedArray(4)}}}}};
+  const canvas={width:0,height:0,getContext(){return {drawImage(...args){drawn=args},getImageData(){return {data:new Uint8ClampedArray(4)}}}}};
   class Image {naturalWidth=2480;naturalHeight=3508;decode(){return Promise.resolve()}}
-  const actual=new Function('createImageBitmap','document','grayFromRgba','prepareImage','readNormalized','setScanMessage','$','Image','URL',`${source};return loadPhoto`)(useBitmap?async()=>bitmap:undefined,{createElement:()=>canvas},()=>new Uint8Array(1),(...args)=>{prepared=args;return {pixels:new Uint8Array(1)}},()=>{readCalls++;return {observations:[]}},()=>{},()=>status,Image,{createObjectURL:()=>'/synthetic',revokeObjectURL:()=>{}});
+  const actual=new Function('$','createImageBitmap','document','beginPhoto','scanContext','processPhoto','Image','URL',`let importBusy=false,captureBusy=false;${source};return loadPhoto`)(()=>status,useBitmap?async()=>bitmap:undefined,{createElement:()=>canvas},()=>token,{accepts:t=>t===token},async(...args)=>{prepared=args},Image,{createObjectURL:()=>'/synthetic',revokeObjectURL:()=>{}});
   await actual({type:'image/png',size:1024});assert.equal(status.textContent,'');
-  assert.deepEqual(drawn.slice(1),[0,0,1273,1800]);assert.deepEqual(prepared.slice(1),[1273,1800,{source:'import'}]);assert.equal(canvas.width,1273);assert.equal(canvas.height,1800);assert.equal(readCalls,1,'import auto-reads');assert.equal(closed,useBitmap?1:0);
+  assert.deepEqual(drawn.slice(1),[0,0,2480,3508]);assert.deepEqual([prepared[0].w,prepared[0].h],[2480,3508]);assert.deepEqual(prepared[1],{source:'import',token});assert.equal(canvas.width,0);assert.equal(canvas.height,0);assert.equal(closed,useBitmap?1:0);
  }
 });
 

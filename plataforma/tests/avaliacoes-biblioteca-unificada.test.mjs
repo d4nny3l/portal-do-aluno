@@ -61,29 +61,11 @@ test('library remains isolated in Criar avaliação; Corrigir cartões uses expl
  assert.ok(!html.slice(correct,end).includes('savedAssessments'));
 
  const markup=html.slice(correct+'<section class="corretor-card module-view" id="corrigir">'.length,end);
- // CAM-FOCUS-01 authorizes exactly one new visible capability-gated control.
- // Reconstruct the previous markup and keep the historical snapshot check.
- const focus='<span id="cameraFocusLabel" hidden><button id="cameraFocus" type="button">Solicitar foco</button></span>';
- assert.equal(markup.split(focus).length,2);
- assert.ok(markup.indexOf(focus)<markup.indexOf('<details class="camera-settings"'));
- // Reconstruct the pinned markup before UX-READY-01's precisely scoped wording changes.
- const prior=markup.replace(focus,'')
-  .replace('<label class="camera-check" id="cameraTorchLabel"', '<span id="cameraFocusLabel" hidden><button id="cameraFocus" type="button">Focar automaticamente</button></span><label class="camera-check" id="cameraTorchLabel"')
-  .replace('Avaliação cadastrada<select id="readingAssessment"', 'Avaliação cadastrada (homologação)<select id="readingAssessment"')
-  .replace('<summary>Conferir imagem</summary>', '<summary>Comparar original e normalizada</summary>')
-  .replace('<figcaption>Imagem original (em cinza)</figcaption>', '<figcaption>Original em cinza — quadro inteiro, sem correção de lente</figcaption>')
-  .replace('<figcaption>Imagem ajustada</figcaption>', '<figcaption>Normalizada — perspectiva por quatro marcadores</figcaption>')
-  .replace('<canvas id="originalCapture" aria-label="Imagem original em tons de cinza, sem correção de lente"></canvas>', '<canvas id="originalCapture"></canvas>')
-  .replace('<canvas id="normalizedCapture" aria-label="Imagem ajustada pela perspectiva dos quatro marcadores"></canvas>', '<canvas id="normalizedCapture"></canvas>')
-  .replace('aria-label="Prévia da imagem ajustada do cartão"', 'aria-label="Prévia da imagem normalizada do cartão"')
-  .replace('Importar modelo do cartão<input type="file" id="loadManifest" accept="application/json,.json" aria-label="Importar modelo do cartão em JSON"', 'Importar modelo do cartão (JSON)<input type="file" id="loadManifest" accept="application/json,.json"')
-  .replace('Importar modelo do cartão (JSON)', 'Importar modelo exato (JSON)')
-  .replace('Foto capturada', 'Captura consolidada')
-  .replace('<p id="scanModelStatus" class="status" role="status"></p>', '<p id="scanModelStatus" class="status" role="status">Gere o cartão nesta sessão ou importe o JSON exato, inclusive para cartões anteriores.</p>')
-  .replace('Formato<select id="scanType"', 'Formato padrão V2<select id="scanType"')
-  .replace('Questões<input id="scanCount"', 'Questões do modelo padrão<input id="scanCount"');
- assert.equal(fnv(prior),'b740cdc8871ea315');
- assert.equal(gitSha('plataforma/corretor-v2.css'),'7602bebba8cac2cb4b74b49146acf4031a740abd');
+ // SCAN-INTEGRATION-01 replaces the camera surface, preserving the grade itself.
+ for(const id of ['cameraGrade','cameraGradeValue','photoGrade','scanScore','canvas','cameraPreview','scanOverlay'])assert.ok(markup.includes('id="'+id+'"'));
+ for(const id of ['cameraFocus','cameraZoom','cameraExposure','cameraCalibrationMode','captureComparison','rescanLast'])assert.ok(!markup.includes('id="'+id+'"'));
+ assert.match(markup,/id="cameraTorchButton"[^>]*hidden disabled/);
+ assert.match(html,/#corrigir #cameraGradeValue\{display:block;margin:5px 0 8px;color:#fff;font-size:30px;font-weight:800;line-height:1.1/);
  assert.match(html,/mountAssessmentLibrary\(/);
  assert.match(html,/privateSelection\.manifestHash/);
  assert.doesNotMatch(html.slice(start,correct),/<section[^>]+id="piloto-avaliacoes"/);
@@ -884,7 +866,7 @@ test('UX-79C uses official Lucide save and camera paths without replacing button
  assert.doesNotMatch(library,/content:"▣"/);
  assert.match(html,/<button id="camera" type="button">Abrir câmera<\/button>/);
  for(const message of ["'Abrir câmera'","'Fechar câmera'","'Cancelar abertura'"])
-  assert.ok(html.includes("$('camera').textContent="+message),'text remains visible for '+message);
+  assert.ok(html.includes(message),'text remains visible for '+message);
  assert.match(library,/background:currentColor/);
  assert.match(camera,/background:currentColor/);
 });

@@ -14,6 +14,8 @@ on:
       - "plataforma/tests/**"
       - "mostra-cultural.html"
       - "corretor/v2/omr/**"
+      - "corretor/v2/scan-safe/**"
+      - "corretor/v2/assessments/block-scoring.mjs"
       - "corretor/v2/tests/**"
       - "scripts/verify-card-artwork-raster.mjs"
       - "scripts/verify-card-header-raster.mjs"
@@ -36,6 +38,11 @@ jobs:
           node-version: 24
       - run: node --test corretor/v2/tests/*.test.mjs
       - run: node --test plataforma/tests/*.test.mjs stats-worker/tests/*.test.mjs
+      - name: Scan Safe candidate contracts and offline counterexamples (not optical approval)
+        run: |
+          node --test corretor/v2/scan-safe/tests/*.test.mjs
+          node --test laboratorio/salta-omr-scan-safe-02/integration/single-optical.test.mjs
+          echo '::warning::Scan integration G3 BLOCKED: shaded double marks become a definitive single answer. Passing reproducibility tests are not an optical safety approval. No deployment in this workflow.'
       - name: Check OMR modules and inline scripts
         run: |
           node --check plataforma/admin-shell.mjs
@@ -67,7 +74,11 @@ jobs:
         run: |
           npm install --prefix "$RUNNER_TEMP/salta-camera-browser" --no-save --ignore-scripts --no-audit --no-fund playwright@1.65.1
           node "$RUNNER_TEMP/salta-camera-browser/node_modules/playwright/cli.js" install --with-deps chromium webkit
-          SALTA_PLAYWRIGHT_MODULE="$RUNNER_TEMP/salta-camera-browser/node_modules/playwright/index.mjs" node scripts/verify-camera-focus-browser.mjs
+          if node scripts/verify-scan-integration-scope.mjs; then
+            SALTA_SCAN_CYCLES=100 SALTA_PLAYWRIGHT_MODULE="$RUNNER_TEMP/salta-camera-browser/node_modules/playwright/index.mjs" node corretor/v2/scan-safe/tests/official-browser.mjs
+          else
+            SALTA_PLAYWRIGHT_MODULE="$RUNNER_TEMP/salta-camera-browser/node_modules/playwright/index.mjs" node scripts/verify-camera-focus-browser.mjs
+          fi
       - uses: actions/upload-artifact@v4
         if: always()
         with:
@@ -76,4 +87,5 @@ jobs:
             tmp/card-artwork-evidence/
             tmp/camera-evidence/
             tmp/camera-focus-evidence/
+            tmp/scan-safe-browser/
       - run: git diff --check HEAD^ HEAD

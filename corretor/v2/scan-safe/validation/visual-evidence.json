@@ -1,0 +1,22 @@
+{
+  "syntheticOnly": true,
+  "case": "shadow-AB-130",
+  "truth": [
+    "A",
+    "B"
+  ],
+  "single": {
+    "state": "read",
+    "answer": "A"
+  },
+  "frozenConsensus": {
+    "state": "review",
+    "answer": null
+  },
+  "files": {
+    "shadow-AB-130.png": "3018a4e7462297e6750405f94a859a36066ae38487586e3069357449957daa16",
+    "shadow-AB-130-document.png": "3919046e13b2ac0c001cdc22f2f26693be67201da858977407964a35633538ff",
+    "shadow-AB-130-optical.png": "47262fdb62919a7378eceea980369b0a174ac07417bbd5870200cc2ef56bb1f5"
+  },
+  "limits": "Different matrix dimensions; documentary is never an optical decision source. Not a physical photograph."
+}
