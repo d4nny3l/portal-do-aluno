@@ -2,6 +2,7 @@
 
 import * as V from "./vision.js";
 import {sampleQuality} from "./quality.js?v=paper-turbo-3";
+import {cameraScene} from "./card-flow.js";
 
 
 self.onmessage = (e) => {
@@ -9,9 +10,10 @@ self.onmessage = (e) => {
   try {
     if (op === "detect-paper") {
       const {data,w,h}=e.data;
+      const scene=cameraScene(data,w,h);
       const result=V.detectDocument(data,w,h);
       const quality=result?sampleQuality(data,w,h,result.corners):null;
-      self.postMessage({id,detection:result,quality});
+      self.postMessage({id,detection:result,quality,scene});
       return;
     }
     if (op === "process") {
