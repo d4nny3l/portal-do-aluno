@@ -6,11 +6,11 @@ import {cameraRegion, cameraStageAspect} from "./framing.js";
 
 const $ = (id) => document.getElementById(id);
 
-const DET_W = 384;           // detection frame width (px)
-const LOOP_MS = 66;          // ~15 detections per second
-const STEADY_FRAMES = 10;    // hold still this many frames to auto-capture
-const MIN_SCORE = 0.22;      // below this a quad is ignored
-const GOOD_SUPPORT = 0.6;    // above this the outline turns teal
+const DET_W = 640;           // resolução dos quadradinhos pretos
+const LOOP_MS = 250;         // detector via Worker; ~4 quadros por segundo
+const STEADY_FRAMES = 4;     // capturar após quatro leituras estáveis
+const MIN_SCORE = 0.70;      // mínimo de confiança geométrica SALTA
+const GOOD_SUPPORT = 0.82;  // destaca marcadores confiáveis
 const MAX_SIDE = 2600;       // longest side of a scanned page (px)
 
 const S = {
@@ -18,6 +18,7 @@ const S = {
   mode: "color", pageSize: "fit", auto: true, sound: true,
   busy: 0, editing: null, corner: null,
   frameMode: "fill", cameraFrame: null, cameraFrameKey: "",
+  markerModel: null, markerDetectBusy: false,
   det: { smooth: null, stable: 0, lost: 99, armed: true, lastCap: null, score: 0, support: 0, ms: 0, w: 0, h: 0 },
 };
 
@@ -61,11 +62,11 @@ function callWorker(msg, transfer = []) {
 /* ---------- helpers ---------- */
 function translateScanStatus(text) {
  const m=[
-  [/^looking for a page…$/,"Procurando uma folha…"],
-  [/^looking for a page — hold it up, fill the frame$/,"Enquadre a folha inteira na câmera."],
-  [/^page found — hold still$/,"Folha encontrada. Segure firme."],
+  [/^looking for a page…$/,"Procurando quatro marcadores pretos…"],
+  [/^looking for a page — hold it up, fill the frame$/,"Mostre os quatro quadradinhos pretos na câmera."],
+  [/^page found — hold still$/,"4 marcadores detectados. Segure firme."],
   [/^hold still…$/,"Mantenha a câmera estável…"],
-  [/^page found — space to capture$/,"Folha encontrada. Toque para capturar."],
+  [/^page found — space to capture$/,"Quatro marcadores detectados."],
   [/^captured — move to the next page$/,"Capturado. Retire a folha para a próxima."],
   [/^captured — next page$/,"Capturado. Próxima folha."],
   [/^processing…$/,"Digitalizando…"],
@@ -379,32 +380,47 @@ async function startCamera() {
 const detCanvas = document.createElement("canvas");
 const detCtx = detCanvas.getContext("2d", { willReadFrequently: true });
 let lastTick = 0;
+let markerEpoch = 0;
 
 function resetDetection() {
-  Object.assign(S.det, { smooth: null, stable: 0, lost: 99, armed: true, lastCap: null, score: 0, support: 0 });
+  markerEpoch++;
+  Object.assign(S.det, { smooth: null, markers: null, stable: 0, lost: 99, armed: true, lastCap: null, score: 0, support: 0 });
   drawOverlay(null);
   setRing(null);
 }
 
-function loop(ts) {
+async function loop(ts) {
   if (!S.running) return;
   requestAnimationFrame(loop);
-  if (ts - lastTick < LOOP_MS || document.hidden || S.editing) return;
-  lastTick = ts;
+  if (ts - lastTick < LOOP_MS || document.hidden || S.editing || S.markerDetectBusy || S.busy) return;
   const video = $("video");
   if (video.readyState < 2 || !video.videoWidth) return;
   const frame = currentCameraFrame(video);
   if (!frame) return;
+  lastTick = ts;
   const dw = DET_W, dh = Math.max(8, Math.round(frame.sh * dw / frame.sw));
   if (detCanvas.width !== dw || detCanvas.height !== dh) { detCanvas.width = dw; detCanvas.height = dh; }
   detCtx.drawImage(video, frame.sx, frame.sy, frame.sw, frame.sh, 0, 0, dw, dh);
   const img = detCtx.getImageData(0, 0, dw, dh);
+  const epoch = markerEpoch;
   const t0 = performance.now();
-  let q = null;
-  try { q = V.detectDocument(img.data, dw, dh); } catch (e) { console.error(e); }
-  S.det.ms = performance.now() - t0;
-  S.det.w = dw; S.det.h = dh;
-  track(q, dw, dh);
+  S.markerDetectBusy = true;
+  try {
+    const response = await callWorker({
+      op: "detect-markers", data: img.data, w: dw, h: dh, geometry: S.markerModel
+    }, [img.data.buffer]);
+    if (!S.running || epoch !== markerEpoch || S.editing) return;
+    S.det.ms = performance.now() - t0;
+    S.det.w = dw; S.det.h = dh;
+    track(response.result, dw, dh);
+  } catch (error) {
+    if (epoch === markerEpoch && S.running) {
+      console.warn("Falha ao detectar marcadores SALTA:", error);
+      setPill("Detecção de marcadores indisponível. Tente novamente.", "bad", 900);
+    }
+  } finally {
+    S.markerDetectBusy = false;
+  }
 }
 
 function maxShift(a, b) {
@@ -416,30 +432,32 @@ function maxShift(a, b) {
 function track(q, dw, dh) {
   const D = S.det;
   if (S.busy) { setPill("processing…"); setRing(null); return; }
-  if (!q || q.score < MIN_SCORE) {
+  if (!q?.found || q.confidence < MIN_SCORE) {
     D.lost++;
-    if (D.lost > 3) { D.smooth = null; D.stable = 0; drawOverlay(null); setRing(null); D.score = 0; D.support = 0; }
+    if (D.lost > 2) { D.smooth = null; D.markers = null; D.stable = 0; drawOverlay(null); setRing(null); D.score = 0; D.support = 0; }
     if (D.lost > 8) D.armed = true;
-    if (D.lost > 3) setPill(S.pages.length && !D.armed ? "captured — next page" : "looking for a page — hold it up, fill the frame");
+    if (D.lost > 2) setPill(q?.reason === "outside" ? "Marcadores localizados, mas a borda está cortada. Afaste o celular ou toque em Ver imagem inteira." : S.pages.length && !D.armed ? "captured — next page" : "looking for a page — hold it up, fill the frame");
     return;
   }
   D.lost = 0;
-  D.score = q.score; D.support = q.support;
-  if (!D.smooth) { D.smooth = q.corners.map((c) => [c[0], c[1]]); D.stable = 0; }
+  D.score = q.confidence; D.support = q.confidence;
+  if (!D.smooth) { D.smooth = q.corners.map(c=>[...c]); D.markers = q.markers.map(c=>[...c]); D.stable = 0; }
   else {
     const shift = maxShift(q.corners, D.smooth);
     for (let i = 0; i < 4; i++) {
       D.smooth[i][0] += (q.corners[i][0] - D.smooth[i][0]) * 0.45;
       D.smooth[i][1] += (q.corners[i][1] - D.smooth[i][1]) * 0.45;
+      D.markers[i][0] += (q.markers[i][0] - D.markers[i][0]) * 0.45;
+      D.markers[i][1] += (q.markers[i][1] - D.markers[i][1]) * 0.45;
     }
     if (shift < 0.02 * dw) D.stable++; else D.stable = 0;
   }
   if (!D.armed && D.lastCap && maxShift(D.smooth, D.lastCap) > 0.15 * dw) D.armed = true;
-  drawOverlay(D.smooth, q.support >= GOOD_SUPPORT);
+  drawOverlay(D.smooth, q.confidence >= GOOD_SUPPORT, D.markers);
   if (S.auto && D.armed) {
     const frac = D.stable / STEADY_FRAMES;
     setRing(frac);
-    setPill(D.stable < 2 ? "page found — hold still" : "hold still…", q.support >= GOOD_SUPPORT ? "ok" : "");
+    setPill(D.stable < 2 ? "page found — hold still" : "hold still…", q.confidence >= GOOD_SUPPORT ? "ok" : "");
     if (D.stable >= STEADY_FRAMES) {
       D.armed = false; D.stable = 0; D.lastCap = D.smooth.map((c) => [c[0], c[1]]);
       setRing(null);
@@ -447,11 +465,11 @@ function track(q, dw, dh) {
     }
   } else {
     setRing(null);
-    setPill(!D.armed && S.auto ? "captured — move to the next page" : "page found — space to capture", q.support >= GOOD_SUPPORT ? "ok" : "");
+    setPill(!D.armed && S.auto ? "captured — move to the next page" : "page found — space to capture", q.confidence >= GOOD_SUPPORT ? "ok" : "");
   }
 }
 
-function drawOverlay(corners, good = true) {
+function drawOverlay(corners, good = true, markers = null) {
   const svg = $("overlay"), poly = $("quad"), dots = $("dots");
   if (!corners) { poly.setAttribute("points", ""); dots.innerHTML = ""; return; }
   svg.setAttribute("viewBox", `0 0 ${S.det.w} ${S.det.h}`);
@@ -461,7 +479,8 @@ function drawOverlay(corners, good = true) {
     dots.innerHTML = "";
     for (let i = 0; i < 4; i++) { const c = document.createElementNS("http://www.w3.org/2000/svg", "circle"); c.setAttribute("r", "4"); dots.appendChild(c); }
   }
-  Array.from(dots.children).forEach((c, i) => { c.setAttribute("cx", corners[i][0].toFixed(1)); c.setAttribute("cy", corners[i][1].toFixed(1)); });
+  const points=markers?.length===4 ? markers : corners;
+  Array.from(dots.children).forEach((c, i) => { c.setAttribute("cx", points[i][0].toFixed(1)); c.setAttribute("cy", points[i][1].toFixed(1)); });
 }
 
 /* ---------- pages ---------- */
@@ -482,8 +501,9 @@ async function capture(source = "manual") {
   if (!frame || frame.sourceWidth !== video.videoWidth || frame.sourceHeight !== video.videoHeight) return null;
   const vw = Math.max(1, Math.round(frame.sw)), vh = Math.max(1, Math.round(frame.sh));
   const det = S.det.smooth;
+  if (!det || S.det.markers?.length!==4 || S.det.score<MIN_SCORE) return null;
   const fx = vw / (S.det.w || DET_W), fy = vh / (S.det.h || 1);
-  const corners = det ? shrinkQuad(det.map(([x, y]) => [x * fx, y * fy]), 0.008) : V.frameCorners(vw, vh);
+  const corners = shrinkQuad(det.map(([x, y]) => [x * fx, y * fy]), 0.008);
   if (fullCanvas.width !== vw || fullCanvas.height !== vh) { fullCanvas.width = vw; fullCanvas.height = vh; }
   fullCtx.drawImage(video, frame.sx, frame.sy, frame.sw, frame.sh, 0, 0, vw, vh);
   const img = fullCtx.getImageData(0, 0, vw, vh);
@@ -499,7 +519,7 @@ async function capture(source = "manual") {
     S.pages.push(page);
     renderTray();
     window.dispatchEvent(new CustomEvent("salta-omr:page",{detail:{page}}));
-    setPill(det ? `page ${S.pages.length} captured` : `page ${S.pages.length} captured (whole frame — no page edges found)`, det ? "ok" : "", 1500);
+    setPill(`page ${S.pages.length} captured`, "ok", 1500);
   } catch (e) {
     console.error(e);
     setPill(`couldn't process that page: ${e.message}`, "bad", 4000);
@@ -769,13 +789,17 @@ async function importPhoto(file,{showManual=true}={}) {
  if(!ctx)throw new Error("Canvas não disponível.");
  ctx.drawImage(image,0,0,fw,fh);
  const frame=await new Promise((resolve,reject)=>c.toBlob(b=>b?resolve(b):reject(new Error("Falha ao preparar fotografia.")),"image/jpeg",.96));
- const dw=480,dh=Math.max(8,Math.round(fh*dw/fw));
+ const dw=Math.min(780,fw),dh=Math.max(8,Math.round(fh*dw/fw));
  const thumb=document.createElement("canvas");thumb.width=dw;thumb.height=dh;
  const tc=thumb.getContext("2d",{willReadFrequently:true});
  tc.drawImage(c,0,0,dw,dh);
  let detection=null;
- try{const rgba=tc.getImageData(0,0,dw,dh);detection=V.detectDocument(rgba.data,dw,dh);}catch(error){console.warn("Detecção automática indisponível:",error);}
- const found=Boolean(detection&&detection.score>=MIN_SCORE&&detection.corners?.length===4);
+ try{
+  const rgba=tc.getImageData(0,0,dw,dh);
+  const response=await callWorker({op:"detect-markers",data:rgba.data,w:dw,h:dh,geometry:S.markerModel},[rgba.data.buffer]);
+  detection=response.result;
+ }catch(error){console.warn("Marcadores não detectados na foto:",error);}
+ const found=Boolean(detection?.found&&detection.confidence>=MIN_SCORE&&detection.corners?.length===4);
  const pts=found?detection.corners.map(p=>[p[0]*fw/dw,p[1]*fh/dh]):V.frameCorners(fw,fh);
  const page={
   id:++S.seq,fw,fh,corners:pts,rot:0,mode:null,frame,
@@ -790,7 +814,7 @@ async function importPhoto(file,{showManual=true}={}) {
   S.pages.push(page);
   renderTray();
   window.dispatchEvent(new CustomEvent("salta-omr:page",{detail:{page}}));
-  importStatus(found?"Foto digitalizada. Revise o recorte e exporte em PDF.":"Nenhum contorno confiável. Ajuste os quatro cantos manualmente.");
+  importStatus(found?"Quatro marcadores detectados. Foto alinhada e pronta para leitura.":"Quatro quadradinhos não encontrados. Ajuste os cantos manualmente.");
   if(!found&&showManual){openEditor(page);await enterCornerMode();}
   return page;
  } finally {S.busy--;}
@@ -811,6 +835,12 @@ function wire() {
     } finally { $("start").disabled = false; }
   });
   $("closeCamera").addEventListener("click", stopCameraView);
+  window.addEventListener("salta-omr:geometry", event => {
+    // Só geometria física; não recebe gabarito, nota ou dados de aluno.
+    S.markerModel = event.detail?.geometry || null;
+    resetDetection();
+    if (S.running) setPill("Procurando quatro quadradinhos pretos…");
+  });
   $("framing").addEventListener("click", () => {
     S.frameMode = S.frameMode === "fill" ? "fit" : "fill";
     if (S.running) updateCameraStage($("video"));
