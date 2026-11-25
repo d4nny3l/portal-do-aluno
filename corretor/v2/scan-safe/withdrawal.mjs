@@ -1,6 +1,8 @@
 // Candidate-only G6 evidence. No optical reading, timing, camera negotiation
 // or frozen laboratory changes. Conservative: unknown/ambiguous surfaces block.
-const GRID=24,PATTERN=12;
+const GRID=24,PATTERN=12,PATTERN_SAMPLES=12;
+// Ignore outer cells: contour estimation can include a narrow desk strip.
+const INTERIOR=Array.from({length:PATTERN*PATTERN},(_,i)=>i).filter(i=>i%PATTERN>0&&i%PATTERN<PATTERN-1&&Math.floor(i/PATTERN)>0&&Math.floor(i/PATTERN)<PATTERN-1);
 const COLOR_TOL=24,FOREGROUND_TOL=32,LANDMARK_MIN=14,LANDMARK_TOL=7;
 const distance=(a,b)=>Math.max(...a.map((x,i)=>Math.abs(x-b[i])));
 const mean=a=>a.reduce((s,x)=>s+x,0)/a.length;
@@ -31,7 +33,7 @@ export function withdrawalFrame(rgba,w,h,corners){
  if(corners?.length===4&&corners.every(finitePoint)){
   pattern=[];
   for(let y=0;y<PATTERN;y++)for(let x=0;x<PATTERN;x++)
-   pattern.push(luminance(averageAt(rgba,w,h,(u,v)=>project(corners,(x+u)/PATTERN,(y+v)/PATTERN),5)));
+   pattern.push(luminance(averageAt(rgba,w,h,(u,v)=>project(corners,(x+u)/PATTERN,(y+v)/PATTERN),PATTERN_SAMPLES)));
  }
  return {w,h,cells,pattern};
 }
@@ -50,7 +52,7 @@ function edgeDistances(q,p){
 const boundary=(q,w,h)=>Math.min(...q.flatMap(([x,y])=>[x,w-x,y,h-y]));
 export function withdrawalReference(frame,corners){
  if(!frame||!usableWithdrawalFrame(frame,frame.w,frame.h)||!frame.pattern||
-    Math.max(...frame.pattern)-Math.min(...frame.pattern)<18)return null;
+    Math.max(...INTERIOR.map(i=>frame.pattern[i]))-Math.min(...INTERIOR.map(i=>frame.pattern[i]))<18)return null;
  const q=corners.map(p=>[...p]),margin=Math.hypot(frame.w,frame.h)/(2*GRID)+2;
  const sides=Array.from({length:4},()=>[]),inside=[];
  for(let i=0;i<frame.cells.length;i++){
@@ -90,9 +92,11 @@ export function withdrawalMotion(ref,frame,q){
  // shrinking, spurious border loss or a new quad with a different pattern.
  if(Math.hypot(dx,dy)<.035*scale||q.some((p,i)=>Math.hypot(p[0]-ref.q[i][0]-dx,p[1]-ref.q[i][1]-dy)>.025*scale)||
     boundary(ref.q,ref.w,ref.h)-boundary(q,ref.w,ref.h)<.015*scale)return false;
- const error=mean(frame.pattern.map((v,i)=>Math.abs(v-ref.pattern[i])));
- const average=mean(ref.pattern);
- const features=ref.pattern.map((v,i)=>({v,i})).filter(p=>Math.abs(p.v-average)>=16);
+ // Denser sampling prevents aliasing of printed lines after translation;
+ // the original correspondence thresholds still apply to interior evidence.
+ const error=mean(INTERIOR.map(i=>Math.abs(frame.pattern[i]-ref.pattern[i])));
+ const average=mean(INTERIOR.map(i=>ref.pattern[i]));
+ const features=INTERIOR.map(i=>({v:ref.pattern[i],i})).filter(p=>Math.abs(p.v-average)>=16);
  return features.length>=3&&error<=20&&features.filter(p=>Math.abs(frame.pattern[p.i]-p.v)<=32).length>=features.length*.75;
 }
 export function withdrawalSurface(ref,frame){
