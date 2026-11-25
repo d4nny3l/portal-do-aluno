@@ -34,6 +34,8 @@ jobs:
             echo 'PR #130 changes only the user-facing copy; PDF source and regression suite remain pinned.'
           elif node scripts/verify-single-shot-scope.mjs; then
             echo 'PR #128 only changes camera capture; pinned PDF dependencies and regressions execute below.'
+          elif node assessments-service/integrity.mjs; then
+            echo '#81: exact lifecycle scope; optical/PDF/Auth/Stats source integrity verified, PDF regressions run below.'
           elif ! node scripts/verify-camera-focus-scope.mjs; then
             node scripts/verify-direct-pdf-scope.mjs
           fi

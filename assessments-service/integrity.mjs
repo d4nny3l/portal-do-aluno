@@ -8,7 +8,7 @@ const allowed=new Set([
  'corretor/v2/assessments/private-ui.mjs','corretor/v2/assessments/lifecycle.mjs','corretor/v2/assessments/private-client.mjs','corretor/v2/assessments/private-library.mjs',
  'plataforma/avaliacoes-biblioteca.mjs','plataforma/avaliacao-excluir-dialog.mjs','plataforma/avaliacao-excluir-dialog.css','plataforma/corretor-v2.html',
  'plataforma/tests/piloto-avaliacoes-isolado.test.mjs','plataforma/tests/avaliacoes-biblioteca-unificada.test.mjs',
- '.github/workflows/test-assessments-embedded.yml','docs/avaliacoes/EXCLUSAO_SUBSTITUICAO_81.md',
+ '.github/workflows/test-direct-pdf.yml','.github/workflows/test-assessments-embedded.yml','docs/avaliacoes/EXCLUSAO_SUBSTITUICAO_81.md',
  ...['test-composition.mjs','worker.mjs','gateway-lifecycle.mjs','restore-fences.mjs','build.mjs','build-gateway.mjs','dependencies.json','integrity.mjs','migrations/0002_assessment_lifecycle.sql'].map(p=>'assessments-service/'+p),
  ...['lifecycle-d1.integration.mjs','embedded-library.integration.mjs','private-bridge.integration.test.mjs','helpers.mjs','build.test.mjs','lifecycle.test.mjs','lifecycle-gateway.test.mjs','lifecycle-browser.mjs','editor-frontend-browser.mjs','embedded-browser.mjs'].map(n=>'assessments-service/tests/'+n)
 ]);
