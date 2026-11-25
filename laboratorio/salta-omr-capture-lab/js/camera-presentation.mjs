@@ -1,7 +1,37 @@
 // Presentation only: never requests a stream, constraints, crop or optical processing.
-export function createCameraPresentation({video, onDimensionsChanged, window:win=window, document:doc=document, debug=false}) {
+export function createCameraPresentation({video, preview=null, onDimensionsChanged, window:win=window, document:doc=document, debug=false}) {
   let stream=null, width=0, height=0, epoch=0, playing=null;
+  let frameHandle=null, frameKind='', previewFrames=0, pickerPending=false;
+  const context=preview?.getContext('2d',{alpha:false});
   const listeners=[], events=[];
+  function cancelFrame(){
+    if(frameHandle===null)return;
+    if(frameKind==='video')video.cancelVideoFrameCallback?.(frameHandle);
+    else win.cancelAnimationFrame?.(frameHandle);
+    frameHandle=null;
+  }
+  function paint(){
+    if(!context||!stream||video.srcObject!==stream||doc.hidden||video.readyState<2)return false;
+    const w=video.videoWidth,h=video.videoHeight;
+    if(!(w>0&&h>0))return false;
+    if(preview.width!==w||preview.height!==h){preview.width=w;preview.height=h;}
+    // Copy every source pixel, with no crop, resampling, filters or optical work.
+    context.drawImage(video,0,0,w,h);
+    previewFrames++;preview.hidden=false;video.parentElement.classList.add('canvas-preview');
+    return true;
+  }
+  function scheduleFrame(){
+    if(!context||!stream||doc.hidden||frameHandle!==null)return;
+    const request=epoch;
+    const next=()=>{
+      if(request!==epoch)return;
+      frameHandle=null;sync('preview-frame');
+      try{paint();}catch{record('preview-frame-unavailable');}
+      scheduleFrame();
+    };
+    if(video.requestVideoFrameCallback){frameKind='video';frameHandle=video.requestVideoFrameCallback(next);}
+    else{frameKind='animation';frameHandle=win.requestAnimationFrame(next);}
+  }
   function snapshot(reason='snapshot') {
     const rect=element=>{
       const r=element?.getBoundingClientRect();
@@ -17,6 +47,7 @@ export function createCameraPresentation({video, onDimensionsChanged, window:win
       ratios:{intrinsic:video.videoHeight?video.videoWidth/video.videoHeight:null,
         rendered:rendered?.height?rendered.width/rendered.height:null,container:container?.height?container.width/container.height:null},
       objectFit:style?.objectFit??null,objectPosition:style?.objectPosition??null,
+      presentation:context?'canvas':'video',preview:preview?{width:preview.width,height:preview.height,frames:previewFrames,visible:!preview.hidden}:null,
       track:{width:settings.width??null,height:settings.height??null,aspectRatio:settings.aspectRatio??null,
         resizeMode:settings.resizeMode??null,readyState:stream?.getVideoTracks()[0]?.readyState??null},
       viewport:{width:win.innerWidth,height:win.innerHeight,visualWidth:win.visualViewport?.width??null,
@@ -35,16 +66,23 @@ export function createCameraPresentation({video, onDimensionsChanged, window:win
   }
   function resume(reason){
     sync(reason);record(reason);
+    // File pickers can return without visibilitychange, resize or new dimensions.
+    // Restart only the frame subscription and playback of the SAME source.
+    cancelFrame();scheduleFrame();
     if(doc.hidden||!stream||video.srcObject!==stream||!video.paused||playing)return;
     const request=epoch;
     // Resume this same video/stream after background suspension. Never reopen the lens.
     playing=Promise.resolve().then(()=>{
       if(request===epoch&&!doc.hidden&&video.srcObject===stream)return video.play();
-    }).catch(()=>{if(request===epoch)record('play-rejected');}).finally(()=>{if(request===epoch)playing=null;});
+    }).catch(()=>{if(request===epoch)record('play-rejected');}).finally(()=>{
+      if(request===epoch){playing=null;cancelFrame();scheduleFrame();}
+    });
   }
   function listen(target,event,callback){target?.addEventListener?.(event,callback);listeners.push(()=>target?.removeEventListener?.(event,callback));}
   function stop(){
     record('detach');epoch++;listeners.splice(0).forEach(remove=>remove());
+    cancelFrame();pickerPending=false;previewFrames=0;
+    if(preview){preview.hidden=true;preview.width=0;preview.height=0;video.parentElement.classList.remove('canvas-preview');}
     stream=null;width=0;height=0;playing=null;
   }
   function start(next){
@@ -54,11 +92,16 @@ export function createCameraPresentation({video, onDimensionsChanged, window:win
     listen(win.visualViewport,'resize',()=>{sync('visualViewport');record('visualViewport');});
     listen(doc,'visibilitychange',()=>resume('visibilitychange'));
     listen(win,'pageshow',()=>resume('pageshow'));
+    listen(win,'focus',()=>{if(pickerPending||video.paused){pickerPending=false;resume('picker-focus');}});
+    for(const input of doc.querySelectorAll?.('input[type="file"]')||[]){
+      listen(input,'click',()=>{pickerPending=true;record('picker-open');});
+      for(const event of ['change','cancel'])listen(input,event,()=>{pickerPending=false;resume('picker-'+event);});
+    }
     const track=stream.getVideoTracks()[0];
     listen(track,'mute',()=>record('track-mute'));
     listen(track,'unmute',()=>resume('track-unmute'));
     listen(track,'ended',()=>record('track-ended'));
-    sync('attach');record('attach');
+    sync('attach');record('attach');scheduleFrame();
   }
   return {start,stop,sync,snapshot,events};
 }

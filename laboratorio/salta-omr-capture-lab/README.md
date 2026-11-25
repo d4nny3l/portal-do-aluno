@@ -3,6 +3,19 @@
 ## Acesso
 `https://d4nny3l.github.io/portal-do-aluno/laboratorio/salta-omr-capture-lab/`
 
+## CAMERA-JSON-RETURN-02 — retorno do seletor no Safari (25/11/2026)
+
+O proprietário confirmou que CAMERA-FIX-01 não resolveu o encolhimento/deformação
+após importar um modelo JSON no iPhone. Esta segunda intervenção trata a volta do
+seletor nativo (inclusive cancelamento) e a superfície de apresentação do WebKit.
+Nesse navegador, um canvas exibe o quadro nativo inteiro; vídeo, stream e captura
+continuam sendo os mesmos. Nenhuma geometria OMR ou política de captura foi alterada.
+
+Teste publicado: `?engine=edge&v=camera-json-return-02`. Repetir abrir câmera →
+importar JSON → voltar ao visor; selecionar novamente e cancelar também. A
+reprodução da corrupção interna do compositor no iPhone depende do aparelho do
+proprietário; os testes locais não equivalem a essa confirmação física.
+
 ## CAMERA-FIX-01 — apresentação do vídeo (25/11/2026)
 
 Correção exclusiva deste laboratório, a pedido do proprietário. Diagnóstico,

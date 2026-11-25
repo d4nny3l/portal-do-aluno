@@ -1,5 +1,10 @@
 name: SALTA laboratory camera presentation
 on:
+  push:
+    branches: [main]
+    paths:
+      - 'laboratorio/salta-omr-capture-lab/**'
+      - '.github/workflows/test-camera-presentation-lab.yml'
   pull_request:
     paths:
       - 'laboratorio/salta-omr-capture-lab/**'

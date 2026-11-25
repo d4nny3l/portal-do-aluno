@@ -5,7 +5,7 @@ import {experimentalPaperDetector} from "./experimental-detector.mjs?v=edge-firs
 import { buildPdf } from "./pdf.js";
 import {cameraScene,createCardFlow,cardCaptured,cardReadFinished,cardNotDetected,cardDetected} from "./card-flow.js?v=primary-restore-1";
 import {fullPaperVisible} from "./paper-geometry.js?v=primary-restore-1";
-import {createCameraPresentation} from "./camera-presentation.mjs?v=camera-fix-01";
+import {createCameraPresentation} from "./camera-presentation.mjs?v=camera-json-return-02";
 
 const $ = (id) => document.getElementById(id);
 
@@ -26,7 +26,8 @@ const S = {
 };
 
 const cameraPresentation=createCameraPresentation({
-  video:$("video"),debug:new URLSearchParams(window.location.search).get("cameraDebug")==="1",
+  video:$("video"),preview:isWebKitCamera()?$("cameraPreview"):null,
+  debug:new URLSearchParams(window.location.search).get("cameraDebug")==="1",
   onDimensionsChanged({width,height,previous}){
     $("res").textContent=`${width}×${height} · câmera automática`;
     if(previous.width && (width!==previous.width || height!==previous.height)){
@@ -188,12 +189,12 @@ function cameraError(e) {
 
 // Safari/WebKit: preferir foco nativo e não reconfigurar o MediaStreamTrack.
 // applyConstraints() pode reinicializar ou interromper a prévia nesses aparelhos.
-const isWebKitCamera = () => {
+function isWebKitCamera() {
   const ua = navigator.userAgent || "";
   // Chrome/Edge/Firefox no iOS continuam usando WebKit; Chrome/Android não.
   return /iPhone|iPad|iPod/i.test(ua) ||
     (/AppleWebKit/i.test(ua) && !/Chrome|Chromium|CriOS|FxiOS|Edg|OPR|SamsungBrowser/i.test(ua));
-};
+}
 let cameraRequestId = 0;
 let cameraLoopFrame = 0;
 

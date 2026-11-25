@@ -3,6 +3,70 @@
 Data: 25/11/2026. Base verificada por `git fetch origin main`: `7861007`.
 Branch exclusiva: `fix/camera-presentation`.
 
+## Reabertura — CAMERA-JSON-RETURN-02
+
+O teste físico do proprietário confirmou que a publicação anterior **não resolveu
+o relato**: no Safari do iPhone, importar o modelo JSON ainda encolhia/deformava a
+prévia. O diagnóstico inicial de retângulo desatualizado era reproduzível, porém
+não cobria o retorno do seletor nativo nem a transformação interna da camada de
+vídeo do WebKit. As seções abaixo documentam historicamente a primeira intervenção.
+
+Investigação da segunda intervenção, baseada na main `0fa1b40`:
+
+- `omr-lab.mjs::bindLocalManifest` importa o modelo, atualiza os textos e pode
+  analisar a última foto. Não altera vídeo, stream, resolução, CSS do visor ou lente.
+- Faltava retomar a reprodução nos eventos `change`/`cancel` do seletor e no retorno
+  de foco. O observador anterior só tratava visibilidade, pageshow e unmute.
+  Esses eventos não são equivalentes: um seletor pode devolver o controle sem
+  mudar as dimensões do vídeo ou emitir visibilitychange.
+- O campo de arquivo herdava fonte de aproximadamente 12,32 px. Foi ajustado para
+  pelo menos 16 px em telas móveis, reduzindo o gatilho de zoom por foco do Safari,
+  sem bloquear o zoom manual/acessibilidade nem alterar o viewport meta.
+- Há relatos no próprio WebKit de vídeo pintado menor/deformado **dentro de caixas
+  DOM corretamente dimensionadas**: [266688](https://bugs.webkit.org/show_bug.cgi?id=266688)
+  e [259364](https://bugs.webkit.org/show_bug.cgi?id=259364). São evidências de um
+  mecanismo compatível, **não prova da causa exata na versão de iOS do proprietário**.
+
+Implementação: somente no WebKit, o vídeo nativo permanece ativo embaixo de um
+canvas opaco que recebe o frame inteiro por `drawImage(video,0,0,videoWidth,videoHeight)`.
+O bitmap tem as dimensões reais da fonte, sem crop, zoom, filtros ou transformação
+de perspectiva. Ele determina a altura do visor e compartilha sua área com o SVG.
+Isso remove a camada nativa de vídeo da apresentação visível, em vez de tentar
+compensar sua transformação com escala CSS. A detecção e a fotografia continuam
+lendo o vídeo original, sem passar pelo novo canvas. Chromium permanece com vídeo
+nativo na apresentação.
+
+O ciclo usa `requestVideoFrameCallback` (RAF somente como fallback), uma única
+assinatura cancelável, e conserva o último frame válido enquanto o seletor suspende
+a fonte. A volta por seleção, cancelamento, foco ou unmute renova a assinatura e
+retoma o mesmo elemento/stream quando pausado; não chama getUserMedia novamente.
+Ao fechar, remove listeners, cancela o callback e libera o bitmap. O diagnóstico
+opcional registra apenas dimensões, modo de apresentação e contagem de frames.
+
+Regressões novas: dois imports reais de um manifesto sintético pelo filechooser
+automatizado, JSON inválido, cancelamento simulado e pausa da câmera **sem**
+visibilitychange; conferência da retomada sem trocar stream; pixels do canvas
+comparados à fonte sintética, bitmap nativo e alinhamento com o SVG. As interrupções
+do iOS são simuladas; **o diálogo UIKit e a corrupção interna do compositor não
+foram reproduzidos fisicamente neste ambiente**. A versão anterior reprova a
+retomada e o tamanho de fonte; a nova passa nesses casos.
+
+Quatro novos testes unitários cobrem o seletor, cópia integral do frame, dimensão
+temporariamente zero, cancelamento de sessão, assinatura única e fallback RAF.
+Conjunto atual: **371 testes aprovados, 1 TODO preexistente**, mais os três perfis
+de navegador (WebKit EDGE, WebKit PRIMARY, Chromium EDGE). A CI também passa a rodar
+em push da página paralela, sem depender de PR. O custo adicional do canvas é um
+buffer nativo e uma cópia de apresentação por frame; consumo/fluidez no iPhone
+precisam ser observados no teste do proprietário. Nenhuma garantia de desempenho
+ou de resolução física definitiva é inferida dos ensaios sintéticos.
+
+Homologação objetiva desta rodada: abrir a URL com `v=camera-json-return-02`, abrir
+a câmera, importar o JSON e voltar ao visor; repetir cinco vezes, cancelar a seleção,
+girar o aparelho e fotografar folhas consecutivas. Confirmar círculos proporcionais,
+prévia em movimento, quatro bordas e contorno alinhados. Se persistir, coletar apenas
+`cameraPresentation.snapshot('apos-json')` e `cameraPresentation.events` com
+`cameraDebug=1` pelo Web Inspector. Não exportar imagens ou dados do cartão.
+
 ## Destino autorizado
 
 O proprietário corrigiu expressamente o escopo da missão: atuar somente em

@@ -81,12 +81,34 @@ for (const profile of [
   page.on('pageerror',e=>result.errors.push(e.message));
   const check=(condition,message)=>{if(!condition)result.failures.push(message);};
   async function sample(label){
+    if(profile.name.startsWith('iphone'))await page.waitForFunction(()=>{
+      const c=document.getElementById('cameraPreview'),v=document.getElementById('video');
+      return c&&!c.hidden&&c.width===v.videoWidth&&c.height===v.videoHeight;
+    });
     const s=await page.evaluate(label=>{
       const v=document.getElementById('video'),p=document.getElementById('viewport'),o=document.getElementById('overlay');
       const box=el=>{const r=el.getBoundingClientRect();return {x:r.x,y:r.y,width:r.width,height:r.height};};
       const cs=getComputedStyle(v),b=box(v),f=window.__cameraFixture;
       const scale=Math.min(b.width/v.videoWidth,b.height/v.videoHeight);
       return {label,intrinsic:{width:v.videoWidth,height:v.videoHeight},video:b,viewport:box(p),overlay:box(o),
+        preview:document.getElementById('cameraPreview')?{
+          box:box(document.getElementById('cameraPreview')),
+          ...window.__saltaScan.cameraPresentation.snapshot().preview,
+          bitmapWidth:document.getElementById('cameraPreview').width,bitmapHeight:document.getElementById('cameraPreview').height,
+          // Only synthetic pixels in this test; no image data enters product diagnostics.
+          pixelDelta:(()=>{
+            const c=document.getElementById('cameraPreview'),source=window.__cameraFixture.canvas;
+            if(c.hidden||!c.width||!c.height)return null;
+            const ctx=c.getContext('2d'),sourceCtx=source.getContext('2d');
+            return Math.max(...[[.05,.05],[.5,.5],[.95,.95]].flatMap(([x,y])=>{
+              const a=ctx.getImageData(Math.floor(x*c.width),Math.floor(y*c.height),1,1).data;
+              const b=sourceCtx.getImageData(Math.floor(x*source.width),Math.floor(y*source.height),1,1).data;
+              return [0,1,2].map(i=>Math.abs(a[i]-b[i]));
+            }));
+          })()
+        }:null,
+        manifestFont:getComputedStyle(document.getElementById('omrManifest')).fontSize,
+        visualScale:window.visualViewport?.scale,documentWidth:document.documentElement.scrollWidth,
         settings:v.srcObject?.getVideoTracks()[0]?.getSettings(),fit:cs.objectFit,position:cs.objectPosition,
         renderedImage:{width:v.videoWidth*scale,height:v.videoHeight*scale},opens:f.opens,stops:f.stops,
         sameElement:v===window.__initialVideo,sameStream:v.srcObject===window.__initialStream,
@@ -99,6 +121,14 @@ for (const profile of [
     check(Math.abs(s.overlay.width-s.video.width)<1 && Math.abs(s.overlay.height-s.video.height)<1 && Math.abs(s.overlay.x-s.video.x)<1 && Math.abs(s.overlay.y-s.video.y)<1,`${label}: overlay and video differ`);
     check(s.sameElement&&s.sameStream,`${label}: presentation replaced video or stream`);
     check(s.dimensionsLabel.startsWith(s.intrinsic.width+'×'+s.intrinsic.height),`${label}: resolution label is stale`);
+    if(profile.name.startsWith('iphone')){
+      check(s.preview?.visible&&s.preview.frames>0,`${label}: WebKit displays native-size canvas frames`);
+      check(s.preview?.bitmapWidth===s.intrinsic.width&&s.preview?.bitmapHeight===s.intrinsic.height,`${label}: preview bitmap preserves source geometry`);
+      check(s.preview?.pixelDelta!==null&&s.preview?.pixelDelta<18,`${label}: presentation pixels match entire synthetic source`);
+      const a=s.preview.box,b=s.overlay;
+      const geometry=Math.max(Math.abs(a.x-b.x),Math.abs(a.y-b.y),Math.abs(a.width-b.width),Math.abs(a.height-b.height));
+      check(geometry<1,`${label}: canvas and framing occupy identical space`);
+    }
     await page.screenshot({path:path.join(out,profile.name+'-'+label+'.png'),fullPage:false});
     return s;
   }
@@ -110,6 +140,32 @@ for (const profile of [
     await page.waitForFunction(()=>window.__saltaScan.S.running&&document.getElementById('video').readyState>=2);
     await page.evaluate(()=>{window.__initialVideo=document.getElementById('video');window.__initialStream=window.__initialVideo.srcObject;});
     await sample('initial');
+    // Native file chooser return is distinct from window resizing or tab visibility.
+    await page.locator('details.omr-import').evaluate(el=>{el.open=true;});
+    for(let i=0;i<2;i++){
+      const chooserPromise=page.waitForEvent('filechooser');
+      await page.locator('#omrManifest').evaluate(el=>el.click());
+      const chooser=await chooserPromise;
+      // Simulate the native picker suspending playback without visibilitychange.
+      await page.evaluate(()=>document.getElementById('video').pause());
+      await chooser.setFiles(path.join(root,'corretor/v2/tests/fixtures/v2-header0.manifest.json'));
+      await page.waitForFunction(()=>document.getElementById('omrModelStatus').textContent.includes('Manifesto válido'));
+      await page.waitForTimeout(250);
+      check(await page.evaluate(()=>!document.getElementById('video').paused),'JSON picker return resumes camera without visibilitychange');
+      const selected=await sample('json-import-'+i);
+      if(profile.name.startsWith('iphone'))check(parseFloat(selected.manifestFont)>=16,'iPhone manifest input must not trigger small-font focus zoom');
+      await page.locator('#viewport').screenshot({path:path.join(out,profile.name+'-json-preview-'+i+'.png')});
+    }
+    await page.evaluate(()=>document.getElementById('video').pause());
+    await page.locator('#omrManifest').setInputFiles({name:'invalid.json',mimeType:'application/json',buffer:Buffer.from('{invalid')});
+    await page.waitForFunction(()=>document.getElementById('omrModelStatus').dataset.kind==='error');
+    await page.waitForTimeout(250);
+    check(await page.evaluate(()=>!document.getElementById('video').paused),'invalid JSON return still resumes camera');
+    await page.evaluate(()=>{
+      document.getElementById('video').pause();document.getElementById('omrManifest').dispatchEvent(new Event('cancel'));
+    });
+    await page.waitForTimeout(250);
+    check(await page.evaluate(()=>!document.getElementById('video').paused),'JSON picker cancel resumes camera without importing a file');
     await page.evaluate(()=>{
       const s=window.__saltaScan.S;
       s.det.smooth=[[10,10],[300,10],[300,180],[10,180]];s.det.stable=9;s.det.armed=false;s.det.lost=0;

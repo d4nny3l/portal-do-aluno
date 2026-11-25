@@ -71,6 +71,16 @@ body.live #hero{display:none}
  aspect-ratio:auto;object-fit:contain;object-position:center center;
  border-radius:inherit;background:#111525;
 }
+/* WebKit's native video layer can retain a wrong transform after the iOS file
+   picker. Present the WHOLE decoded frame on a canvas, keeping the live video
+   rendered underneath (not display:none, which can suspend iOS playback). */
+#scanner.camera-on .canvas-preview #video{
+ position:absolute;inset:0;width:100%;height:100%;z-index:0;pointer-events:none;
+}
+#scanner.camera-on #cameraPreview{
+ display:block;position:relative;z-index:1;width:100%;height:auto;aspect-ratio:auto;
+ border-radius:inherit;background:#111525;
+}
 #scanner.camera-on #overlay{
  position:absolute;inset:0;width:100%;height:100%;pointer-events:none;z-index:4;
 }
@@ -91,6 +101,8 @@ body.live #hero{display:none}
  #scanner.camera-on .tray{position:static;max-height:none;min-height:0}
 }
 @media(max-width:860px){
+ /* Avoid Safari's focus zoom when opening the native JSON/file picker. */
+ .omr-field input,.omr-field select{font-size:max(16px,1rem)}
  #scanner.camera-on .viewport{border-radius:16px}
  #scanner.camera-on .controls{padding:.75rem .1rem .6rem}
  #scanner.camera-on .controls #res{font-size:.66rem}
