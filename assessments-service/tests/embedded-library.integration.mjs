@@ -125,7 +125,7 @@ class Node{
 }
 const settle=async fn=>{for(let i=0;i<200;i++){if(fn())return;await new Promise(r=>setTimeout(r,5))}assert(fn(),'UI did not settle')};
 for(const capability of [false,'unknown',true])test(`native library capability ${capability}: no unsupported PUT; supported editor/save/open/selection keeps exact frame`,async()=>{
- const h=await harness();try{
+ const h=await harness({lifecycle:true});try{
   let m=model(),editor=m.editor,selected=null;const host=new Node('section'),panel=new Node('section');let puts=0;
   const doc={getElementById:id=>({savedAssessments:host,criar:panel}[id]||null),createElement:t=>new Node(t)};
   const fetchFn=async(url,init={})=>{const u=new URL(url);if(init.method==='PUT')puts++;const r=await h.request(u.pathname.slice('/assessments/v1'.length)+u.search,{method:init.method||'GET',...(init.body?{data:JSON.parse(init.body)}:{})});if(capability!==true&&u.pathname.endsWith('/session')){const d=await r.json();if(capability==='unknown')d.embeddedLibraryVersion='salta-embedded-library-v9';else delete d.embeddedLibraryVersion;return Response.json(d)}return r};

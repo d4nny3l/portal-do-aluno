@@ -11,7 +11,7 @@ class SurfaceNode{
 }
 const settle=async condition=>{for(let i=0;i<200;i++){if(condition())return;await new Promise(r=>setTimeout(r,5))}assert.ok(condition(),'UI did not settle')};
 for(const places of [0,1,2])test(`#88 real UI + candidate Auth/D1: authenticated capability, save, reopen, selection and copy format ${places}`,async()=>{
- const h=await harness();try{
+ const h=await harness({lifecycle:true});try{
   for(const [actor,status]of [[null,401],['unknown',403]]){const r=await h.request('/session',{actor});assert.equal(r.status,status);assert.equal((await r.json()).scoreFormatVersion,undefined)}
   const sections=[{sectionId:'block-1',label:'Bloco sintético',order:0,count:2,type:'A-E',items:[1,2].map(n=>({questionId:'question-'+n,originalOrder:n,number:n,type:'A-E'}))}];
   const header={...DEFAULT_CARD_HEADER,title:'Avaliação sintética',institution:'Escola sintética',subject:'Matemática',className:'Turma sintética',teacher:'Docente sintético',date:'2026-11-21',visible:{...DEFAULT_CARD_HEADER.visible},customFields:[],logoWidthMm:22,secondaryLogoWidthMm:22,logoAspect:1,secondaryLogoAspect:1};
