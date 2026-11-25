@@ -60,6 +60,8 @@ try{
   }
   if(!record)throw Error('Save not found: '+await p.locator('#savedAssessments').innerText());
   assert.equal(record.definition.manifest.mode,'embedded');assert.equal(record.definition.manifest.paper.widthMm,width);assert.equal(record.definition.manifest.paper.heightMm,height);assert.equal(record.definition.display.scoreDecimals,places);assert.equal(record.totalUnits,'100000');
+  await p.waitForFunction(t=>document.getElementById('scanModelStatus').textContent===t&&!document.querySelector('#savedAssessments button[data-action-icon="new"]').disabled,'Sintética '+places);
+  assert.equal(await p.locator('#criar').evaluate(e=>e.classList.contains('active')),true,'save must not navigate');
   await p.locator('#savedAssessments button[data-action-icon="new"]').click();
   await p.locator('#savedAssessments select[aria-label="Minhas avaliações"]').selectOption(record.id);
   await p.waitForFunction(t=>document.getElementById('assessmentTitle').value===t,'Sintética '+places);
@@ -67,8 +69,10 @@ try{
   const icons=await p.evaluate(()=>({save:getComputedStyle(document.querySelector('[data-action-icon="save"]'),'::before').maskImage,camera:getComputedStyle(document.getElementById('camera'),'::before').maskImage}));
   assert.notEqual(icons.save,'none');assert.notEqual(icons.camera,'none');
   await p.screenshot({path:out+'/format-'+places+'-reopened.png',fullPage:true});
-  await p.locator('#savedAssessments button[data-action-icon="correct"]').click();
-  await p.waitForFunction(()=>document.getElementById('scanModelStatus').textContent.includes('confirmada para correção'));
+  await p.waitForFunction(t=>document.getElementById('scanModelStatus').textContent===t&&document.getElementById('answerKey').readOnly,'Sintética '+places);
+  assert.equal(await p.locator('#savedAssessments button[data-action-icon="correct"]').count(),0);
+  assert.equal(await p.locator('#criar').evaluate(e=>e.classList.contains('active')),true,'selection must not navigate');
+  assert.notEqual(await p.locator('#savedAssessments button[data-action-icon="delete"]').evaluate(e=>getComputedStyle(e,'::before').maskImage),'none');
   await p.locator('nav.module-nav [data-view="corrigir"]').click();
   const {template,manifest}=importCardManifest(record.definition.manifest);
   const printed=await c.newPage();await printed.setContent(buildPrintDocument(template,{manifest}));const pdf=await printed.pdf({path:out+'/embedded-'+width+'x'+height+'.pdf',format:'A4',preferCSSPageSize:true});assert(pdf.length>5000);await printed.close();

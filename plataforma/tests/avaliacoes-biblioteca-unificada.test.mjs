@@ -284,8 +284,9 @@ test('actual Create-tab UI mounts and saves/opens/selects/duplicates without a s
  assert.equal(host.hidden,false);
  const top=host.children[0],scoring=host.children[1],actions=top.children[2];
  const find=name=>actions.children.find(b=>b.textContent===name);
- for(const name of ['Nova avaliação','Salvar avaliação','Abrir avaliação','Duplicar avaliação','Usar na correção'])
+ for(const name of ['Nova avaliação','Salvar avaliação','Abrir avaliação','Duplicar avaliação'])
   assert.ok(find(name));
+ assert.equal(find('Usar na correção'),undefined);
  const selectors=top.children[1];
  assert.equal(selectors.children[0].hidden,true,'unique scope selector hidden');
  const scoreInputs=scoring.children[1];assert.equal(scoreInputs.children.length,1);
@@ -303,15 +304,15 @@ test('actual Create-tab UI mounts and saves/opens/selects/duplicates without a s
  assert.equal(mounted.getDraft().manifest.contentHash,saved.manifestHash);
  assert.equal(modelBuilds,beforeResaveBuilds,'unmodified record must not regenerate a different layout');
  assert.equal(currentEditor.header.teacher,m.editor.header.teacher);
- await find('Usar na correção').handlers.click();
  assert.equal(selected.assessmentId,saved.id);
  assert.equal(selected.plan.blocks[0].questions.length,2);
  await find('Salvar avaliação').handlers.click();
- assert.equal(selected,null,'newly issued revision must invalidate previous correction-lot selection');
+ assert.equal(selected?.revision,2,'verified new revision automatically replaces the old key');
  await find('Duplicar avaliação').handlers.click();
  const copied=mounted.controller.view().record;
  assert.notEqual(copied.id,saved.id);
  assert.equal(copied.status,'draft');
+ assert.equal(selected,null,'copy is a draft; original key must not survive');
  assert.equal(copied.revision,1);
  assert.equal(top.children[4].textContent.includes(saved.id),false,'status hides internal identifiers');
  assert.equal(nominalCleared,0);
@@ -425,11 +426,11 @@ async function mountedRaceFixture({onPut=async()=>{},onSelection=async()=>{},onO
 test('P0 race SELECT: delayed issued selection cannot revive old answer key after professor edit',async()=>{
  const hold=deferred(),entered=deferred();
  const f=await mountedRaceFixture({onSelection:async()=>{entered.resolve();await hold.promise}});
- await f.fill();await f.button('Salvar avaliação').handlers.click();
+ await f.fill();
+ const selecting=f.button('Salvar avaliação').handlers.click();
+ await entered.promise;
  const initial=f.mounted.controller.view().record;
  assert.equal(initial.revision,1);
- const selecting=f.button('Usar na correção').handlers.click();
- await entered.promise;
  f.editTitle('Versão B — posterior à confirmação');
  assert.equal(f.getSelected(),null);
  hold.resolve();
@@ -437,13 +438,12 @@ test('P0 race SELECT: delayed issued selection cannot revive old answer key afte
  assert.equal(f.getSelected(),null,'stale selection must never activate private key');
  assert.equal(f.mounted.controller.view().record.id,initial.id,'preserve writable record for editing B');
  assert.match(f.top.children[4].textContent,/Alterações não salvas|Salve e selecione novamente/i);
- await f.button('Usar na correção').handlers.click();
+ assert.equal(f.button('Usar na correção'),undefined);
  assert.equal(f.getSelected(),null,'unsaved B cannot silently select old issued A');
  await f.button('Salvar avaliação').handlers.click();
  assert.equal(f.mounted.controller.view().record.revision,2);
  assert.equal(f.records.get(initial.id).definition.title,'Versão B — posterior à confirmação');
- await f.button('Usar na correção').handlers.click();
- assert.equal(f.getSelected()?.revision,2,'only a fresh teacher confirmation can activate revision 2');
+ assert.equal(f.getSelected()?.revision,2,'only the verified current saved revision activates');
 });
 
 test('P0 race SAVE: delayed receipt confirms frozen A while edited B remains unsaved and intact',async()=>{
@@ -520,18 +520,18 @@ test('P0 structural buttons: delayed SELECT never reactivates an old key without
    counts:[2,1],restoreOutOfOrder:kind==='Restaurar ordem',
    onSelection:async()=>{entered.resolve();await hold.promise}
   });
-  await f.fill();await f.button('Salvar avaliação').handlers.click();
+  await f.fill();
+  const selecting=f.button('Salvar avaliação').handlers.click();
+  await entered.promise;
   const id=f.mounted.controller.view().record.id;
   f.freezeSnapshot(); // Only getSections() can reveal the silent structural change.
-  const selecting=f.button('Usar na correção').handlers.click();
-  await entered.promise;
   await f.silentClick(kind);
   assert.equal(f.getSelected(),null);
   hold.resolve();await selecting;
   assert.equal(f.getSelected(),null,'old key cannot return after '+kind);
   assert.equal(f.mounted.controller.view().record.id,id,'keep writable revision for B');
   assert.match(f.top.children[4].textContent,/Alterações não salvas|Salve e selecione novamente/i);
-  assert.equal(f.button('Usar na correção').disabled,true);
+  assert.equal(f.button('Usar na correção'),undefined);
  });
 });
 
@@ -539,11 +539,10 @@ test('P0 structural buttons: an already active selection is cleared without an i
  for(const kind of structuralButtons)await t.test(kind,async()=>{
   const f=await mountedRaceFixture({counts:[2,1],restoreOutOfOrder:kind==='Restaurar ordem'});
   await f.fill();await f.button('Salvar avaliação').handlers.click();
-  await f.button('Usar na correção').handlers.click();
   assert.ok(f.getSelected(),'issued selection must be active before mutation');
   await f.silentClick(kind);
   assert.equal(f.getSelected(),null,'already selected key must be cleared after '+kind);
-  assert.equal(f.button('Usar na correção').disabled,true);
+  assert.equal(f.button('Usar na correção'),undefined);
   assert.match(f.top.children[4].textContent,/Alterações não salvas/i);
  });
 });
@@ -570,7 +569,7 @@ test('P0 structural buttons: delayed PUT preserves A receipt but never declares 
   assert.equal(f.writeCalls[0].requestId,original);
   assert.equal(f.writeCalls[0].expectedRevision,0);
   assert.match(f.top.children[4].textContent,/Alterações não salvas/i);
-  assert.equal(f.button('Usar na correção').disabled,true);
+  assert.equal(f.button('Usar na correção'),undefined);
  });
 });
 
@@ -655,6 +654,8 @@ test('UX-79B automatic current-revision opening, accessible actions and hidden l
  assert.equal(f.mounted.controller.view().record.id,first.id,'selection opens latest revision automatically');
  assert.equal(f.mounted.controller.view().record.revision,1);
  assert.equal(f.mounted.controller.view().editorMode,'opened');
+ assert.equal(f.getSelected()?.assessmentId,first.id);
+ assert.equal(f.getSelected()?.revision,1);
 });
 
 test('UX-79B manual key editor is placed in Criar, private JSON importer is hidden only while selected',()=>{
@@ -666,7 +667,8 @@ test('UX-79B manual key editor is placed in Criar, private JSON importer is hidd
  assert.match(html,/setPrivateCorrectionUi\(false\)/);
  const css=read('plataforma/avaliacoes-biblioteca.css');
  assert.match(css,/\[data-action-icon="save"\]::before/);
- assert.match(css,/\[data-action-icon="correct"\]::before/);
+ assert.doesNotMatch(css,/\[data-action-icon="correct"\]::before/);
+ assert.match(css,/\[data-action-icon="delete"\]::before\{content:"";[^\n]*mask:url\("data:image\/svg\+xml,/);
 });
 
 
@@ -1089,22 +1091,20 @@ test('UX-79B P0 recovery: offline timer, one online attempt and eventual manual 
  assert.deepEqual(f.writeCalls[0],f.writeCalls[2]);
 });
 
-test('UX-79B P0 messaging: physical batch confirmation and reader status reveal no hashes or revision numbers',async()=>{
+test('UX automatic correction: no batch confirmation, reader shows only title',async()=>{
  const messages=[];
  const f=await mountedRaceFixture({windowOverrides:{confirm:message=>{messages.push(message);return true}}});
  await f.fill();await f.button('Salvar avaliação').handlers.click();
- await f.button('Usar na correção').handlers.click();
- assert.equal(messages.length,1);
- assert.match(messages[0],/Avaliação de Matemática/);
- assert.match(messages[0],/cartão físico|lote/i);
- assert.match(messages[0],/gabaritos diferentes/i);
- assert.doesNotMatch(messages[0],/versão\s+\d+|revisão\s+\d+|[a-f0-9]{32,}/i);
+ assert.equal(f.button('Usar na correção'),undefined);
+ assert.ok(f.getSelected(),'automatic verified binding');
+ assert.deepEqual(messages,[],'no physical-lot confirmation');
  const ui=read('plataforma/avaliacoes-biblioteca.mjs');
  const html=read('plataforma/corretor-v2.html');
  assert.doesNotMatch(ui,/Avaliação aberta · versão/);
  assert.doesNotMatch(ui,/versão '\+details\.revision/);
  assert.doesNotMatch(html,/scanModelStatus'\)\.textContent=[^\n]*(?:\.version|contentHash|\.revision)/);
- assert.doesNotMatch(html,/confirmada para correção\. Confira o lote físico\.';.*selection\.revision/);
+ assert.match(html,/scanModelStatus'\)\.textContent=selection\.plan\.metadata\.title;/);
+ assert.doesNotMatch(ui,/Confirma a avaliação.*para corrigir este lote/);
  assert.match(html,/activeManifest\.contentHash!==privateSelection\.manifestHash/,'cryptographic binding retained internally');
 });
 
@@ -1253,7 +1253,7 @@ test('P0-80-RF-01 inline Corretor scrubs private model without selection but ret
  reader.applyAssessmentModel({title:'Private title before selection',revision:1,manifest:m.manifest},{privateAssessment:true});
  assert.equal(reader.state().privateSelection,null);
  assert.equal(reader.state().privateModelLoaded,true);
- assert.match(node('scanModelStatus').textContent,/Private title before selection/);
+ assert.equal(node('scanModelStatus').textContent,'','unconfirmed model is not active');
  assert.ok(reader.state().activeManifest);
  reader.clearPrivateCorrection();
  assert.equal(reader.state().activeManifest,null);
@@ -1290,7 +1290,7 @@ test('P1-80-FINAL actual activation marks selection private, teardown scrubs all
  assert.equal(reader.state().privateModelLoaded,true,'selection is explicitly private');
  assert.equal(reader.state().activeManifest.contentHash,m.manifest.contentHash);
  assert.ok(reader.state().template,'immutable private template installed');
- assert.match(node('scanModelStatus').textContent,/Avaliação particular da professora A/);
+ assert.equal(node('scanModelStatus').textContent,'Avaliação particular da professora A');
  assert.match(node('preview').innerHTML,/private-model/);
  assert.equal(node('answerKey').readOnly,true);
  assert.match(node('answerKey').value,/1 A/);
@@ -1801,8 +1801,7 @@ test('UX-79C joint: enriched private label, authenticated format 0/1/2, opened r
   'Avaliação de Matemática - Matemática - Turma sintética 7A','canonical PR84 label with PR87 format');
  await f.button('Abrir avaliação').handlers.click();
  assert.equal(f.formatSelect.value,'0','display preference persists per revision');
- await f.button('Usar na correção').handlers.click();
- assert.ok(f.getSelected(),'approved immutable revision remains selectable after label enrichment');
+ assert.ok(f.getSelected(),'approved immutable revision binds after label enrichment');
  assert.equal(f.getSelected().plan.scoreDecimals,0);
 });
 
@@ -1814,4 +1813,39 @@ test('#81 private teardown keeps consolidated numeric results only, never delete
  reader.applyAssessmentModel({title:'Synthetic deleted',revision:1,manifest:m.manifest},{privateAssessment:true});
  reader.clearPrivateCorrection();assert.deepEqual(JSON.parse(JSON.stringify(completed)),[{id:1,at:123,readCount:3,grade:'7,00',correct:2,count:3}]);
  assert.equal(reader.state().activeManifest,null);assert.equal(node('answerKey').value,'');
+});
+
+test('automatic binding retry keeps exact selection operation, no stale key after editing',async()=>{
+ let tries=0;const f=await mountedRaceFixture({onSelection:async()=>{if(++tries===1)throw Error('synthetic connection failure')}});
+ await f.fill();await f.button('Salvar avaliação').handlers.click();
+ const record=f.mounted.controller.view().record,pending=f.getPending();
+ assert.equal(record.revision,1);assert.equal(pending.path,'/selections');assert.equal(f.getSelected(),null);
+ const oldId=[...f.selections.keys()][0];assert.ok(oldId);
+ await f.button('Conferir salvamento').handlers.click();
+ assert.equal(f.getPending(),null);assert.equal(f.getSelected()?.selectionId,oldId);
+ assert.equal(f.selections.size,1,'same selectionId must be replayed');
+ f.editTitle('New unsaved');assert.equal(f.getSelected(),null);assert.equal(f.mounted.controller.view().selection,null);
+});
+test('automatic binding cannot revive A after controller reauthentication',async()=>{
+ const hold=deferred(),entered=deferred();
+ const f=await mountedRaceFixture({onSelection:async()=>{entered.resolve();await hold.promise}});
+ await f.fill();const saving=f.button('Salvar avaliação').handlers.click();await entered.promise;
+ const ctl=f.mounted.controller;assert.ok(ctl.view().pending);
+ await ctl.initialize();ctl.useScope(ctl.view().grants[0]);f.mounted.render();
+ hold.resolve();await saving;
+ assert.equal(f.getSelected(),null);assert.equal(ctl.view().selection,null);assert.equal(ctl.view().record,null);
+});
+test('catalog switch preserves unsaved warning and does not bind the discarded revision',async()=>{
+ const messages=[];let allow=false;
+ const f=await mountedRaceFixture({windowOverrides:{confirm:m=>{messages.push(m);return allow}}});
+ await f.fill();await f.button('Salvar avaliação').handlers.click();const first=f.mounted.controller.view().record;
+ await f.button('Duplicar avaliação').handlers.click();const draft=f.mounted.controller.view().record;
+ assert.notEqual(draft.id,first.id);assert.equal(f.getSelected(),null);
+ f.editTitle('Cópia local');
+ const catalog=f.top.children[1].children[1].children[0];
+ catalog.value=first.id;await catalog.onchange();
+ assert.equal(catalog.value,draft.id);assert.equal(f.getSelected(),null);assert.equal(messages.length,1);
+ assert.match(messages[0],/alterações não salvas/i);
+ allow=true;catalog.value=first.id;await catalog.onchange();
+ assert.equal(f.getSelected()?.assessmentId,first.id);assert.equal(f.getSelected()?.revision,1);assert.equal(messages.length,2);
 });
