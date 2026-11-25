@@ -1,10 +1,17 @@
 // Scancat — page processing off the main thread: warp → enhance → rotate.
 
 import * as V from "./vision.js";
+import {findMarkerPage} from "./marker-capture.js";
 
 self.onmessage = (e) => {
   const { id, op } = e.data;
   try {
+    if (op === "detect-markers") {
+      const {data,w,h,geometry}=e.data;
+      const result=findMarkerPage(data,w,h,geometry||null);
+      self.postMessage({id,result});
+      return;
+    }
     if (op === "process") {
       const { data, w, h, corners, mode, rot, maxSide } = e.data;
       const size = V.outputSize(corners, maxSide || 2600);
