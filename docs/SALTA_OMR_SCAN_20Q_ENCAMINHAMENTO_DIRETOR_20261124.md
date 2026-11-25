@@ -2,6 +2,8 @@
 ## Integração oficial do motor de digitalização ao Corretor OMR — 20/20 em campo
 
 **Data do registro:** 24/11/2026 (Brasília)  
+**Missão oficial no GitHub:** [Issue #132 — DIRETOR / OMR-SCAN-20Q](https://github.com/d4nny3l/portal-do-aluno/issues/132)  
+
 **Origem:** proprietário da SALTA / laboratório experimental `salta-omr-capture-lab`  
 **Prioridade solicitada:** P1 — avaliar, implementar em branch isolada, auditar e homologar.  
 **Repositório:** `d4nny3l/portal-do-aluno`  
