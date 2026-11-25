@@ -27,7 +27,7 @@ export async function harness({lifecycle=false}={}) {
  const store=new SessionStore({storage});
  const authEnv={SESSIONS:{idFromName:()=>'',get:()=>({fetch:(input,init)=>store.fetch(new Request(input,init))})}};
  const tokens={};
- for(const [name,user]of [['a','synthetic-login-a'],['b','synthetic-login-b'],['unknown','synthetic-unprovisioned']]){
+ for(const [name,user]of [['a','synthetic-login-a'],['second','synthetic-login-a'],['b','synthetic-login-b'],['unknown','synthetic-unprovisioned']]){
   const token=secret();tokens[name]='__Host-salta_session='+token;
   await store.fetch(new Request('https://sessions/create',{method:'POST',body:JSON.stringify({id:token,user,expiresAt:Math.floor(Date.now()/1000)+3600})}));
  }

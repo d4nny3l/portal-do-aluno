@@ -181,7 +181,7 @@ export function mountAssessmentLibrary({
  const choicesBox=el(document,'div','',{class:'library-choices'});
  const paste=el(document,'textarea','',{placeholder:'1 A\n2 C\n3 D',rows:'4',spellcheck:'false'});
  const actions=el(document,'div','',{class:'omr-actions library-actions'});
- let operationBusy=false,deletionConfirmed=false;
+ let operationBusy=false,deletionConfirmed=false,deletionFocusPending=false;
  const aux=el(document,'div','',{class:'omr-actions library-aux'});
  const btn=(label,callback,icon='action')=>{
   const item=el(document,'button',label,{type:'button'});
@@ -494,7 +494,7 @@ export function mountAssessmentLibrary({
  actions.append(deletion);
  async function reconcileDeleted(result){
   broadcastChange(result.receipt.id);
-  wipePrivateUi();newEditor();renderScoring();
+  wipePrivateUi();newEditor();renderScoring();deletionFocusPending=contextKey();
   await loadCatalog();deletionConfirmed=true;
   status.textContent='Avaliação excluída permanentemente.';status.dataset.state='deleted';
  }
@@ -527,7 +527,7 @@ export function mountAssessmentLibrary({
  let approvedExport=null;
  document.addEventListener?.('click',event=>{
   const target=event.target?.closest?.('button');
-  if(!target||!['generate','printCard','downloadSvg','downloadPng','downloadJpg','printBatch'].includes(target.id)||!hasLifecycle()||!controller.view().record)return;
+  if(!target||!['generate','printCard','download','downloadJson','downloadPng','downloadJpg','printBatch'].includes(target.id)||!hasLifecycle()||!controller.view().record)return;
   if(approvedExport===target){approvedExport=null;return;}
   event.preventDefault();event.stopImmediatePropagation();
   void verifyOpened().then(valid=>{if(valid){approvedExport=target;target.click();approvedExport=null;}});
@@ -705,6 +705,10 @@ export function mountAssessmentLibrary({
    status.dataset.state='unsupported';status.textContent=embeddedUnavailable;
   }
   updateSummary();
+  if(deletionFocusPending&&deletionFocusPending!==contextKey())deletionFocusPending=false;
+  if(deletionFocusPending&&!operationBusy&&!create.disabled){
+   deletionFocusPending=false;create.focus?.();
+  }
  }
  async function loadCatalog(){
   const context=contextKey(),generation=++catalogGeneration,

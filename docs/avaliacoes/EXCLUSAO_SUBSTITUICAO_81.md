@@ -54,4 +54,13 @@ Restauração autorizada: serviço FECHADO, preservar keyring e D1, obter testem
 
 Candidata não é publicação. Pareceres APTO não são presumidos; nenhum merge/deploy/migração remota/exclusão real foi executado.
 
-Contraprova local final: **404/404 regressões + 16/16 integrações + 1/1 HTTP legado + 2/2 guard/build**; navegador **4 cenários lifecycle + 8 snapshot + 3 formatos incorporados**, todos PASS. Evidências reproduzidas na CI do HEAD do PR; artefatos locais em `assessments-service/dist/`. A prova de dependência CASCADE usa somente uma tabela de notas sintética e comprova bloqueio sem perda da nota. Não equivale a inventário de dados reais ou homologação em Safari físico.
+Contraprova local final: **404/404 regressões + 16/16 integrações + 1/1 HTTP legado + 2/2 guard/build**; navegador **13 cenários lifecycle + 8 snapshot + 3 formatos incorporados**, todos PASS. Evidências reproduzidas na CI do HEAD do PR; artefatos locais em `assessments-service/dist/`. A prova de dependência CASCADE usa somente uma tabela de notas sintética e comprova bloqueio sem perda da nota. Não equivale a inventário de dados reais ou homologação em Safari físico.
+
+
+## Ajuste final solicitado pela Diretoria — 7150352786
+
+Delta exclusivo sobre `77909f8e89164b2dd2cf50165fddd79d3815e815`: interceptor cobre os IDs reais `download` (SVG) e `downloadJson`; precedência CSS fica restrita ao diálogo (Cancelar secundário, Excluir vermelho, inclusive hover); cancelamento/Escape retornam ao acionador, enquanto sucesso confirmado transfere foco uma única vez para Nova avaliação habilitada, após o render final e no mesmo contexto. Funciona também na recuperação de resposta perdida.
+
+A regressão real de navegador agora cobre **13 cenários**: duas sessões Auth sintéticas independentes do mesmo professor, SVG/JSON válidos como controle, exclusão/substituição na outra sessão sem preinvalidação por foco/broadcast, nenhum Blob/download obsoleto, estilos computados normal/hover, foco no sucesso desktop/mobile e cancelamento preservado. PNGs do diálogo e foco pós-exclusão no artefato CI. Nenhum dado real utilizado.
+
+Main reconferida em `f4621cea08f652fd1a86165c80c288d8d145545b`: avanço restrito a laboratório OMR/documentação, sem sobreposição com este ajuste. Nenhuma incorporação ou mudança nessas frentes. Backend, gateway, contrato, migração, Auth, crypto e HTML/algoritmos ópticos permanecem byte a byte iguais ao HEAD anterior; hashes de bundle e demais gates de retenção/preflight/ativação permanecem os mesmos. Não houve merge, deploy, migração remota, ativação ou exclusão real. Novo HEAD depende de CI completa e reauditorias técnica/visual específicas; nenhum parecer anterior é promovido automaticamente.
