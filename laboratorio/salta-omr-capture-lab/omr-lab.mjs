@@ -262,6 +262,11 @@ function candidateRead(raster,s){
    outputDetail:Math.min(raster.width,raster.height)};
 }
 function failed(error){return {ok:false,error:error?.message||String(error)}}
+function announceReadFinished(page){
+ if(page?.id!=null)window.dispatchEvent(new CustomEvent("salta-omr:read-finished",{
+  detail:{pageId:page.id}
+ }));
+}
 async function analyze(page){
  if(!selected||!page)return;
  const request=++readGeneration;
@@ -294,7 +299,10 @@ async function analyze(page){
    'Nenhum dos dois caminhos localizou os marcadores. Use uma fotografia mais nítida, com toda a folha visível.',
    count===2?'ok':'warn');
  }catch(error){if(request===readGeneration)status(readStatus,error?.message||'Falha ao analisar a captura.','error')}
- finally{if(request===readGeneration)$('omrReread').disabled=false}
+ finally{
+  if(request===readGeneration)$('omrReread').disabled=false;
+  announceReadFinished(page);
+ }
 }
 function addCell(parent,tag,txt,className){
  const el=document.createElement(tag);el.textContent=txt;
@@ -354,8 +362,10 @@ function onPage(event){
  const count=window.__saltaScan?.S?.pages?.length||0;
  $('omrCaptureCount').textContent=count+' página(s) na sessão';
  $('omrReread').disabled=!selected;
- if(!selected)status(readStatus,'Página '+count+' recebida. Conecte a avaliação e confirme o modelo para iniciar a leitura.','warn');
- else void analyze(page);
+ if(!selected){
+  status(readStatus,'Página '+count+' recebida. Conecte a avaliação e confirme o modelo para iniciar a leitura.','warn');
+  announceReadFinished(page);
+ }else void analyze(page);
 }
 function bootstrap(){
  $('omrConnect').addEventListener('click',()=>void connectLibrary());
