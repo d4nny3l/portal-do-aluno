@@ -50,3 +50,23 @@ Reprocessamento explícito: editar cantos da foto no scanner e tocar **Ler últi
 ## Licença
 
 O motor de captura continua derivado de Scancat (Nipun Batra, 2026, MIT), preservando `LICENSE-SCANCAT-MIT.txt`; módulos oficiais SALTA seguem as licenças/autorizações do próprio repositório.
+
+## Novo enquadramento de câmera móvel — 24/11/2026
+
+A versão experimental adotou uma solução **independente da câmera do Corretor** e sem alterar o SALTA Scan original.
+
+- Câmera traseira continua automática pelo navegador. A preferência de vídeo é orientada a folha vertical (ideal 1440×1920, proporção 3:4 no celular em pé; todos os valores são opcionais e dependem do aparelho).
+- Em iPhone na vertical, a janela de câmera é adaptada ao espaço da tela; quando a fonte física chega horizontal, a prévia pode mostrar um recorte central **real**, nunca um `object-fit: cover` decorativo separado dos pixels do scanner.
+- `js/framing.js` centraliza a geometria `cameraRegion` e `cameraStageAspect`. Os mesmos `sx,sy,sw,sh` usados na prévia são aplicados por `drawImage` ao detector e à foto salva; as quatro coordenadas são reescalonadas por eixos separados.
+- **Ver imagem inteira** troca para `fit`, sem cortar as bordas. A janela volta ao aspecto nativo da câmera; ela pode ficar mais baixa se o dispositivo fornecer vídeo horizontal, mas é a opção segura para folhas que não cabem no recorte ampliado.
+- Mudanças de orientação/proporção reinicializam somente o estado de enquadramento e estabilidade. Não regeneram modelo nem alteram gabarito, notas ou leitura oficial.
+- Ao tocar em **Abrir câmera**, a página rola até a janela de captura, em vez de deslocar a tela para o botão **Fechar câmera**.
+- Mantidos o foco nativo WebKit, a captura automática, o botão de fechar, a importação e a comparação OMR dos dois caminhos. Sem exigir seleção manual de lente.
+
+### Verificação efetuada
+- HTML/JS analisados sem erro de sintaxe; IDs DOM sem faltas/duplicações.
+- Casos geométricos para fonte vertical/horizontal, prévia ampliada e imagem inteira: recorte dentro dos limites da fonte, correspondência matemática com `object-fit`.
+- Teste sintético do `capture()` confirma o mesmo retângulo fonte e os pontos reescalonados nas páginas emitidas.
+- O scanner independente original permanece intacto.
+
+**Limitação:** ainda não houve homologação visual/captura física no Safari deste iPhone. Se o Safari mudar a orientação da fonte durante a execução, `video.resize` recalcula o enquadramento, mas precisa de teste real. Com fonte horizontal, a prévia ampliada pode cortar partes periféricas; use **Ver imagem inteira** ou afaste um pouco o aparelho.
