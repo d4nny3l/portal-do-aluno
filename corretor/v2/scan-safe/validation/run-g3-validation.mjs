@@ -38,15 +38,22 @@ const fields=['questions','truthSingle','truthBlank','truthMultiple','read','bla
 const total=()=>Object.fromEntries(fields.map(k=>[k,0]));
 report.summary={base:total(),candidate:total(),consensus:total(),newWrongVsConsensus:0,lostCorrectSingles:0};
 const bench=[];
+const savedExact=new Set(['moderate-A','moderate-AB','shadow-AB-130']);
+report.rasterReplay={exact:0,regenerated:0,mismatches:[]};
 try{
  for(const spec of CASES){
   const model=modelFor(spec),truth=truthFor(spec,model),label=labels.labels.find(x=>x.id===spec.id);
-  const input=await raster(spec,model);
-  const actualHash=sha(input.data);
-  if(actualHash!==label.raster.rgbaSha256)throw Error('Original RGBA hash mismatch '+spec.id+' '+actualHash+' expected '+label.raster.rgbaSha256);
-  assert.equal(sha(svgFor(spec,model)),label.raster.svgSha256);
+  assert.equal(sha(svgFor(spec,model)),label.raster.svgSha256,'Original SVG differs '+spec.id);
+  const input=savedExact.has(spec.id)?{data:new Uint8ClampedArray(gunzipSync(await readFile(new URL('./'+spec.id+'.rgba.gz',import.meta.url)))),w:label.raster.width,h:label.raster.height}:await raster(spec,model);
+  const actualHash=sha(input.data),exact=actualHash===label.raster.rgbaSha256;
+  if(exact)report.rasterReplay.exact++;
+  else {
+   report.rasterReplay.regenerated++;
+   report.rasterReplay.mismatches.push({id:spec.id,expected:label.raster.rgbaSha256,actual:actualHash});
+   assertRecord(!savedExact.has(spec.id),'Stored original fixture hash mismatch '+spec.id);
+  }
   const p=payload(input,model),before=processCapture(p,oldDeps),after=processCapture(p),reference=compareOptical(worker({data:input.data,w:input.w,h:input.h,corners:p.corners}),model,frozen);
-  const row={id:spec.id,hash:actualHash,first:after.reading?.observations[0]||null,readCalls:after.metrics.readCalls,error:after.error||null,
+  const row={id:spec.id,hash:actualHash,originalHash:label.raster.rgbaSha256,exact,first:after.reading?.observations[0]||null,readCalls:after.metrics.readCalls,error:after.error||null,
    base:metrics(truth,before),candidate:metrics(truth,after),consensus:metrics(truth,reference.consensus)};
   for(const k of ['base','candidate','consensus'])for(const field of fields)report.summary[k][field]+=row[k][field];
   for(const q of truth){
@@ -59,7 +66,7 @@ try{
   if(spec.id.startsWith('shadow-AB-'))assertRecord(row.first?.state==='review'&&row.first.answer===null&&['A','B'].every(k=>row.first.marks.includes(k)),'Shadow double not vetoed '+spec.id);
   report.rows.push(row);
   if(['moderate-A','moderate-AB','shadow-AB-130'].includes(spec.id))bench.push({input,model});
-  console.log(JSON.stringify({id:spec.id,state:row.first?.state,marks:row.first?.marks,error:row.error,wrong:row.candidate.incorrectDefinitiveAnswers,blank:row.candidate.incorrectDefinitiveBlanks,review:row.candidate.review}));
+  console.log(JSON.stringify({id:spec.id,exact,state:row.first?.state,marks:row.first?.marks,error:row.error,wrong:row.candidate.incorrectDefinitiveAnswers,blank:row.candidate.incorrectDefinitiveBlanks,review:row.candidate.review}));
  }
  assertRecord(report.summary.newWrongVsConsensus===0,'New definitive wrong answers versus frozen consensus: '+report.summary.newWrongVsConsensus);
  assertRecord(report.summary.lostCorrectSingles===0,'Lost legitimate definitive singles: '+report.summary.lostCorrectSingles);
@@ -106,7 +113,9 @@ try{
   const s=report.summary[name];s.answerCoverage=s.correctDefinitiveAnswers/s.truthSingle;s.definitiveAnswerPrecision=s.read?s.correctDefinitiveAnswers/s.read:null;
  }
  report.historySummary=history.summary;
- console.log(JSON.stringify({summary:report.summary,times:report.times,errors:report.errors},null,2));
+ report.gate={exactReplayComplete:report.rasterReplay.exact===CASES.length,syntheticRegressionsPassed:report.errors.length===0,physicalHomologation:false};
+ assertRecord(report.gate.exactReplayComplete,'Original pixel hash mismatches: '+report.rasterReplay.regenerated+' cases; regenerated SVG tests are not an exact replay');
+ console.log(JSON.stringify({rasterReplay:{exact:report.rasterReplay.exact,regenerated:report.rasterReplay.regenerated},summary:report.summary,times:report.times,gate:report.gate,errors:report.errors},null,2));
 } catch(e){report.errors.push(e.stack||String(e));}
 finally{await writeFile(out+'/report.json',JSON.stringify(report,null,2)+'\n');}
 assert.deepEqual(report.errors,[],'G3 corpus/geometry gate failed; inspect report artifact');
