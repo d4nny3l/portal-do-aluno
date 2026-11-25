@@ -2,7 +2,7 @@
 
 import * as V from "./vision.js";
 import {sampleQuality} from "./quality.js?v=paper-turbo-3";
-import {cameraScene} from "./card-flow.js";
+import {cameraScene} from "./card-flow.js?v=paper-safe-2";
 
 
 self.onmessage = (e) => {
