@@ -4,8 +4,8 @@ import * as V from "./vision.js";
 import { buildPdf } from "./pdf.js";
 import {cameraRegion, cameraStageAspect} from "./framing.js";
 import {sampleQuality, shouldCapture, selectBestFrame} from "./quality.js?v=paper-turbo-3";
-import {createCardFlow,cardCaptured,cardReadFinished,cardNotDetected,cardDetected} from "./card-flow.js";
-import {fullPaperVisible,addPaperMargin} from "./paper-geometry.js";
+import {createCardFlow,cardCaptured,cardReadFinished,cardNotDetected,cardDetected} from "./card-flow.js?v=paper-safe-2";
+import {fullPaperVisible,addPaperMargin} from "./paper-geometry.js?v=paper-safe-2";
 
 const $ = (id) => document.getElementById(id);
 
@@ -44,7 +44,7 @@ function savePrefs() {
 
 /* ---------- worker ---------- */
 
-const worker = new Worker("js/worker.js?v=paper-turbo-3", { type: "module" });
+const worker = new Worker("js/worker.js?v=paper-safe-2", { type: "module" });
 const pending = new Map();
 let wid = 0;
 worker.onmessage = (e) => {
