@@ -26,10 +26,10 @@ test('stored fixture corruption, SVG corruption, false identity, missing case an
 test('baseline must match each decision, recognition, identity and metric, not merely aggregate totals',()=>{
  const observation={questionId:'q1',number:1,state:'read',answer:'A',marks:['A'],recognition:'strong'};
  const identity={state:'read',code:'0001123'};
- const historical={outputs:{single:{ok:true,identity,observations:[observation]}},metrics:{read:1,correctDefinitiveAnswers:1}};
+ const historical={outputs:{single:{ok:true,identity,observations:[observation]}},metrics:{single:{read:1,correctDefinitiveAnswers:1}}};
  const result={reading:{identity,observations:[{...observation,page:1,confidence:.9}]}};
- assert.deepEqual(baselineDifferences(result,historical.metrics,historical),[]);
- assert.ok(baselineDifferences({reading:{identity,observations:[{...observation,answer:'B',marks:['B']}]}},historical.metrics,historical).some(x=>x.field==='observation'));
- assert.ok(baselineDifferences({reading:{...result.reading,identity:{state:'review',code:null}}},historical.metrics,historical).some(x=>x.field==='identity'));
- assert.ok(baselineDifferences(result,{...historical.metrics,read:0},historical).some(x=>x.field==='read'));
+ assert.deepEqual(baselineDifferences(result,historical.metrics.single,historical),[]);
+ assert.ok(baselineDifferences({reading:{identity,observations:[{...observation,answer:'B',marks:['B']}]}},historical.metrics.single,historical).some(x=>x.field==='observation'));
+ assert.ok(baselineDifferences({reading:{...result.reading,identity:{state:'review',code:null}}},historical.metrics.single,historical).some(x=>x.field==='identity'));
+ assert.ok(baselineDifferences(result,{...historical.metrics.single,read:0},historical).some(x=>x.field==='read'));
 });
