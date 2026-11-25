@@ -939,7 +939,7 @@ test('UX-79B P0 privacy: 401/403 purge 13 cached assessments, metadata and edita
   const {definition}=createLibraryPlan(planArgs(m));
   const record={id:ids[0],revision:1,definition,manifestHash:definition.manifest.contentHash,
    scoreScale:10000,totalUnits:'60000',status:'issued',archived:false,...grant};
-  let deny=false,cleared=0;
+  let deny=false,cleared=0,issuedSelection=null;
   const fetchFn=async(url,req)=>{
    const u=new URL(url),route=u.pathname.slice('/assessments/v1'.length);
    if(route==='/session')return Response.json({authenticated:true,principalId:'teacher-a',epoch:1,assessmentLifecycleVersion:'salta-assessment-lifecycle-v1',editorSnapshotVersion:'salta-editor-snapshot-v1'});
@@ -950,6 +950,12 @@ test('UX-79B P0 privacy: 401/403 purge 13 cached assessments, metadata and edita
     const items=rows.slice(pos,pos+10);
     return Response.json({assessments:items,nextCursor:pos+items.length<rows.length?items.at(-1).id:null});
    }
+   if(route==='/selections'&&req.method==='POST'){
+    const p=JSON.parse(req.body);assert.equal(p.assessmentId,record.id);assert.equal(p.revision,record.revision);
+    issuedSelection=p.selectionId;
+    return Response.json({ok:true,id:record.id,revision:record.revision,selectionId:issuedSelection,manifestHash:record.manifestHash});
+   }
+   if(issuedSelection&&route==='/selections/'+issuedSelection&&req.method==='GET')return Response.json({selectionId:issuedSelection,record});
    if(route.startsWith('/assessments/')&&req.method==='GET'){
     if(deny&&trigger==='open')return Response.json({code:'denied'},{status:code});
     if(route==='/assessments/'+ids[0])return Response.json({record});
@@ -972,6 +978,7 @@ test('UX-79B P0 privacy: 401/403 purge 13 cached assessments, metadata and edita
   assert.equal(catalog.options.length,14,'two pages of private titles are visible before revocation');
   catalog.value=ids[0];await catalog.onchange();
   assert.ok(catalog.options.some(x=>x.textContent.includes('Matemática')),`loaded private metadata cached: ${JSON.stringify({record:mounted.controller.view().record?.id,phase:mounted.controller.view().phase,labels:catalog.options.map(x=>x.textContent),status:top.children[4].textContent})}`);
+  assert.equal(mounted.controller.view().selection?.assessmentId,ids[0],'verified binding before revocation');
   deny=true;
   if(trigger==='open'){catalog.value=ids[1];await catalog.onchange();}
   else await assert.rejects(()=>mounted.controller.list(),e=>e.status===code);
@@ -1335,7 +1342,7 @@ test('P0-80-RF-01 actual adapter + Corretor callback clears private reader on 40
    scoreScale:10000,totalUnits:'60000',status:'issued',archived:false,...grant};
   const rows=Array.from({length:13},(_,i)=>({id:i?crypto.randomUUID():id,
    title:'Confidential '+(i+1),revision:1,state:'active',...grant}));
-  let revoked=false;
+  let revoked=false,issuedSelection=null;
   const fetchFn=async(url,req)=>{
    const u=new URL(url),route=u.pathname.slice('/assessments/v1'.length);
    if(route==='/session')return Response.json({authenticated:true,principalId:'A',epoch:1,assessmentLifecycleVersion:'salta-assessment-lifecycle-v1',editorSnapshotVersion:'salta-editor-snapshot-v1'});
@@ -1346,6 +1353,12 @@ test('P0-80-RF-01 actual adapter + Corretor callback clears private reader on 40
     const part=rows.slice(pos,pos+10);
     return Response.json({assessments:part,nextCursor:pos+part.length<rows.length?part.at(-1).id:null});
    }
+   if(route==='/selections'&&req.method==='POST'){
+    const p=JSON.parse(req.body);assert.equal(p.assessmentId,record.id);assert.equal(p.revision,record.revision);
+    issuedSelection=p.selectionId;
+    return Response.json({ok:true,id:record.id,revision:record.revision,selectionId:issuedSelection,manifestHash:record.manifestHash});
+   }
+   if(issuedSelection&&route==='/selections/'+issuedSelection&&req.method==='GET')return Response.json({selectionId:issuedSelection,record});
    if(route==='/assessments/'+id)return Response.json({record});
    if(/^\/assessments\/[^/]+\/revisions\/1$/.test(route))return Response.json({record:catalogRecord(rows.find(x=>route==='/assessments/'+x.id+'/revisions/1'),m)});
    if(route==='/assessments/'+id+'/revisions')return Response.json({revisions:[{revision:1,status:'issued'}]});
@@ -1360,13 +1373,14 @@ test('P0-80-RF-01 actual adapter + Corretor callback clears private reader on 40
    snapshotEditor:()=>restored,restoreEditor:e=>{restored=e},nominalFields:()=>({}),
    newEditor:()=>{restored={...m.editor,fields:{...m.editor.fields,assessmentTitle:''}};},
    applyExactModel:bundle=>reader.applyAssessmentModel(bundle,{privateAssessment:true}),
-   activateSelection:s=>reader.setSelection(s),clearSelection:()=>reader.clearPrivateCorrection()});
+   activateSelection:s=>reader.activatePrivateCorrection(s),clearSelection:()=>reader.clearPrivateCorrection()});
   const catalog=host.children[0].children[1].children[1].children[0];
   for(let i=0;i<16&&catalog.options.length<14;i++)await tick();
   assert.equal(catalog.options.length,14);
   catalog.value=id;await catalog.onchange();
-  assert.equal(reader.state().privateSelection,null);
-  assert.match(node('scanModelStatus').textContent,/Avaliação de Matemática/);
+  assert.equal(reader.state().privateSelection?.assessmentId,id);
+  assert.equal(node('scanModelStatus').textContent,'Avaliação de Matemática');
+  assert.equal(node('answerKey').readOnly,true);
   assert.ok(reader.state().activeManifest);
   revoked=true;
   await assert.rejects(()=>library.controller.list(),e=>e.status===code);
@@ -1374,6 +1388,8 @@ test('P0-80-RF-01 actual adapter + Corretor callback clears private reader on 40
   assert.equal(catalog.options.length,1);
   assert.equal(reader.state().activeManifest,null);
   assert.equal(reader.state().template,null);
+  assert.equal(reader.state().privateSelection,null);
+  assert.equal(node('answerKey').value,'');
   assert.doesNotMatch(node('scanModelStatus').textContent,/Avaliação de Matemática|Confidential/);
   library.render();
   assert.equal(reader.state().activeManifest,null);

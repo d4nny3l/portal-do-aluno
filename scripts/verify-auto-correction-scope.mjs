@@ -9,7 +9,7 @@ const branch='feat/ux-auto-correction-20261125';
 const allowed=new Set([
  'plataforma/avaliacoes-biblioteca.mjs','plataforma/avaliacoes-biblioteca.css',
  'plataforma/corretor-v2.html','corretor/v2/assessments/private-library.mjs',
- 'plataforma/tests/avaliacoes-biblioteca-unificada.test.mjs','plataforma/tests/corretor-ux-ready-01.test.mjs',
+ 'plataforma/tests/avaliacoes-biblioteca-unificada.test.mjs','plataforma/tests/corretor-ux-ready-01.test.mjs','plataforma/tests/piloto-avaliacoes-isolado.test.mjs',
  'assessments-service/tests/embedded-browser.mjs','assessments-service/tests/editor-frontend-browser.mjs',
  'assessments-service/test-composition.mjs','scripts/verify-auto-correction-scope.mjs',
  '.github/workflows/test-assessments-embedded.yml','.github/workflows/test-avaliacoes-biblioteca.yml','.github/workflows/test-direct-pdf.yml'
@@ -23,7 +23,7 @@ const once=(s,a,b)=>{assert(s.split(a).length===2,'Ambiguous scope anchor '+a.sl
 export function verifyAutoCorrectionScope(){
  if(process.env.GITHUB_EVENT_NAME==='pull_request'){
   const e=JSON.parse(readFileSync(process.env.GITHUB_EVENT_PATH,'utf8'));
-  assert(e.pull_request?.head?.ref===branch&&e.pull_request?.base?.ref==='main'&&e.pull_request?.base?.sha===base&&e.repository?.full_name==='d4nny3l/portal-do-aluno','Automatic correction scope not authorized for this PR/base');
+  assert(e.pull_request?.number===137&&e.pull_request?.head?.ref===branch&&e.pull_request?.base?.ref==='main'&&e.pull_request?.base?.sha===base&&e.repository?.full_name==='d4nny3l/portal-do-aluno','Automatic correction scope not authorized for this PR/base');
  }
  git('merge-base','--is-ancestor',base,'HEAD');
  const diff=git('diff','--name-only',base,'HEAD','--').split('\n').filter(Boolean);
