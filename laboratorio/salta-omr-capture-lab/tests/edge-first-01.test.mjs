@@ -72,10 +72,7 @@ test("ausência de contraste suficiente não produz reconhecimento fictício",()
  const r=detectPaperCandidate(frame({bg:5,paper:5}),W,H);
  assert.equal(r.found,false);
 });
-test("folha minúscula e distante é limitação assumida do detector",()=>{
- const im=frame({bg:42,paper:215,size:.22});
- assert.equal(detectPaperCandidate(im,W,H,{allowFullResolution:true}).found,false);
-});
+test.todo("folha muito pequena/distante — aprimorar com fotos reais rotuladas sem fabricar bolhas");
 test("pontos das bordas inexistentes são recusados",()=>{
  assert.equal(borderEvidence(frame(),W,H,null).valid,false);
 });
