@@ -1,4 +1,4 @@
-# SCAN-INTEGRATION-01 — candidata conectada, publicação bloqueada por G3
+# SCAN-INTEGRATION-01 — candidata conectada, publicação bloqueada por G3 e G6
 
 Base: `195585572bdcefee809981aada4ee7614b7e023f`. Preparação original do PR #138: `7309f448a48d5e522232080b613b157d3caa1503`. O dossiê original e o laboratório congelado permanecem byte a byte. Este código é candidato em PR draft; não é homologação física nem autorização de merge/deploy.
 
@@ -19,6 +19,8 @@ No corpus adverso, single teve 11 respostas únicas definitivas incorretas contr
 
 Contraprova adicional do teste de enquadramento: apagando um fiducial, o detector existente pode substituí-lo por impressão e perder uma marca para branco, mantendo identidade pendente. Uma prévia numérica não corrige esse erro geométrico. Isso também exige avaliação antes de qualquer publicação.
 
+**G6 também falhou:** a mesma folha sintética, seguida de quatro quadros novos totalmente pretos por 660 ms e retorno aos mesmos pixels, gera captura 1 e depois captura 2. Detector EDGE e assinatura estrutural reais foram usados. A verdade do cenário não contém retirada de papel; ausência de contorno com mudança estrutural não distingue, por si só, folha retirada de câmera obstruída. Contraprova reprodutível em `tests/rearm-counterexample.test.mjs`. Não foi acrescentado botão, cooldown ou limiar inventado para esconder a falha.
+
 Originais, documental e raster óptico: [entrada](validation/shadow-AB-130.png), [documental](validation/shadow-AB-130-document.png), [óptica](validation/shadow-AB-130-optical.png). Hashes e classificações: [visual-evidence.json](validation/visual-evidence.json). Métodos/resultados completos: [validation/README.md](validation/README.md).
 
 ## Gates G1–G9
@@ -30,7 +32,7 @@ Originais, documental e raster óptico: [entrada](validation/shadow-AB-130.png),
 | G3 | **FALHOU: três novas respostas definitivas incorretas contra consenso.** Sem corpus físico rotulado. Publicação impedida. |
 | G4 | Uma chamada ao leitor em captura válida; separação documental/óptica, buffers reais e falhas sem fallback instrumentados. |
 | G5 | Identidade pendente/zeros iniciais/nota provisória, permissões locais de apresentação, revisão e contextos antigos testados. Nenhum vínculo ou escrita acadêmica criado. |
-| G6 | Retirada automática, folha imóvel/parcial, frescor, Worker lento/erro, desconexão e respostas tardias cobertos por testes e fluxo de navegador. Mesa/folhas semelhantes e iluminação **físicas pendentes**. |
+| G6 | **FALHOU: câmera obstruída pode rearmar sem retirada.** Fluxos normais, folha imóvel/parcial, frescor, Worker lento/erro, desconexão e respostas tardias cobertos. Mesa/folhas semelhantes e iluminação físicas pendentes. |
 | G7 | V1/V2, incorporados, A–D/A–E/C–E, 10/20/60/100/150 e pesos cobertos sinteticamente; biblioteca reaberta e correção privada com formatos 0/1/2 em backend local. Multipágina sem partição explícita não é declarada completa; impressão econômica e modelos originais preservados. |
 | G8 | 100 processamentos pareados registrados em JSON; ensaio local adicional de 100 retiradas/capturas/Worker/notas em Chromium. Só dados sintéticos repetidos. CI repete 100 ciclos no HEAD exato; memória observada não é certificação de ausência de vazamento. Temperatura, sensor e Safari físico pendentes. |
 | G9 | Escopo e dependências produtivas protegidos, suítes e CI; rollback por reversão do delta, sem dados/migração. **Auditoria independente e homologação do proprietário pendentes**. CI verde não torna G3 aprovado. |
@@ -45,6 +47,6 @@ node --expose-gc corretor/v2/scan-safe/validation/run-candidate-validation.mjs
 SALTA_SCAN_CYCLES=100 SALTA_PLAYWRIGHT_MODULE=/caminho/playwright/index.mjs node corretor/v2/scan-safe/tests/official-browser.mjs
 ```
 
-O navegador de teste serve o checkout somente em loopback, intercepta Auth/API com fixtures sintéticas e bloqueia rede externa. Isso não substitui login real nem cria URL pública. **URL de homologação física não publicada devido ao G3**; o laboratório aprovado continua sendo a referência congelada, não uma prévia desta candidata.
+O navegador de teste serve o checkout somente em loopback, intercepta Auth/API com fixtures sintéticas e bloqueia rede externa. Isso não substitui login real nem cria URL pública. **URL de homologação física não publicada devido aos G3/G6**; o laboratório aprovado continua sendo a referência congelada, não uma prévia desta candidata.
 
 Reverter o commit de implementação devolve o frontend à preparação original `7309f44`, preservando o dossiê e laboratório. Não há migração, registro remoto, segredo ou alteração no backend para desfazer. Rascunhos de captura são memória local; notas não foram lançadas. A reversibilidade exata da árvore é conferida em índice temporário na entrega. A Diretoria deve decidir sobre a política óptica após contraprova independente, sem reintrodução silenciosa do consenso.
