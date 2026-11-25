@@ -3,10 +3,34 @@
 ## Acesso
 `https://d4nny3l.github.io/portal-do-aluno/laboratorio/salta-omr-capture-lab/`
 
+## ESTADO VIGENTE — PAPER-TURBO-01 (24/11/2026)
+
+**Captura automática voltou à detecção de contorno da FOLHA.** A tentativa anterior de usar os quatro marcadores como condição de disparo (FIDUCIAL-01, documentada abaixo como histórico) foi desativada após teste físico do proprietário, por ser lenta e menos fluida. Os cartões incorporados em provas foram **adiados** por decisão do proprietário.
+
+Este laboratório permanece independente de `laboratorio/salta-scan/`; o scanner original não foi alterado.
+
+### Política de captura vigente
+
+- **Detecção leve:** `V.detectDocument` na prévia reduzida a 384 px de largura, com intervalo-alvo de 66 ms. Mantém a detecção de folhas sobre mesas/pisos difíceis e o fallback de contraste existente do motor Scancat SALTA. É a configuração de tentativas, não uma promessa de 15 FPS reais no iPhone.
+- **Folha distante:** quando a busca rápida falha repetidamente, uma tentativa ocasional a 512 px procura um retângulo menor. Não redimensiona nem simula resolução na fotografia final.
+- **Movimento moderado:** `shouldCapture` considera sequência de contornos válidos, estabilidade adaptativa, suporte e nitidez. Pode disparar após dois contornos confiáveis; para movimento forte, exige evidências adicionais. Não fotografa se o contorno está ausente ou inconsistente.
+- **Seleção condicional:** o primeiro quadro é sempre fotografado em pixels nativos do vídeo. Quando a nitidez ou exposição parece baixa *e* existe estabilidade mínima, aguarda no máximo uma oportunidade curta (~2 quadros de animação, com timeout 115 ms), redetecta a folha e compara uma segunda fotografia real. Mantém o primeiro quadro se a posição mudou demais ou a segunda foto não melhorou significativamente.
+- **Mesmo pixel, mesma geometria:** a foto JPEG de origem e o tratamento recebem o buffer escolhido e os cantos correspondentes. Nunca escolhe o quadro de outra perspectiva sem recalcular os cantos.
+- **Mão tremendo:** a captura pode ocorrer sem `stable` positivo se há contorno repetidamente consistente, boa confiança e suficiente informação de bordas. Não promete corrigir desfoque óptico irreversível.
+- **Privacidade:** nitidez, captura e warp acontecem localmente, sem upload de fotografia. O contato com a biblioteca privada segue somente consultas de leitura da avaliação autorizada.
+- **Próxima folha:** só rearma após a folha desaparecer em vários ciclos, sem espera fixa adicional para quem troca de página rapidamente.
+
+### Limitações e validação
+
+- Seleção de foco é **relativa entre dois quadros**, não calibração ótica absoluta. Não gera texto/bolhas ausentes; respostas duplas ou inconclusivas continuam para revisão.
+- Melhor captura à distância depende da resolução óptica real da lente, iluminação, tamanho impresso e foco oferecido pelo navegador.
+- Regressões de política e blur em `tests/paper-turbo.test.mjs`: nove asserções passaram em execução isolada; casos de capture e estado foram simulados. **Homologação física no Safari/iPhone continua pendente**.
+- O leitor oficial mantém `detectFiducials → warpFromFiducials → readRaster` **depois da fotografia**, independentemente de como a folha foi capturada. Isto não é busca dos marcadores como gatilho da câmera.
+
 ## Arquitetura e isolamento
 
-- Snapshot da interface e do motor de captura do `laboratorio/salta-scan/`, congelado nesta pasta. O scanner original **não foi alterado**.
-- `js/vision.js` continua detectando contorno e corrigindo perspectiva. `js/worker.js` aplica tratamento, e `js/app.js` emite apenas dois eventos de página pronta adicionados ao snapshot.
+- Snapshot inicial da interface e do motor do `laboratorio/salta-scan/`, depois aprimorado **somente nesta pasta**. O scanner original **não foi alterado**.
+- `js/vision.js` detecta o papel e corrige perspectiva; `js/worker.js` aplica o tratamento; `js/app.js` adiciona captura adaptativa, seleção de nitidez e eventos locais de página pronta.
 - `omr-lab.mjs` importa **os módulos oficiais da SALTA** de `../../corretor/v2/omr/{manifest,normalize,reader}.mjs`, além de `block-scoring.mjs` e do cliente privado de avaliações, sem cópias nem bifurcações do algoritmo.
 - A digitalização, os arquivos e as leituras permanecem na memória do navegador.
 - A URL do gateway é idêntica à usada pelo Corretor, `/assessments/v1`, com `credentials: include` e sem gravações. O laboratório **somente** chama GET em session, grants, list, history e open.
@@ -71,9 +95,9 @@ A versão experimental adotou uma solução **independente da câmera do Correto
 
 **Limitação:** ainda não houve homologação visual/captura física no Safari deste iPhone. Se o Safari mudar a orientação da fonte durante a execução, `video.resize` recalcula o enquadramento, mas precisa de teste real. Com fonte horizontal, a prévia ampliada pode cortar partes periféricas; use **Ver imagem inteira** ou afaste um pouco o aparelho.
 
-## FIDUCIAL-01 — captura por quatro quadradinhos pretos (24/11/2026)
+## HISTÓRICO DESATIVADO — FIDUCIAL-01, captura por quatro quadradinhos (24/11/2026)
 
-A nova captura automática **não detecta bordas de papel**. O gatilho usa somente os quatro marcadores pretos do cartão, preservando a homografia, o processamento de imagem, os modelos OMR e a comparação A/B.
+**Registro histórico, não vigente.** A antiga proposta não detectava as bordas do papel e usava os marcadores como gatilho. Foi substituída por PAPER-TURBO-01 após relato de lentidão, mantendo a possibilidade de pesquisa futura em cartões incorporados.
 
 ### Lógica
 
