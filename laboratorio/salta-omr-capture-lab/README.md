@@ -3,6 +3,29 @@
 ## Acesso
 `https://d4nny3l.github.io/portal-do-aluno/laboratorio/salta-omr-capture-lab/`
 
+## CORREÇÃO VIGENTE — PAPER-SAFE: uma captura por cartão, sem pausas (24/11/2026)
+
+**O professor não precisa tocar em botões, aguardar uma confirmação manual nem interromper a prévia.** O scanner permanece ativo, fotografa cada folha reconhecida uma vez e só prepara a próxima quando existe evidência real de troca de cartão e a interpretação OMR anterior foi concluída.
+
+### Correções operacionais
+
+- **Causa do frenesi:** na versão anterior, quatro a cinco detecções ausentes rearmavam automaticamente o disparador. O Safari pode perder o contorno quando há sombra, trepidação ou foco temporário, levando a diversas fotos da mesma folha. Essa regra foi retirada.
+- **Troca automática confiável:** `js/card-flow.js` mantém estados `ready → locked → vacant → ready`. A nova folha só é admitida depois que o cartão anterior deixou a cena por quadros consecutivos **e** houve mudança visual relevante no quadro; uma perda passageira de foco não conta. A leitura OMR da foto anterior também deve terminar. A câmera continua mostrando vídeo durante todo o processo.
+- **Sem imagem recortada:** a câmera, a análise e a captura usam sempre `cameraRegion(..., "fit")`: toda a largura/altura nativa do vídeo fica disponível. O modo `cover` que podia esconder margens em Safari vertical foi removido do experimento.
+- **Quatro cantos inteiros:** `fullPaperVisible()` impede o disparo se algum canto detectado tocar as bordas da fonte; em seguida `addPaperMargin()` projeta um pequeno espaço **para fora** dos quatro cantos, em vez do `shrinkQuad()` que anteriormente cortava margens internas. Importações também exigem documento inteiro para recorte automático (ou permitem ajuste manual).
+- **Resultado conectado à captura:** o laboratório emite `salta-omr:read-finished` após `analyze` ou imediatamente quando não há modelo privado. O disparador não acumula fotografias enquanto a leitura anterior está pendente.
+- **Sem alteração do leitor:** não foi modificado `corretor/v2/omr/reader.mjs`, nenhum gabarito, nota, Diário, ou o scanner original.
+- **A câmera continua automática** e o processamento mantém as opções de nitidez e visão em baixa luz do experimento anterior. Não há novo botão de disparo nem de próximo cartão.
+
+### Evidências de regressão
+
+- `tests/paper-safe.test.mjs` verifica 18 asserções de retirada real, desfoque, ausência de disparos duplicados, exclusão de cartão parcialmente visível, finalização OMR e margem externa.
+- Simulação de rastreamento completa: 1 foto da primeira folha, **0 duplicações** em perda momentânea de contorno, 1 foto para segunda folha após retirada e leitura concluída.
+- Em rasters sintéticos claros e escuros de folhas A4, o recorte corrigido preservou os quatro marcadores SALTA; detector oficial retornou cerca de 95% de confiança geométrica na amostra.
+- **A validação em dispositivo físico Safari/iPhone segue pendente.** As imagens sintéticas não confirmam precisão em luz, movimento ou foco reais.
+
+---
+
 ## ESTADO VIGENTE — PAPER-TURBO-01 (24/11/2026)
 
 **Captura automática voltou à detecção de contorno da FOLHA.** A tentativa anterior de usar os quatro marcadores como condição de disparo (FIDUCIAL-01, documentada abaixo como histórico) foi desativada após teste físico do proprietário, por ser lenta e menos fluida. Os cartões incorporados em provas foram **adiados** por decisão do proprietário.
@@ -18,7 +41,7 @@ Este laboratório permanece independente de `laboratorio/salta-scan/`; o scanner
 - **Mesmo pixel, mesma geometria:** a foto JPEG de origem e o tratamento recebem o buffer escolhido e os cantos correspondentes. Nunca escolhe o quadro de outra perspectiva sem recalcular os cantos.
 - **Mão tremendo:** a captura pode ocorrer sem `stable` positivo se há contorno repetidamente consistente, boa confiança e suficiente informação de bordas. Não promete corrigir desfoque óptico irreversível.
 - **Privacidade:** nitidez, captura e warp acontecem localmente, sem upload de fotografia. O contato com a biblioteca privada segue somente consultas de leitura da avaliação autorizada.
-- **Próxima folha:** só rearma após a folha desaparecer em vários ciclos, sem espera fixa adicional para quem troca de página rapidamente.
+- **Próxima folha:** o comportamento vigente é descrito acima: saída visualmente comprovada da folha + conclusão da análise OMR, sem pausas manuais e sem rearme por desfoque.
 
 ### Limitações e validação
 
