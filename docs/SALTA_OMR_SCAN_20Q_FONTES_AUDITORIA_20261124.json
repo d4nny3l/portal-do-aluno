@@ -1,0 +1,136 @@
+{
+  "name": "SALTA OMR / SCAN 20Q / AUDIT-READY SOURCE MANIFEST",
+  "record_date": "2026-11-24",
+  "repository": "d4nny3l/portal-do-aluno",
+  "immutable_source_commit": "ca3216112c45860743bfa21ee9efcac7035263ac",
+  "reported_field_result": {
+    "recognized_questions": 20,
+    "total_questions": 20,
+    "environment": "completamente hostil (relato do proprietário)",
+    "not_independently_ground_truthed": true,
+    "physical_capture_or_answers_uploaded": false
+  },
+  "current_scope": "handoff only, no production implementation, merge, or deployment",
+  "approved_visible_delta": [
+    "paper quadrilateral within existing camera viewport",
+    "capture flash within same viewport"
+  ],
+  "forbidden": [
+    "HTML text changes",
+    "new controls, labels or panels",
+    "replace official camera or MediaStream",
+    "copy experimental framing/zoom/focus/crop hacks",
+    "burst or turbo frame selector",
+    "embedded assessment card support at this phase",
+    "modifying academic records"
+  ],
+  "source_files": [
+    {
+      "path": "laboratorio/salta-omr-capture-lab/js/app.js",
+      "blob_sha": "ec08bff1e529f7c5d80c473814c462479851df82",
+      "classification": "experiment-reference",
+      "purpose": "Source of validated primary stability, one-frame capture, flash and event bridge; do NOT transplant camera/DOM",
+      "immutable_url": "https://github.com/d4nny3l/portal-do-aluno/blob/ca3216112c45860743bfa21ee9efcac7035263ac/laboratorio/salta-omr-capture-lab/js/app.js"
+    },
+    {
+      "path": "laboratorio/salta-omr-capture-lab/js/vision.js",
+      "blob_sha": "ccedefe767e886cd085ad393306c2e464a93b953",
+      "classification": "candidate-optical-engine",
+      "purpose": "Original paper-edge detection, output sizing, perspective warp and image enhancement",
+      "immutable_url": "https://github.com/d4nny3l/portal-do-aluno/blob/ca3216112c45860743bfa21ee9efcac7035263ac/laboratorio/salta-omr-capture-lab/js/vision.js"
+    },
+    {
+      "path": "laboratorio/salta-omr-capture-lab/js/worker.js",
+      "blob_sha": "3b695588dd8c217e472b2755f85762581c330dae",
+      "classification": "candidate-processing-worker",
+      "purpose": "Original warp-enhance-rotate algorithm; adapt interface, keep local",
+      "immutable_url": "https://github.com/d4nny3l/portal-do-aluno/blob/ca3216112c45860743bfa21ee9efcac7035263ac/laboratorio/salta-omr-capture-lab/js/worker.js"
+    },
+    {
+      "path": "laboratorio/salta-omr-capture-lab/omr-lab.mjs",
+      "blob_sha": "0abb962213e181c599305ae321990a9b5ee5f79a",
+      "classification": "experiment-bridge-reference",
+      "purpose": "A/B pathway into existing SALTA OMR reader, not production code",
+      "immutable_url": "https://github.com/d4nny3l/portal-do-aluno/blob/ca3216112c45860743bfa21ee9efcac7035263ac/laboratorio/salta-omr-capture-lab/omr-lab.mjs"
+    },
+    {
+      "path": "laboratorio/salta-omr-capture-lab/js/card-flow.js",
+      "blob_sha": "a05f282064491a4cbe1a4e2e9ea92fff4e73a5bd",
+      "classification": "reference-only",
+      "purpose": "Experimental dedup state; preserve official camera removal controls, do not wholesale migrate",
+      "immutable_url": "https://github.com/d4nny3l/portal-do-aluno/blob/ca3216112c45860743bfa21ee9efcac7035263ac/laboratorio/salta-omr-capture-lab/js/card-flow.js"
+    },
+    {
+      "path": "laboratorio/salta-omr-capture-lab/js/paper-geometry.js",
+      "blob_sha": "1ec8016fd33aab35ca40b414526002689ae541a9",
+      "classification": "exclude",
+      "purpose": "Experimental camera anti-crop workaround rejected for official camera integration",
+      "immutable_url": "https://github.com/d4nny3l/portal-do-aluno/blob/ca3216112c45860743bfa21ee9efcac7035263ac/laboratorio/salta-omr-capture-lab/js/paper-geometry.js"
+    },
+    {
+      "path": "laboratorio/salta-omr-capture-lab/tests/paper-safe.test.mjs",
+      "blob_sha": "4b878d3aca44424b42e6d18e738de792929bd82a",
+      "classification": "regression-reference",
+      "purpose": "Synthetic no duplicate, card exchange and visibility tests; some older strategies superseded",
+      "immutable_url": "https://github.com/d4nny3l/portal-do-aluno/blob/ca3216112c45860743bfa21ee9efcac7035263ac/laboratorio/salta-omr-capture-lab/tests/paper-safe.test.mjs"
+    },
+    {
+      "path": "laboratorio/salta-omr-capture-lab/tests/paper-turbo.test.mjs",
+      "blob_sha": "21af4e00fcfe63a84cd7b5af2c9a092ff430e7c4",
+      "classification": "historical-only",
+      "purpose": "Discarded turbo/blur policy; must not reintroduce",
+      "immutable_url": "https://github.com/d4nny3l/portal-do-aluno/blob/ca3216112c45860743bfa21ee9efcac7035263ac/laboratorio/salta-omr-capture-lab/tests/paper-turbo.test.mjs"
+    },
+    {
+      "path": "laboratorio/salta-omr-capture-lab/LICENSE-SCANCAT-MIT.txt",
+      "blob_sha": "057d6e451af4c335a93b599fc2e2a3318fbd5520",
+      "classification": "license-required",
+      "purpose": "MIT notice from Nipun Batra, must preserve with adapted code",
+      "immutable_url": "https://github.com/d4nny3l/portal-do-aluno/blob/ca3216112c45860743bfa21ee9efcac7035263ac/laboratorio/salta-omr-capture-lab/LICENSE-SCANCAT-MIT.txt"
+    },
+    {
+      "path": "corretor/v2/omr/camera.mjs",
+      "blob_sha": "2a70f3f972e972d0e4d669c0ae61ec663d836803",
+      "classification": "production-frozen",
+      "purpose": "Existing CameraSession, native lens/focus/zoom/torch and frame mapping - preserve",
+      "immutable_url": "https://github.com/d4nny3l/portal-do-aluno/blob/ca3216112c45860743bfa21ee9efcac7035263ac/corretor/v2/omr/camera.mjs"
+    },
+    {
+      "path": "corretor/v2/omr/normalize.mjs",
+      "blob_sha": "2cf15231fcc01e4df55845c6e808403c7832e576",
+      "classification": "production-frozen",
+      "purpose": "Official fiducial detection and page normalization; preserve semantic distinction",
+      "immutable_url": "https://github.com/d4nny3l/portal-do-aluno/blob/ca3216112c45860743bfa21ee9efcac7035263ac/corretor/v2/omr/normalize.mjs"
+    },
+    {
+      "path": "corretor/v2/omr/reader.mjs",
+      "blob_sha": "eba90a5caae9830264eb0c82e162c8bbfb896991",
+      "classification": "production-frozen",
+      "purpose": "OMR classification, partial/double/review; preserve",
+      "immutable_url": "https://github.com/d4nny3l/portal-do-aluno/blob/ca3216112c45860743bfa21ee9efcac7035263ac/corretor/v2/omr/reader.mjs"
+    },
+    {
+      "path": "plataforma/corretor-v2.html",
+      "blob_sha": "894addd19bb43396522f423b12a1876729ae8fc8",
+      "classification": "production-integration-target",
+      "purpose": "Existing scanCameraFrame, prepareImage, toPageRaster, readNormalized. No UI/labels changes",
+      "immutable_url": "https://github.com/d4nny3l/portal-do-aluno/blob/ca3216112c45860743bfa21ee9efcac7035263ac/plataforma/corretor-v2.html"
+    },
+    {
+      "path": "plataforma/corretor-v2.css",
+      "blob_sha": "7602bebba8cac2cb4b74b49146acf4031a740abd",
+      "classification": "production-visual-frozen",
+      "purpose": "Existing UI and camera stage layout; only minimal transient contour and flash permitted",
+      "immutable_url": "https://github.com/d4nny3l/portal-do-aluno/blob/ca3216112c45860743bfa21ee9efcac7035263ac/plataforma/corretor-v2.css"
+    }
+  ],
+  "required_audit_suites": [
+    "plataforma/tests/corretor-omr-camera-cross-integration.test.mjs",
+    "plataforma/tests/int-scan-01-frame-choice.test.mjs",
+    "corretor/v2/tests/camera.test.mjs",
+    "corretor/v2/tests/normalize.test.mjs",
+    "corretor/v2/tests/reader-partial-marks.test.mjs",
+    "corretor/v2/tests/reader-auditor-adversarial.test.mjs",
+    "corretor/v2/tests/normalize-low-light.test.mjs"
+  ]
+}
