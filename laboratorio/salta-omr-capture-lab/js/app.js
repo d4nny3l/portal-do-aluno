@@ -520,11 +520,22 @@ function shrinkQuad(corners, frac) {
   return corners.map(([x, y]) => [x + (cx - x) * frac, y + (cy - y) * frac]);
 }
 
-function shortVideoPause(){
+function shortVideoPause(video){
   return new Promise(resolve=>{
-    let done=false;
-    const finish=()=>{if(done)return;done=true;clearTimeout(timer);resolve();};
+    let done=false,handle=null;
+    const finish=()=>{
+      if(done)return;
+      done=true;clearTimeout(timer);
+      if(handle!=null&&typeof video?.cancelVideoFrameCallback==="function"){
+        try{video.cancelVideoFrameCallback(handle);}catch{}
+      }
+      resolve();
+    };
     const timer=setTimeout(finish,115);
+    // Esperar um NOVO frame de câmera, não apenas um repintar do navegador.
+    if(typeof video?.requestVideoFrameCallback==="function"){
+      try{handle=video.requestVideoFrameCallback(finish);return;}catch{}
+    }
     requestAnimationFrame(()=>requestAnimationFrame(finish));
   });
 }
@@ -566,7 +577,7 @@ async function capture(source = "auto") {
     // Diante de desfoque, uma segunda oportunidade só se a câmera não
     // estiver se movimentando demais (evita reaproveitar cantos incorretos).
     if(firstStable>=1&&(first.quality.sharpness<24||first.quality.clipping>.18)){
-      await shortVideoPause();
+      await shortVideoPause(video);
       if(token!==S.captureEpoch||!S.running)return null;
       const current=S.cameraFrame;
       if(current&&current.sourceWidth===video.videoWidth&&
