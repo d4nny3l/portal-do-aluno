@@ -507,39 +507,110 @@ function shrinkQuad(corners, frac) {
   return corners.map(([x, y]) => [x + (cx - x) * frac, y + (cy - y) * frac]);
 }
 
-async function capture(source = "manual") {
-  const video = $("video");
-  if (!S.running || S.busy || video.readyState < 2 || !video.videoWidth) return null;
-  const frame = S.cameraFrame;
-  if (!frame || frame.sourceWidth !== video.videoWidth || frame.sourceHeight !== video.videoHeight) return null;
-  const vw = Math.max(1, Math.round(frame.sw)), vh = Math.max(1, Math.round(frame.sh));
-  const det = S.det.smooth;
-  if (!det || S.det.markers?.length!==4 || S.det.score<MIN_SCORE) return null;
-  const fx = vw / (S.det.w || DET_W), fy = vh / (S.det.h || 1);
-  const corners = shrinkQuad(det.map(([x, y]) => [x * fx, y * fy]), 0.008);
-  if (fullCanvas.width !== vw || fullCanvas.height !== vh) { fullCanvas.width = vw; fullCanvas.height = vh; }
-  fullCtx.drawImage(video, frame.sx, frame.sy, frame.sw, frame.sh, 0, 0, vw, vh);
-  const img = fullCtx.getImageData(0, 0, vw, vh);
-  flash();
-  shutterSound();
-  if (source === "manual") { S.det.armed = false; S.det.lastCap = det ? det.map((c) => [c[0], c[1]]) : null; S.det.stable = 0; }
-  const page = { id: ++S.seq, fw: vw, fh: vh, corners, rot: 0, mode: null, frame: null, out: null, url: "", w: 0, h: 0, cropped: !!det };
-  page.frameReady = new Promise((res) => fullCanvas.toBlob((b) => { page.frame = b; res(b); }, "image/jpeg", 0.92));
+function shortVideoPause(){
+  return new Promise(resolve=>{
+    let done=false;
+    const finish=()=>{if(done)return;done=true;clearTimeout(timer);resolve();};
+    const timer=setTimeout(finish,115);
+    requestAnimationFrame(()=>requestAnimationFrame(finish));
+  });
+}
+function quadDistance(a,b){
+  if(!a||!b||a.length!==4||b.length!==4)return Infinity;
+  return maxShift(a,b);
+}
+
+// Apenas o laboratório OMR: dois quadros NATIVOS no máximo, segundo só quando
+// a primeira imagem apresenta baixa nitidez/iluminação. O motor nunca inventa
+// pixels e nunca aumenta a resolução real da fonte do Safari.
+async function capture(source = "auto") {
+  const video=$("video");
+  if(!S.running||S.busy||video.readyState<2||!video.videoWidth)return null;
+  const frame=S.cameraFrame;
+  if(!frame||frame.sourceWidth!==video.videoWidth||frame.sourceHeight!==video.videoHeight)return null;
+  const det=S.det.smooth;
+  if(!det||S.det.score<MIN_SCORE)return null;
+  const vw=Math.max(1,Math.round(frame.sw)),vh=Math.max(1,Math.round(frame.sh));
+  const dw=S.det.w||DET_W,dh=S.det.h||Math.max(8,Math.round(vh*dw/vw));
+  const fx=vw/dw,fy=vh/dh;
+  const firstCorners=shrinkQuad(det.map(([x,y])=>[x*fx,y*fy]),.008);
+  const token=S.captureEpoch;
+  const firstStable=S.det.stable;
   S.busy++;
-  setPill("processing…");
+  let page=null;
   try {
-    await processPage(page, img);
+    if(fullCanvas.width!==vw||fullCanvas.height!==vh){
+      fullCanvas.width=vw;fullCanvas.height=vh;
+    }
+    const snapshot=(corners)=>{
+      fullCtx.drawImage(video,frame.sx,frame.sy,frame.sw,frame.sh,0,0,vw,vh);
+      const img=fullCtx.getImageData(0,0,vw,vh);
+      return {img,corners,quality:sampleQuality(img.data,vw,vh,corners)};
+    };
+    const first=snapshot(firstCorners);
+    let best=first,last=first;
+    // Fast path: se a folha já está nítida, fotografar imediatamente.
+    // Diante de desfoque, uma segunda oportunidade só se a câmera não
+    // estiver se movimentando demais (evita reaproveitar cantos incorretos).
+    if(firstStable>=1&&(first.quality.sharpness<8||first.quality.clipping>.18)){
+      await shortVideoPause();
+      if(token!==S.captureEpoch||!S.running)return null;
+      const current=S.cameraFrame;
+      if(current&&current.sourceWidth===video.videoWidth&&
+          current.sourceHeight===video.videoHeight&&
+          Math.abs(current.sx-frame.sx)<1&&Math.abs(current.sy-frame.sy)<1){
+        // A segunda imagem recebe seus próprios cantos. Caso o papel tenha
+        // se movido demais ou sumido, mantém a PRIMEIRA captura confiável.
+        const targetW=DET_W,targetH=Math.max(8,Math.round(frame.sh*targetW/frame.sw));
+        if(detCanvas.width!==targetW||detCanvas.height!==targetH){
+          detCanvas.width=targetW;detCanvas.height=targetH;
+        }
+        detCtx.drawImage(video,frame.sx,frame.sy,frame.sw,frame.sh,0,0,targetW,targetH);
+        let q=null;
+        try{q=V.detectDocument(detCtx.getImageData(0,0,targetW,targetH).data,targetW,targetH);}catch{}
+        if(q?.score>=MIN_SCORE&&quadDistance(q.corners,det)<.065*targetW){
+          const nextCorners=shrinkQuad(q.corners.map(([x,y])=>[x*vw/targetW,y*vh/targetH]),.008);
+          last=snapshot(nextCorners);
+          best=selectBestFrame(first,last);
+        }
+      }
+    }
+    if(token!==S.captureEpoch||!S.running)return null;
+    // Se o melhor foi o primeiro quadro, restaurá-lo no canvas ANTES de
+    // criar o JPEG; a foto e o buffer do OMR vêm dos MESMOS pixels.
+    if(best!==last)fullCtx.putImageData(best.img,0,0);
+    flash();shutterSound();
+    if(source==="manual"){S.det.armed=false;S.det.stable=0;}
+    const width=best.img.width,height=best.img.height;
+    page={id:++S.seq,fw:width,fh:height,corners:best.corners,rot:0,
+      mode:null,frame:null,out:null,url:"",w:0,h:0,cropped:true,
+      quality:best.quality};
+    page.frameReady=new Promise((resolve,reject)=>{
+      fullCanvas.toBlob(blob=>{
+        if(!blob){reject(new Error("O Safari não conseguiu gerar a fotografia."));return;}
+        page.frame=blob;resolve(blob);
+      },"image/jpeg",.94);
+    });
+    setPill("processing…");
+    await processPage(page,best.img);
+    if(token!==S.captureEpoch||!S.running)return null;
+    await page.frameReady;
     S.pages.push(page);
     renderTray();
     window.dispatchEvent(new CustomEvent("salta-omr:page",{detail:{page}}));
-    setPill(`page ${S.pages.length} captured`, "ok", 1500);
-  } catch (e) {
-    console.error(e);
-    setPill(`couldn't process that page: ${e.message}`, "bad", 4000);
-  } finally {
-    S.busy--;
-  }
-  return page;
+    const shortEdge=Math.min(
+      Math.hypot(...best.corners[0].map((n,i)=>n-best.corners[1][i])),
+      Math.hypot(...best.corners[1].map((n,i)=>n-best.corners[2][i]))
+    );
+    if(best.quality.sharpness<2.5||shortEdge<360)
+      setPill("Capturado. Imagem distante ou pouco nítida: confira as alternativas.","bad",2800);
+    else setPill(`page ${S.pages.length} captured`,"ok",1500);
+    return page;
+  }catch(error){
+    console.error(error);
+    if(S.running){S.det.armed=true;setPill("Falha na captura: "+(error?.message||error),"bad",4000);}
+    return null;
+  }finally{S.busy--;}
 }
 
 async function frameImageData(page) {
