@@ -118,7 +118,7 @@ async function stored(title){
  for(let i=0;i<100;i++){
   const list=await(await h.request('/assessments'+grant)).json();
   const row=list.assessments?.find(r=>r.title===title);
-  if(row)return (await(await h.request('/assessments/'+row.id)).json()).record;
+  if(row){const response=await h.request('/assessments/'+row.id),record=(await response.json()).record;if(response.status===200&&record)return record;}
   await new Promise(r=>setTimeout(r,40));
  }
  throw Error('Missing verified save '+title);
@@ -242,7 +242,7 @@ try{
  let newer;
  for(let i=0;i<100;i++){
   newer=(await(await h.request('/assessments/'+copy.id)).json()).record;
-  if(newer.revision===2)break;
+  if(newer?.revision===2)break;
   await new Promise(r=>setTimeout(r,40));
  }
  assert.equal(newer.revision,2);assert.equal(newer.definition.editorSnapshot.fields.sectionLabel,'APÓS DUPLICAÇÃO');
