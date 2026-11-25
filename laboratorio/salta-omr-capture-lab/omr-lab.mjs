@@ -29,7 +29,7 @@ function options(select,items,placeholder='Selecione…'){
 function privacyReset(reason='Seleção anterior descartada.'){
  readGeneration++;
  selected=null;state.lastResult=null;state.modelOrigin=null;
- window.dispatchEvent(new CustomEvent("salta-omr:geometry",{detail:{geometry:null}}));
+
  $('omrPinned').hidden=true;
  $('omrSummary').hidden=true;$('omrDiff').hidden=true;
  $('omrReread').disabled=true;
@@ -205,17 +205,6 @@ async function bindLocalManifest(file){
 }
 function setPinned(){
  const node=$('omrPinned'),s=selected;if(!s){node.hidden=true;return;}
- // Compartilha somente os centros físicos dos quatro quadrados, sem gabarito,
- // identificação, título, turma ou outros campos da avaliação privada.
- const m=s.manifest;
- const geometry={
-  mode:m.mode,schemaVersion:m.schemaVersion,
-  paper:{widthMm:m.paper.widthMm,heightMm:m.paper.heightMm},
-  technicalRegions:{fiducials:m.technicalRegions.fiducials.map(p=>({
-   markerId:p.markerId,x:p.x,y:p.y,sizeMm:p.sizeMm
-  }))}
- };
- window.dispatchEvent(new CustomEvent("salta-omr:geometry",{detail:{geometry}}));
  node.replaceChildren();
  const title=document.createElement('strong');
  title.textContent=s.mode==='private'?s.plan.metadata.title:(s.manifest.header?.title||'Manifesto importado');
@@ -387,7 +376,7 @@ function bootstrap(){
  window.addEventListener('salta-omr:page',onPage);
  window.addEventListener('pagehide',()=>{
   libraryGeneration++;readGeneration++;selected=null;latestPage=null;rows=[];grants=[];session=null;
-  window.dispatchEvent(new CustomEvent("salta-omr:geometry",{detail:{geometry:null}}));
+ 
  });
  options($('omrAssessment'),[],'Conecte a biblioteca');
  options($('omrRevision'),[],'Escolha a avaliação');
