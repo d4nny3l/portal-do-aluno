@@ -169,7 +169,12 @@ function cameraError(e) {
 
 // Safari/WebKit: preferir foco nativo e não reconfigurar o MediaStreamTrack.
 // applyConstraints() pode reinicializar ou interromper a prévia nesses aparelhos.
-const isWebKitCamera = () => /AppleWebKit/i.test(navigator.userAgent || "");
+const isWebKitCamera = () => {
+  const ua = navigator.userAgent || "";
+  // Chrome/Edge/Firefox no iOS continuam usando WebKit; Chrome/Android não.
+  return /iPhone|iPad|iPod/i.test(ua) ||
+    (/AppleWebKit/i.test(ua) && !/Chrome|Chromium|CriOS|FxiOS|Edg|OPR|SamsungBrowser/i.test(ua));
+};
 let cameraRequestId = 0;
 
 async function requestContinuousFocus(track) {
