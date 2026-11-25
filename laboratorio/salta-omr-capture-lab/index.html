@@ -9,6 +9,7 @@
 <link rel="icon" href="favicon.svg" type="image/svg+xml">
 <link rel="stylesheet" href="css/style.css">
 <link rel="stylesheet" href="css/salta-scan.css">
+<link rel="stylesheet" href="css/omr-lab.css">
 </head>
 <body>
 
@@ -90,6 +91,57 @@
       <button id="jpgs" class="btn ghost" type="button" disabled title="Baixar as páginas como imagens JPEG">Imagens</button>
     </div>
   </aside>
+</section>
+
+<section id="omrLaboratory" class="omr-laboratory" aria-labelledby="omrLabTitle">
+ <div class="omr-lab-top">
+  <div><span class="omr-overline">EXPERIMENTO ÓPTICO · SEM GRAVAÇÕES</span>
+   <h2 id="omrLabTitle">Scanner × Leitor SALTA</h2>
+   <p>Modelo óptico e leitor originais da SALTA. Comparação da mesma foto antes e depois da limpeza do scanner.</p>
+  </div>
+  <a class="omr-reference" href="../salta-scan/" target="_blank" rel="noopener noreferrer">Abrir scanner original</a>
+ </div>
+ <div class="omr-lab-grid">
+  <section class="omr-lab-panel" aria-labelledby="omrModelTitle">
+   <h3 id="omrModelTitle">1. Modelo da avaliação</h3>
+   <p class="omr-help">Conecte sua biblioteca particular da SALTA. A prova de Bloco de Matemática será destacada quando existir no contexto autorizado. Escolha a revisão exata da folha impressa.</p>
+   <button id="omrConnect" class="btn primary" type="button">Conectar biblioteca SALTA</button>
+   <div id="omrPrivateControls" hidden>
+    <label class="omr-field">Turma e período
+     <select id="omrScope" aria-label="Turma e período autorizado"></select>
+    </label>
+    <button id="omrList" class="btn ghost small" type="button">Atualizar avaliações</button>
+    <label class="omr-field">Avaliação
+     <select id="omrAssessment" aria-label="Avaliação privada"></select>
+    </label>
+    <label class="omr-field">Revisão emitida
+     <select id="omrRevision" aria-label="Revisão emitida"></select>
+    </label>
+    <button id="omrBind" class="btn primary" type="button">Confirmar modelo para este teste</button>
+   </div>
+   <details class="omr-import">
+    <summary>Usar um manifesto JSON exato (sem gabarito)</summary>
+    <label class="omr-field">Arquivo exportado pelo Corretor
+     <input id="omrManifest" type="file" accept=".json,application/json">
+    </label>
+    <p class="omr-help">Permite verificar marcações sem acesso à biblioteca. Não calcula nota e não identifica automaticamente qual prova corresponde à folha.</p>
+   </details>
+   <p id="omrModelStatus" class="omr-status" role="status" aria-live="polite">Nenhum modelo carregado. A câmera e a importação de fotos continuam disponíveis.</p>
+   <div id="omrPinned" class="omr-pinned" hidden></div>
+  </section>
+  <section class="omr-lab-panel" aria-labelledby="omrResultTitle">
+   <h3 id="omrResultTitle">2. Captura e comparação</h3>
+   <p class="omr-help">Após cada captura, testamos a mesma folha no OMR da SALTA com a fotografia original e com a versão retificada/tratada do scanner.</p>
+   <div class="omr-actions">
+    <button id="omrReread" class="btn ghost" type="button" disabled>Ler última página novamente</button>
+    <span id="omrCaptureCount" class="omr-mini">Nenhuma página recebida</span>
+   </div>
+   <p id="omrReadStatus" class="omr-status" role="status" aria-live="polite">Capture ou importe um cartão para começar.</p>
+   <div id="omrSummary" class="omr-summary" hidden></div>
+   <div id="omrDiff" class="omr-diff" hidden></div>
+  </section>
+ </div>
+ <p class="omr-privacy"><strong>Proteção:</strong> não há envio de fotografia, registro de notas, alteração de gabarito ou publicação no Diário. A biblioteca privada exige autenticação do professor; modelo e resultados ficam apenas na memória desta aba.</p>
 </section>
 
 <section id="facts" class="facts" aria-label="Como funciona">
