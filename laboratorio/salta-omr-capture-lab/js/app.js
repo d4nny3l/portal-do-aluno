@@ -807,7 +807,7 @@ function wire() {
     $("start").disabled = true;
     try {
       const ok = await startCamera();
-      if (ok) $("closeCamera").focus();
+      if (ok) $("scanner").scrollIntoView?.({block:"start",behavior:"smooth"});
     } finally { $("start").disabled = false; }
   });
   $("closeCamera").addEventListener("click", stopCameraView);
