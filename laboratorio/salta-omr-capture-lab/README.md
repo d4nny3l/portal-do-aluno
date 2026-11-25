@@ -3,7 +3,27 @@
 ## Acesso
 `https://d4nny3l.github.io/portal-do-aluno/laboratorio/salta-omr-capture-lab/`
 
-## ESTADO VIGENTE — PRIMARY STABLE: restauração do motor primário (24/11/2026)
+## PESQUISA ATIVA — EDGE-FIRST-01 (25/11/2026)
+
+**Pesquisa exclusiva no laboratório paralelo. Não alterar o Corretor SALTA oficial. Não abrir PR para integração nesta fase.**
+
+O detector EDGE-FIRST-01 foi ligado à captura pela câmera **e à importação de fotos** do próprio laboratório. A experiência testa detecção mais rápida de contorno de papel (224 px) e validação da diferença de luminosidade entre interior e exterior das quatro bordas para evitar confundir rejunte e molduras com uma folha. Após vários quadros sem folha, permite tentativa esparsa com a resolução anterior; **não há segundo processamento em todo frame**.
+
+- **Teste da pesquisa (padrão):** [Abrir o laboratório com EDGE-FIRST-01](https://d4nny3l.github.io/portal-do-aluno/laboratorio/salta-omr-capture-lab/?engine=edge&v=edge-first-lab-1).
+- **Comparador PRIMARY STABLE:** [Abrir o mesmo laboratório com o detector anterior](https://d4nny3l.github.io/portal-do-aluno/laboratorio/salta-omr-capture-lab/?engine=primary&v=edge-first-lab-1).
+- A escolha usa exclusivamente o parâmetro `engine` no endereço. **Nenhum botão/texto novo foi acrescentado à interface.**
+- A política de **10 quadros estáveis**, suavização dos cantos em 0,45, uma foto por cartão, proteção de troca de folha, flash, perspectiva e OMR são **idênticas** nos dois modos.
+- Código novo isolado em `candidates/edge-first-01.mjs` e `js/experimental-detector.mjs`; `js/vision.js` original, `js/worker.js`, câmera nativa, modelo e classificador de alternativas **não foram modificados**.
+- Testes da pesquisa + integração do adaptador: **18 casos aprovados; 1 TODO** de folha extremamente distante, em execução JS isolada. Também permanecem os testes sintéticos históricos.
+- Resultado anterior do PRIMARY STABLE: **20 questões lidas com sucesso em ambiente hostil, segundo o proprietário**. **Ainda não existe prova física de que EDGE-FIRST é superior; é somente candidato experimental.**
+
+### Limites atuais
+
+O filtro de borda pode rejeitar folhas cujas margens tenham contraste muito fraco, mesmo se o detector original as encontraria. Por isso mantemos o link PRIMARY STABLE como comparador e não promovemos esta pesquisa à câmera oficial. A folha extremamente distante continua sendo uma limitação. Avaliar no mesmo iPhone e cartões reais antes de escolher qualquer substituição.
+
+---
+
+## REFERÊNCIA ESTÁVEL — PRIMARY STABLE: restauração do motor primário (24/11/2026)
 
 **Decisão do proprietário:** retornar à captura simples e estável do SALTA Scan original. A experiência PAPER-TURBO, seleção de nitidez, disparo com telefone em movimento, busca ampliada, dupla fotografia e detector contínuo via Worker foram **desativados**.
 
