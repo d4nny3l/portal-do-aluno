@@ -1,12 +1,12 @@
 {
   "schemaVersion": "salta-backend-source-matrix-v2",
-  "main": "e156a8673a10421e8d62728c1b6a4ff7f6c0d1d3",
-  "backendSource": "e156a8673a10421e8d62728c1b6a4ff7f6c0d1d3",
-  "expectedBundleSha256": "55e2c19f86ecfb3b06a5165780a1c3a63b386edc51c9b93fe039728d5415bebc",
+  "main": "719c9f286e269f2b21b4c63f5b395fbc7b88542c",
+  "backendSource": "719c9f286e269f2b21b4c63f5b395fbc7b88542c",
+  "expectedBundleSha256": "020bef574306dad0b27ca9955a9f3e87ddaa2b12319b25dd252d8cfc915b6dd6",
   "inputs": [
     {
       "path": "assessments-lab/crypto/crypto-format.js",
-      "origin": "e156a8673a10421e8d62728c1b6a4ff7f6c0d1d3",
+      "origin": "719c9f286e269f2b21b4c63f5b395fbc7b88542c",
       "originBlob": "51ade0e2692cdbc6708f7576130c090883ff2c58",
       "mainBlob": "51ade0e2692cdbc6708f7576130c090883ff2c58",
       "candidateBlob": "51ade0e2692cdbc6708f7576130c090883ff2c58",
@@ -15,7 +15,7 @@
     },
     {
       "path": "assessments-lab/crypto/decryption.js",
-      "origin": "e156a8673a10421e8d62728c1b6a4ff7f6c0d1d3",
+      "origin": "719c9f286e269f2b21b4c63f5b395fbc7b88542c",
       "originBlob": "9e2c1fe6a0c520c5342980bc8808ff1bd15d4f30",
       "mainBlob": "9e2c1fe6a0c520c5342980bc8808ff1bd15d4f30",
       "candidateBlob": "9e2c1fe6a0c520c5342980bc8808ff1bd15d4f30",
@@ -24,7 +24,7 @@
     },
     {
       "path": "assessments-lab/crypto/encryption.js",
-      "origin": "e156a8673a10421e8d62728c1b6a4ff7f6c0d1d3",
+      "origin": "719c9f286e269f2b21b4c63f5b395fbc7b88542c",
       "originBlob": "0c82b313c9e8a3a11423463780fcf32faf2d1b06",
       "mainBlob": "0c82b313c9e8a3a11423463780fcf32faf2d1b06",
       "candidateBlob": "0c82b313c9e8a3a11423463780fcf32faf2d1b06",
@@ -33,7 +33,7 @@
     },
     {
       "path": "assessments-lab/crypto/key-generation.js",
-      "origin": "e156a8673a10421e8d62728c1b6a4ff7f6c0d1d3",
+      "origin": "719c9f286e269f2b21b4c63f5b395fbc7b88542c",
       "originBlob": "673f4fbb4b2204522e88837256c9f5594c026e9a",
       "mainBlob": "673f4fbb4b2204522e88837256c9f5594c026e9a",
       "candidateBlob": "673f4fbb4b2204522e88837256c9f5594c026e9a",
@@ -42,7 +42,7 @@
     },
     {
       "path": "assessments-service/crypto.mjs",
-      "origin": "e156a8673a10421e8d62728c1b6a4ff7f6c0d1d3",
+      "origin": "719c9f286e269f2b21b4c63f5b395fbc7b88542c",
       "originBlob": "29220ef7163efefe7fb01facb27e4bfa3a4a621d",
       "mainBlob": "29220ef7163efefe7fb01facb27e4bfa3a4a621d",
       "candidateBlob": "29220ef7163efefe7fb01facb27e4bfa3a4a621d",
@@ -50,35 +50,53 @@
       "comparison": "identical"
     },
     {
+      "path": "assessments-service/custody-client.mjs",
+      "origin": "719c9f286e269f2b21b4c63f5b395fbc7b88542c",
+      "originBlob": null,
+      "mainBlob": null,
+      "candidateBlob": "9a42a520946c4eead0d5b30f6b5d1218c85fb7dd",
+      "sha256": "a867e6a823671f19171e159f6cd0579e9cfde20b5b65c5ca792d57f82e4a4617",
+      "comparison": "new"
+    },
+    {
       "path": "assessments-service/definition.mjs",
-      "origin": "e156a8673a10421e8d62728c1b6a4ff7f6c0d1d3",
-      "originBlob": "27ecf30e2371623898bd7385a70c305f076c93c5",
-      "mainBlob": "27ecf30e2371623898bd7385a70c305f076c93c5",
+      "origin": "719c9f286e269f2b21b4c63f5b395fbc7b88542c",
+      "originBlob": "979bf40fd5007f9b6362f4a1032e51c9e2e0bf33",
+      "mainBlob": "979bf40fd5007f9b6362f4a1032e51c9e2e0bf33",
       "candidateBlob": "979bf40fd5007f9b6362f4a1032e51c9e2e0bf33",
       "sha256": "cd9f79412caa545da8d32ce1be2f0539cf4e95345c86c726314194100f727751",
-      "comparison": "changed"
+      "comparison": "identical"
     },
     {
       "path": "assessments-service/worker.mjs",
-      "origin": "e156a8673a10421e8d62728c1b6a4ff7f6c0d1d3",
-      "originBlob": "bc16a611edd0de541aba600efcbcfa0af75c31ae",
-      "mainBlob": "bc16a611edd0de541aba600efcbcfa0af75c31ae",
-      "candidateBlob": "413ea85f92d07c980f52990035856d39e7dd8273",
-      "sha256": "70f483ee2a86eb9dd16400410da187ef4ffef0b7720a356217a25a86d1cf1c88",
-      "comparison": "changed"
+      "origin": "719c9f286e269f2b21b4c63f5b395fbc7b88542c",
+      "originBlob": "413ea85f92d07c980f52990035856d39e7dd8273",
+      "mainBlob": "413ea85f92d07c980f52990035856d39e7dd8273",
+      "candidateBlob": "afee6f39a3208ed39edb38a369e00dd878dcad02",
+      "sha256": "0424559526e4b6feea65fe55bce4b6c94fcbb020e685bb4bad311566e2c19884",
+      "comparison": "modified"
     },
     {
       "path": "corretor/v2/assessments/editor-snapshot.mjs",
-      "origin": "e156a8673a10421e8d62728c1b6a4ff7f6c0d1d3",
-      "originBlob": null,
-      "mainBlob": null,
+      "origin": "719c9f286e269f2b21b4c63f5b395fbc7b88542c",
+      "originBlob": "515b14d1dba2b8866466030e18cdedd7a3f08621",
+      "mainBlob": "515b14d1dba2b8866466030e18cdedd7a3f08621",
       "candidateBlob": "515b14d1dba2b8866466030e18cdedd7a3f08621",
       "sha256": "f25cbe5bb82ceca2aa01358ad137f9b46cb5831e1f21aac061bf6546b829adb3",
+      "comparison": "identical"
+    },
+    {
+      "path": "corretor/v2/assessments/lifecycle.mjs",
+      "origin": "719c9f286e269f2b21b4c63f5b395fbc7b88542c",
+      "originBlob": null,
+      "mainBlob": null,
+      "candidateBlob": "1132a8dc22d6a2ada61f89962d712f65eab73b11",
+      "sha256": "03b67f14b484b2345746e48c820dbff180f03b89ffa3fc472d94627b61a66bd9",
       "comparison": "new"
     },
     {
       "path": "corretor/v2/assessments/score-format.mjs",
-      "origin": "e156a8673a10421e8d62728c1b6a4ff7f6c0d1d3",
+      "origin": "719c9f286e269f2b21b4c63f5b395fbc7b88542c",
       "originBlob": "6f1b34d68f5406f24f5d40a05b04916c083e54a9",
       "mainBlob": "6f1b34d68f5406f24f5d40a05b04916c083e54a9",
       "candidateBlob": "6f1b34d68f5406f24f5d40a05b04916c083e54a9",
@@ -87,7 +105,7 @@
     },
     {
       "path": "corretor/v2/omr/artwork.mjs",
-      "origin": "e156a8673a10421e8d62728c1b6a4ff7f6c0d1d3",
+      "origin": "719c9f286e269f2b21b4c63f5b395fbc7b88542c",
       "originBlob": "ae54deee5c53bffc538075ca4ef9b19a9f081824",
       "mainBlob": "ae54deee5c53bffc538075ca4ef9b19a9f081824",
       "candidateBlob": "ae54deee5c53bffc538075ca4ef9b19a9f081824",
@@ -96,7 +114,7 @@
     },
     {
       "path": "corretor/v2/omr/assessment.mjs",
-      "origin": "e156a8673a10421e8d62728c1b6a4ff7f6c0d1d3",
+      "origin": "719c9f286e269f2b21b4c63f5b395fbc7b88542c",
       "originBlob": "d58ae56ced0488c9bc1693b468efac7bdba07612",
       "mainBlob": "d58ae56ced0488c9bc1693b468efac7bdba07612",
       "candidateBlob": "d58ae56ced0488c9bc1693b468efac7bdba07612",
@@ -105,7 +123,7 @@
     },
     {
       "path": "corretor/v2/omr/layout-v1.mjs",
-      "origin": "e156a8673a10421e8d62728c1b6a4ff7f6c0d1d3",
+      "origin": "719c9f286e269f2b21b4c63f5b395fbc7b88542c",
       "originBlob": "4970e5e293ac95b3612aeb20e9cecbd81bebca33",
       "mainBlob": "4970e5e293ac95b3612aeb20e9cecbd81bebca33",
       "candidateBlob": "4970e5e293ac95b3612aeb20e9cecbd81bebca33",
@@ -114,7 +132,7 @@
     },
     {
       "path": "corretor/v2/omr/layout-v2.mjs",
-      "origin": "e156a8673a10421e8d62728c1b6a4ff7f6c0d1d3",
+      "origin": "719c9f286e269f2b21b4c63f5b395fbc7b88542c",
       "originBlob": "9c72a3f942b5e848ae94380497004819afac4967",
       "mainBlob": "9c72a3f942b5e848ae94380497004819afac4967",
       "candidateBlob": "9c72a3f942b5e848ae94380497004819afac4967",
@@ -123,7 +141,7 @@
     },
     {
       "path": "corretor/v2/omr/layout.mjs",
-      "origin": "e156a8673a10421e8d62728c1b6a4ff7f6c0d1d3",
+      "origin": "719c9f286e269f2b21b4c63f5b395fbc7b88542c",
       "originBlob": "31b1901d1e2a76e9b2e134a8317c3e2378ff998b",
       "mainBlob": "31b1901d1e2a76e9b2e134a8317c3e2378ff998b",
       "candidateBlob": "31b1901d1e2a76e9b2e134a8317c3e2378ff998b",
@@ -132,7 +150,7 @@
     },
     {
       "path": "corretor/v2/omr/manifest.mjs",
-      "origin": "e156a8673a10421e8d62728c1b6a4ff7f6c0d1d3",
+      "origin": "719c9f286e269f2b21b4c63f5b395fbc7b88542c",
       "originBlob": "0a83331c35f467fe3e123daf1775010e5f3e9e0b",
       "mainBlob": "0a83331c35f467fe3e123daf1775010e5f3e9e0b",
       "candidateBlob": "0a83331c35f467fe3e123daf1775010e5f3e9e0b",
@@ -141,7 +159,7 @@
     },
     {
       "path": "corretor/v2/omr/render-v1.mjs",
-      "origin": "e156a8673a10421e8d62728c1b6a4ff7f6c0d1d3",
+      "origin": "719c9f286e269f2b21b4c63f5b395fbc7b88542c",
       "originBlob": "b6937214caf1a31d8bb74458e9a9445bd4f1f4a7",
       "mainBlob": "b6937214caf1a31d8bb74458e9a9445bd4f1f4a7",
       "candidateBlob": "b6937214caf1a31d8bb74458e9a9445bd4f1f4a7",
@@ -150,7 +168,7 @@
     },
     {
       "path": "corretor/v2/omr/render.mjs",
-      "origin": "e156a8673a10421e8d62728c1b6a4ff7f6c0d1d3",
+      "origin": "719c9f286e269f2b21b4c63f5b395fbc7b88542c",
       "originBlob": "1b3abd4bc61c90fb68a94504cc57b9056365023a",
       "mainBlob": "1b3abd4bc61c90fb68a94504cc57b9056365023a",
       "candidateBlob": "1b3abd4bc61c90fb68a94504cc57b9056365023a",
@@ -159,7 +177,7 @@
     },
     {
       "path": "corretor/v2/omr/template.mjs",
-      "origin": "e156a8673a10421e8d62728c1b6a4ff7f6c0d1d3",
+      "origin": "719c9f286e269f2b21b4c63f5b395fbc7b88542c",
       "originBlob": "f3c4bf988101a4e4bb1df37643d76a53f5a12413",
       "mainBlob": "f3c4bf988101a4e4bb1df37643d76a53f5a12413",
       "candidateBlob": "f3c4bf988101a4e4bb1df37643d76a53f5a12413",

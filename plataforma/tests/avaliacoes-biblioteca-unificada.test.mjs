@@ -160,7 +160,7 @@ test('original v2 client handles separate accounts, scope isolation, save/reopen
  const fixedId=()=>crypto.randomUUID();
  const fetchFn=async(url,opts)=>{
   const pathname=new URL(url).pathname.slice('/assessments/v1'.length);
-  if(opts.method==='GET'&&pathname==='/session')return Response.json({authenticated:true,principalId:actor,epoch:1,editorSnapshotVersion:'salta-editor-snapshot-v1'});
+  if(opts.method==='GET'&&pathname==='/session')return Response.json({authenticated:true,principalId:actor,epoch:1,assessmentLifecycleVersion:'salta-assessment-lifecycle-v1',editorSnapshotVersion:'salta-editor-snapshot-v1'});
   if(opts.method==='GET'&&pathname==='/grants')return Response.json({grants:[actor==='teacher-a'?scope:other]});
   if(opts.method==='GET'&&pathname==='/assessments'){
    const q=new URL(url).searchParams,gr=actor==='teacher-a'?scope:other;
@@ -171,17 +171,17 @@ test('original v2 client handles separate accounts, scope isolation, save/reopen
   if(opts.method==='PUT'){
    const id=pathname.split('/')[2],body=JSON.parse(opts.body),history=data.get(id)?.history||[];
    if(body.classId!==(actor==='teacher-a'?scope:other).classId)return Response.json({error:'scope_denied'},{status:403});
-   if(body.expectedRevision!==history.length)return Response.json({error:'conflict'},{status:409});
-   const record={id,revision:history.length+1,definition:body.definition,manifestHash:body.definition.manifest.contentHash,
+   if(body.expectedRevision!==(data.get(id)?.revision||0))return Response.json({error:'conflict'},{status:409});
+   const record={id,revision:body.expectedRevision+1,definition:body.definition,manifestHash:body.definition.manifest.contentHash,
     scoreScale:10000,totalUnits:'100000',status:body.status,...scope};
-   const entry={...record,owner:actor,history:[...history,record]};
+   const entry={...record,owner:actor,history:[record]};
    data.set(id,entry);return Response.json({ok:true,id,revision:record.revision,manifestHash:record.manifestHash});
   }
   const opened=pathname.match(/^\/assessments\/([^/]+)\/revisions\/(\d+)$/);
   if(opts.method==='GET'&&opened){
    const entry=data.get(opened[1]);
    if(entry?.owner!==actor)return Response.json({error:'not_found'},{status:404});
-   return Response.json({record:entry.history.find(x=>x.revision===Number(opened[2]))});
+   const record=entry.history.find(x=>x.revision===Number(opened[2]));return record?Response.json({record}):Response.json({code:'revision_replaced'},{status:410});
   }
   const one=pathname.match(/^\/assessments\/([^/]+)$/);
   if(opts.method==='GET'&&one){
@@ -191,7 +191,7 @@ test('original v2 client handles separate accounts, scope isolation, save/reopen
   const hist=pathname.match(/^\/assessments\/([^/]+)\/revisions$/);
   if(opts.method==='GET'&&hist){
    const entry=data.get(hist[1]);if(entry?.owner!==actor)return Response.json({error:'not_found'},{status:404});
-   return Response.json({revisions:entry.history.map(r=>({revision:r.revision,status:r.status}))});
+   return Response.json({code:'history_removed'},{status:410});
   }
   throw Error(opts.method+' '+pathname);
  };
@@ -207,13 +207,13 @@ test('original v2 client handles separate accounts, scope isolation, save/reopen
  m.answers['question-1']='B';
  payload=createLibraryPlan(planArgs(m));
  const second=await ctl.save('issued');assert.equal(second.record.revision,2);
- assert.equal(data.get(id).history[0].revision,1);
- assert.deepEqual(data.get(id).history[0].definition,revision1Definition,'first answer map is immutable');
- assert.notDeepEqual(data.get(id).history[0].definition.answers,data.get(id).history[1].definition.answers,'second revision has modified key');
- await ctl.history(id);assert.deepEqual(ctl.view().revisions.map(r=>r.revision),[1,2]);
+ assert.equal(data.get(id).history.length,1);
+ assert.equal(data.get(id).history[0].revision,2);
+ assert.notDeepEqual(data.get(id).history[0].definition.answers,revision1Definition.answers);
+ await assert.rejects(()=>ctl.history(id),error=>error.status===410);
  const again=createPrivateAssessmentClient({enabled:true,baseUrl:LIBRARY_GATEWAY,fetchFn,uuidFn:fixedId});
- assert.deepEqual((await again.open(id,1)).definition,revision1Definition,'new browser client recovers original historical answer map');
- assert.deepEqual((await again.open(id,2)).definition,payload.definition,'new browser client recovers updated answer map');
+ await assert.rejects(()=>again.open(id,1),error=>error.status===410);
+ assert.deepEqual((await again.open(id,2)).definition,payload.definition);
  actor='teacher-b';
  await assert.rejects(()=>again.open(id,1),error=>error.status===404);
  await assert.rejects(()=>again.list(null,scope),error=>error.status===403);
@@ -234,7 +234,7 @@ test('actual Create-tab UI mounts and saves/opens/selects/duplicates without a s
  const records=new Map(),selections=new Map();let currentEditor=m.editor,selected=null,nominalCleared=0,appliedExact=null,modelBuilds=0;
  const fetchFn=async(url,init)=>{
   const route=new URL(url).pathname.slice('/assessments/v1'.length),q=new URL(url).searchParams;
-  if(route==='/session'&&init.method==='GET')return Response.json({authenticated:true,principalId:'teacher-a',epoch:1,editorSnapshotVersion:'salta-editor-snapshot-v1'});
+  if(route==='/session'&&init.method==='GET')return Response.json({authenticated:true,principalId:'teacher-a',epoch:1,assessmentLifecycleVersion:'salta-assessment-lifecycle-v1',editorSnapshotVersion:'salta-editor-snapshot-v1'});
   if(route==='/grants'&&init.method==='GET')return Response.json({grants:[grants]});
   if(route==='/assessments'&&init.method==='GET'){
    assert.equal(q.get('classId'),grants.classId);
@@ -326,7 +326,7 @@ async function mountedRaceFixture({onPut=async()=>{},onSelection=async()=>{},onO
  const records=new Map(),selections=new Map(),requestById=new Map(),writeCalls=[];let currentEditor=m.editor,selected=null,nominalCleared=0,appliedExact=null,modelBuilds=0,snapshotOverride=null;
  const fetchFn=async(url,init)=>{
   const route=new URL(url).pathname.slice('/assessments/v1'.length),q=new URL(url).searchParams;
-  if(route==='/session'&&init.method==='GET')return Response.json({authenticated:true,principalId:'teacher-a',epoch:1,editorSnapshotVersion:'salta-editor-snapshot-v1',...(scoreFormatVersion?{scoreFormatVersion}:{})});
+  if(route==='/session'&&init.method==='GET')return Response.json({authenticated:true,principalId:'teacher-a',epoch:1,assessmentLifecycleVersion:'salta-assessment-lifecycle-v1',editorSnapshotVersion:'salta-editor-snapshot-v1',...(scoreFormatVersion?{scoreFormatVersion}:{})});
   if(route==='/grants'&&init.method==='GET')return Response.json({grants:[grants]});
   if(route==='/assessments'&&init.method==='GET'){
    assert.equal(q.get('classId'),grants.classId);
@@ -644,8 +644,8 @@ test('UX-79B automatic current-revision opening, accessible actions and hidden l
  for(const name of ['Abrir avaliação','Atualizar','Anterior','Próxima','Conferir salvamento'])
   assert.equal(f.button(name).hidden,true,name+' is not visible');
  const deletion=f.button('Excluir avaliação');
- assert.equal(deletion.hidden,true,'deletion must not be offered without real backend');
- assert.equal(deletion.disabled,true,'no simulated delete action');
+ assert.equal(deletion.hidden,false,'delete is visible with a server capability');
+ assert.equal(deletion.disabled,false,'capability and an opened record enable deletion');
  for(const button of f.top.children[2].children){
   assert.ok(button.textContent,'icon buttons must retain accessible names');
   assert.ok(button.attrs['data-action-icon'],'icon token required');
@@ -728,7 +728,7 @@ test('UX-79C actual library never publishes private metadata when detail GET ret
   const id=crypto.randomUUID();let sessionRequests=0;
   const fetchFn=async(url)=>{
    const route=new URL(url).pathname.slice('/assessments/v1'.length);
-   if(route==='/session'){sessionRequests++;return Response.json({authenticated:true,principalId:'teacher-a',epoch:1,editorSnapshotVersion:'salta-editor-snapshot-v1'});}
+   if(route==='/session'){sessionRequests++;return Response.json({authenticated:true,principalId:'teacher-a',epoch:1,assessmentLifecycleVersion:'salta-assessment-lifecycle-v1',editorSnapshotVersion:'salta-editor-snapshot-v1'});}
    if(route==='/grants')return Response.json({grants:[grant]});
    if(route==='/assessments')return Response.json({assessments:[{id,revision:1,title:'Avaliação sigilosa',...grant}],nextCursor:null});
    if(route==='/assessments/'+id+'/revisions/1')return Response.json({code:'denied'},{status});
@@ -759,7 +759,7 @@ test('UX-79C consolidated: 13 paginated options remain locked until all private 
  const gate=deferred(),entered=deferred();let reads=0,inflight=0,peak=0,pages=0,editRestores=0;
  const fetchFn=async(url,req)=>{
   const u=new URL(url),route=u.pathname.slice('/assessments/v1'.length);
-  if(route==='/session')return Response.json({authenticated:true,principalId:'teacher-A',epoch:1,editorSnapshotVersion:'salta-editor-snapshot-v1'});
+  if(route==='/session')return Response.json({authenticated:true,principalId:'teacher-A',epoch:1,assessmentLifecycleVersion:'salta-assessment-lifecycle-v1',editorSnapshotVersion:'salta-editor-snapshot-v1'});
   if(route==='/grants')return Response.json({grants:[grant]});
   if(route==='/assessments'){
    pages++;const pos=u.searchParams.get('after')?rows.findIndex(x=>x.id===u.searchParams.get('after'))+1:0;
@@ -802,7 +802,7 @@ test('UX-79C consolidated: 201-item catalog is not partially published and does 
  let pages=0,details=0;
  const fetchFn=async(url,req)=>{
   const u=new URL(url),route=u.pathname.slice('/assessments/v1'.length);
-  if(route==='/session')return Response.json({authenticated:true,principalId:'teacher-A',epoch:1,editorSnapshotVersion:'salta-editor-snapshot-v1'});
+  if(route==='/session')return Response.json({authenticated:true,principalId:'teacher-A',epoch:1,assessmentLifecycleVersion:'salta-assessment-lifecycle-v1',editorSnapshotVersion:'salta-editor-snapshot-v1'});
   if(route==='/grants')return Response.json({grants:[grant]});
   if(route==='/assessments'){
    pages++;const after=u.searchParams.get('after'),pos=after?rows.findIndex(x=>x.id===after)+1:0;
@@ -835,7 +835,7 @@ test('UX-79C consolidated: 429 metadata failure permits retry without releasing 
  let fail=true,reads=0;
  const fetchFn=async(url,req)=>{
   const route=new URL(url).pathname.slice('/assessments/v1'.length);
-  if(route==='/session')return Response.json({authenticated:true,principalId:'teacher-A',epoch:1,editorSnapshotVersion:'salta-editor-snapshot-v1'});
+  if(route==='/session')return Response.json({authenticated:true,principalId:'teacher-A',epoch:1,assessmentLifecycleVersion:'salta-assessment-lifecycle-v1',editorSnapshotVersion:'salta-editor-snapshot-v1'});
   if(route==='/grants')return Response.json({grants:[grant]});
   if(route==='/assessments')return Response.json({assessments:[row],nextCursor:null});
   if(route==='/assessments/'+row.id+'/revisions/1'){
@@ -895,7 +895,7 @@ test('UX-79B fetches all internal catalog pages without exposing pagination cont
  let requests=0;
  const fetchFn=async(url,init)=>{
   const target=new URL(url),route=target.pathname.slice('/assessments/v1'.length);
-  if(route==='/session')return Response.json({authenticated:true,principalId:'teacher-a',epoch:1,editorSnapshotVersion:'salta-editor-snapshot-v1'});
+  if(route==='/session')return Response.json({authenticated:true,principalId:'teacher-a',epoch:1,assessmentLifecycleVersion:'salta-assessment-lifecycle-v1',editorSnapshotVersion:'salta-editor-snapshot-v1'});
   if(route==='/grants')return Response.json({grants:[grant]});
   if(route==='/assessments'&&init.method==='GET'){
    requests++;
@@ -940,7 +940,7 @@ test('UX-79B P0 privacy: 401/403 purge 13 cached assessments, metadata and edita
   let deny=false,cleared=0;
   const fetchFn=async(url,req)=>{
    const u=new URL(url),route=u.pathname.slice('/assessments/v1'.length);
-   if(route==='/session')return Response.json({authenticated:true,principalId:'teacher-a',epoch:1,editorSnapshotVersion:'salta-editor-snapshot-v1'});
+   if(route==='/session')return Response.json({authenticated:true,principalId:'teacher-a',epoch:1,assessmentLifecycleVersion:'salta-assessment-lifecycle-v1',editorSnapshotVersion:'salta-editor-snapshot-v1'});
    if(route==='/grants')return Response.json({grants:[grant]});
    if(route==='/assessments'){
     if(deny&&trigger==='list')return Response.json({code:'denied'},{status:code});
@@ -995,7 +995,7 @@ test('UX-79C P0 privacy: scope switch discards hydrated catalog and late detail 
  const entered=deferred(),release=deferred();let opensOfA=0;
  const fetchFn=async(url,request)=>{
   const u=new URL(url),route=u.pathname.slice('/assessments/v1'.length);
-  if(route==='/session')return Response.json({authenticated:true,principalId:'teacher-a',epoch:1,editorSnapshotVersion:'salta-editor-snapshot-v1'});
+  if(route==='/session')return Response.json({authenticated:true,principalId:'teacher-a',epoch:1,assessmentLifecycleVersion:'salta-assessment-lifecycle-v1',editorSnapshotVersion:'salta-editor-snapshot-v1'});
   if(route==='/grants')return Response.json({grants:[grantA,grantB]});
   if(route==='/assessments'){
    const src=u.searchParams.get('classId')==='class-a'?rowsA:[onlyB];
@@ -1217,7 +1217,7 @@ test('P0-80-RF-02 old pending PUT remains unretryable after teacher reinitialize
 
 // Extract actual callbacks from the inline Corretor script instead of copying
 // their logic. The harness stubs rendering, not the private-data teardown.
-function realReaderCallbacks(){
+function realReaderCallbacks(scanHistory=[]){
  const html=read('plataforma/corretor-v2.html');
  const startActivate=html.indexOf('function activatePrivateCorrection(selection){');
  const startClear=html.indexOf('function clearPrivateCorrection(){');
@@ -1240,7 +1240,7 @@ function realReaderCallbacks(){
  ].join('\n');
  const reader=runInNewContext(code,{
   importCardManifest,renderTemplateSvg:()=>'<svg id="private-model"></svg>',
-  $:node,clearAssessmentReview:()=>{},
+  $:node,clearAssessmentReview:()=>{scanHistory.length=0},scanHistory,renderHistory:()=>{},
   setPrivateCorrectionUi:mode=>{privateMode=mode;},setExportAvailability:()=>{},syncScanInputs:()=>{},
   keyTextForPlan:()=> '1 A\n2 B',formatScore:()=> '10,00',POINT_SCALE
  });
@@ -1338,7 +1338,7 @@ test('P0-80-RF-01 actual adapter + Corretor callback clears private reader on 40
   let revoked=false;
   const fetchFn=async(url,req)=>{
    const u=new URL(url),route=u.pathname.slice('/assessments/v1'.length);
-   if(route==='/session')return Response.json({authenticated:true,principalId:'A',epoch:1,editorSnapshotVersion:'salta-editor-snapshot-v1'});
+   if(route==='/session')return Response.json({authenticated:true,principalId:'A',epoch:1,assessmentLifecycleVersion:'salta-assessment-lifecycle-v1',editorSnapshotVersion:'salta-editor-snapshot-v1'});
    if(route==='/grants')return Response.json({grants:[grant]});
    if(route==='/assessments'){
     if(revoked)return Response.json({code:'unauthorized'},{status:code});
@@ -1386,7 +1386,7 @@ test('P0-80-RF-02 normal navigation does not reinitialize a ready controller',as
  let sessions=0;
  const fetchFn=async(url)=>{
   const route=new URL(url).pathname.slice('/assessments/v1'.length);
-  if(route==='/session'){sessions++;return Response.json({authenticated:true,principalId:'teacher-A',epoch:1,editorSnapshotVersion:'salta-editor-snapshot-v1'});}
+  if(route==='/session'){sessions++;return Response.json({authenticated:true,principalId:'teacher-A',epoch:1,assessmentLifecycleVersion:'salta-assessment-lifecycle-v1',editorSnapshotVersion:'salta-editor-snapshot-v1'});}
   if(route==='/grants')return Response.json({grants:[grant]});
   if(route==='/assessments')return Response.json({assessments:[],nextCursor:null});
   throw Error('Unexpected '+route);
@@ -1417,7 +1417,7 @@ test('P0-80-RF-01 revoking a library session does not discard a manually importe
  let revoked=false,editorResets=0;
  const fetchFn=async(url)=>{
   const route=new URL(url).pathname.slice('/assessments/v1'.length);
-  if(route==='/session')return Response.json({authenticated:true,principalId:'teacher-A',epoch:1,editorSnapshotVersion:'salta-editor-snapshot-v1'});
+  if(route==='/session')return Response.json({authenticated:true,principalId:'teacher-A',epoch:1,assessmentLifecycleVersion:'salta-assessment-lifecycle-v1',editorSnapshotVersion:'salta-editor-snapshot-v1'});
   if(route==='/grants')return Response.json({grants:[scope]});
   if(route==='/assessments')return revoked?Response.json({code:'expired'},{status:401}):
    Response.json({assessments:[],nextCursor:null});
@@ -1521,7 +1521,7 @@ function crossTeacherCatalogFixture({aCount=11,bCount=23,holdRetry=false}={}){
  const fetchFn=async(url,request)=>{
   const u=new URL(url),route=u.pathname.slice('/assessments/v1'.length);
   const teacher=actor,version=epoch; // Response belongs to the initiating session.
-  if(route==='/session')return Response.json({authenticated:true,principalId:teacher,epoch:version,editorSnapshotVersion:'salta-editor-snapshot-v1',
+  if(route==='/session')return Response.json({authenticated:true,principalId:teacher,epoch:version,assessmentLifecycleVersion:'salta-assessment-lifecycle-v1',editorSnapshotVersion:'salta-editor-snapshot-v1',
    scoreFormatVersion:'salta-score-format-v1'});
   if(route==='/grants')return Response.json({grants:[teacher==='teacher-a'?scopeA:scopeB]});
   if(route==='/assessments'){
@@ -1804,4 +1804,14 @@ test('UX-79C joint: enriched private label, authenticated format 0/1/2, opened r
  await f.button('Usar na correção').handlers.click();
  assert.ok(f.getSelected(),'approved immutable revision remains selectable after label enrichment');
  assert.equal(f.getSelected().plan.scoreDecimals,0);
+});
+
+
+test('#81 private teardown keeps consolidated numeric results only, never deleted definition/key/raster',()=>{
+ const completed=[{id:1,at:123,readCount:3,grade:'7,00',correct:2,count:3,definition:'must not survive'},
+  {id:2,at:124,readCount:1}];
+ const {reader,node}=realReaderCallbacks(completed),m=make({counts:[2],types:['A-E']});
+ reader.applyAssessmentModel({title:'Synthetic deleted',revision:1,manifest:m.manifest},{privateAssessment:true});
+ reader.clearPrivateCorrection();assert.deepEqual(JSON.parse(JSON.stringify(completed)),[{id:1,at:123,readCount:3,grade:'7,00',correct:2,count:3}]);
+ assert.equal(reader.state().activeManifest,null);assert.equal(node('answerKey').value,'');
 });

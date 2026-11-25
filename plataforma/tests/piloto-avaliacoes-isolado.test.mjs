@@ -18,9 +18,9 @@ const gitBlob=rel=>{const body=fs.readFileSync(path.join(root,rel));return creat
 const original={
  'corretor/v2/assessments/block-scoring.mjs':'42a3ec7bfd2a10495f74c103a792bf1d65f6d264',
  'corretor/v2/assessments/private-contract-adapter.mjs':'ac042fbf6d448ebdd296d8ef4f9ebffbd8da94de',
- 'corretor/v2/assessments/private-client.mjs':'883dddf04db61be538b7e907faa3a88305a1362b',
- 'corretor/v2/assessments/private-library.mjs':'f375076a373ebcdafba9303901c799c64b0ea4a1',
- 'corretor/v2/assessments/private-ui.mjs':'f22f6a04ef2248bf28216d1e7764fb89741b0494',
+ 'corretor/v2/assessments/private-client.mjs':'5402c5eafe808a3cf86ee201b2c1a29721265f24',
+ 'corretor/v2/assessments/private-library.mjs':'94cb6a98698e8e8938f8fbe12288cc7c907da1e8',
+ 'corretor/v2/assessments/private-ui.mjs':'705906047142b125f7242c885263f1d058bffd23',
  'corretor/v2/omr/template.mjs':'f3c4bf988101a4e4bb1df37643d76a53f5a12413',
  'corretor/v2/omr/render.mjs':'1b3abd4bc61c90fb68a94504cc57b9056365023a',
  'corretor/v2/omr/manifest.mjs':'0a83331c35f467fe3e123daf1775010e5f3e9e0b'
@@ -118,7 +118,7 @@ test('auth gate requires exact validated session and sends no tokens or body',as
 test('private client sends only scoped gateway requests with credentialed no-store, without bearer',async()=>{
  const req=[];
  const client=createPrivateAssessmentClient({enabled:true,baseUrl:PRIVATE_GATEWAY_URL,fetchFn:async(url,opts)=>{
-  req.push({url,opts});return Response.json({authenticated:true,principalId:'teacher-synthetic',epoch:1});
+  req.push({url,opts});return Response.json({authenticated:true,principalId:'teacher-synthetic',epoch:1,assessmentLifecycleVersion:'salta-assessment-lifecycle-v1'});
  }});
  assert.equal((await client.session()).principalId,'teacher-synthetic');
  assert.equal(req.length,1);
@@ -186,19 +186,19 @@ test('private UI/controller/client: synthetic draft save, issued revision, histo
  const fetchFn=async(url,opts)=>{
   const route=new URL(url).pathname.slice('/assessments/v1'.length);
   operations.push({method:opts.method,route,credentials:opts.credentials,cache:opts.cache});
-  if(opts.method==='GET'&&route==='/session')return Response.json({authenticated:true,principalId:'teacher-synthetic',epoch:1});
+  if(opts.method==='GET'&&route==='/session')return Response.json({authenticated:true,principalId:'teacher-synthetic',epoch:1,assessmentLifecycleVersion:'salta-assessment-lifecycle-v1'});
   if(opts.method==='GET'&&route==='/grants')return Response.json({grants:[scope]});
   if(opts.method==='GET'&&route.startsWith('/assessments?'))return Response.json({assessments:[],nextCursor:null});
   if(opts.method==='PUT'&&/^\/assessments\/[\w-]+$/.test(route)){
    const id=route.split('/')[2],payload=JSON.parse(opts.body),list=store.get(id)||[];
-   assert.equal(payload.expectedRevision,list.length);
+   assert.equal(payload.expectedRevision,list.at(-1)?.revision||0);
    assert.equal(payload.institutionId,scope.institutionId);
    assert.equal(payload.classId,scope.classId);
    assert.equal(payload.periodId,scope.periodId);
-   const record={id,revision:list.length+1,definition:payload.definition,
+   const record={id,revision:payload.expectedRevision+1,definition:payload.definition,
     manifestHash:payload.definition.manifest.contentHash,totalUnits:'100000',scoreScale:10000,
     status:payload.status,archived:false,...scope};
-   store.set(id,[...list,record]);
+   store.set(id,[record]);for(const [key,selected]of selectedById)if(selected.id===id)selectedById.delete(key);
    return Response.json({ok:true,id,revision:record.revision,manifestHash:record.manifestHash},{status:201});
   }
   const getRevision=route.match(/^\/assessments\/([\w-]+)\/revisions\/(\d+)$/);
@@ -207,7 +207,7 @@ test('private UI/controller/client: synthetic draft save, issued revision, histo
    return Response.json({record},{status:record?200:404});
   }
   const history=route.match(/^\/assessments\/([\w-]+)\/revisions$/);
-  if(opts.method==='GET'&&history)return Response.json({revisions:(store.get(history[1])||[]).map(x=>({revision:x.revision,status:x.status}))});
+  if(opts.method==='GET'&&history)return Response.json({code:'history_removed'},{status:410});
   const dupe=route.match(/^\/assessments\/([\w-]+)\/duplicate$/);
   if(opts.method==='POST'&&dupe){
    const p=JSON.parse(opts.body),original=store.get(dupe[1])?.find(x=>x.revision===p.sourceRevision);
@@ -244,9 +244,8 @@ test('private UI/controller/client: synthetic draft save, issued revision, histo
  const issued=ui.controller.view().record;
  assert.equal(issued.id,initial.id);assert.equal(issued.revision,2);
  assert.equal(issued.status,'issued');
- assert.equal(store.get(initial.id)[0].status,'draft','history cannot be overwritten');
- await ui.controller.history(issued.id);
- assert.deepEqual(ui.controller.view().revisions.map(r=>r.revision),[1,2]);
+ assert.equal(store.get(initial.id)[0].status,'issued','only the current definition remains');
+ await assert.rejects(ui.controller.history(issued.id),e=>e.status===410);
  await ui.controls.select.onclick();
  assert.equal(lastSelection.assessmentId,initial.id);
  assert.equal(lastSelection.revision,2);
@@ -256,7 +255,7 @@ test('private UI/controller/client: synthetic draft save, issued revision, histo
  const copy=ui.controller.view().record;
  assert.notEqual(copy.id,initial.id);assert.equal(copy.revision,1);
  assert.equal(copy.status,'draft');assert.equal(openCopy.id,copy.id);
- assert.equal(store.get(initial.id).length,2);
+ assert.equal(store.get(initial.id).length,1);
  assert.equal(store.get(copy.id).length,1);
  assert.ok(operations.some(o=>o.method==='PUT'));
  assert.ok(operations.some(o=>o.method==='POST'&&o.route==='/selections'));

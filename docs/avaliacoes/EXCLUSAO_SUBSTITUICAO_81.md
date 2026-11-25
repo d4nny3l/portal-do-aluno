@@ -1,0 +1,177 @@
+# AV-DELETE-01 + AV-REPLACE-01 — candidata #81
+
+Ordem: [7149262466](https://github.com/d4nny3l/portal-do-aluno/issues/81#issuecomment-7149262466).
+Base integral: `719c9f286e269f2b21b4c63f5b395fbc7b88542c`. Uma branch/PR draft; nenhuma operação produtiva.
+
+## Comportamento e contrato
+
+- Exclusão: diálogo nativo único, com nome da avaliação, aviso irreversível, Cancelar (foco inicial/Escape) e Excluir definitivamente. Cancelar não faz HTTP. Sem arquivamento/lixeira/desfazer. Sucesso exige recibo, status autenticado com tombstone e GET 404; resposta perdida reenvia o MESMO requestId/CAS, sem novo diálogo.
+- Edição: mesmo ID/escopo, revisão monotônica, uma única definição cifrada recuperável. Novo conteúdo, avanço da raiz/fence, purga de TODAS as revisões anteriores daquele ID, invalidação de seleções e recibo pertencem ao MESMO batch D1. Falha reverte o batch inteiro. Nenhuma purga global na migração.
+- Capability autenticada: `assessmentLifecycleVersion: "salta-assessment-lifecycle-v1"`. PUT inclui `lifecycleVersion` igual. Cliente antigo é recusado quando o ciclo novo está ativo; cliente novo bloqueia edição/exclusão sem capability. Criação inédita em servidor antigo continua possível, sem prometer substituição. Duplicação cria OUTRO ID e copia apenas a definição vigente.
+- POST `/assessments/v1/assessments/:id/delete`: JSON `{requestId, expectedRevision, lifecycleVersion}`. GET `.../:id/status`: somente proprietário com grant válido; `{id, revision, deleted}` sem conteúdo. CAS/conflito=409; apagada/substituída=404/410 conforme rota. GET histórico=410; GET revisão explícita só aceita a atual; impressão histórica não recupera a anterior.
+- Grant/owner/instituição/turma/período, epoch/expiração, Origin, cookies e leitor Auth existentes preservados. Autorização/CAS reavaliados dentro da transação. HMAC de idempotência existente preservado; nenhum material de chaves alterado. Recibo de operação superada não afirma conteúdo ainda existente.
+- Gateway novo muda APENAS whitelist `delete`/`status` e injeta header de protocolo no binding privado quando `PRIVATE_LIFECYCLE_ENABLED=true`. Headers do navegador são reconstruídos; não se confia em header de identidade/capability enviado pelo cliente. CORS e limitadores permanecem os mesmos. Backend sem gateway atualizado falha fechado. O build usa o Stats produtivo histórico `f4dce82716faa06720068f3228a6f890fd0f928f`, NÃO o Stats da main/D-04. Sem rota pública nova do backend.
+
+## Esquema, vínculos e integridade
+
+`0001_private_library.sql` e crypto imutados. Migração candidata LOCAL `0002_assessment_lifecycle.sql`:
+
+- Reconstrói `av_requests` conservando exatamente recibos/HMAC/IDs/hash; remove sua FK a conteúdo purgável. PK por owner/request e triggers imutáveis continuam. Recibos não armazenam gabarito, editor, nomes, logos ou manifesto integral.
+- Acrescenta fences monotônicas/tombstones (ID, owner técnico, escopo, piso de revisão, deleted, timestamp); não podem regredir nem ser apagadas. Impedem recriar ID apagado. Retenção técnica enquanto IDs/recibos/backups anteriores puderem reaparecer; sem endpoint de recuperação ou enumeração pública. Não apagar esses metadados em rollback.
+- `av_purge_guards`: autorização transitória por objeto/owner/CAS/request/kind, criada e removida no mesmo batch; tabela vazia fora da transação. DELETE de revisões/seleções continua bloqueado fora desse contexto; UPDATE imutável permanece. Trigger exige protocolo de substituição para inserir segunda revisão, impedindo antigo binário de voltar a acumular histórico após migração.
+- `av_retention_holds`: bloqueio administrativo `academic`/`legal`, sem API de professor para inserir/remover ou contornar. Antes de purgar, o backend confere as FKs de entrada: vínculo desconhecido (inclusive CASCADE) bloqueia a operação, mesmo que sua tabela esteja vazia; nenhuma cascata acadêmica automática é admitida. Corridas de alteração estrutural exigem biblioteca fechada e controle do operador. Seleções novas só podem apontar à revisão atual.
+- Inventário de fonte: seis tabelas originais privadas; FKs de conteúdo em revisões, seleções e recibos. O serviço não possui tabelas de notas/resultados do Diário nem acesso a DB/DIARIO_DB. Não foram consultados dados acadêmicos nem alterados outros bancos. Antes da ativação, conferir esquema remoto e integrações externas pelo operador; se houver vínculo que exija definição antiga, aplicar hold e devolver decisão, não apagar automaticamente.
+- Resultados já calculados no Corretor conservam somente id/instante/contagem/nota/acertos; teardown remove modelo, gabarito, observações e rasters. Não há reinterpretação automática pelo gabarito novo. Cada nota privada completa exige nova consulta autenticada da seleção; seleção substituída/excluída impede apresentação como correção válida. Nenhuma escrita no Diário.
+
+## Cache e limites do cliente
+
+Cache privado só em memória, sem localStorage/IndexedDB. Substituir/excluir limpa metadados; BroadcastChannel transmite apenas ID/contexto técnico e invalida outra aba da mesma partição. Foco/visibilidade revalidam outro dispositivo/contexto; exportações controladas consultam revisão atual antes do handler existente. Não há push entre dispositivos: uma página desconectada pode conservar pixels em memória até retomar/validar. Nenhuma aplicação consegue recolher PDF/foto/download já entregue ou cópia externa feita por usuário. A API não volta a disponibilizar o conteúdo apagado.
+
+## Retenção, restauração e limite jurídico
+
+Exclusão definitiva pela aplicação NÃO é garantia de sobrescrita física de backups/snapshots do provedor. [Cloudflare D1 Time Travel](https://developers.cloudflare.com/d1/reference/time-travel/) documenta janela de 7 dias no Free e 30 dias no Paid; a configuração efetiva deverá ser reconferida pelo operador antes de ativar. Exportações independentes podem persistir por mais tempo. Nenhum backup global foi apagado ou retenção compartilhada reduzida nesta missão. Logs da aplicação não recebem corpos/gabaritos/segredos; métricas/provedor e arquivos externos exigem inventário operacional próprio.
+
+A [LGPD, art. 16](https://www.planalto.gov.br/ccivil_03/_ato2015-2018/2018/lei/l13709compilado.htm) admite conservação por obrigação legal/regulatória. Não foi presumido prazo escolar específico nem autorização para apagar notas. A Diretoria deve validar a política aplicável e aceitar explicitamente os limites de retenção antes de ativar. Havendo obrigação de conservar a definição, hold bloqueia o caso até decisão específica.
+
+Restauração autorizada: serviço FECHADO, preservar keyring e D1, obter testemunho independente ATUAL de TODOS os fences e SHA aprovado em canal separado (com corte temporal/proveniência), então reconciliar antes de reabrir. `restore-fences.mjs` é primitiva offline local, NÃO exportador remoto nem rota de recuperação. Confere hash/frescura/completude, aplica tombstones/pisos atomicamente e recusa backup sem a última definição. Não restaura conteúdo anterior para “quebrar o galho”. Hash sozinho não certifica origem/frescura; custodiante/auditor devem comprová-las. Se testemunho independente atual estiver ausente, manter FECHADO. Um backup antigo do próprio D1 não é testemunho independente de suas exclusões posteriores. Nenhum restore real/externo foi executado; a prova é exclusivamente sintética local.
+
+## Testes e evidências reproduzíveis
+
+- `node assessments-service/test-composition.mjs`: regressões OMR V1/V2/câmera, Diário/Auth/Stats, biblioteca/crypto/snapshots; workerd/D1 local real e contratos anteriores; HTTP legado. `lifecycle.test.mjs`: N saves, purga, resposta perdida, CAS, corrida save/delete/select, hold/revogação/cross-owner, migração de múltiplas revisões sintéticas, restauração com tombstone e bloqueio por falta da última definição.
+- `lifecycle-d1.integration.mjs`: migrações no D1 local workerd, concorrência real, falha do recibo final revertendo purga, reenvio, reinício e revogação. `lifecycle-gateway.test.mjs`: whitelist/CORS/CSRF, headers falsificados, limite de escrita, Auth, pass-through das rotas antigas.
+- `SALTA_PLAYWRIGHT_MODULE=<playwright>/index.mjs node assessments-service/tests/lifecycle-browser.mjs`: página completa, Auth sintético/SQLite isolado, desktop 1440 e mobile 390, Cancelar/Escape/Tab/foco, zero request no cancelamento, capability ausente, substituição, exclusão com recibo perdido e invalidação entre contextos. Prints/trace em `assessments-service/dist/lifecycle-browser/` (artefato CI).
+- Suites reais `editor-frontend-browser.mjs` (8 cenários) e `embedded-browser.mjs` (3 formatos/precisões): snapshots, reabertura de navegador, SVG/PDF e OMR. Sem requisições produtivas. Chromium desktop/mobile emulado; Safari/iPhone e leitor de tela humano continuam para homologação posterior.
+- `node assessments-service/integrity.mjs`, `node --test assessments-service/tests/build.test.mjs`, builds backend/gateway e `git diff --check`. Guard fixa árvore base, 19 inputs (17 idênticos), crypto/esquema original, todos os bytes ópticos/câmera/PDF/Auth/Stats. Só apresentação/teardown privado no HTML mudam.
+
+## Publicação futura e reversão — NÃO executadas
+
+1. Pareceres independentes técnico e visual no mesmo HEAD; dono decide retenção/cópias externas/holds e autoriza nominalmente migração, gateway/backend/frontend/flags. Sem aprovação implícita neste PR.
+2. Preflight somente autorizado: destino D1 exclusivo, esquema/FKs/contagens, vínculos externos, versões/configurações, custódia e witness de fences; biblioteca fechada `ENABLE_ASSESSMENTS=false` durante transição. Nenhuma operação sobre DB/DIARIO_DB.
+3. Aplicar SOMENTE migração 0002 autorizada, sem purgar conteúdo global. Preparar versão de recuperação DO MESMO protocolo com biblioteca fechada. Preservar todos os bindings/segredos/grants/keyring/limitadores/URLs.
+4. Publicar backend compatível fechado e gateway derivado da fonte produtiva, com `PRIVATE_LIFECYCLE_ENABLED` desativada inicialmente. Publicar frontend; manter serviço fechado até concordância integral de contratos. Política aprovada expressa por `ASSESSMENT_RETENTION_POLICY=salta-assessment-lifecycle-v1`; `ENABLE_ASSESSMENT_LIFECYCLE=true` e `PRIVATE_LIFECYCLE_ENABLED=true` somente no GO futuro.
+5. Abrir biblioteca, confirmar capability autenticada por gateway oficial e negativa anônima/cross-owner; ensaio sintético autorizado de salvar/substituir/selecionar/excluir, recibos, GET, contagens/FKs. Não testar com notas reais.
+6. Falha: fechar biblioteca imediatamente, preservar D1/fences/recibos/chaves; versão compatível fechada como recuperação. Após primeira substituição/exclusão, NÃO fazer downgrade a binário A4-only/pré-lifecycle, não remover 0002/triggers nem restaurar conteúdo antigo. Roll-forward compatível após correção; restauração apenas com reconciliação independente descrita acima.
+
+Candidata não é publicação. Pareceres APTO não são presumidos; nenhum merge/deploy/migração remota/exclusão real foi executado.
+
+Contraprova local final: **404/404 regressões + 16/16 integrações + 1/1 HTTP legado + 2/2 guard/build**; navegador **13 cenários lifecycle + 8 snapshot + 3 formatos incorporados**, todos PASS. Evidências reproduzidas na CI do HEAD do PR; artefatos locais em `assessments-service/dist/`. A prova de dependência CASCADE usa somente uma tabela de notas sintética e comprova bloqueio sem perda da nota. Não equivale a inventário de dados reais ou homologação em Safari físico.
+
+
+## Ajuste final solicitado pela Diretoria — 7150352786
+
+Delta exclusivo sobre `77909f8e89164b2dd2cf50165fddd79d3815e815`: interceptor cobre os IDs reais `download` (SVG) e `downloadJson`; precedência CSS fica restrita ao diálogo (Cancelar secundário, Excluir vermelho, inclusive hover); cancelamento/Escape retornam ao acionador, enquanto sucesso confirmado transfere foco uma única vez para Nova avaliação habilitada, após o render final e no mesmo contexto. Funciona também na recuperação de resposta perdida.
+
+A regressão real de navegador agora cobre **13 cenários**: duas sessões Auth sintéticas independentes do mesmo professor, SVG/JSON válidos como controle, exclusão/substituição na outra sessão sem preinvalidação por foco/broadcast, nenhum Blob/download obsoleto, estilos computados normal/hover, foco no sucesso desktop/mobile e cancelamento preservado. PNGs do diálogo e foco pós-exclusão no artefato CI. Nenhum dado real utilizado.
+
+Main reconferida em `f4621cea08f652fd1a86165c80c288d8d145545b`: avanço restrito a laboratório OMR/documentação, sem sobreposição com este ajuste. Nenhuma incorporação ou mudança nessas frentes. Backend, gateway, contrato, migração, Auth, crypto e HTML/algoritmos ópticos permanecem byte a byte iguais ao HEAD anterior; hashes de bundle e demais gates de retenção/preflight/ativação permanecem os mesmos. Não houve merge, deploy, migração remota, ativação ou exclusão real. Novo HEAD depende de CI completa e reauditorias técnica/visual específicas; nenhum parecer anterior é promovido automaticamente.
+
+## Delta de custódia — parecer 7161037253 / execução 7161064215
+
+Esta seção substitui a exigência abstrata de testemunho manual acima. O delta usa
+um **Worker privado independente com Durable Object SQLite**, não outra tabela do
+D1, nem R2 compartilhado. Identidade exclusiva: `salta-assessments-custody`,
+classe `CustodyLedger`, protocolo `salta-assessment-custody-v1`. Custodiante
+administrativo: proprietário SALTA (alias operacional `SALTA-owner`).
+Não há API de recuperação do professor, nova autenticação ou endpoint público.
+
+### Fronteiras e protocolo implementados
+
+- `CustodyWriter` é o único entrypoint vinculado ao backend. Permite guard,
+  intenção, confirmação e certificado de rollback explícito. Não enumera o
+  journal, não fecha/abre o serviço e não apaga/sobrescreve eventos.
+- `CustodyOperator` é separado e NÃO é vinculado ao backend/gateway. O proprietário
+  usa `custody/operator.mjs` no Mac com seu OAuth Wrangler existente e service
+  binding remoto, sem servidor HTTP local ou Worker público operacional.
+  `status` não imprime identidade integral/intenção; exportação completa é arquivo
+  privado criado com `wx`/0600, nunca GitHub ou logs. O checkpoint é obtido pelo
+  canal operacional autenticado; SHA sozinho não prova autoria/frescura.
+- Um único controlador serializa chamadas com `blockConcurrencyWhile`, inclusive
+  os awaits, e registra eventos append-only em transações SQLite locais. Triggers
+  recusam UPDATE/DELETE do histórico. Índices de operações/fences são projeções.
+  D1 não tem acesso ao armazenamento DO. Restaurar D1 não restaura o journal.
+- Criar, duplicar, substituir e excluir exigem intenção durável ANTES de iniciar
+  o batch. Guarda owner/request, escopo técnico, ID, revisão esperada/seguinte,
+  tipo, versão da chave e MAC do pedido. Nunca guarda gabarito, ciphertext,
+  definição, manifesto integral, nomes de alunos ou material de chave.
+- O batch D1 continua atômico. O retorno 201/200 exige confirmação externa que
+  confere recibo/MAC/versão e fences. Não há atomicidade distribuída alegada.
+  ACK externo perdido: reenvio do MESMO requestId reconcilia, sem nova purga.
+  Replay não depende apenas do recibo D1 e verifica o estado atual independente.
+- Intenção ambígua bloqueia novas purgas e consultas da biblioteca. Ausência de
+  recibo, mesmo após expiração ou restauração antiga, NÃO autoriza ABORT. Somente
+  erro explícito SQLite de constraint/rollback, emitido pelo backend e confrontado
+  com recibo ausente + projeção D1 inalterada, permite o evento de abort.
+  Timeout fica PENDING; operador não dispõe de botão “forçar abort”.
+- Lease de 8 segundos é reavaliado no SQL da mutação. Após fechamento operacional,
+  aguardar drenagem e reconciliar antes do checkpoint. Consulta autenticada só
+  reabre se não houver pendência e a projeção D1 corresponder integralmente ao DO.
+  Configurar lifecycle=false com esquema 0002 instalado falha fechado.
+- Checkpoint somente FECHADO e sem pendências: identidade D1/controlador/custodiante,
+  versão, corte, sequência, hash de cadeia, quantidade de fences; exportação
+  completa paginada. `verifyCustodyExport` reconstitui a máquina de estados e
+  exige o checkpoint ATUAL obtido separadamente pelo operador autenticado.
+  `restoreFromCustody` aplica apenas a projeção comprovada. Eventos ausentes,
+  alterados, antigos, pendências ou ciphertext mais recente ausente impedem abrir.
+  Holds inalterados são preservados, incluindo suas revisões e seleções.
+
+### Isolamento, custo e limites declarados
+
+`custody/config.mjs` gera configurações revisáveis offline: workers.dev=false,
+preview_urls=false, routes=[], sem logs de corpos, sem Auth/DB/DIARIO_DB. Binding
+D1 exclusivo serve somente a conferência de metadados/recibos. O Writer não aceita
+SQL arbitrário. DO usa classe SQLite nova, não migração do D1 acadêmico.
+
+O [plano Free de Durable Objects](https://developers.cloudflare.com/durable-objects/platform/limits/)
+suporta SQLite. [Cloudflare declara ausência de cobrança para usuários Workers Free](https://developers.cloudflare.com/changelog/post/2025-12-12-durable-objects-sqlite-storage-billing/).
+O provisionamento exige reconfirmar o plano efetivo, sem upgrade/contratação;
+quotas excedidas falham em vez de cobrar. Limite preventivo: 100 mil eventos e
+10 mil fences, falhando fechado; preservação permanente dos eventos existentes.
+Não se promete capacidade infinita. Conta/limites reais são gates operacionais,
+não inferidos de `default_usage_model=standard`.
+
+A independência é da aplicação e do restore D1; **não** de um administrador da
+mesma conta Cloudflare. O proprietário ainda pode alterar/deletar infraestrutura.
+A cópia privada do checkpoint exportado deve ter custódia externa sob esse
+responsável. Perda do DO/provedor sem âncora atual autenticada mantém fechado;
+não há reconstrução automática a partir de cópia antiga. Isso não certifica a
+recuperabilidade dos antigos backups/keyring já encerrada administrativamente.
+
+### Sequência operacional e recuperação compatível
+
+1. Auditoria independente SOMENTE deste delta e CI no HEAD exato; preservar os
+   pareceres anteriores do frontend/OMR. Reconfirmar Free e recursos privados.
+2. Provisionar apenas Worker/DO de custódia privados e revisar named bindings;
+   ainda não inicializar nem abrir. Default fetch responde 503 e não administra.
+3. Fechar biblioteca, drenar operações antigas, conferir invariância das contagens.
+   Aplicar SOMENTE a 0002 original, SHA-256
+   `2b85a9899b44bf498773941663039a677c4b87c7493d06038160fda990ea2766`.
+   Sem purga global. Aplicar holds aos objetos preexistentes e semear os fences
+   desses objetos com escopo/revisão atuais; manter todos os dados históricos.
+4. Inicializar journal FECHADO a partir dos fences completos. Exportar checkpoint
+   e conferir cadeia/paginação; manter cópia privada fora da aplicação.
+5. Reservar versão de backend DESTE delta FECHADA com binding `ASSESSMENT_CUSTODY`
+   para `CustodyWriter`, além de AUTH/D1/keyring preservados por referência.
+   Registrar ID/hash. Não usar recovery pré-custódia/antigo A4-only.
+6. Backend/gateway compatíveis ainda fechados; frontend #131 e Pages somente na
+   coordenação autorizada. Ativar protocolo/política e header do gateway;
+   conferir estado completo, então abrir journal e biblioteca. Capability pela
+   sessão SALTA real, negativas 401/403 e smoke somente sintético autorizado.
+7. Falha: ENABLE_ASSESSMENTS=false e fechamento do journal; preservar D1/DO,
+   fences/recibos/holds/chaves. Usar recovery compatível fechado. Reconciliar
+   recibos pendentes e exportar checkpoint antes de qualquer restauração futura.
+   Não retornar a binário antigo nem remover fences/triggers. Não apagar jornal.
+
+Comandos reprodutíveis offline: `node assessments-service/custody/build.mjs`,
+`node assessments-service/custody/config.mjs`, suíte `custody.test.mjs`, guard e
+composição completa. Operação proprietária após gates:
+`SALTA_WRANGLER_MODULE=<wrangler-instalado> node assessments-service/custody/operator.mjs <operator-local.json> <status|initialize|close|reconcile|checkpoint|open|export> [arquivo-privado]`.
+Não repetir initialize em namespace existente nem publicar operator-local.
+
+Testes do delta: intenção indisponível sem escrita; falha antes/depois do ACK;
+commit com resposta perdida; replay concorrente e restart; timeout sem recibo
+permanece PENDING; paginação/cadeia/tamper/corte antigo; restore com tombstone;
+backup sem ciphertext atual; hold/grant; lease; flag de downgrade. Integração
+workerd real usa AUTH existente sintético, D1 SQLite e DO separado persistente.
+Migração 0002, contratos criptográficos, Stats histórico, OMR e UI permanecem
+inalterados por este delta. Esta seção descreve código candidato; implantação e
+aprovação independente devem ser comprovadas nos registros operacionais.

@@ -1,48 +1,49 @@
-// #120 exact scope. No exceptions for Auth, Stats, optics, crypto, CSS or deployment configuration.
+// #81 exact candidate scope: preserve all OMR, camera, PDF, Auth, Stats and crypto.
 import {execFileSync} from 'node:child_process';
 import {fileURLToPath} from 'node:url';
 import {readFileSync} from 'node:fs';
-import {ROOT,verifyDependencies,matrix} from './build.mjs';
-const MAIN='e156a8673a10421e8d62728c1b6a4ff7f6c0d1d3',BACKEND='e156a8673a10421e8d62728c1b6a4ff7f6c0d1d3';
+import {ROOT,verifyDependencies,matrix,sha256} from './build.mjs';
+const BASE='719c9f286e269f2b21b4c63f5b395fbc7b88542c';
 const allowed=new Set([
- 'corretor/v2/assessments/editor-snapshot.mjs','corretor/v2/assessments/private-client.mjs','corretor/v2/assessments/private-library.mjs','corretor/v2/assessments/private-contract-adapter.mjs','plataforma/avaliacoes-biblioteca.mjs','plataforma/corretor-v2.html','plataforma/tests/avaliacoes-biblioteca-unificada.test.mjs','plataforma/tests/piloto-avaliacoes-isolado.test.mjs',
- '.github/workflows/test-avaliacoes-biblioteca.yml','.github/workflows/test-assessments-embedded.yml','docs/avaliacoes/BIBLIOTECA_QUADROS_118.md','docs/avaliacoes/SALVAMENTO_INTEGRAL_120.md',
- ...['.gitignore','worker.mjs','definition.mjs','crypto.mjs','build.mjs','dependencies.json','integrity.mjs','test-composition.mjs','README.md','migrations/0001_private_library.sql'].map(p=>'assessments-service/'+p),
- ...['helpers.mjs','service.test.mjs','catalog-pages.test.mjs','private-bridge.integration.test.mjs','score-format.test.mjs','d1-auth.integration.mjs','build.test.mjs','sealed-gateway.mjs','gateway.integration.mjs','frontend88.integration.mjs','embedded-library.integration.mjs','embedded-browser.mjs','editor-snapshot.test.mjs','editor-frontend-browser.mjs'].map(n=>'assessments-service/tests/'+n)
+ ...['ledger.mjs','worker.mjs','export.mjs','operator.mjs','config.mjs','build.mjs','sources.json'].map(p=>'assessments-service/custody/'+p),
+ 'corretor/v2/assessments/private-ui.mjs','corretor/v2/assessments/lifecycle.mjs','corretor/v2/assessments/private-client.mjs','corretor/v2/assessments/private-library.mjs',
+ 'plataforma/avaliacoes-biblioteca.mjs','plataforma/avaliacao-excluir-dialog.mjs','plataforma/avaliacao-excluir-dialog.css','plataforma/corretor-v2.html',
+ 'plataforma/tests/piloto-avaliacoes-isolado.test.mjs','plataforma/tests/avaliacoes-biblioteca-unificada.test.mjs',
+ '.github/workflows/test-direct-pdf.yml','.github/workflows/test-assessments-embedded.yml','docs/avaliacoes/EXCLUSAO_SUBSTITUICAO_81.md',
+ ...['test-composition.mjs','worker.mjs','gateway-lifecycle.mjs','custody-client.mjs','restore-fences.mjs','build.mjs','build-gateway.mjs','dependencies.json','integrity.mjs','migrations/0002_assessment_lifecycle.sql'].map(p=>'assessments-service/'+p),
+ ...['lifecycle-d1.integration.mjs','custody.test.mjs','custody-fixture.mjs','catalog-pages.test.mjs','embedded-library.integration.mjs','private-bridge.integration.test.mjs','helpers.mjs','build.test.mjs','lifecycle.test.mjs','lifecycle-gateway.test.mjs','lifecycle-browser.mjs','editor-frontend-browser.mjs','embedded-browser.mjs'].map(n=>'assessments-service/tests/'+n)
 ]);
-export function assertScope(paths){const denied=paths.filter(p=>!allowed.has(p));if(denied.length)throw Error('Forbidden #120 delta: '+denied.join(', '))}
+export function assertScope(paths){const denied=paths.filter(p=>!allowed.has(p));if(denied.length)throw Error('Forbidden #81 delta: '+denied.join(', '))}
 export function verifyScope(){
  const git=(...a)=>execFileSync('git',a,{cwd:ROOT,stdio:['ignore','pipe','pipe']}).toString().trim();
- if(matrix.main!==MAIN||matrix.backendSource!==BACKEND)throw Error('Reference provenance changed');
- assertScope([...git('diff','--name-only','-z',MAIN,'--').split('\0'),...git('ls-files','--others','--exclude-standard','-z').split('\0')].filter(Boolean));
+ if(matrix.main!==BASE||matrix.backendSource!==BASE)throw Error('Reference provenance changed');
+ assertScope([...git('diff','--name-only','-z',BASE,'--').split('\0'),...git('ls-files','--others','--exclude-standard','-z').split('\0')].filter(Boolean));
  for(const row of matrix.inputs){
-  if(row.comparison==='identical'){
-   if(git('rev-parse',MAIN+':'+row.path)!==row.candidateBlob)throw Error('Published dependency changed: '+row.path);
-  }else if(row.comparison!=='new'&&git('rev-parse',BACKEND+':'+row.path)!==row.originBlob)throw Error('Backend provenance changed: '+row.path);
+  if(row.comparison==='identical'&&git('rev-parse',BASE+':'+row.path)!==row.candidateBlob)throw Error('Published dependency changed: '+row.path);
+  if(row.comparison==='modified'&&row.path!=='assessments-service/worker.mjs')throw Error('Unauthorized runtime input change');
  }
- for(const p of ['assessments-service/crypto.mjs','assessments-service/migrations/0001_private_library.sql'])if(git('hash-object',p)!==git('rev-parse',BACKEND+':'+p))throw Error('Historical crypto/schema changed');
- // Contract-bound editor-only substitutions. Every scanner, reader, correction,
- // import and unrelated markup byte must match the published base exactly.
- const before=execFileSync('git',['show',MAIN+':plataforma/corretor-v2.html'],{cwd:ROOT}).toString();
+ for(const p of ['assessments-service/crypto.mjs','assessments-service/migrations/0001_private_library.sql'])if(git('hash-object',p)!==git('rev-parse',BASE+':'+p))throw Error('Historical crypto/schema changed');
+ if(sha256(readFileSync(ROOT+'/assessments-service/migrations/0002_assessment_lifecycle.sql'))!=='2b85a9899b44bf498773941663039a677c4b87c7493d06038160fda990ea2766')throw Error('Audited migration 0002 changed');
+ const before=execFileSync('git',['show',BASE+':plataforma/corretor-v2.html'],{cwd:ROOT}).toString();
  let current=readFileSync(ROOT+'/plataforma/corretor-v2.html','utf8');
- const approvedImport="import {EDITOR_FIELD_IDS} from '../corretor/v2/assessments/editor-snapshot.mjs?v=20261124snap120';\n";
- if(current.split(approvedImport).length!==2)throw Error('Missing or repeated approved editor import');
- current=current.replace(approvedImport,'');
- const slots=[
-  ['function syncHeaderForm(){','function currentMetadata(){'],
-  ['async function loadLogo(file,key){',"$('headerLogo').onchange="],
-  ['const bankFieldIds=','function restoreAssessmentEditor('],
-  ['function restoreAssessmentEditor(','function resetAssessmentEditor('],
-  ['function resetAssessmentEditor(','// Legacy manual correction still reads'],
-  ['applyExactModel:bundle=>','activateSelection:activatePrivateCorrection,']
- ];
- for(const [start,end] of slots){
-  const a=current.indexOf(start),b=current.indexOf(end,a+start.length);
-  const c=before.indexOf(start),d=before.indexOf(end,c+start.length);
-  if(Math.min(a,b,c,d)<0||current.indexOf(start,a+1)!==-1||before.indexOf(start,c+1)!==-1)throw Error('Ambiguous editor-only substitution: '+start);
+ const stylesheet='<link rel="stylesheet" href="avaliacao-excluir-dialog.css">\n';
+ if(current.split(stylesheet).length!==2)throw Error('Ambiguous dialog stylesheet');
+ current=current.replace(stylesheet,'');
+ // Only authenticated private grade presentation/teardown changes; every scanner,
+ // camera, optical, print, import, editor and unrelated markup byte stays exact.
+ for(const [start,end] of [['calculateScore=function(){','function renderHistory(){'],['function activatePrivateCorrection(selection){','function assessmentEditorState(){']]){
+  const a=current.indexOf(start),b=current.indexOf(end,a+start.length),c=before.indexOf(start),d=before.indexOf(end,c+start.length);
+  if(Math.min(a,b,c,d)<0||current.indexOf(start,a+1)!==-1)throw Error('Ambiguous private integration slot');
   current=current.slice(0,a)+before.slice(c,d)+current.slice(b);
  }
- if(current!==before)throw Error('Unauthorized page change outside exact editor-only slots');
+ if(current!==before)throw Error('Unauthorized page change outside exact private lifecycle slots');
+ const oldGateway=execFileSync('git',['show','7080d2de0b5a01bbe417b71732221a869e7a4d42:private-pilot/gateway.mjs'],{cwd:ROOT}).toString();
+ const newGateway=readFileSync(ROOT+'/assessments-service/gateway-lifecycle.mjs','utf8')
+  .replace("import {ASSESSMENT_LIFECYCLE_VERSION,LIFECYCLE_HEADER} from '../corretor/v2/assessments/lifecycle.mjs';\n",'')
+  .replace('(archive|duplicate|delete)$','(archive|duplicate)$')
+  .replace(" [new RegExp('^/assessments/'+UUID+'/status$'),['GET']],\n",'')
+  .replace(" if(env.PRIVATE_LIFECYCLE_ENABLED==='true')h.set(LIFECYCLE_HEADER,ASSESSMENT_LIFECYCLE_VERSION);\n",'');
+ if(newGateway!==oldGateway)throw Error('Gateway changed outside lifecycle namespace delta');
  verifyDependencies();return true;
 }
-if(process.argv[1]===fileURLToPath(import.meta.url)){verifyScope();console.log('#120 scope, 18 runtime inputs, 15 published dependencies, unchanged crypto/schema/optics/Auth/Stats: PASS')}
+if(process.argv[1]===fileURLToPath(import.meta.url)){verifyScope();console.log('#81 scope, 20 runtime inputs, unchanged optics/camera/PDF/Auth/Stats/crypto: PASS')}

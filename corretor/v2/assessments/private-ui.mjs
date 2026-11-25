@@ -86,11 +86,12 @@ export function installPrivateAssessmentUI({document,client,getDraft,applyRecord
  const resume=button('Retomar seleção pelo ID',()=>controller.resumeSelection(selectionId.value.trim()));
  // Changing a displayed candidate cannot leave the previously opened record writable.
  catalog.onchange=()=>{controller.invalidateOpenedRecord();render()};
+ revisions.hidden=true;history.hidden=true;archive.hidden=true;
  revisions.onchange=()=>{controller.invalidateOpenedRecord({keepRevisions:true});render()};
  scope.onchange=()=>{controller.invalidateOpenedRecord();render()};
  const selectLabel=make('p','A câmera não identifica automaticamente avaliações com cartões de geometria igual.');
  controls.append(connect,label('Turma e período',scope),chooseScope,label('Avaliação',catalog),pageLabel,previous,more,fetchLibrary,
-  label('Revisão',revisions),history,chooseAssessment,activeLabel,newDraft,saveDraft,issue,retry,
+  Object.assign(label('Revisão',revisions),{hidden:true}),history,chooseAssessment,activeLabel,newDraft,saveDraft,issue,retry,
   duplicate,archive,select,label('Seleção confirmada',selectionId),resume);
  host.replaceChildren(make('h3','Biblioteca privada · configuração autorizada'),selectLabel,controls,status);
  host.hidden=false;

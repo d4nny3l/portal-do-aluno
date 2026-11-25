@@ -79,8 +79,8 @@ test('receipt and recovered revision attest each contract field before displayin
  assert.equal(record.scoreScale,10000);
 });
 
-test('real Auth + local D1: create draft, verify receipt+GET, issue, pin selection, preserve historical score',async t=>{
- const h=await harness();t.after(h.close);const evidence=[],client=bridge(h,{records:evidence}),data=editor();
+test('real Auth + local D1: create draft, verify receipt+GET, issue, pin selection, invalidate replaced selection',async t=>{
+ const h=await harness({lifecycle:true});t.after(h.close);const evidence=[],client=bridge(h,{records:evidence}),data=editor();
  let current=data,selected=null;
  const controller=createPrivateLibraryController({client,getDraft:()=>current,confirmBatch:()=>true,onSelection:s=>{selected=s}});
  assert.equal(await controller.initialize(),true);controller.useScope(scope);
@@ -89,7 +89,7 @@ test('real Auth + local D1: create draft, verify receipt+GET, issue, pin selecti
  assert.equal(created.record.status,'draft');assert.equal(created.record.revision,1);
  assert.equal(controller.view().phase,'saved');
  assert.match(controller.view().message,/Salvo · revisão 1 confirmada/);
- assert.equal((await controller.history()).length,1);
+ await assert.rejects(controller.history(),e=>e.status===410);
  await assert.rejects(controller.selectIssued(),/emitida/);
  const issued=await controller.save('issued');
  assert.equal(issued.record.status,'issued');assert.equal(issued.record.revision,2);
@@ -102,17 +102,13 @@ test('real Auth + local D1: create draft, verify receipt+GET, issue, pin selecti
  const changed=fixtureDefinition();changed.answers[0].correct='E';current=editor(changed);
  await controller.save('issued');
  assert.equal(controller.view().record.revision,3);
- assert.strictEqual(controller.view().selection,selected,'new revision cannot rewrite pinned selection');
- assert.equal(selected.plan.blocks[0].questions[0].correct,data.plan.blocks[0].questions[0].correct);
- assert.equal((await client.resumeSelection(selected.selectionId)).revision,2);
- const reopenedSession=bridge(h,{actor:'a'});
- assert.equal((await reopenedSession.session()).authenticated,true);
- const reopenedSelection=await reopenedSession.resumeSelection(selected.selectionId);
- assert.equal(reopenedSelection.revision,2,'new synthetic client session must recover immutable revision 2');
- assert.equal(reopenedSelection.plan.blocks[0].questions[0].correct,selected.plan.blocks[0].questions[0].correct);
- assert.equal((await controller.history()).length,3);
- const restored=await client.open(created.record.id,2);
- assert.equal(restored.revision,2);assert.equal(planFromPrivateRecord(restored).plan.revision,2);
+ assert.equal(controller.view().selection,null);
+ assert.equal(selected,null);
+ await assert.rejects(client.resumeSelection(frozen.selection.selectionId),e=>e.status===404);
+ await assert.rejects(controller.history(),e=>e.status===410);
+ await assert.rejects(client.open(created.record.id,2),e=>e.status===410);
+ assert.equal((await client.open(created.record.id)).revision,3);
+ assert.equal(h.db.sqlite.prepare('SELECT count(*) n FROM av_revisions').get().n,1);
  assert.equal(evidence.every(x=>x.credentials==='include'&&x.cache==='no-store'&&x.redirect==='error'),true);
  assert.ok(!JSON.stringify(evidence.filter(x=>x.method==='GET')).includes('correct'));
 });

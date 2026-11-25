@@ -1,0 +1,14 @@
+{
+  "protocol": "salta-assessment-custody-v1",
+  "artifactSha256": "05b9a523bd2b738e4302da9209cc8ed40dc2888eebf2fa27571c99cd25e4caa2",
+  "inputs": [
+    {
+      "path": "assessments-service/custody/ledger.mjs",
+      "sha256": "b7af40aa9e9fce8f4c2bd08413511b60c6091b362eb3f0fc694e56cfa4936db2"
+    },
+    {
+      "path": "assessments-service/custody/worker.mjs",
+      "sha256": "9dbbfb66728fa66421943bf979a9cc3c9e63c3e9871ecf5b265810bee8dedd43"
+    }
+  ]
+}
