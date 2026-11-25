@@ -19,7 +19,7 @@ const S = {
   mode: "color", pageSize: "fit", auto: true, sound: true,
   busy: 0, editing: null, corner: null,
   frameMode: "fill", cameraFrame: null, cameraFrameKey: "",
-  captureEpoch: 0,
+  captureEpoch: 0, detectorBusy: false,
   det: { smooth: null, stable: 0, lost: 99, armed: true, lastCap: null, score: 0, support: 0, ms: 0, w: 0, h: 0 },
 };
 
@@ -41,7 +41,7 @@ function savePrefs() {
 
 /* ---------- worker ---------- */
 
-const worker = new Worker("js/worker.js?v=fiducial-1", { type: "module" });
+const worker = new Worker("js/worker.js?v=paper-turbo-1", { type: "module" });
 const pending = new Map();
 let wid = 0;
 worker.onmessage = (e) => {
@@ -55,8 +55,16 @@ worker.onerror = (e) => { for (const p of pending.values()) p.reject(new Error(e
 function callWorker(msg, transfer = []) {
   return new Promise((resolve, reject) => {
     const id = ++wid;
-    pending.set(id, { resolve, reject });
-    worker.postMessage({ id, ...msg }, transfer);
+    const timeout=setTimeout(()=>{
+      if(pending.delete(id))reject(new Error("O processamento excedeu o tempo limite."));
+    },msg.op==="detect-paper"?5500:24000);
+    const settle={
+      resolve:value=>{clearTimeout(timeout);resolve(value);},
+      reject:error=>{clearTimeout(timeout);reject(error);}
+    };
+    pending.set(id,settle);
+    try{worker.postMessage({id,...msg},transfer);}
+    catch(error){pending.delete(id);settle.reject(error);}
   });
 }
 
@@ -384,43 +392,48 @@ let lastTick = 0;
 function resetDetection() {
   S.captureEpoch++;
   Object.assign(S.det, { smooth: null, stable: 0, consecutive: 0, firstAt: 0,
-    lost: 99, armed: true, lastCap: null, lastCaptureMs: 0,
+    lost: 0, armed: true, lastCap: null, lastCaptureMs: 0,
     score: 0, support: 0, sharpness: 0 });
   drawOverlay(null);
   setRing(null);
 }
 
-function loop(ts) {
+async function loop(ts) {
   if (!S.running) return;
   requestAnimationFrame(loop);
-  if (ts - lastTick < LOOP_MS || document.hidden || S.editing || S.busy) return;
-  const video = $("video");
-  if (video.readyState < 2 || !video.videoWidth) return;
-  const frame = currentCameraFrame(video);
-  if (!frame) return;
-  lastTick = ts;
-  const dw = DET_W, dh = Math.max(8, Math.round(frame.sh * dw / frame.sw));
-  if (detCanvas.width !== dw || detCanvas.height !== dh) { detCanvas.width = dw; detCanvas.height = dh; }
-  detCtx.drawImage(video, frame.sx, frame.sy, frame.sw, frame.sh, 0, 0, dw, dh);
-  const img = detCtx.getImageData(0, 0, dw, dh);
-  const start = performance.now();
-  let q = null;
-  try { q = V.detectDocument(img.data, dw, dh); } catch(error) { console.warn("Detector de papel:", error); }
-  // Aumentar resolução somente quando não encontramos folha por vários ciclos.
-  // Sem redes neurais, bibliotecas externas nem ampliação digital do arquivo final.
-  if (!q && S.det.lost > 3 && S.det.lost % 5 === 4) {
-    const bigW=512,bigH=Math.max(8,Math.round(frame.sh*bigW/frame.sw));
-    detCanvas.width=bigW;detCanvas.height=bigH;
-    detCtx.drawImage(video,frame.sx,frame.sy,frame.sw,frame.sh,0,0,bigW,bigH);
-    try {
-      const hi=V.detectDocument(detCtx.getImageData(0,0,bigW,bigH).data,bigW,bigH);
-      if(hi)q={...hi,corners:hi.corners.map(([x,y])=>[x*dw/bigW,y*dh/bigH])};
-    } catch(error){console.warn("Detecção de folha distante:",error);}
+  if(ts-lastTick<LOOP_MS||document.hidden||S.editing||S.busy||S.detectorBusy)return;
+  const video=$("video");
+  if(video.readyState<2||!video.videoWidth)return;
+  const frame=currentCameraFrame(video);
+  if(!frame)return;
+  lastTick=ts;
+  // Em quadros sem documento, tenta tamanho um pouco maior ocasionalmente.
+  // Evita uma segunda detecção pesada no MESMO ciclo.
+  const distant=S.det.lost>3&&S.det.lost%5===4;
+  const dw=distant?512:DET_W,dh=Math.max(8,Math.round(frame.sh*dw/frame.sw));
+  if(detCanvas.width!==dw||detCanvas.height!==dh){
+    detCanvas.width=dw;detCanvas.height=dh;
   }
-  S.det.ms=performance.now()-start;
-  S.det.w=dw;S.det.h=dh;
-  const quality=q?sampleQuality(img.data,dw,dh,q.corners):null;
-  track(q,dw,dh,quality);
+  detCtx.drawImage(video,frame.sx,frame.sy,frame.sw,frame.sh,0,0,dw,dh);
+  const img=detCtx.getImageData(0,0,dw,dh);
+  const epoch=S.captureEpoch;
+  const started=performance.now();
+  S.detectorBusy=true;
+  try{
+    const result=await callWorker({op:"detect-paper",data:img.data,w:dw,h:dh},[img.data.buffer]);
+    if(!S.running||epoch!==S.captureEpoch||S.editing)return;
+    S.det.ms=performance.now()-started;
+    // Todos os cantos têm coordenadas DO quadro realmente detectado.
+    S.det.w=dw;S.det.h=dh;
+    track(result.detection,dw,dh,result.quality);
+  }catch(error){
+    if(S.running&&epoch===S.captureEpoch){
+      console.warn("Detector de folha indisponível:",error);
+      setPill("A câmera está aberta, mas a detecção falhou. Importe uma foto se persistir.","bad",1200);
+    }
+  }finally{
+    S.detectorBusy=false;
+  }
 }
 
 function maxShift(a, b) {
