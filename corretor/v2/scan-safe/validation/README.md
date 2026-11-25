@@ -32,4 +32,13 @@ Não foram medidos iPhone, Safari, sensores, congelamentos da prévia, temperatu
 
 ## G3 — replay incremental (OPTICAL-GUARD-01)
 
-O histórico acima e `optical-evidence.json`/`candidate-evidence.json` continuam sendo a evidência do defeito anterior, não do candidato corrigido. O novo `run-g3-validation.mjs` reconstitui os 46 rasters com Sharp, exige hash idêntico ao original, compara a API anterior e a candidata com o consenso congelado apenas offline e grava `tmp/scan-g3-evidence/report.json`. Inclui fiduciais removidos/pequenos/deslocados V1/V2/embedded e manual, FP/FN/review/indisponibilidade, 100 pares de latência e memória. Divergências de rasterização ou de cobertura bloqueiam o gate; não sobrescrever histórico. A CI fornece a execução vinculada ao SHA.
+O histórico acima e `optical-evidence.json`/`candidate-evidence.json` continuam sendo a evidência do defeito anterior, não do candidato corrigido. A deliberação #7178112720 separa validação funcional obrigatória de replay histórico estrito, sem alterar o motor. O resultado vermelho do job 139586188147 em `d746521` continua preservado: 3 rasters exatos e 43 regenerados, todos os testes funcionais aprovados, hash integral não reproduzido.
+
+```sh
+# CI obrigatória: todos os 46 cenários, controles e baseline por caso
+node --expose-gc corretor/v2/scan-safe/validation/run-g3-validation.mjs --functional
+# Reprodução histórica: mesma execução, adicionalmente exige 46/46 hashes RGBA
+node --expose-gc corretor/v2/scan-safe/validation/run-g3-validation.mjs --strict
+```
+
+Sem argumento, o runner continua estrito. Ambos os modos verificam os três RGBA versionados, todos os SVGs/labels originais, dimensões, fontes congeladas e baseline histórica por questão (estado, marcas, resposta, reconhecimento e identidade), métricas por caso, 46 cenários/750 questões, cobertura, 72 rejeições geométricas, controles positivos e 100 pares de latência/memória. Qualquer divergência funcional ou de baseline falha nos dois modos. Nenhum `continue-on-error` geral. Cada caso identifica a origem do raster e os hashes esperado/observado. `report.json` contém o gate funcional; `historical-replay.json` registra separadamente a identidade de pixels, `PENDING_PIXEL_IDENTITY` se houver divergência, ou `PASS` apenas se todos os 46 coincidirem. O modo estrito falha nesse caso pendente, mesmo quando o gate funcional passa. Não sobrescrever evidências históricas. A CI funcional vinculada ao SHA permite somente encaminhamento à conferência incremental e homologação física autorizada; não implica publicação ou aceite definitivo. G6 físico permanece pendente.

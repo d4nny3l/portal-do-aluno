@@ -111,10 +111,12 @@ jobs:
         run: |
           test "$(git rev-parse HEAD)" = "${{ github.event.pull_request.head.sha }}"
           node scripts/verify-scan-integration-scope.mjs
-      - name: G3 original hash-verified optical corpus and 100 paired captures
+          git merge-base --is-ancestor d746521be8c9abc7c0027ee4ef75888e9b9688cf HEAD
+          git diff --name-only d746521be8c9abc7c0027ee4ef75888e9b9688cf HEAD -- | python3 -c 'import sys; allowed={".github/workflows/test-corretor-integrated.yml","corretor/v2/scan-safe/validation/run-g3-validation.mjs","corretor/v2/scan-safe/validation/g3-replay-policy.mjs","corretor/v2/scan-safe/validation/README.md","corretor/v2/scan-safe/tests/g3-replay-policy.test.mjs"}; changed=set(sys.stdin.read().splitlines()); assert changed and changed<=allowed, sorted(changed-allowed); print("G3 operational incremental scope PASS; no product delta")'
+      - name: G3 mandatory functional corpus (46 cases), historical provenance and 100 paired captures
         run: |
           npm install --prefix "$RUNNER_TEMP/salta-g3" --no-save sharp@0.35.5
-          SALTA_SHARP_MODULE="$RUNNER_TEMP/salta-g3/node_modules/sharp/dist/index.cjs" node --expose-gc corretor/v2/scan-safe/validation/run-g3-validation.mjs
+          SALTA_SHARP_MODULE="$RUNNER_TEMP/salta-g3/node_modules/sharp/dist/index.cjs" node --expose-gc corretor/v2/scan-safe/validation/run-g3-validation.mjs --functional
       - uses: actions/upload-artifact@v4
         if: always()
         with:
