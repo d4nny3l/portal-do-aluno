@@ -4,12 +4,12 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self'; worker-src 'self'; style-src 'self'; font-src 'self'; img-src 'self' blob: data:; media-src 'self' blob: mediastream:; connect-src 'self' https://salta-stats.dannyel-moises.workers.dev; base-uri 'none'; form-action 'none'">
-<meta name="description" content="SALTA OMR Capture Lab — captura automática pelos quatro marcadores pretos do cartão, perspectiva e comparação óptica local.">
+<meta name="description" content="SALTA OMR Capture Lab — captura rápida pela folha, seleção de quadro mais nítido e leitura óptica SALTA.">
 <title>SALTA · Laboratório OMR por Scanner</title>
 <link rel="icon" href="favicon.svg" type="image/svg+xml">
 <link rel="stylesheet" href="css/style.css">
 <link rel="stylesheet" href="css/salta-scan.css">
-<link rel="stylesheet" href="css/omr-lab.css?v=fiducials-1">
+<link rel="stylesheet" href="css/omr-lab.css?v=paper-turbo-1">
 </head>
 <body>
 
@@ -27,12 +27,12 @@
 <section id="hero">
   <div class="eyebrow"><span class="eyebrow-dot"></span> SALTA OMR · LABORATÓRIO DE CAPTURA</div>
   <h1>Uma captura.<br><span class="hl">Duas leituras OMR.</span></h1>
-  <p class="lede">Aponte para os <strong>quatro quadradinhos pretos</strong> do cartão SALTA. A captura acontece quando todos ficam visíveis e estáveis. O recorte reconstrói as bordas externas, depois comparamos o OMR da imagem original com a imagem tratada. <strong>Experimento isolado: nenhuma nota será publicada.</strong></p>
+  <p class="lede">Aponte para a <strong>folha inteira</strong>. O scanner reconhece o contorno com rapidez, escolhe o quadro mais nítido quando necessário e corrige a perspectiva. Depois comparamos a fotografia original com a leitura OMR da imagem tratada. <strong>Experimento isolado: nenhuma nota será publicada.</strong></p>
   <div class="startrow">
     <button id="start" class="btn primary big" type="button">Abrir câmera</button>
     <button id="importbtn" class="btn ghost big" type="button">Importar foto</button>
     <input type="file" id="files" accept="image/*" multiple hidden aria-label="Selecionar fotografias de documentos">
-    <span class="hint mono">4 marcadores pretos · captura automática · comparação óptica</span>
+    <span class="hint mono">Detecção da folha · seleção de nitidez · comparação OMR</span>
   </div>
   <p id="camerr" class="err mono" role="alert" hidden></p>
   <p id="importStatus" class="import-status" role="status" aria-live="polite"></p>
@@ -78,7 +78,7 @@
       <button id="closeCamera" type="button" class="btn ghost small" aria-label="Fechar câmera">Fechar câmera</button>
       <span id="res" class="mono res" aria-label="Resolução da câmera"></span>
     </div>
-    <p class="keys mono">Mostre os quatro quadradinhos pretos e mantenha o aparelho estável. Se o cartão não couber, use “Ver imagem inteira”.</p>
+    <p class="keys mono">Enquadre a folha inteira. Não precisa imobilizar completamente o aparelho. Se faltar alguma borda, use “Ver imagem inteira”.</p>
   </div>
 
   <aside class="tray sheet" id="tray" aria-label="Páginas digitalizadas">
@@ -133,7 +133,7 @@
   </section>
   <section class="omr-lab-panel" aria-labelledby="omrResultTitle">
    <h3 id="omrResultTitle">2. Captura e comparação</h3>
-   <p class="omr-help">O enquadramento usa os quatro quadradinhos pretos, não o contorno do papel. Depois testamos a fotografia e o documento retificado no mesmo leitor oficial SALTA.</p>
+   <p class="omr-help">A captura reconhece o contorno da folha; a leitura usa os marcadores da prova depois da fotografia. São etapas independentes e o algoritmo OMR oficial continua igual.</p>
    <div class="omr-actions">
     <button id="omrReread" class="btn ghost" type="button" disabled>Ler última página novamente</button>
     <span id="omrCaptureCount" class="omr-mini">Nenhuma página recebida</span>
@@ -147,7 +147,7 @@
 </section>
 
 <section id="facts" class="facts" aria-label="Como funciona">
- <div class="fact"><h2 class="mono">01 / Detectar</h2><p>Encontre os quatro marcadores pretos do cartão SALTA, independentemente da cor da mesa ou do chão. O retângulo externo é reconstruído e a captura acontece com os quatro estáveis.</p></div>
+ <div class="fact"><h2 class="mono">01 / Detectar</h2><p>Localize rapidamente as quatro bordas da folha, mesmo sobre mesas e pisos escuros. A captura tolera pequenos movimentos e pode comparar dois quadros para escolher o mais nítido.</p></div>
  <div class="fact"><h2 class="mono">02 / Corrigir</h2><p>Os quatro cantos endireitam a perspectiva. A limpeza de iluminação busca clarear o papel sem perder textos, carimbos e imagens coloridas.</p></div>
  <div class="fact"><h2 class="mono">03 / Exportar</h2><p>Monte um PDF com várias páginas ou exporte imagens. Nenhuma foto é enviada para servidores. Ajuste os cantos se a detecção errar.</p></div>
 </section>
@@ -200,7 +200,7 @@
 
 <footer class="foot mono">SALTA OMR Capture Lab · Laboratório experimental, sem gravação de notas · Tecnologia de detecção e processamento adaptada de <a href="https://github.com/nipunbatra/scancat" target="_blank" rel="noopener noreferrer">Scancat (Nipun Batra)</a>, licença <a href="./LICENSE-SCANCAT-MIT.txt">MIT</a>. Resultados de qualidade dependem da foto, luz, foco e planicidade do papel.</footer>
 
-<script type="module" src="js/app.js?v=fiducials-1"></script>
-<script type="module" src="omr-lab.mjs?v=fiducials-1"></script>
+<script type="module" src="js/app.js?v=paper-turbo-1"></script>
+<script type="module" src="omr-lab.mjs?v=paper-turbo-1"></script>
 </body>
 </html>
