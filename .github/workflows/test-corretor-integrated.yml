@@ -46,7 +46,7 @@ jobs:
         run: |
           node --test corretor/v2/scan-safe/tests/*.test.mjs
           node --test laboratorio/salta-omr-scan-safe-02/integration/single-optical.test.mjs
-          echo '::warning::Scan integration remains publication-blocked: G3 optical counterexamples and G6 unobservable/ambiguous withdrawal and physical validation. Passing synthetic regressions does not authorize deployment.'
+          echo '::warning::Scan integration remains publication-blocked pending G3 corpus/geometry evidence, G6 ambiguous withdrawal and physical validation. Passing synthetic regressions does not authorize deployment.'
       - name: Check OMR modules and inline scripts
         run: |
           node --check plataforma/admin-shell.mjs
@@ -73,6 +73,8 @@ jobs:
           SALTA_SHARP_MODULE="$RUNNER_TEMP/salta-raster/node_modules/sharp/dist/index.cjs" node scripts/verify-card-header-raster.mjs
           SALTA_SHARP_MODULE="$RUNNER_TEMP/salta-raster/node_modules/sharp/dist/index.cjs" node scripts/verify-camera-geometry.mjs
           SALTA_SHARP_MODULE="$RUNNER_TEMP/salta-raster/node_modules/sharp/dist/index.cjs" node scripts/verify-camera-focus-raster.mjs
+      - name: G3 original hash-verified optical corpus and 100 paired captures
+        run: SALTA_SHARP_MODULE="$RUNNER_TEMP/salta-raster/node_modules/sharp/dist/index.cjs" node --expose-gc corretor/v2/scan-safe/validation/run-g3-validation.mjs
       - name: Camera flow in isolated Chromium and WebKit (synthetic MediaStream, not a physical camera)
         if: always() && hashFiles('tmp/camera-focus-evidence/a4-v2-manifest.json') != ''
         run: |
@@ -92,4 +94,5 @@ jobs:
             tmp/camera-evidence/
             tmp/camera-focus-evidence/
             tmp/scan-safe-browser/
+            tmp/scan-g3-evidence/
       - run: git diff --check HEAD^ HEAD

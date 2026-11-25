@@ -11,7 +11,10 @@ Base: `195585572bdcefee809981aada4ee7614b7e023f`. Preparação original do PR #1
 - A imagem documental ocupa `#canvas`. Regras da nota original continuam byte a byte; câmera aberta e nota visível até o disparo seguinte. Prévia provisória mantém `identity.state=review`, precisão/pesos oficiais e veto a reconhecimento parcial. Nunca autoriza vínculo ou lançamento. Código válido continua requisito acadêmico.
 - Páginas exigem escolha explícita. Agregação só aceita partição explícita de questões, páginas completas e mesmo código válido; não inventa partição nos modelos atuais, todos de uma página. Sem contrato multipágina verificável, a nota final fica pendente.
 
-## Bloqueador comprovado
+## Bloqueadores históricos e correção candidata G3
+
+OPTICAL-GUARD-01 (deliberação #7177720764): veto bilateral opt-in na mesma classificação Scanner gray, sem promoção de respostas; verificação dimensional A4/embedded antes do ranking e validação dos quatro quadrados e perímetros impressos independentes na matriz alinhada, inclusive manual. Os critérios experimentais 32 níveis/3×IQR são submetidos ao replay exato, não considerados aprovados pelo ensaio proxy. `run-g3-validation.mjs` preserva a evidência histórica e grava novo relatório na CI; exige hashes dos 46 rasters, zero novas respostas únicas erradas versus consenso, preservação de únicas legítimas e ausência de leitura em geometria inválida. Nenhuma alteração em câmera/G6, Magic Scan, pesos ou UI. O relato físico favorável do proprietário é qualitativo; a latência física deste novo SHA ainda não foi medida.
+
 
 O corpus rotulado tem 46 casos/750 questões (23 com uma marca, 21 múltiplas, 706 brancas). Nos três casos `shadow-AB-110/130/150`, A+B vira **read A** no Scanner gray; o consenso congelado exige revisão. A API candidata reproduz exatamente o caso 130 com uma única chamada. Não foi alterado nenhum limiar nem motor para contornar o achado.
 
