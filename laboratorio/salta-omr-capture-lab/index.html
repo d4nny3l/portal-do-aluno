@@ -1,0 +1,152 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self'; worker-src 'self'; style-src 'self'; font-src 'self'; img-src 'self' blob: data:; media-src 'self' blob: mediastream:; connect-src 'self' https://salta-stats.dannyel-moises.workers.dev; base-uri 'none'; form-action 'none'">
+<meta name="description" content="SALTA Scan Lab — digitalizador de documentos com detecção de papel, perspectiva, limpeza de sombras e PDF local.">
+<title>SALTA · Laboratório OMR por Scanner</title>
+<link rel="icon" href="favicon.svg" type="image/svg+xml">
+<link rel="stylesheet" href="css/style.css">
+<link rel="stylesheet" href="css/salta-scan.css">
+</head>
+<body>
+
+<header class="top">
+  <a class="brand" href="./" aria-label="SALTA Scan Lab">
+    <span class="salta-monogram" aria-hidden="true">S</span>
+    <span class="brandstack"><span class="wordmark">SALTA <span class="brand-accent">OMR LAB</span></span><span class="brandsub">CAPTURA EXPERIMENTAL OMR</span></span>
+  </a>
+  <span class="stamp" role="note" aria-label="Processamento local, sem envio de documentos">100% local <span>Sem envio de imagens</span></span>
+  <a class="srclink mono" href="https://github.com/nipunbatra/scancat" target="_blank" rel="noopener noreferrer">Motor aberto MIT</a>
+</header>
+
+<main>
+
+<section id="hero">
+  <div class="eyebrow"><span class="eyebrow-dot"></span> SALTA OMR · LABORATÓRIO DE CAPTURA</div>
+  <h1>Uma captura.<br><span class="hl">Duas leituras OMR.</span></h1>
+  <p class="lede">Aponte para o cartão-resposta. O mesmo motor do SALTA Scan fará a captura e o recorte; depois, compararemos a leitura OMR da imagem original com a imagem tratada. <strong>Experimento isolado: nenhuma nota será publicada.</strong></p>
+  <div class="startrow">
+    <button id="start" class="btn primary big" type="button">Abrir câmera</button>
+    <button id="importbtn" class="btn ghost big" type="button">Importar foto</button>
+    <input type="file" id="files" accept="image/*" multiple hidden aria-label="Selecionar fotografias de documentos">
+    <span class="hint mono">Câmera automática · modelo exato · comparação óptica</span>
+  </div>
+  <p id="camerr" class="err mono" role="alert" hidden></p>
+  <p id="importStatus" class="import-status" role="status" aria-live="polite"></p>
+</section>
+
+<section id="scanner" hidden aria-label="Área de digitalização">
+  <div class="stage">
+    <div class="viewport sheet" id="viewport">
+      <video id="video" autoplay playsinline muted></video>
+      <svg id="overlay" preserveAspectRatio="none" aria-hidden="true" focusable="false">
+        <polygon id="quad" points=""/>
+        <g id="dots"></g>
+      </svg>
+      <div id="flash" aria-hidden="true"></div>
+      <div class="pillrow">
+        <div id="pill" class="pill mono" role="status" aria-live="polite">Iniciando câmera…</div>
+        <svg id="ring" class="ring" viewBox="0 0 36 36" hidden aria-hidden="true">
+          <circle class="bg" cx="18" cy="18" r="15.5"/>
+          <circle id="ringfg" class="fg" cx="18" cy="18" r="15.5"/>
+        </svg>
+      </div>
+    </div>
+    <div class="controls">
+      <div class="ctls">
+        <label class="ctl"><span class="k mono">aparência</span>
+          <select id="mode" aria-label="Aparência do documento">
+            <option value="color">Cor aprimorada</option>
+            <option value="gray">Cinza</option>
+            <option value="bw">Preto e branco</option>
+            <option value="original">Sem aprimoramento</option>
+          </select></label>
+        <label class="ctl"><span class="k mono">folha PDF</span>
+          <select id="pagesize" aria-label="Tamanho da página do PDF">
+            <option value="fit">Proporcional</option>
+            <option value="a4">A4</option>
+            <option value="letter">Carta</option>
+          </select></label>
+        <label class="ctl chk"><input type="checkbox" id="sound" checked> <span>Som da captura</span></label>
+      </div>
+      <button id="importbtn2" type="button" class="btn ghost small">Importar foto</button>
+      <button id="closeCamera" type="button" class="btn ghost small" aria-label="Fechar câmera">Fechar câmera</button>
+      <span id="res" class="mono res" aria-label="Resolução da câmera"></span>
+    </div>
+    <p class="keys mono">Captura automática quando o papel estiver estável · Backspace: excluir última página · Ctrl/⌘ + S: salvar PDF</p>
+  </div>
+
+  <aside class="tray sheet" id="tray" aria-label="Páginas digitalizadas">
+    <div class="tray-head">
+      <span id="count" class="mono">Nenhuma página ainda</span>
+      <button id="clear" class="btn ghost small" type="button" disabled>Limpar tudo</button>
+    </div>
+    <ol id="pages" class="pages"></ol>
+    <p id="trayhint" class="trayhint">As páginas digitalizadas aparecem aqui. Toque em uma para ajustar cantos, girar, alterar o tratamento ou excluir.</p>
+    <div class="tray-foot">
+      <button id="pdf" class="btn primary" type="button" disabled>Baixar PDF</button>
+      <button id="jpgs" class="btn ghost" type="button" disabled title="Baixar as páginas como imagens JPEG">Imagens</button>
+    </div>
+  </aside>
+</section>
+
+<section id="facts" class="facts" aria-label="Como funciona">
+ <div class="fact"><h2 class="mono">01 / Detectar</h2><p>Encontre a folha mesmo sobre mesas, pisos ou superfícies com textura. O contorno é indicado em tempo real e a captura acontece quando a imagem fica estável.</p></div>
+ <div class="fact"><h2 class="mono">02 / Corrigir</h2><p>Os quatro cantos endireitam a perspectiva. A limpeza de iluminação busca clarear o papel sem perder textos, carimbos e imagens coloridas.</p></div>
+ <div class="fact"><h2 class="mono">03 / Exportar</h2><p>Monte um PDF com várias páginas ou exporte imagens. Nenhuma foto é enviada para servidores. Ajuste os cantos se a detecção errar.</p></div>
+</section>
+
+</main>
+
+<div id="editor" class="modal" hidden role="dialog" aria-modal="true" aria-label="Editar página digitalizada">
+  <div class="modal-card sheet">
+    <button id="edcloseX" class="editor-close" type="button" aria-label="Fechar foto" title="Fechar foto">×</button>
+    <div class="modal-bar">
+      <span id="edtitle" class="mono">Página 1</span>
+      <div class="modal-acts">
+        <button id="edrotl" class="btn ghost" type="button" title="Girar para a esquerda">⟲</button>
+        <button id="edrotr" class="btn ghost" type="button" title="Girar para a direita">⟳</button>
+        <select id="edmode" class="btn ghost" aria-label="Tratamento desta página">
+          <option value="">Tratamento geral</option>
+          <option value="color">Cor aprimorada</option>
+          <option value="gray">Cinza</option>
+          <option value="bw">Preto e branco</option>
+          <option value="original">Sem aprimoramento</option>
+        </select>
+        <button id="edcorners" class="btn ghost" type="button">Ajustar cantos</button>
+        <button id="edcopy" class="btn ghost" type="button" title="Copiar imagem">Copiar</button>
+        <button id="eddl" class="btn ghost" type="button" title="Baixar esta página em JPEG">JPEG</button>
+        <button id="eddel" class="btn ghost danger" type="button">Excluir</button>
+        <button id="edclose" class="btn" type="button">Concluir</button>
+      </div>
+    </div>
+    <div class="modal-body">
+      <div id="edview"><img id="edimg" alt="Página digitalizada"></div>
+      <div id="cornerpane" hidden>
+        <p class="cornerhint mono">Arraste os pontos para os quatro cantos do documento.</p>
+        <div class="cornerwrap" id="cornerwrap">
+          <canvas id="cornercv"></canvas>
+          <svg id="cornersvg" preserveAspectRatio="none" aria-hidden="true" focusable="false">
+            <polygon id="cornerpoly"/>
+            <circle class="h" data-i="0"/><circle class="h" data-i="1"/><circle class="h" data-i="2"/><circle class="h" data-i="3"/>
+          </svg>
+        </div>
+        <div class="cornerbar">
+          <button id="cornerfull" class="btn ghost" type="button">Usar imagem inteira</button>
+          <span class="grow"></span>
+          <button id="cornercancel" class="btn ghost" type="button">Cancelar</button>
+          <button id="cornerapply" class="btn primary" type="button">Aplicar recorte</button>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<footer class="foot mono">SALTA OMR Capture Lab · Laboratório experimental, sem gravação de notas · Tecnologia de detecção e processamento adaptada de <a href="https://github.com/nipunbatra/scancat" target="_blank" rel="noopener noreferrer">Scancat (Nipun Batra)</a>, licença <a href="./LICENSE-SCANCAT-MIT.txt">MIT</a>. Resultados de qualidade dependem da foto, luz, foco e planicidade do papel.</footer>
+
+<script type="module" src="js/app.js?v=omr-capture-1"></script>
+<script type="module" src="omr-lab.mjs?v=omr-capture-1"></script>
+</body>
+</html>
