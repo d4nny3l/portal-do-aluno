@@ -14,6 +14,7 @@ const report = {physicalDevice:false, syntheticStream:true, profiles:[]};
 for (const profile of [
   {name:'iphone-webkit-edge', engine:webkit, options:devices['iPhone 13'], mode:'edge'},
   {name:'iphone-webkit-primary', engine:webkit, options:devices['iPhone 13'], mode:'primary'},
+  {name:'iphone-webkit-primary-no-debug', engine:webkit, options:devices['iPhone 13'], mode:'primary', debug:false},
   {name:'desktop-chromium-edge', engine:chromium, options:{viewport:{width:1280,height:900}}, mode:'edge'},
 ]) {
   const browser = await profile.engine.launch({headless:true});
@@ -35,8 +36,9 @@ for (const profile of [
     const canvas=document.createElement('canvas');canvas.width=1280;canvas.height=720;
     const ctx=canvas.getContext('2d');
     let track, paper=false, blank=false;
-    const fixture={canvas,opens:0,stops:0,constraints:0,events:[],streams:[]};
+    const fixture={canvas,opens:0,stops:0,constraints:0,events:[],streams:[],draws:0};
     function draw(){
+      fixture.draws++;
       const w=canvas.width,h=canvas.height;
       ctx.fillStyle='#303030';ctx.fillRect(0,0,w,h);
       if(paper){ctx.fillStyle='#eee';ctx.fillRect(w*.23,h*.12,w*.54,h*.76);}
@@ -59,6 +61,8 @@ for (const profile of [
         fixture.opens++;
         if(!canvas.isConnected){canvas.style.cssText='position:fixed;left:0;bottom:0;width:1px;height:1px';document.body.append(canvas);}
         draw();const stream=canvas.captureStream(15);track=stream.getVideoTracks()[0];
+        const nativeSettings=track.getSettings.bind(track);
+        fixture.nativeSettings=()=>{const s=nativeSettings();return {width:s.width,height:s.height,frameRate:s.frameRate,readyState:track.readyState};};
         const stop=track.stop.bind(track);
         Object.defineProperties(track,{
           getCapabilities:{value:()=>({})},
@@ -133,7 +137,7 @@ for (const profile of [
     return s;
   }
   try {
-    await page.goto(origin+lab+'index.html?engine='+profile.mode+(profile.mode==='primary'?'&cameraDebug=1':''));
+    await page.goto(origin+lab+'index.html?engine='+profile.mode+(profile.mode==='primary'&&profile.debug!==false?'&cameraDebug=1':''));
     await page.waitForFunction(()=>window.__saltaScan);
     await page.evaluate(()=>{window.__saltaScan.S.sound=false;window.__saltaScan.S.auto=false;});
     await page.locator('#start').dispatchEvent('click');
@@ -235,7 +239,14 @@ for (const profile of [
     result.automaticCaptures=2;
     await sample('next-sheet');
     await page.evaluate(()=>window.__saltaScan.stopCameraView());
-  } catch(error){result.failures.push(error.stack||String(error));}
+  } catch(error){
+    result.failures.push(error.stack||String(error));
+    result.failureSnapshot=await page.evaluate(()=>({
+      presentation:window.__saltaScan?.cameraPresentation?.snapshot('failure'),
+      source:{width:window.__cameraFixture.canvas.width,height:window.__cameraFixture.canvas.height,draws:window.__cameraFixture.draws,
+        nativeSettings:window.__cameraFixture.nativeSettings?.()}
+    })).catch(()=>null);
+  }
   finally {
     result.events=await page.evaluate(()=>window.__cameraFixture?.events).catch(()=>[]);
     result.diagnostics=await page.evaluate(()=>window.__saltaScan?.cameraPresentation?.events).catch(()=>[]);
