@@ -115,3 +115,7 @@ body.live #hero{display:none}
  filter:drop-shadow(0 0 2px #1013297d)
 }
 #scanner.camera-on .pill{max-width:min(92%,430px);white-space:normal;line-height:1.4}
+
+/* PRIMARY-RESTORE: camera and overlay show ALL pixels, no digital crop. */
+#scanner.camera-on #video{object-fit:contain!important}
+#scanner.camera-on .framing-guide{display:none!important}
