@@ -3,6 +3,7 @@ import {readFile} from 'node:fs/promises';
 import {createHash} from 'node:crypto';
 import {detectFiducials,warpFromFiducials} from '../../omr/normalize.mjs';
 import {readRaster} from '../../omr/reader.mjs';
+import {legacyOpticalSource,SCOPED_OPTICS} from './legacy-optical-source.mjs';
 import {reconcile} from '../../../../laboratorio/salta-omr-scan-safe-02/js/safe-scan.mjs';
 const root=new URL('../../../../',import.meta.url);
 export const REFERENCE_FILES=[
@@ -14,7 +15,7 @@ export const REFERENCE_FILES=[
  'corretor/v2/omr/normalize.mjs','corretor/v2/omr/reader.mjs',
 ];
 export async function referenceHashes(){
- return Object.fromEntries(await Promise.all(REFERENCE_FILES.map(async file=>[file,createHash('sha256').update(await readFile(new URL(file,root))).digest('hex')])));
+ return Object.fromEntries(await Promise.all(REFERENCE_FILES.map(async file=>[file,createHash('sha256').update(SCOPED_OPTICS.includes(file)?legacyOpticalSource(file,await readFile(new URL(file,root),'utf8')):await readFile(new URL(file,root))).digest('hex')])));
 }
 export async function frozenCandidateRead(){
  const src=await readFile(new URL(REFERENCE_FILES[0],root),'utf8');

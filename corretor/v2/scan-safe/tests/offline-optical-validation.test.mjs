@@ -69,7 +69,7 @@ test('full frozen pipeline reproduces moderate A/A+B and the known shadow safety
  }
 });
 
-test('candidate production processor matches frozen rectified reading once, including the release blocker',async()=>{
+test('candidate production preserves legitimate readings and vetoes the shadow double in one read',async()=>{
  const worker=await frozenWorker(),candidate=await frozenCandidateRead();
  for(const [index,id] of ['moderate-A','moderate-AB','shadow-AB-130'].entries()){
   const spec=CASES.find(c=>c.id===id),model=modelFor(spec),saved=evidence.cases.find(c=>c.id===id);
@@ -79,7 +79,12 @@ test('candidate production processor matches frozen rectified reading once, incl
   const token={captureId:index+1,sessionId:0,templateId:model.template.templateId,templateRevision:model.template.revision,contentHash:model.manifest.contentHash,page:1};
   const result=processCapture({data,w,h,corners,...model,page:1,showCode:true,token});
   assert.equal(result.error,undefined,id);assert.equal(result.metrics.readCalls,1,id);
-  assert.deepEqual(result.reading,frozen.single.reading,`${id}: exact frozen Scanner gray output`);
+  if(id==='shadow-AB-130'){
+   const first=result.reading.observations[0];assert.equal(first.state,'review');assert.equal(first.answer,null);
+   assert.deepEqual([...first.marks].sort(),['A','B']);
+   assert.equal(metrics(truthFor(spec,model),result).incorrectDefinitiveAnswers,0);
+   assert.equal(result.reading.identity.code,'0001123');
+  }else assert.deepEqual(result.reading,frozen.single.reading,`${id}: legitimate reading preserved`);
   assert.deepEqual(result.token,token);assert.ok(result.optical.pixels instanceof Uint8Array);
  }
 });

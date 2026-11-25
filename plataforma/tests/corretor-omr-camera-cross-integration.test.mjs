@@ -66,6 +66,7 @@ function integrationHarness({privatePlan=false,validateSelection=false,places=2}
   documentEnhance(...args){documentCalls.push(args);return documentRgba},
   detect:()=>({found:true,confidence:.99,corners:[[0,0],[4,0],[4,5],[0,5]]}),
   warp:(gray,w,h)=>({pixels:gray,width:w,height:h}),
+  verifyGeometry:()=>true, // Mocked 4×5 raster; independent geometry covered in real capture regressions.
   read(t,pixels,w,h,options){readCalls.push({t,pixels,w,h,options});return reading(t,options)}};
  const scanWorker={cancel(){},async process(payload){workerCalls.push(payload);return processCapture(payload,dependencies)}};
  const handlers=['setScanMessage','setCameraProgress','showCameraGrade','markLastReadingPending','invalidateScan',

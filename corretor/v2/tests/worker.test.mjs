@@ -33,6 +33,7 @@ function fixture(overrides = {}) {
     documentEnhance: (data, w, h, mode) => { calls.push(['document', mode]); return new Uint8ClampedArray(w * h * 4).fill(250); },
     detect: (gray, w, h, options) => { calls.push(['detect', gray, options]); assert.ok(gray.every(v => v === 90)); return {found: true, confidence: .7, corners: points}; },
     warp: (gray, w, h, corners, options) => { calls.push(['align', gray, corners, options]); return aligned; },
+    verifyGeometry: () => true, // Tiny mocked raster: physical checks exercised by real RGBA tests below.
     read: (template, pixels, w, h, options) => { calls.push(['read', pixels, options]); return reading; },
     now: () => 1,
     ...overrides,
@@ -137,7 +138,10 @@ test('real native RGBA and frozen optics preserve ten known A marks with one off
     for (let y = Math.floor(p.y - p.size / 2); y <= Math.ceil(p.y + p.size / 2); y++)
       for (let x = Math.floor(p.x - p.size / 2); x <= Math.ceil(p.x + p.size / 2); x++) gray[y * w + x] = 0;
   for (const cell of layout.cells) {
-    const b = cell.bubbles[0], r = cell.bubbleRadius;
+    const r=cell.bubbleRadius;
+    for(const bubble of cell.bubbles)for(let y=Math.floor(bubble.y-r-1);y<=Math.ceil(bubble.y+r+1);y++)for(let x=Math.floor(bubble.x-r-1);x<=Math.ceil(bubble.x+r+1);x++)
+      if(Math.abs(Math.hypot(x-bubble.x,y-bubble.y)-r)<=.65)gray[y*w+x]=0;
+    const b = cell.bubbles[0];
     for (let y = Math.floor(b.y - r); y <= Math.ceil(b.y + r); y++)
       for (let x = Math.floor(b.x - r); x <= Math.ceil(b.x + r); x++)
         if ((x - b.x) ** 2 + (y - b.y) ** 2 <= r * r) gray[y * w + x] = 0;

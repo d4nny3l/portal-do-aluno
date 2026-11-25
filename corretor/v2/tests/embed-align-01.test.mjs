@@ -216,6 +216,13 @@ function captureResolutionScene(side,manifest){
   const size=fiducials[i].sizeMm*scale;
   fillRect(pixels,width,height,x-size/2,y-size/2,size,size,0);
  }
+ // Real printed perimeter evidence is required independently of the four markers.
+ for(const q of manifest.questions)for(const b of q.bubbles){
+  const x=100+(b.x-fiducials[0].x)*scale,y=80+(b.y-fiducials[0].y)*scale,r=b.radiusMm*scale;
+  for(let py=Math.floor(y-r-1);py<=Math.ceil(y+r+1);py++)for(let px=Math.floor(x-r-1);px<=Math.ceil(x+r+1);px++){
+   if(Math.abs(Math.hypot(px-x,py-y)-r)<=.55)pixels[py*width+px]=0;
+  }
+ }
  return {pixels,width,height,point};
 }
 function capturePayload(photo,template,manifest,captureId,manual=false){
