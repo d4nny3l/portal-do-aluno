@@ -291,11 +291,12 @@ test('module Worker transfers separate document/optical buffers from real frozen
     assert.equal(result.sourceOptical.gray.byteLength, 0);
     const manual = await manualResponse;
     assert.equal(manual.error, undefined);
-    assert.equal(manual.result.error, undefined);
+    // A blank photograph cannot acquire imaginary markers through manual input.
+    assert.equal(manual.result.error.code, 'FIDUCIALS_INVALID');
     assert.equal(manual.result.document, undefined);
-    assert.equal(manual.result.metrics.readCalls, 1);
-    assert.equal(manual.result.reading.contentHash, input.manifest.contentHash);
+    assert.equal(manual.result.metrics.readCalls, 0);
+    assert.equal(manual.result.reading, null);
     assert.deepEqual(manual.result.sourceOptical.gray, before);
-    assert.notEqual(manual.result.optical.pixels.buffer, manual.result.sourceOptical.gray.buffer);
+    assert.equal(manual.result.optical.pixels.buffer, manual.result.sourceOptical.gray.buffer);
   } finally { await worker.terminate(); }
 });
