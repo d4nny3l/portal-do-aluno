@@ -41,6 +41,7 @@ try{
   const c=await context(),p=await c.newPage();p.on('pageerror',e=>report.pageErrors.push(e.message));p.on('dialog',d=>d.accept());
   await p.goto(origin+'/portal-do-aluno/plataforma/corretor-v2.html');
   await p.locator('#scoreFormatSelect:not([disabled])').waitFor();
+  await p.locator('#savedAssessments select[aria-label="Minhas avaliações"]:not([disabled])').waitFor();
   const before=await p.locator('#savedAssessments select[aria-label="Minhas avaliações"]').inputValue();assert.equal(before,'');
   const labelsBefore=await p.locator('#savedAssessments select[aria-label="Minhas avaliações"] option').allTextContents();
   if(places>0)assert(labelsBefore.some(x=>x===`Sintética ${places-1} - Matemática - Turma S`));
