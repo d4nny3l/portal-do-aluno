@@ -1,0 +1,58 @@
+/* SALTA OMR Capture Lab — independent styles, never loaded by SALTA Scan. */
+.omr-laboratory{
+ margin-top:1.7rem;padding:clamp(.95rem,2.7vw,1.5rem);border:1px solid #ced5f0;
+ border-radius:20px;background:linear-gradient(150deg,#fff 7%,#f8f9ff 95%);
+ box-shadow:0 24px 44px -35px rgba(48,47,125,.35)
+}
+.omr-lab-top{display:flex;align-items:start;justify-content:space-between;gap:1rem;margin-bottom:1.15rem}
+.omr-overline{font-size:.68rem;font-weight:800;letter-spacing:.11em;color:#5a55bc}
+.omr-lab-top h2{font-size:clamp(1.3rem,2.3vw,1.85rem);letter-spacing:-.035em;margin:.35rem 0 .4rem;color:#242847}
+.omr-lab-top p{max-width:70ch;font-size:.87rem;line-height:1.56;color:#606984}
+.omr-reference{flex:0 0 auto;text-decoration:none;font-size:.78rem;font-weight:730;color:#5055b9;padding:.7rem .8rem;border:1px solid #d5d9f3;border-radius:10px;background:white}
+.omr-reference:hover{color:#383ca8;background:#f0f1ff}
+.omr-lab-grid{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1.2fr);gap:1rem}
+.omr-lab-panel{min-width:0;padding:1.1rem;background:#fff;border:1px solid #e1e4f1;border-radius:15px}
+.omr-lab-panel h3{font-size:1rem;line-height:1.4;margin-bottom:.5rem;color:#24294d}
+.omr-help{color:#6a7089;font-size:.81rem;line-height:1.57;margin-bottom:.85rem}
+.omr-field{display:flex;flex-direction:column;gap:.4rem;font-size:.77rem;color:#4b5375;font-weight:700;margin:.77rem 0}
+.omr-field select,.omr-field input{font:inherit;color:#222b4a;min-height:44px;width:100%;max-width:100%;padding:.5rem;border:1px solid #cfd5e6;border-radius:10px;background:#fff}
+.omr-field select:disabled{opacity:.55}
+.omr-import{margin-top:.95rem;border-top:1px solid #e9ebf4;padding-top:.95rem}
+.omr-import>summary{color:#5256b1;font-size:.81rem;font-weight:780;cursor:pointer}
+.omr-import .omr-help{margin-bottom:.25rem}
+.omr-status{margin:.8rem 0 0;border-radius:9px;padding:.8rem .85rem;font-size:.82rem;line-height:1.55;background:#f3f4ff;color:#454d85;overflow-wrap:anywhere}
+.omr-status[data-kind="error"]{background:#fff0f1;color:#9b313d}
+.omr-status[data-kind="ok"]{background:#edf8f2;color:#25674a}
+.omr-status[data-kind="warn"]{background:#fff6e6;color:#795b27}
+.omr-pinned{font-size:.78rem;line-height:1.55;margin-top:.85rem;padding:.75rem;border-left:3px solid #5b5ad5;background:#f7f7ff;color:#495071;border-radius:0 8px 8px 0;overflow-wrap:anywhere}
+.omr-pinned strong{color:#292b67}
+.omr-actions{display:flex;align-items:center;gap:.7rem;flex-wrap:wrap;margin:.8rem 0}
+.omr-mini{font-size:.73rem;color:#717b96}
+.omr-summary{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:.65rem;margin-top:.8rem}
+.omr-result-card{background:#f8f9ff;border:1px solid #e0e4f3;border-radius:12px;padding:.8rem;min-width:0}
+.omr-result-card strong{display:block;font-size:.81rem;color:#252a53;margin-bottom:.3rem}
+.omr-result-card small{display:block;color:#656f88;line-height:1.55}
+.omr-result-card .omr-number{font-size:1.35rem;letter-spacing:-.035em;font-weight:850;color:#5148b1}
+.omr-result-card[data-failed="true"]{background:#fff7f4;border-color:#f0d8d0}
+.omr-result-card[data-failed="true"] .omr-number{font-size:.88rem;color:#a04138}
+.omr-diff{margin-top:1rem;border-top:1px solid #e3e7f3;padding-top:1rem}
+.omr-diff h4{font-size:.88rem;margin-bottom:.4rem;color:#343a62}
+.omr-diff p{font-size:.76rem;color:#717890;line-height:1.5;margin-bottom:.65rem}
+.omr-diff-scroll{max-width:100%;overflow-x:auto;max-height:430px;overflow-y:auto;border:1px solid #e5e7f1;border-radius:9px}
+.omr-diff table{width:100%;border-collapse:collapse;min-width:320px;font-size:.77rem;text-align:left}
+.omr-diff th{background:#f4f5ff;color:#505777;position:sticky;top:0;text-align:left;font-size:.72rem}
+.omr-diff th,.omr-diff td{padding:.47rem .55rem;border-bottom:1px solid #edf0f7}
+.omr-diff tr[data-diff="true"]{background:#fff5dd}
+.omr-diff tr[data-review="true"] td{color:#a04f26}
+.omr-diff .omr-legend{display:flex;gap:.5rem;align-items:center;flex-wrap:wrap;margin-top:.6rem;font-size:.72rem;color:#7c8193}
+.omr-privacy{margin:1.15rem 0 0;font-size:.74rem;line-height:1.57;color:#737b95}
+.omr-privacy strong{color:#565e82}
+.omr-lab-panel button[disabled]{opacity:.42;cursor:not-allowed}
+@media(max-width:900px){.omr-lab-grid{grid-template-columns:1fr}.omr-lab-top{flex-wrap:wrap}}
+@media(max-width:540px){
+ .omr-laboratory{border-radius:15px;padding:.7rem}
+ .omr-lab-panel{padding:.83rem}
+ .omr-summary{grid-template-columns:1fr 1fr}
+ .omr-lab-top{padding:.45rem}
+ .omr-reference{width:100%;text-align:center}
+}
