@@ -591,7 +591,12 @@ async function capture(source = "auto") {
         }
         detCtx.drawImage(video,frame.sx,frame.sy,frame.sw,frame.sh,0,0,targetW,targetH);
         let q=null;
-        try{q=V.detectDocument(detCtx.getImageData(0,0,targetW,targetH).data,targetW,targetH);}catch{}
+        try{
+          const scan=detCtx.getImageData(0,0,targetW,targetH);
+          const result=await callWorker({op:"detect-paper",data:scan.data,w:targetW,h:targetH},[scan.data.buffer]);
+          q=result.detection;
+        }catch{}
+        if(token!==S.captureEpoch||!S.running)return null;
         if(q?.score>=MIN_SCORE&&quadDistance(q.corners,det)<.065*targetW){
           const nextCorners=shrinkQuad(q.corners.map(([x,y])=>[x*vw/targetW,y*vh/targetH]),.008);
           last=snapshot(nextCorners);
