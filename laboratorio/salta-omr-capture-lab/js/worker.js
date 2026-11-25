@@ -1,7 +1,7 @@
 // Scancat — page processing off the main thread: warp → enhance → rotate.
 
 import * as V from "./vision.js";
-import {sampleQuality} from "./quality.js?v=paper-turbo-2";
+import {sampleQuality} from "./quality.js?v=paper-turbo-3";
 
 
 self.onmessage = (e) => {
