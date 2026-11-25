@@ -6,11 +6,12 @@ Digitalizador experimental de documentos: detecção automática de folhas em fu
 
 Página isolada: `https://d4nny3l.github.io/portal-do-aluno/laboratorio/salta-scan/`.
 
-- Acesse por HTTPS em Safari/iPhone ou Chrome/Android; toque em **Abrir câmera** e autorize a câmera.
-- Enquadre uma folha inteira, com quatro bordas visíveis; a captura automática pode ser desativada.
+- Acesse por HTTPS em Safari/iPhone ou Chrome/Android; toque em **Abrir câmera** e autorize a câmera. O navegador seleciona a câmera traseira automaticamente (`facingMode: environment`) e o aplicativo solicita `focusMode: continuous` somente quando o aparelho disponibiliza essa capacidade. Caso contrário, usa o foco padrão do celular; não é possível garantir qual lente interna será selecionada.
+- Enquadre uma folha inteira, com quatro bordas visíveis. A captura acontece automaticamente após estabilização; não há botão manual de disparo nem seletor de lentes.
 - Se a detecção falhar ou se a câmera não estiver acessível, toque em **Importar foto** e ajuste os quatro cantos manualmente.
 - Experimente as aparências Cor aprimorada, Cinza, Preto e branco, Original. Salve como PDF A4, Carta ou proporcional, ou JPEG.
 - Fotos, pixels e PDF ficam no navegador; não existem endpoints para upload e a página aplica CSP restritiva.
+- Toque na miniatura para visualizar a foto e no **× Fechar foto** para sair da visualização. **Fechar câmera** libera o acesso à câmera sem excluir as páginas já digitalizadas.
 - As páginas ficam na memória da aba, sem sincronização. Exporte antes de fechar ou recarregar.
 
 ## Fonte, direito de reutilização e adaptações
@@ -29,3 +30,12 @@ O projeto priorizou JavaScript puro sem bibliotecas grandes. Alternativas estuda
 - Qualidade e velocidade variam conforme aparelho, iluminação, foco, sombra e resolução. Não foram realizados testes físicos em dispositivos do proprietário.
 - O reconhecimento geométrico é heurístico. Sempre confira os quatro cantos antes de exportar.
 - Não há armazenamento persistente de documentos, login, banco de dados ou conexões com Worker/D1/Stats.
+
+## Revisão UX — câmera e fechamento (24/11/2026)
+
+- Seletor de lentes e cache de `deviceId` removidos; o navegador/sistema decide a lente traseira automaticamente.
+- Foco contínuo solicitado somente por `getCapabilities()` / `applyConstraints()` quando suportado. Sem troca de câmera e sem falha se o Safari ignorar a configuração.
+- Captura automática sempre ligada; botão e atalho de disparo manual removidos.
+- Visualização de foto recebe botão `×` de fechamento; modal interrompe a detecção em segundo plano durante edição.
+- `Fechar câmera` desativa vídeo e preserva os documentos já capturados.
+- Validação automatizada com objetos de navegador simulados e verificação de todos os IDs DOM. Homologação física em Safari/iPhone e Android permanece necessária.
