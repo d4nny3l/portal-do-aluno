@@ -18,7 +18,7 @@ const S = {
   stream: null, running: false, pages: [], seq: 0,
   mode: "color", pageSize: "fit", auto: true, sound: true,
   busy: 0, editing: null, corner: null,
-  frameMode: "fill", cameraFrame: null, cameraFrameKey: "",
+  frameMode: "fit", cameraFrame: null, cameraFrameKey: "",
   captureEpoch: 0, detectorBusy: false,
   det: { smooth: null, stable: 0, lost: 99, armed: true, lastCap: null, score: 0, support: 0, ms: 0, w: 0, h: 0 },
 };
@@ -254,13 +254,13 @@ function updateCameraStage(video = $("video")) {
     : window.innerWidth <= 860 && window.innerHeight > window.innerWidth;
   const viewWidth = viewport.getBoundingClientRect().width || viewport.clientWidth || window.innerWidth - 24;
   const aspect = cameraStageAspect(video.videoWidth, video.videoHeight, {
-    portrait, viewWidth, windowHeight: window.innerHeight, mode: S.frameMode
+    portrait, viewWidth, windowHeight: window.innerHeight, mode: portrait ? "fill" : "fit"
   });
   viewport.style.aspectRatio = String(aspect);
   viewport.dataset.frameMode = S.frameMode;
-  video.style.objectFit = S.frameMode === "fit" ? "contain" : "cover";
-  button.textContent = S.frameMode === "fill" ? "Ver imagem inteira" : "Ampliar prévia";
-  button.setAttribute("aria-pressed", S.frameMode === "fit" ? "true" : "false");
+  video.style.objectFit = "contain"; // nunca cortar a fonte no modo OMR
+  button.textContent = "Imagem inteira";
+  button.setAttribute("aria-pressed", "true");
   S.cameraFrame = null; S.cameraFrameKey = "";
   resetDetection();
 }
@@ -271,7 +271,7 @@ function currentCameraFrame(video) {
   const width = rect.width || viewport.clientWidth;
   const height = rect.height || viewport.clientHeight;
   if (!video.videoWidth || !video.videoHeight || width < 2 || height < 2) return null;
-  const frame = cameraRegion(video.videoWidth, video.videoHeight, width, height, S.frameMode);
+  const frame = cameraRegion(video.videoWidth, video.videoHeight, width, height, "fit");
   const key = [frame.sourceWidth,frame.sourceHeight,S.frameMode,
     Math.round(width),Math.round(height),Math.round(frame.sx),Math.round(frame.sy),
     Math.round(frame.sw),Math.round(frame.sh)].join(":");
@@ -945,10 +945,7 @@ function wire() {
     } finally { $("start").disabled = false; }
   });
   $("closeCamera").addEventListener("click", stopCameraView);
-  $("framing").addEventListener("click", () => {
-    S.frameMode = S.frameMode === "fill" ? "fit" : "fill";
-    if (S.running) updateCameraStage($("video"));
-  });
+  // OMR: toda a imagem da câmera deve permanecer visível; sem zoom destrutivo.
   $("video").addEventListener("resize", () => {
     if (S.running) {
       updateCameraStage($("video"));
