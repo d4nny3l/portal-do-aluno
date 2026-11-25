@@ -33,9 +33,13 @@ jobs:
       - uses: actions/checkout@v4
         with:
           fetch-depth: 0
+          ref: ${{ github.event.pull_request.head.sha }}
+          persist-credentials: false
       - uses: actions/setup-node@v4
         with:
           node-version: 24
+      - name: Confirm exact candidate HEAD
+        run: test "$(git rev-parse HEAD)" = "${{ github.event.pull_request.head.sha }}"
       - run: node --test corretor/v2/tests/*.test.mjs
       - run: node --test plataforma/tests/*.test.mjs stats-worker/tests/*.test.mjs
       - name: Scan Safe candidate contracts and offline counterexamples (not optical approval)
