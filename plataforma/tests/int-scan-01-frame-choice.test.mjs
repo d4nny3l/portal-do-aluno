@@ -126,20 +126,22 @@ test('INT-SCAN-01: a malformed three-corner detector result is rejected before r
  assert.equal(recovered.reading.contentHash,model.manifest.contentHash);assert.equal(recovered.reading.observations[0].answer,'A');
 });
 
-test('INT-SCAN-01 known optical counterexample: erased A4 marker may be replaced by print, identity must stay pending',()=>{
+test('INT-SCAN-01 regression: erased A4 marker cannot be replaced by print; zero read and no grade',()=>{
  const missing=fixture.slice();
- // Three genuine physical markers remain. The frozen A4 detector substitutes
- // a printed component, so this is a safety counterexample, not an approval.
+ // Exact original contraprova, not a new artificial failure.
  for(let y=15;y<55;y++)for(let x=15;x<55;x++)missing.set([255,255,255,255],(y*fixtureWidth+x)*4);
- let detected,reads=0;
+ let legacy,reads=0;
  const result=processCapture(payload(missing,fixtureWidth,fixtureHeight),{
-  detect:(...args)=>{detected=detectFiducials(...args);return detected;},
+  detect:(gray,w,h,options)=>{
+   legacy=detectFiducials(gray,w,h,{manifest:options.manifest});
+   return detectFiducials(gray,w,h,options);
+  },
   read:(...args)=>{reads++;return readRaster(...args);},
  });
- assert.equal(detected.found,true);assert.equal(detected.corners.length,4);
- assert.ok(Math.hypot(detected.corners[0].x-8*fixtureWidth/210,detected.corners[0].y-8*fixtureHeight/297)>100,'wrong corner demonstrates the physical-marker limitation');
- assert.equal(reads,1);assert.equal(result.reading.identity.state,'review');assert.equal(result.reading.identity.code,null);
- assert.equal(result.reading.needsReview,true);assert.equal(result.reading.observations[0].state,'blank','known geometric failure loses the labelled A mark');
+ assert.equal(legacy.found,true);assert.equal(legacy.corners.length,4);
+ assert.ok(Math.hypot(legacy.corners[0].x-8*fixtureWidth/210,legacy.corners[0].y-8*fixtureHeight/297)>100,'historical path substitutes print');
+ assert.ok(['FIDUCIALS_NOT_FOUND','FIDUCIALS_INVALID'].includes(result.error?.code));
+ assert.equal(reads,0);assert.equal(result.metrics.readCalls,0);assert.equal(result.reading,null);
 });
 
 test('INT-SCAN-01: sharp preview never replaces an unusable final photo or causes a second silent capture',async()=>{
