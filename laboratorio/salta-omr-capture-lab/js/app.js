@@ -552,7 +552,7 @@ async function capture(source = "auto") {
     // Fast path: se a folha já está nítida, fotografar imediatamente.
     // Diante de desfoque, uma segunda oportunidade só se a câmera não
     // estiver se movimentando demais (evita reaproveitar cantos incorretos).
-    if(firstStable>=1&&(first.quality.sharpness<8||first.quality.clipping>.18)){
+    if(firstStable>=1&&(first.quality.sharpness<24||first.quality.clipping>.18)){
       await shortVideoPause();
       if(token!==S.captureEpoch||!S.running)return null;
       const current=S.cameraFrame;
