@@ -66,9 +66,24 @@ test('library remains isolated in Criar avaliação; Corrigir cartões uses expl
  const focus='<span id="cameraFocusLabel" hidden><button id="cameraFocus" type="button">Solicitar foco</button></span>';
  assert.equal(markup.split(focus).length,2);
  assert.ok(markup.indexOf(focus)<markup.indexOf('<details class="camera-settings"'));
- const prior=markup.replace(focus,'').replace('<label class="camera-check" id="cameraTorchLabel"', '<span id="cameraFocusLabel" hidden><button id="cameraFocus" type="button">Focar automaticamente</button></span><label class="camera-check" id="cameraTorchLabel"');
+ // Reconstruct the pinned markup before UX-READY-01's precisely scoped wording changes.
+ const prior=markup.replace(focus,'')
+  .replace('<label class="camera-check" id="cameraTorchLabel"', '<span id="cameraFocusLabel" hidden><button id="cameraFocus" type="button">Focar automaticamente</button></span><label class="camera-check" id="cameraTorchLabel"')
+  .replace('Avaliação cadastrada<select id="readingAssessment"', 'Avaliação cadastrada (homologação)<select id="readingAssessment"')
+  .replace('<summary>Conferir imagem</summary>', '<summary>Comparar original e normalizada</summary>')
+  .replace('<figcaption>Imagem original (em cinza)</figcaption>', '<figcaption>Original em cinza — quadro inteiro, sem correção de lente</figcaption>')
+  .replace('<figcaption>Imagem ajustada</figcaption>', '<figcaption>Normalizada — perspectiva por quatro marcadores</figcaption>')
+  .replace('<canvas id="originalCapture" aria-label="Imagem original em tons de cinza, sem correção de lente"></canvas>', '<canvas id="originalCapture"></canvas>')
+  .replace('<canvas id="normalizedCapture" aria-label="Imagem ajustada pela perspectiva dos quatro marcadores"></canvas>', '<canvas id="normalizedCapture"></canvas>')
+  .replace('aria-label="Prévia da imagem ajustada do cartão"', 'aria-label="Prévia da imagem normalizada do cartão"')
+  .replace('Importar modelo do cartão<input type="file" id="loadManifest" accept="application/json,.json" aria-label="Importar modelo do cartão em JSON"', 'Importar modelo do cartão (JSON)<input type="file" id="loadManifest" accept="application/json,.json"')
+  .replace('Importar modelo do cartão (JSON)', 'Importar modelo exato (JSON)')
+  .replace('Foto capturada', 'Captura consolidada')
+  .replace('<p id="scanModelStatus" class="status" role="status"></p>', '<p id="scanModelStatus" class="status" role="status">Gere o cartão nesta sessão ou importe o JSON exato, inclusive para cartões anteriores.</p>')
+  .replace('Formato<select id="scanType"', 'Formato padrão V2<select id="scanType"')
+  .replace('Questões<input id="scanCount"', 'Questões do modelo padrão<input id="scanCount"');
  assert.equal(fnv(prior),'b740cdc8871ea315');
- assert.equal(gitSha('plataforma/corretor-v2.css'),'176dbecdf3abaf4680b7dfef2e97cca92acf738d');
+ assert.equal(gitSha('plataforma/corretor-v2.css'),'7602bebba8cac2cb4b74b49146acf4031a740abd');
  assert.match(html,/mountAssessmentLibrary\(/);
  assert.match(html,/privateSelection\.manifestHash/);
  assert.doesNotMatch(html.slice(start,correct),/<section[^>]+id="piloto-avaliacoes"/);
@@ -128,7 +143,7 @@ test('embedded V2 keeps its manifest; CDU, nominal students and incompatible alt
  const m=make();
  assert.throws(()=>assertLibraryModel({manifest:m.manifest,editor:m.editor,nominalFields:{code:'1234567'}}),/Limpe nome/);
  const cdu=make({counts:[3],types:['CDU']});
- assert.throws(()=>createLibraryPlan(planArgs(cdu)),/apenas cartão A4|suportado|compatível/i);
+ assert.throws(()=>createLibraryPlan(planArgs(cdu)),/não pode ser salvo|compatível/i);
  const embedded=make({counts:[3],types:['A-D'],mode:'embedded'});
  const saved=createLibraryPlan(planArgs(embedded));
  assert.deepEqual(saved.definition.manifest,embedded.manifest);
@@ -421,7 +436,7 @@ test('P0 race SELECT: delayed issued selection cannot revive old answer key afte
  await selecting;
  assert.equal(f.getSelected(),null,'stale selection must never activate private key');
  assert.equal(f.mounted.controller.view().record.id,initial.id,'preserve writable record for editing B');
- assert.match(f.top.children[4].textContent,/não foram salvas|confirme novamente/);
+ assert.match(f.top.children[4].textContent,/Alterações não salvas|Salve e selecione novamente/i);
  await f.button('Usar na correção').handlers.click();
  assert.equal(f.getSelected(),null,'unsaved B cannot silently select old issued A');
  await f.button('Salvar avaliação').handlers.click();
@@ -448,7 +463,7 @@ test('P0 race SAVE: delayed receipt confirms frozen A while edited B remains uns
  assert.equal(result.revision,1);
  assert.equal(result.definition.title,'Avaliação de Matemática');
  assert.equal(f.m.editor.fields.assessmentTitle,'Título posterior B','local edit B must remain visible');
- assert.match(f.top.children[4].textContent,/avaliação enviada foi salva.*alterações posteriores/i);
+ assert.match(f.top.children[4].textContent,/Alterações não salvas/i);
  assert.equal(f.getPending(),null,'receipt and verifying GET settled original request');
  await f.button('Salvar avaliação').handlers.click();
  assert.equal(f.mounted.controller.view().record.revision,2);
@@ -477,7 +492,7 @@ test('P0 retry: edited B cannot change original requestId/body/CAS while lost A 
  assert.equal(saved.revision,1,'idempotent replay cannot create revision 2');
  assert.equal(saved.definition.title,'Avaliação de Matemática');
  assert.equal(f.m.editor.fields.assessmentTitle,'Outra edição B');
- assert.match(f.top.children[4].textContent,/alterações posteriores/i);
+ assert.match(f.top.children[4].textContent,/Alterações não salvas/i);
 });
 
 test('P0 race OPEN: an old GET cannot overwrite edits made while assessment is loading',async()=>{
@@ -515,7 +530,7 @@ test('P0 structural buttons: delayed SELECT never reactivates an old key without
   hold.resolve();await selecting;
   assert.equal(f.getSelected(),null,'old key cannot return after '+kind);
   assert.equal(f.mounted.controller.view().record.id,id,'keep writable revision for B');
-  assert.match(f.top.children[4].textContent,/não foram salvas|confirme novamente/i);
+  assert.match(f.top.children[4].textContent,/Alterações não salvas|Salve e selecione novamente/i);
   assert.equal(f.button('Usar na correção').disabled,true);
  });
 });
@@ -529,7 +544,7 @@ test('P0 structural buttons: an already active selection is cleared without an i
   await f.silentClick(kind);
   assert.equal(f.getSelected(),null,'already selected key must be cleared after '+kind);
   assert.equal(f.button('Usar na correção').disabled,true);
-  assert.match(f.top.children[4].textContent,/alterações ainda não salvas/i);
+  assert.match(f.top.children[4].textContent,/Alterações não salvas/i);
  });
 });
 
@@ -554,7 +569,7 @@ test('P0 structural buttons: delayed PUT preserves A receipt but never declares 
   assert.equal(f.getPending(),null);
   assert.equal(f.writeCalls[0].requestId,original);
   assert.equal(f.writeCalls[0].expectedRevision,0);
-  assert.match(f.top.children[4].textContent,/avaliação enviada foi salva.*alterações posteriores/i);
+  assert.match(f.top.children[4].textContent,/Alterações não salvas/i);
   assert.equal(f.button('Usar na correção').disabled,true);
  });
 });
@@ -589,7 +604,7 @@ test('P0 structural retry: requestId, body and CAS are unchanged after silent se
  assert.equal(f.writeCalls.length,2);
  assert.deepEqual(f.writeCalls[0],f.writeCalls[1],'frozen HTTP payload and CAS must replay byte-for-byte');
  assert.equal(f.mounted.controller.view().record.revision,1);
- assert.match(f.top.children[4].textContent,/alterações posteriores/i);
+ assert.match(f.top.children[4].textContent,/Alterações não salvas/i);
 });
 
 

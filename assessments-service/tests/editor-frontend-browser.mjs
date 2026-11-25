@@ -255,7 +255,7 @@ try{
   assert.equal(r.status,201,'historic v2 transport');
   const cLegacy=await context(),pLegacy=await page(cLegacy);
   await pLegacy.locator('#savedAssessments select[aria-label="Minhas avaliações"]').selectOption(id);
-  await pLegacy.waitForFunction(()=>document.querySelector('#savedAssessments').innerText.includes('Avaliação histórica'));
+  await pLegacy.waitForFunction(()=>document.querySelector('#savedAssessments').innerText.includes('Alguns campos não foram recuperados'));
   assert.equal(await pLegacy.locator('#columnCount').inputValue(),'auto');
   assert.equal(await pLegacy.locator('#studentName').inputValue(),'');
   await cLegacy.close();
@@ -263,7 +263,7 @@ try{
  report.cases.push('Historical A4 V1 and V2 reopened with deterministic warning and no inherited student data');
  const c3=await context(false),p3=await page(c3);
  assert.equal(await p3.locator('#savedAssessments button[data-action-icon="save"]').isDisabled(),true);
- assert((await p3.locator('#savedAssessments').innerText()).includes('salvamento integral'));
+ assert((await p3.locator('#savedAssessments').innerText()).includes('Não foi possível salvar todas as configurações'));
  assert(!requests.some(r=>r.capability===false&&r.method==='PUT'));
  await c3.close();
  report.cases.push('No capability: new saves blocked; no PUT and no silent downgrade to v2');

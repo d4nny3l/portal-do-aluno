@@ -24,12 +24,15 @@ jobs:
         with:
           fetch-depth: 0
           persist-credentials: false
+          ref: ${{ github.event.pull_request.head.sha }}
       - uses: actions/setup-node@v4
         with:
           node-version: 24
       - name: Exact authorized scope, syntax, vendored integrity and regression
         run: |
-          if node scripts/verify-single-shot-scope.mjs; then
+          if node scripts/verify-product-ux-scope.mjs; then
+            echo 'PR #130 changes only the user-facing copy; PDF source and regression suite remain pinned.'
+          elif node scripts/verify-single-shot-scope.mjs; then
             echo 'PR #128 only changes camera capture; pinned PDF dependencies and regressions execute below.'
           elif ! node scripts/verify-camera-focus-scope.mjs; then
             node scripts/verify-direct-pdf-scope.mjs
