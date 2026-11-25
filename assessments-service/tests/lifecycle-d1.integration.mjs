@@ -16,7 +16,7 @@ test('real workerd D1 migration + atomic replacement/delete, concurrent saves, r
      const result=await db.prepare(sql).all();
      return {...result,results:[{name:'_cf_KV'},...result.results.filter(row=>row.name!=='_cf_KV')]};
     }};
-    if(sql==='PRAGMA foreign_key_list("_cf_KV")')throw new Error('not authorized: SQLITE_AUTH');
+    if(sql==='PRAGMA foreign_key_list("_cf_KV")'||sql==='PRAGMA foreign_key_list("synthetic_unreadable_dependency")')throw new Error('not authorized: SQLITE_AUTH');
     return db.prepare(sql);
    },
    batch(statements){return db.batch(statements);}
@@ -60,6 +60,21 @@ test('real workerd D1 migration + atomic replacement/delete, concurrent saves, r
   assert.equal(await db.prepare('SELECT count(*) n FROM synthetic_unreviewed_dependency').first('n'),1);
   assert.equal(await db.prepare('SELECT count(*) n FROM av_revisions').first('n'),1);
   await db.exec('DROP TABLE synthetic_unreviewed_dependency;');
+  // Authorization failure on any application table must still fail closed;
+  // only the exact provider-owned _cf_KV is exempted.
+  await db.exec('CREATE TABLE synthetic_unreadable_dependency (assessment_id TEXT REFERENCES av_assessments(id) ON DELETE CASCADE);');
+  await db.prepare('INSERT INTO synthetic_unreadable_dependency (assessment_id) VALUES (?)').bind(id).run();
+  for(const response of [
+   await req(route,'PUT',{...packet(1),lifecycleVersion:version}),
+   await req(route+'/delete','POST',{requestId:crypto.randomUUID(),expectedRevision:1,lifecycleVersion:version})
+  ]){
+   assert.equal(response.status,503);
+   assert.equal((await response.json()).code,'service_unavailable');
+  }
+  assert.equal(await db.prepare('SELECT count(*) n FROM synthetic_unreadable_dependency').first('n'),1);
+  assert.equal(await db.prepare('SELECT count(*) n FROM av_revisions').first('n'),1);
+  assert.equal((await req(route)).status,200);
+  await db.exec('DROP TABLE synthetic_unreadable_dependency;');
   const race=await Promise.all([1,2].map(()=>req(route,'PUT',{...packet(1),lifecycleVersion:version})));assert.deepEqual(race.map(r=>r.status).sort(),[201,409]);
   assert.equal(await db.prepare('SELECT count(*) n FROM av_revisions').first('n'),1);assert.equal((await req(route+'/revisions/1')).status,410);
   const before=(await (await req(route)).json()).record;
