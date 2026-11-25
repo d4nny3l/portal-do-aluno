@@ -14,7 +14,7 @@ const MAX_SIDE = 2600;       // longest side of a scanned page (px)
 
 const S = {
   stream: null, running: false, pages: [], seq: 0,
-  mode: "color", pageSize: "fit", auto: true, sound: true, deviceId: null,
+  mode: "color", pageSize: "fit", auto: true, sound: true,
   busy: 0, editing: null, corner: null,
   det: { smooth: null, stable: 0, lost: 99, armed: true, lastCap: null, score: 0, support: 0, ms: 0, w: 0, h: 0 },
 };
@@ -26,14 +26,12 @@ function loadPrefs() {
     const p = JSON.parse(localStorage.getItem("salta-scan:prefs") || "{}");
     if (V.MODES.includes(p.mode)) S.mode = p.mode;
     if (["fit", "a4", "letter"].includes(p.pageSize)) S.pageSize = p.pageSize;
-    if (typeof p.auto === "boolean") S.auto = p.auto;
     if (typeof p.sound === "boolean") S.sound = p.sound;
-    if (typeof p.deviceId === "string") S.deviceId = p.deviceId;
   } catch { /* ignore */ }
 }
 function savePrefs() {
   try {
-    localStorage.setItem("salta-scan:prefs", JSON.stringify({ mode: S.mode, pageSize: S.pageSize, auto: S.auto, sound: S.sound, deviceId: S.deviceId }));
+    localStorage.setItem("salta-scan:prefs", JSON.stringify({ mode: S.mode, pageSize: S.pageSize, sound: S.sound }));
   } catch { /* ignore */ }
 }
 
@@ -162,70 +160,95 @@ function cameraError(e) {
   if (!window.isSecureContext) return "A câmera exige HTTPS ou localhost.";
   switch (e && e.name) {
     case "NotAllowedError": case "SecurityError":
-      return "Camera access was blocked. Allow it for this site (the camera icon in the address bar, or the browser's site settings) and press Start camera again.";
+      return "A câmera foi bloqueada. Autorize o acesso nas configurações do navegador e tente novamente.";
     case "NotFoundError": case "OverconstrainedError": return "Não encontramos uma câmera neste dispositivo.";
     case "NotReadableError": case "AbortError": return "A câmera está sendo usada por outro aplicativo.";
-    default: return `Couldn't start the camera: ${e && e.message || e}`;
+    default: return `Não foi possível abrir a câmera: ${e && e.message || e}`;
   }
 }
 
-async function startCamera(deviceId) {
-  if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
-    showErr("This browser can't access the camera. Try a current Chrome, Safari, Firefox or Edge.");
+// A câmera/lente traseira é escolhida pelo navegador e pelo sistema, nunca por deviceId fixo.
+// focusMode é opcional: Safari pode não expor a capacidade e nesse caso mantém o foco nativo.
+async function requestContinuousFocus(track) {
+  if (!track || typeof track.getCapabilities !== "function" || typeof track.applyConstraints !== "function") return false;
+  try {
+    const capabilities = track.getCapabilities();
+    if (!Array.isArray(capabilities?.focusMode) || !capabilities.focusMode.includes("continuous")) return false;
+    const constraints = typeof track.getConstraints === "function" ? track.getConstraints() : {};
+    const advanced = Array.isArray(constraints.advanced) ? constraints.advanced : [];
+    await track.applyConstraints({ ...constraints, advanced: [...advanced, {focusMode:"continuous"}] });
+    return true;
+  } catch {
+    // Nunca interromper o scanner nem trocar de câmera por falha de foco opcional.
+    return false;
+  }
+}
+
+function stopCameraView() {
+  S.running = false;
+  stopStream();
+  const video = $("video");
+  video.pause();
+  video.srcObject = null;
+  resetDetection();
+  document.body.classList.remove("live");
+  $("scanner").classList.remove("camera-on");
+  $("scanner").hidden = S.pages.length === 0;
+  $("res").textContent = "";
+}
+
+async function startCamera() {
+  if (S.running && S.stream) return true;
+  if (!navigator.mediaDevices?.getUserMedia) {
+    showErr("Este navegador não permite abrir a câmera. Importe uma foto ou tente no Safari/Chrome atualizado.");
     return false;
   }
   stopStream();
-  const base = { width: { ideal: 3840 }, height: { ideal: 2160 } };
-  const constraints = deviceId ? { ...base, deviceId: { exact: deviceId } } : { ...base, facingMode: "environment" };
+  // facingMode ideal permite escolher automaticamente o conjunto traseiro,
+  // mantendo o dispositivo/lente sob controle do navegador (Safari/Android).
+  const constraints = {
+    facingMode: { ideal: "environment" },
+    width: { ideal: 3840 },
+    height: { ideal: 2160 }
+  };
   let stream;
   try {
-    stream = await navigator.mediaDevices.getUserMedia({ video: constraints, audio: false });
+    stream = await navigator.mediaDevices.getUserMedia({video:constraints,audio:false});
   } catch (e) {
-    if (deviceId && ["OverconstrainedError", "NotFoundError", "NotReadableError"].includes(e.name)) return startCamera(null);
     showErr(cameraError(e));
+    return false;
+  }
+  const track = stream.getVideoTracks()[0];
+  if (!track) {
+    stream.getTracks().forEach(t=>t.stop());
+    showErr("A câmera não forneceu vídeo.");
     return false;
   }
   showErr("");
   S.stream = stream;
   const video = $("video");
   video.srcObject = stream;
-  await new Promise((res) => {
-    if (video.readyState >= 1 && video.videoWidth) return res();
-    video.addEventListener("loadedmetadata", () => res(), { once: true });
+  await new Promise(res=>{
+    if(video.readyState>=1 && video.videoWidth)return res();
+    video.addEventListener("loadedmetadata",res,{once:true});
   });
-  try { await video.play(); } catch { /* autoplay is muted so this shouldn't fail */ }
-  const track = stream.getVideoTracks()[0];
-  const st = track.getSettings ? track.getSettings() : {};
-  S.deviceId = st.deviceId || deviceId || null;
-  savePrefs();
-  const vw = video.videoWidth, vh = video.videoHeight;
-  $("viewport").style.aspectRatio = `${vw} / ${vh}`;
-  $("res").textContent = `${vw}×${vh}`;
-  track.addEventListener("ended", () => { if (S.running) { setPill("camera stopped", "bad"); } });
-  await refreshDevices();
+  try { await video.play(); } catch { /* vídeo mudo + playsinline; sem bloqueio do scanner */ }
+  const vw=video.videoWidth,vh=video.videoHeight;
+  $("viewport").style.aspectRatio=`${vw} / ${vh}`;
+  $("res").textContent=`${vw}×${vh} · câmera automática`;
+  track.addEventListener("ended",()=>{
+    if(S.running){stopCameraView();showErr("A câmera foi desconectada. Toque em Abrir câmera para tentar novamente.");}
+  },{once:true});
   document.body.classList.add("live");
-  $("scanner").hidden = false;
+  $("scanner").hidden=false;
   $("scanner").classList.add("camera-on");
-  S.running = true;
+  S.running=true;
   resetDetection();
   setPill("looking for a page…");
   requestAnimationFrame(loop);
+  // Melhor esforço; nunca bloqueia a primeira prévia ou captura.
+  void requestContinuousFocus(track);
   return true;
-}
-
-async function refreshDevices() {
-  let devs = [];
-  try { devs = (await navigator.mediaDevices.enumerateDevices()).filter((d) => d.kind === "videoinput"); } catch { /* ignore */ }
-  const sel = $("camera");
-  sel.innerHTML = "";
-  devs.forEach((d, i) => {
-    const o = document.createElement("option");
-    o.value = d.deviceId;
-    o.textContent = d.label || `Câmera ${i + 1}`;
-    sel.appendChild(o);
-  });
-  if (S.deviceId && devs.some((d) => d.deviceId === S.deviceId)) sel.value = S.deviceId;
-  sel.parentElement.hidden = devs.length < 2;
 }
 
 /* ---------- detection loop ---------- */
@@ -243,7 +266,7 @@ function resetDetection() {
 function loop(ts) {
   if (!S.running) return;
   requestAnimationFrame(loop);
-  if (ts - lastTick < LOOP_MS || document.hidden) return;
+  if (ts - lastTick < LOOP_MS || document.hidden || S.editing) return;
   lastTick = ts;
   const video = $("video");
   if (video.readyState < 2 || !video.videoWidth) return;
@@ -472,18 +495,20 @@ function renderTray() {
 
 function openEditor(page) {
   S.editing = page;
+  if (S.running) resetDetection();
   $("edimg").src = page.url;
   $("edtitle").textContent = `Página ${S.pages.indexOf(page) + 1} de ${S.pages.length}`;
   $("edmode").value = page.mode || "";
   leaveCornerMode();
   $("editor").hidden = false;
-  $("edclose").focus();
+  $("edcloseX").focus();
 }
 
 function closeEditor() {
   S.editing = null;
   leaveCornerMode();
   $("editor").hidden = true;
+  if (S.running) resetDetection();
 }
 
 function leaveCornerMode() {
@@ -648,19 +673,15 @@ async function importPhoto(file,{showManual=true}={}) {
 function wire() {
   loadPrefs();
   $("mode").value = S.mode; $("pagesize").value = S.pageSize;
-  $("auto").checked = S.auto; $("sound").checked = S.sound;
+  S.auto = true; $("sound").checked = S.sound;
 
   $("start").addEventListener("click", async () => {
     $("start").disabled = true;
-    const ok = await startCamera(S.deviceId);
+    const ok = await startCamera();
     $("start").disabled = false;
-    if (ok) $("shutter").focus();
+    if (ok) $("closeCamera").focus();
   });
-  $("camera").addEventListener("change", (e) => { startCamera(e.target.value); });
-  navigator.mediaDevices?.addEventListener?.("devicechange", () => { if (S.running) refreshDevices(); });
-
-  $("shutter").addEventListener("click", () => capture("manual"));
-  $("auto").addEventListener("change", (e) => { S.auto = e.target.checked; savePrefs(); });
+  $("closeCamera").addEventListener("click", stopCameraView);
   $("sound").addEventListener("change", (e) => { S.sound = e.target.checked; savePrefs(); });
   $("pagesize").addEventListener("change", (e) => { S.pageSize = e.target.value; savePrefs(); });
   $("mode").addEventListener("change", async (e) => { S.mode = e.target.value; savePrefs(); await reprocessAll(); });
@@ -678,6 +699,7 @@ function wire() {
   });
 
   $("edclose").addEventListener("click", closeEditor);
+  $("edcloseX").addEventListener("click", closeEditor);
   $("editor").addEventListener("click", (e) => { if (e.target === $("editor")) closeEditor(); });
   $("edrotl").addEventListener("click", () => { const p = S.editing; if (p) { p.rot = (p.rot + 3) % 4; reprocess(p); } });
   $("edrotr").addEventListener("click", () => { const p = S.editing; if (p) { p.rot = (p.rot + 1) % 4; reprocess(p); } });
@@ -717,12 +739,8 @@ function wire() {
   document.addEventListener("keydown", (e) => {
     if (e.target.matches("input, select, textarea")) return;
     if (S.editing) { if (e.key === "Escape") closeEditor(); return; }
-    if (!S.running) return;
-    if (e.code === "Space" || e.key === "Enter") {
-      if (e.target.matches("button, a, li") && e.key === "Enter") return;
-      e.preventDefault();
-      capture("manual");
-    } else if (e.key === "Backspace" || e.key === "Delete") {
+    if (!S.running && !S.pages.length) return;
+    if (e.key === "Backspace" || e.key === "Delete") {
       if (S.pages.length) { e.preventDefault(); removePage(S.pages[S.pages.length - 1]); }
     } else if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === "s") {
       e.preventDefault();
@@ -731,10 +749,10 @@ function wire() {
   });
 
   document.addEventListener("visibilitychange", () => { if (!document.hidden && S.running) requestAnimationFrame(loop); });
-  window.addEventListener("pagehide", stopStream);
+  window.addEventListener("pagehide", () => { S.running=false; stopStream(); });
 
   // test hooks
-  window.__scancat = { S, capture, downloadPdf, processPage, V, buildPdf, startCamera, importPhoto }; window.__saltaScan = window.__scancat;
+  window.__scancat = { S, capture, downloadPdf, processPage, V, buildPdf, startCamera, stopCameraView, requestContinuousFocus, importPhoto }; window.__saltaScan = window.__scancat;
 }
 
 wire();
