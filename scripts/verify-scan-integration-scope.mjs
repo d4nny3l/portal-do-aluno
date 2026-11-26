@@ -15,7 +15,7 @@ function verifyLiveFlowHotfix(){
  try{git('merge-base','--is-ancestor',hotfixBase,'HEAD');}catch{return false;}
  const changed=git('diff','--name-only',hotfixBase,'HEAD','--').split('\n').filter(Boolean);
  if(!changed.length)return false;
- const allowed=new Set(["corretor/v2/scan-safe/camera.mjs","plataforma/corretor-v2.html","corretor/v2/scan-safe/tests/camera.test.mjs","corretor/v2/scan-safe/tests/rearm-counterexample.test.mjs","corretor/v2/scan-safe/tests/official-browser.mjs","plataforma/tests/corretor-camera-progress-p1.test.mjs","plataforma/tests/corretor-omr-camera-cross-integration.test.mjs","plataforma/tests/corretor-ux-ready-01.test.mjs","plataforma/tests/corretor-stale-grade-audit-p1.test.mjs","plataforma/corretor-v2.css","scripts/verify-scan-integration-scope.mjs"]);
+ const allowed=new Set(["corretor/v2/scan-safe/camera.mjs","plataforma/corretor-v2.html","corretor/v2/scan-safe/tests/camera.test.mjs","corretor/v2/scan-safe/tests/rearm-counterexample.test.mjs","corretor/v2/scan-safe/tests/official-browser.mjs","plataforma/tests/corretor-camera-progress-p1.test.mjs","plataforma/tests/corretor-camera-torch-ui.test.mjs","plataforma/tests/corretor-omr-camera-cross-integration.test.mjs","plataforma/tests/corretor-ux-ready-01.test.mjs","plataforma/tests/corretor-stale-grade-audit-p1.test.mjs","plataforma/corretor-v2.css","scripts/verify-scan-integration-scope.mjs"]);
  assert(changed.every(path=>allowed.has(path)),'Forbidden live-flow delta: '+changed.join(', '));
  assert(!git('diff','--name-only','HEAD','--')&&!git('ls-files','--others','--exclude-standard'),'Uncommitted live-flow changes');
  const html=read('plataforma/corretor-v2.html'),auth=s=>s.slice(s.indexOf('<script>'),s.indexOf('<script type="module">'));

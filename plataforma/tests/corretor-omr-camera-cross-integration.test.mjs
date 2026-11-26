@@ -227,8 +227,8 @@ test('identity pending permits only a local provisional grade after strong or ma
 
 test('private selection verification and revocation clear private state while keeping only completed numeric session history',async()=>{
  const h=integrationHarness({privatePlan:true,validateSelection:true});h.$('read').disabled=false;
- await h.editor.capture(h.photo);assert.match(h.$('scanScore').innerHTML,/Conferindo avaliação/);
- assert.equal(h.$('cameraGrade').hidden,true);h.resolveValidation(true);await flush();
+ const pending=h.editor.capture(h.photo);await flush();assert.match(h.$('scanScore').innerHTML,/Conferindo avaliação/);
+ assert.equal(h.$('cameraGrade').hidden,true);assert.equal(h.editor.suspended(),true);h.resolveValidation(true);await pending;
  assert.equal(h.$('cameraGradeValue').textContent,'10,00');
  h.editor.clear();assert.equal(h.editor.selection(),null);assert.equal(h.editor.model(),null);assert.equal(h.editor.token(),null);
  assert.equal(h.$('cameraGrade').hidden,true);assert.equal(h.$('scanScore').children.length,0);
