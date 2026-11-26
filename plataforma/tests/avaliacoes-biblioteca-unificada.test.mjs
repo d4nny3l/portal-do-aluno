@@ -1875,7 +1875,7 @@ test('CORRECTION-LOCAL-01: 400 sequential private results, no requests per grade
  const {createCaptureSession}=await import('../../corretor/v2/scan-safe/session.mjs');
  const fields=new Map(),$=id=>{if(!fields.has(id)){const node=new SurfaceNode('div');node.dataset={};node.querySelector=()=>({textContent:''});fields.set(id,node);}return fields.get(id);};
  const build=new Function('$','document','privateLibrary','selection','scoreIntegratedPlan','scorePlanPreview','scoreIntegratedPages','createCaptureSession',`
-  let privateSelection=selection,template=selection.template,activeManifest=selection.manifest,scoreGeneration=0,activeObservations=[],activeHistoryEntry=null,currentReading=null,rawRaster=null;
+  let privateSelection=selection,privateModelLoaded=true,template=selection.template,activeManifest=selection.manifest,scoreGeneration=0,activeObservations=[],activeHistoryEntry=null,currentReading=null,rawRaster=null;
   const scanContext=createCaptureSession(),pageReadings=new Map();
   const history=[];function renderHistory(){}function calculateScore(){throw Error('private key fallback');}
   function clearPrivateCorrection(){privateSelection=null;scanContext.invalidate();}

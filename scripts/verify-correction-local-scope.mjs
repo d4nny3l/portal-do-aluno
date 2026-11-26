@@ -12,7 +12,7 @@ const allowed=new Set(["corretor/v2/assessments/correction-context.mjs","correto
 export function verifyCorrectionLocalScope(){
  if(process.env.GITHUB_EVENT_NAME==='pull_request'){
   const e=JSON.parse(readFileSync(process.env.GITHUB_EVENT_PATH,'utf8'));
-  assert(e.repository?.full_name==='d4nny3l/portal-do-aluno'&&e.pull_request?.head?.ref===branch&&e.pull_request?.base?.ref==='main'&&e.pull_request?.base?.sha===base,'Unauthorized #141 context');
+  assert(e.repository?.full_name==='d4nny3l/portal-do-aluno'&&e.pull_request?.number===142&&e.pull_request?.head?.ref===branch&&e.pull_request?.base?.ref==='main'&&e.pull_request?.base?.sha===base,'Unauthorized #141 context');
  }
  git('merge-base','--is-ancestor',base,'HEAD');
  const changed=git('diff','--name-only',base,'HEAD','--').split('\n').filter(Boolean);
@@ -21,6 +21,7 @@ export function verifyCorrectionLocalScope(){
  assert(!git('diff','--name-only',base,'HEAD','--','corretor/v2/omr','corretor/v2/scan-safe',':(exclude)corretor/v2/scan-safe/tests/protected-sources.test.mjs','laboratorio','auth-worker','stats-worker','assessments-service',':(exclude)assessments-service/tests/correction-local-browser.mjs'),'Protected optical/camera/backend sources changed');
  const p='plataforma/corretor-v2.html',before=execFileSync('git',['show',base+':'+p],{cwd:root,encoding:'utf8'});
  let expected=before.replace('./avaliacoes-biblioteca.mjs?v=20261125auto','./avaliacoes-biblioteca.mjs?v=20261126local01');
+ expected=expected.replace(" if(!privateSelection)return scoreWithoutPrivateSelection();"," if(!privateSelection){if(privateModelLoaded){showCameraGrade(null);$('scanScore').hidden=true;return;}return scoreWithoutPrivateSelection();}");
  expected=expected.replace(" const box=$('scanScore'),selectedBound=privateSelection,token=scanContext.current,generation=++scoreGeneration;"," const box=$('scanScore'),selectedBound=privateSelection,token=scanContext.current,generation=++scoreGeneration;\n const binding=privateLibrary?.localCorrectionBinding(selectedBound);\n if(!binding){clearPrivateCorrection();return;}");
  expected=expected.replace('  activeHistoryEntry.count=result.count;renderHistory();','  activeHistoryEntry.count=result.count;activeHistoryEntry.binding=binding;renderHistory();');
  expected=expected.replace(" if(privateLibrary?.requiresSelectionValidation()){\n  const selected=privateSelection,observed=JSON.stringify(activeObservations);\n  blocked('Conferindo avaliação','Validando a seleção no servidor.');\n  return privateLibrary.verifySelection().then(ok=>{\n   if(ok&&privateSelection===selected&&JSON.stringify(activeObservations)===observed)present();\n  }).catch(()=>{if(privateSelection===selected&&scanContext.accepts(token)&&generation===scoreGeneration)clearPrivateCorrection();});\n }else present();"," present(); // Local snapshot only; authorization checks never run from scoring.");

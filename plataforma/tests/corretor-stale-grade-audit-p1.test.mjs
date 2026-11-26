@@ -60,7 +60,7 @@ function fixture({privatePlan=false,places=2,validateSelection=false}={}){
  const build=new Function('$','document','initialTemplate','initialManifest','initialSelection','privateLibrary','helpers',
   'parseKey','scanWorker','createSafeCamera',`
  const {scoreInputUnits,POINT_SCALE,formatScore,scoreIntegratedPlan,scorePlanPreview,scoreIntegratedPages,createCaptureSession}=helpers;
- let template=initialTemplate,activeManifest=initialManifest,privateSelection=initialSelection;
+ let template=initialTemplate,activeManifest=initialManifest,privateSelection=initialSelection,privateModelLoaded=!!initialSelection;
  let activeObservations=[],activeHistoryEntry=null,rawRaster=null,normalizedRaster=null,currentDocument=null,currentReading=null;
  let manualMode=false,manualPoints=[],captureBusy=false,importBusy=false,scanHistory=[],scoreGeneration=0,modelLoadGeneration=0;
  const scanContext=createCaptureSession(),pageReadings=new Map(),assessmentBank=null;
@@ -233,4 +233,9 @@ test('live camera capture finishes with local grade without calling remote selec
  h.setWorker(async input=>({token:input.token,document:null,sourceOptical:{gray:new Uint8Array(1),width:1,height:1},optical:null,reading:h.page(['A','A','A'])}));
  let done=false;const pending=h.editor.capture({data:new Uint8ClampedArray(4),w:1,h:1}).then(()=>{done=true});
  await pending;assert.equal(done,true);assert.equal(h.fields.cameraGrade.hidden,false);assert.equal(h.fields.cameraGradeValue.textContent,'10,00');
+});
+
+test('private model awaiting authorized key cannot fall back to a manual key',()=>{
+ const h=fixture({privatePlan:true});h.editor.setSelection(null);h.accept(h.page(['A','A','A']));
+ hiddenGrade(h.fields);assert.equal(h.editor.history()[0].grade,undefined);
 });

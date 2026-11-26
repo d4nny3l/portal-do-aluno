@@ -238,7 +238,7 @@ function calculateScore(){const scoreBox=$('scanScore');typeof showCameraGrade==
 // server-verified private revision uses weighted block sums and its pinned format.
 const scoreWithoutPrivateSelection=calculateScore;
 calculateScore=function(){
- if(!privateSelection)return scoreWithoutPrivateSelection();
+ if(!privateSelection){if(privateModelLoaded){showCameraGrade(null);$('scanScore').hidden=true;return;}return scoreWithoutPrivateSelection();}
  const box=$('scanScore'),selectedBound=privateSelection,token=scanContext.current,generation=++scoreGeneration;
  const binding=privateLibrary?.localCorrectionBinding(selectedBound);
  if(!binding){clearPrivateCorrection();return;}
