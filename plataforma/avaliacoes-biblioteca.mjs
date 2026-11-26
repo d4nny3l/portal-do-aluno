@@ -3,7 +3,8 @@ import {confirmAssessmentDeletion} from './avaliacao-excluir-dialog.mjs';
 // SALTA: one library inside "Criar avaliação". Uses the original audited private
 // client/controller. No second login, endpoint, storage or optical renderer.
 import {createPrivateAssessmentClient} from '../corretor/v2/assessments/private-client.mjs';
-import {createPrivateLibraryController} from '../corretor/v2/assessments/private-library.mjs';
+import {createPrivateLibraryController} from '../corretor/v2/assessments/private-library.mjs?v=20261126local01';
+import {createCorrectionContext} from '../corretor/v2/assessments/correction-context.mjs';
 import {createIntegratedPlan,applyKeyPaste,draftSummary,formatExact,scoreInputUnits,units,POINT_SCALE,keyTextForPlan} from '../corretor/v2/assessments/block-scoring.mjs';
 import {definitionFromLocalPlan,planFromPrivateRecord} from '../corretor/v2/assessments/private-contract-adapter.mjs';
 import {importCardManifest} from '../corretor/v2/omr/manifest.mjs';
@@ -298,7 +299,7 @@ export function mountAssessmentLibrary({
  const controller=createPrivateLibraryController({
   client,getDraft,applyRecord,
   onSelection:selection=>{
-   if(!selection){activeSelection=false;clearSelection();return;}
+   if(!selection){correctionContext.clear();activeSelection=false;clearSelection();return;}
    if(!sameEdit(selectionAttempt)){
     flagUnnoticedEdit(selectionAttempt);
     controller.discardSelection();return;
@@ -306,7 +307,7 @@ export function mountAssessmentLibrary({
    if(selection.manifest.mode==='embedded'&&!hasEmbeddedLibrary()){
     activeSelection=false;clearSelection();throw new Error(embeddedUnavailable);
    }
-   activeSelection=true;activateSelection(selection);
+   correctionContext.bind(selection);activeSelection=true;activateSelection(selection);
   },
   onStatus:()=>{
    syncPrivateContext();
@@ -317,6 +318,11 @@ export function mountAssessmentLibrary({
   // protocol; the server receipt and immutable record verification remain mandatory.
   confirmBatch:()=>true
  });
+ const correctionContext=createCorrectionContext({client,view:()=>controller.view(),
+  revoke:()=>controller.revokeAuthorization(),
+  invalidate:()=>{controller.invalidateOpenedRecord();wipePrivateUi();newEditor();renderScoring();},
+  report:error=>{status.textContent=error.message;status.dataset.state='error';render({preserveError:true});},
+  online:()=>window.navigator?.onLine!==false});
  const connect=btn('Conectar',async()=>{await connectAndList()},'connect');
  const create=btn('Nova avaliação',async()=>{if(!ready)throw Error('Sua biblioteca não está conectada.');controller.newDraft();privateEditorLoaded=true;resetScores();newEditor();legacyEditorActive=false;editVersion++;unsaved=false;confirmedEarlierSave=false;selectedCatalogId='';renderScoring()},'new');
  const reconcileSaved=async(result,attempt)=>{
@@ -516,19 +522,15 @@ export function mountAssessmentLibrary({
   if(!operationBusy&&!controller.view().pending)void loadCatalog().catch(()=>{});
  });
  async function verifyOpened(){
-  const current=controller.view().record,context=contextKey(),generation=controller.view().generation;
-  if(!hasLifecycle()||!current)return true;
+  if(!hasLifecycle()||!controller.view().record)return true;
   if(operationBusy||controller.view().pending)return false;
-  try{const latest=await client.open(current.id);
-   if(contextKey()!==context||controller.view().generation!==generation)return false;
-   if(latest.revision===current.revision&&latest.manifestHash===current.manifestHash)return true;
-   throw Error('A avaliação foi substituída. Reabra a avaliação.');
-  }catch(error){
-   if(contextKey()===context&&controller.view().generation===generation){
-    controller.invalidateOpenedRecord();wipePrivateUi();newEditor();renderScoring();
-    status.textContent=error.message;status.dataset.state='error';render({preserveError:true});
-   }return false;
-  }
+  // Export always requires a new online confirmation; a local correction
+  // snapshot never grants permission to export or mutate the server.
+  return correctionContext.verify({force:true,remoteOperation:true});
+ }
+ function verifyInBackground(force=false){
+  if(!hasLifecycle()||operationBusy||controller.view().pending)return;
+  void correctionContext.verify({force});
  }
  // Validate controlled exports against current server state before the existing
  // renderer/print handlers run. Their optical/PDF implementation stays untouched.
@@ -540,8 +542,15 @@ export function mountAssessmentLibrary({
   event.preventDefault();event.stopImmediatePropagation();
   void verifyOpened().then(valid=>{if(valid){approvedExport=target;target.click();approvedExport=null;}});
  },true);
- window.addEventListener?.('focus',()=>{void verifyOpened()});
- document.addEventListener?.('visibilitychange',()=>{if(document.visibilityState==='visible')void verifyOpened()});
+ window.addEventListener?.('focus',()=>verifyInBackground());
+ document.addEventListener?.('visibilitychange',()=>{if(document.visibilityState==='visible')verifyInBackground()});
+ window.addEventListener?.('online',()=>verifyInBackground(true));
+ // Independent of card arrivals; no timer or network work inside the scorer.
+ const contextTimer=window.setInterval?.(()=>{if(document.visibilityState!=='hidden')verifyInBackground()},60000);
+ window.addEventListener?.('pagehide',()=>{
+  window.clearInterval?.(contextTimer);controller.revokeAuthorization();correctionContext.clear();
+ });
+ window.addEventListener?.('pageshow',event=>{if(event.persisted)void connectAndList().catch(()=>{});});
  open.hidden=true;refresh.hidden=true;prev.hidden=true;next.hidden=true;retry.hidden=true;
  manualRetry.hidden=true;
  aux.append(connect,refresh,prev,next,retry,manualRetry);
@@ -821,5 +830,5 @@ export function mountAssessmentLibrary({
  renderScoring();
  render();
  void connectAndList().catch(error=>{status.textContent=error?.message||'Não foi possível preparar o catálogo.';status.dataset.state='error';render({preserveError:true})});
- return Object.freeze({controller,client,onEditorChanged,renderScoring,getDraft,render,loadCatalog,verifyOpened,verifySelection:async()=>{try{return await controller.verifySelection()}catch(error){wipePrivateUi();newEditor();renderScoring();status.textContent=error.message;status.dataset.state='error';render({preserveError:true});throw error}},requiresSelectionValidation:()=>hasLifecycle()});
+ return Object.freeze({controller,client,onEditorChanged,renderScoring,getDraft,render,loadCatalog,verifyOpened,verifySelection:async()=>{try{return await controller.verifySelection()}catch(error){wipePrivateUi();newEditor();renderScoring();status.textContent=error.message;status.dataset.state='error';render({preserveError:true});throw error}},requiresSelectionValidation:()=>hasLifecycle(),localCorrectionBinding:selection=>correctionContext.binding(selection)});
 }
