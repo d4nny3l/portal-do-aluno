@@ -138,6 +138,9 @@ jobs:
           SALTA_PLAYWRIGHT_MODULE="$RUNNER_TEMP/salta-browser/node_modules/playwright/index.mjs" node assessments-service/tests/embedded-browser.mjs
           SALTA_PLAYWRIGHT_MODULE="$RUNNER_TEMP/salta-browser/node_modules/playwright/index.mjs" node assessments-service/tests/editor-frontend-browser.mjs
           SALTA_PLAYWRIGHT_MODULE="$RUNNER_TEMP/salta-browser/node_modules/playwright/index.mjs" node assessments-service/tests/lifecycle-browser.mjs
+          if node scripts/verify-correction-local-scope.mjs; then
+            SALTA_PLAYWRIGHT_MODULE="$RUNNER_TEMP/salta-browser/node_modules/playwright/index.mjs" node assessments-service/tests/correction-local-browser.mjs
+          fi
       - uses: actions/upload-artifact@v4
         if: steps.print_scope.outputs.print_only != 'true'
         with:

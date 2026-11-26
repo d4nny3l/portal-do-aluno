@@ -1854,9 +1854,10 @@ test('catalog switch preserves unsaved warning and does not bind the discarded r
 // No optical research: fixture observations start at reading completion.
 test('CORRECTION-LOCAL-01: 400 sequential private results, no requests per grade or manual recalculation',async()=>{
  const events=new Map(),navigator={onLine:true};
- let behavior='ok',held=null;
+ const emit=name=>Promise.all((events.get(name)||[]).map(fn=>fn()));
+ let behavior='ok',held=null,pendingCheck=null;
  const f=await mountedRaceFixture({counts:[2,1],scoreFormatVersion:'salta-score-format-v1',
-  windowOverrides:{navigator,addEventListener:(name,fn)=>events.set(name,fn)},
+  windowOverrides:{navigator,addEventListener:(name,fn)=>events.set(name,[...(events.get(name)||[]),fn])},
   onRequest:async(route,init)=>{
    if(behavior==='offline')throw Error('offline');
    if(behavior==='slow'&&route==='/session'){held=deferred();return held.promise;}
@@ -1887,11 +1888,11 @@ test('CORRECTION-LOCAL-01: 400 sequential private results, no requests per grade
  `);
  const scorer=build($,{createElement:tag=>new SurfaceNode(tag)},f.mounted,selection,scoreIntegratedPlan,scorePlanPreview,scoreIntegratedPages,createCaptureSession);
  const samples=[],expected=['10,00','7,00','4,00','0,00'],patterns=[['A','B','A'],['A','A','A'],['B','A','A'],['B','A','B']];
- navigator.onLine=false;behavior='offline';events.get('focus')();assert.equal(f.requests.length,initial);
+ navigator.onLine=false;behavior='offline';await emit('focus');assert.equal(f.requests.length,initial);
  for(let i=0;i<400;i++){
-  if(i===100){navigator.onLine=true;behavior=503;events.get('online')();await tick();await tick();navigator.onLine=false;}
-  if(i===200){navigator.onLine=true;behavior='slow';events.get('online')();await tick();assert.ok(held);events.get('focus')();}
-  if(i===300){held.resolve(Response.json({code:'temporary'},{status:429}));await tick();await tick();behavior='ok';events.get('online')();await tick();await tick();}
+  if(i===100){navigator.onLine=true;behavior=503;await emit('online');navigator.onLine=false;}
+  if(i===200){navigator.onLine=true;behavior='slow';pendingCheck=emit('online');await tick();assert.ok(held);void emit('focus');}
+  if(i===300){held.resolve(Response.json({code:'temporary'},{status:429}));await pendingCheck;behavior='ok';await emit('online');}
   const count=f.requests.length,actual=scorer.run(patterns[i%4]);assert.equal(actual.id,i+1);assert.equal(actual.grade,expected[i%4]);
   assert.equal(actual.returned,undefined,'grade synchronous');assert.equal(scorer.recalculate(),undefined);
   assert.equal(f.requests.length,count,'no request initiated by card or manual recalculation');
@@ -1902,6 +1903,6 @@ test('CORRECTION-LOCAL-01: 400 sequential private results, no requests per grade
  assert.equal(f.requests.filter(x=>x.route.startsWith('/selections/')&&x.method==='GET').length,1);
  const sorted=samples.sort((a,b)=>a-b);
  console.log('CORRECTION_LOCAL_01 '+JSON.stringify({corrections:400,requestsPerCorrection:0,requestsInitial:initial,background:f.requests.slice(initial),selectionLoads:1,medianDomMs:sorted[199],p95DomMs:sorted[379]}));
- behavior=401;events.get('online')();await tick();await tick();
+ behavior=401;await emit('online');
  assert.equal(f.getSelected(),null);assert.equal(f.mounted.controller.view().session,null);assert.equal(f.mounted.localCorrectionBinding(selection),null);
 });

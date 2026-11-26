@@ -530,7 +530,7 @@ export function mountAssessmentLibrary({
  }
  function verifyInBackground(force=false){
   if(!hasLifecycle()||operationBusy||controller.view().pending)return;
-  void correctionContext.verify({force});
+  return correctionContext.verify({force});
  }
  // Validate controlled exports against current server state before the existing
  // renderer/print handlers run. Their optical/PDF implementation stays untouched.
