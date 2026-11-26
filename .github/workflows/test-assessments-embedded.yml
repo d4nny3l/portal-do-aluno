@@ -54,7 +54,7 @@ jobs:
       - name: Classify Scan Safe #138 against protected source trees
         id: scan_scope
         run: |
-          if node scripts/verify-scan-integration-scope.mjs; then
+          if node scripts/verify-correction-local-scope.mjs || node scripts/verify-scan-integration-scope.mjs; then
             echo 'scan_only=true' >> "$GITHUB_OUTPUT"
           else
             echo 'scan_only=false' >> "$GITHUB_OUTPUT"
@@ -102,7 +102,7 @@ jobs:
       - name: Scan Safe — unchanged backend guard plus current contracts and real synthetic D1
         if: steps.scan_scope.outputs.scan_only == 'true'
         run: |
-          node scripts/verify-scan-integration-scope.mjs
+          node scripts/verify-correction-local-scope.mjs || node scripts/verify-scan-integration-scope.mjs
           node --input-type=module -e "import {verifyDependencies} from './assessments-service/build.mjs'; verifyDependencies()"
           git fetch --no-tags origin refs/pull/136/head
           git worktree add --detach "$RUNNER_TEMP/salta-scan-backend" dac9938ea6943a9bc2def59c43a8189e5b75aea6
@@ -138,6 +138,9 @@ jobs:
           SALTA_PLAYWRIGHT_MODULE="$RUNNER_TEMP/salta-browser/node_modules/playwright/index.mjs" node assessments-service/tests/embedded-browser.mjs
           SALTA_PLAYWRIGHT_MODULE="$RUNNER_TEMP/salta-browser/node_modules/playwright/index.mjs" node assessments-service/tests/editor-frontend-browser.mjs
           SALTA_PLAYWRIGHT_MODULE="$RUNNER_TEMP/salta-browser/node_modules/playwright/index.mjs" node assessments-service/tests/lifecycle-browser.mjs
+          if node scripts/verify-correction-local-scope.mjs; then
+            SALTA_PLAYWRIGHT_MODULE="$RUNNER_TEMP/salta-browser/node_modules/playwright/index.mjs" node assessments-service/tests/correction-local-browser.mjs
+          fi
       - uses: actions/upload-artifact@v4
         if: steps.print_scope.outputs.print_only != 'true'
         with:

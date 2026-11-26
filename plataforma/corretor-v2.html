@@ -29,7 +29,7 @@ let cameraStream;
 <script type="module">
 import { installAssessmentBank } from '../corretor/v2/assessments/editor.mjs?v=20261115assess2';
 import {EDITOR_FIELD_IDS} from '../corretor/v2/assessments/editor-snapshot.mjs?v=20261124snap120';
-import {mountAssessmentLibrary} from './avaliacoes-biblioteca.mjs?v=20261125auto';
+import {mountAssessmentLibrary} from './avaliacoes-biblioteca.mjs?v=20261126local01';
 import {scoreIntegratedPlan,keyTextForPlan,scoreInputUnits,POINT_SCALE} from '../corretor/v2/assessments/block-scoring.mjs?v=20261121ux79c-84-87';
 import {formatScore} from '../corretor/v2/assessments/score-format.mjs?v=20261121ux79c-84-87';
 import { createTemplate } from '../corretor/v2/omr/template.mjs?v=20261115assess2';
@@ -238,8 +238,10 @@ function calculateScore(){const scoreBox=$('scanScore');typeof showCameraGrade==
 // server-verified private revision uses weighted block sums and its pinned format.
 const scoreWithoutPrivateSelection=calculateScore;
 calculateScore=function(){
- if(!privateSelection)return scoreWithoutPrivateSelection();
+ if(!privateSelection){if(privateModelLoaded){showCameraGrade(null);$('scanScore').hidden=true;return;}return scoreWithoutPrivateSelection();}
  const box=$('scanScore'),selectedBound=privateSelection,token=scanContext.current,generation=++scoreGeneration;
+ const binding=privateLibrary?.localCorrectionBinding(selectedBound);
+ if(!binding){clearPrivateCorrection();return;}
  if(typeof showCameraGrade==='function')showCameraGrade(null);
  if(!activeObservations.length){box.hidden=true;return}
  const stale=box.dataset.stale==='true';
@@ -281,16 +283,10 @@ calculateScore=function(){
  $('status').textContent=result.provisional?'Identificação pendente. Nota provisória sem vínculo.':activeObservations.some(o=>o.state==='reviewed')?'Classificação atualizada. Nenhuma nota foi registrada no Diário.':'';
  if(activeHistoryEntry){
   activeHistoryEntry.provisional=result.provisional===true;activeHistoryEntry.grade=result.total;activeHistoryEntry.correct=result.correct;
-  activeHistoryEntry.count=result.count;renderHistory();
+  activeHistoryEntry.count=result.count;activeHistoryEntry.binding=binding;renderHistory();
  }
  };
- if(privateLibrary?.requiresSelectionValidation()){
-  const selected=privateSelection,observed=JSON.stringify(activeObservations);
-  blocked('Conferindo avaliação','Validando a seleção no servidor.');
-  return privateLibrary.verifySelection().then(ok=>{
-   if(ok&&privateSelection===selected&&JSON.stringify(activeObservations)===observed)present();
-  }).catch(()=>{if(privateSelection===selected&&scanContext.accepts(token)&&generation===scoreGeneration)clearPrivateCorrection();});
- }else present();
+ present(); // Local snapshot only; authorization checks never run from scoring.
 };
 function renderAnswers(result){$('scanScore').dataset.identity=result.identity?.state||'disabled';$('scanScore').dataset.provisional='false';$('scanScore').dataset.stale='false';activeObservations=result.observations.map(item=>({...item,reviewed:item.state==='read'||item.state==='double'||item.state==='blank',answer:item.state==='read'?item.answer:null}));const list=$('answers');list.replaceChildren(...activeObservations.map(observation=>{const item=document.createElement('div');item.className=`omr-question ${observation.reviewed?'':'needs-review'}`;const label=document.createElement('label'),select=document.createElement('select'),pending=document.createElement('option'),blank=document.createElement('option');select.id=`omr-answer-${observation.number}`;label.htmlFor=select.id;label.textContent=`Questão ${observation.number} · ${observation.state==='read'?(observation.recognition==='partial'?`${observation.answer} reconhecida · marcação parcial`:'lida'):observation.state==='double'?'Inválida — dupla marcação':observation.state==='blank'?'Sem resposta — inválida':'Leitura inconclusiva — nova captura'}`;pending.value='';pending.textContent=observation.reviewed?'Selecione a resposta…':'Leitura inconclusiva — tente nova captura';blank.value='__blank__';blank.textContent='Sem resposta (confirmar)';const choices=template.questions.find(question=>question.questionId===observation.questionId).choices;select.append(pending);for(const answer of choices){const option=document.createElement('option');option.value=answer;option.textContent=answer;select.append(option)}select.append(blank);const suspects=(observation.state==='review'||observation.state==='double')?choices.filter(choice=>Array.isArray(observation.marks)&&observation.marks.includes(choice)):[];const partialRecognized=observation.state==='read'&&observation.recognition==='partial';const hint=(suspects.length||partialRecognized)?document.createElement('p'):null;if(hint){hint.id=`${select.id}-hint`;hint.className='omr-mark-hint';hint.setAttribute('role','note');hint.textContent=partialRecognized?'Marcação parcial reconhecida automaticamente. Você pode corrigir a resposta.':suspects.length===1?`Possível marcação: ${suspects[0]}. Confira na imagem.`:`Possíveis marcações: ${suspects.slice(0,-1).join(', ')} e ${suspects.at(-1)}. Confira na imagem.`;select.setAttribute('aria-describedby',hint.id)}select.value=observation.reviewed?(observation.answer||'__blank__'):'';select.onchange=()=>{if(!select.value||select.value!=='__blank__'&&!choices.includes(select.value))return;observation.answer=select.value==='__blank__'?null:select.value;observation.reviewed=true;observation.state='reviewed';item.classList.remove('needs-review');label.textContent=`Questão ${observation.number} · conferida`;if(hint){hint.hidden=true;select.removeAttribute('aria-describedby')}const pendingCount=activeObservations.filter(answer=>!answer.reviewed).length;$('status').textContent=pendingCount?`${pendingCount} questão(ões) inconclusiva(s). Faça nova captura.`:'Classificação atualizada. Nenhuma nota foi registrada no Diário.';calculateScore()};item.append(label,select);if(hint)item.append(hint);return item}));return calculateScore()}
 function renderHistory(){
@@ -365,7 +361,9 @@ $('scanPage').onchange=()=>{stopCamera();scanContext.cancelCurrent();scanWorker.
 $('loadManifest').onchange=async event=>{
  const request=++modelLoadGeneration;
  try{
-  const file=event.target.files[0];event.target.value='';if(!file)return;if(file.size>2000000)throw Error('O modelo deve ter até 2 MB.');
+  const file=event.target.files[0];event.target.value='';if(!file)return;
+  if(privateSelection||privateModelLoaded)throw Error('Descarte a avaliação privada antes de importar outro modelo.');
+  if(file.size>2000000)throw Error('O modelo deve ter até 2 MB.');
   const imported=importCardManifest(await file.text());if(request!==modelLoadGeneration)return;
   assessmentBank?.clearReading();clearAssessmentReview();privateModelLoaded=false;
   template=imported.template;activeManifest=imported.manifest;activeSvg='';exactScanModel=true;syncScanInputs();

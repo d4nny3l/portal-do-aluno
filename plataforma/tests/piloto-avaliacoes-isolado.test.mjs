@@ -30,7 +30,12 @@ const fakeKey=letter=>Array(60).fill(letter).join(' ');
 test('P0-08B-03: V2/OMR pins include approved printed-title renderer; private controller stays protected',()=>{
  for(const [file,expected]of Object.entries(original)){
   if(file!=='corretor/v2/assessments/private-library.mjs'){assert.equal(gitBlob(file),expected,file);continue;}
-  const source=text(file);
+  let source=text(file);
+  const localAddition=" // Confirmed authorization loss, including a changed principal/epoch in the background.\n function revokeAuthorization(){resetContext();s.session=null;s.grants=[];s.scope=null;s.pending=null;signal('session','Sessão ou concessão alterada. Entre novamente pela SALTA.');}\n";
+  if(source.includes(localAddition)){
+   assert.equal(source.split(localAddition).length,2);assert.equal(source.split('  selectIssued,resumeSelection,discardSelection,revokeAuthorization,').length,2);
+   source=source.replace(localAddition,'').replace('  selectIssued,resumeSelection,discardSelection,revokeAuthorization,','  selectIssued,resumeSelection,discardSelection,');
+  }
   const addition=" // Invalidate a correction key without discarding the opened editor or pending CAS.\n function discardSelection(){s.selection=null;onSelection(null)}\n";
   // Accept the historical source or precisely the added local invalidation API.
   if(!source.includes(addition)){assert.equal(gitBlob(file),expected,file);continue;}

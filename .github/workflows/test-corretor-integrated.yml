@@ -78,7 +78,7 @@ jobs:
         run: |
           npm install --prefix "$RUNNER_TEMP/salta-camera-browser" --no-save --ignore-scripts --no-audit --no-fund playwright@1.65.1
           node "$RUNNER_TEMP/salta-camera-browser/node_modules/playwright/cli.js" install --with-deps chromium webkit
-          if node scripts/verify-scan-integration-scope.mjs; then
+          if node scripts/verify-correction-local-scope.mjs || node scripts/verify-scan-integration-scope.mjs; then
             SALTA_SCAN_CYCLES=100 SALTA_PLAYWRIGHT_MODULE="$RUNNER_TEMP/salta-camera-browser/node_modules/playwright/index.mjs" node corretor/v2/scan-safe/tests/official-browser.mjs
           else
             SALTA_PLAYWRIGHT_MODULE="$RUNNER_TEMP/salta-camera-browser/node_modules/playwright/index.mjs" node scripts/verify-camera-focus-browser.mjs

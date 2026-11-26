@@ -75,8 +75,10 @@ test('INT-SCAN-01: ten stable decoded observations produce one native frame, pro
    assert.ok(Math.hypot(c[0]-capture.w/2,c[1]-capture.h/2)>Math.hypot(p[0]-capture.w/2,p[1]-capture.h/2),'margin expands outward rather than cropping inside paper');
   }
   assert.deepEqual(h.draws.filter(d=>d.role==='full'),[{role:'full',x:0,y:0,w:1152,h:1620}]);
+  // #140 intentionally rearms after the operation, even on the same sheet.
   for(let i=0;i<20;i++)h.tick();await settle();
-  assert.equal(h.fullReads,1,'stationary paper is not recaptured or ranked against another full frame');
+  assert.equal(h.fullReads,2,'each completed stable cycle takes exactly one native frame');
+  assert.equal(h.captures.length,2);assert.equal(h.encodes,0);
  }finally{h.camera.stop();}
 });
 
@@ -144,7 +146,7 @@ test('INT-SCAN-01 regression: erased A4 marker cannot be replaced by print; zero
  assert.equal(reads,0);assert.equal(result.metrics.readCalls,0);assert.equal(result.reading,null);
 });
 
-test('INT-SCAN-01: sharp preview never replaces an unusable final photo or causes a second silent capture',async()=>{
+test('INT-SCAN-01: sharp preview never replaces an unusable final photo; #140 may retry a new stable cycle',async()=>{
  let reads=0;
  const h=harness({onCapture:photo=>{
   const result=processCapture({...payload(photo.data,photo.w,photo.h),corners:photo.corners},{read:(...args)=>{reads++;return readRaster(...args);}});
@@ -159,7 +161,8 @@ test('INT-SCAN-01: sharp preview never replaces an unusable final photo or cause
   for(let i=0;i<11;i++)h.tick();await settle();
   assert.equal(h.captures.length,1);assert.equal(h.captures[0].data,unusable);assert.equal(reads,0);
   for(let i=0;i<20;i++)h.tick();await settle();
-  assert.equal(h.fullReads,1,'failed optical capture stays locked until proven sheet removal');
+  assert.equal(h.fullReads,2,'#140 permits a fresh stable cycle after failure');
+  assert.equal(h.captures.length,2);assert.equal(reads,0,'unusable full rasters cannot become optical reads');
   assert.match(h.statuses.map(s=>s.message).join('\n'),/Marcadores insuficientes/);
  }finally{h.camera.stop();}
 });
