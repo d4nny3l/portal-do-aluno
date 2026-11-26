@@ -302,13 +302,14 @@ test('actual Create-tab UI mounts and saves/opens/selects/duplicates without a s
 
 const deferred=()=>{let resolve,reject;const promise=new Promise((yes,no)=>{resolve=yes;reject=no});return{promise,resolve,reject}};
 const tick=()=>new Promise(resolve=>setImmediate(resolve));
-async function mountedRaceFixture({onPut=async()=>{},onSelection=async()=>{},onOpen=async()=>{},counts=[2],restoreOutOfOrder=false,windowOverrides={},scoreFormatVersion=null}={}){
+async function mountedRaceFixture({onPut=async()=>{},onSelection=async()=>{},onOpen=async()=>{},counts=[2],restoreOutOfOrder=false,windowOverrides={},scoreFormatVersion=null,onRequest=async()=>null}={}){
  const m=make({counts,types:counts.map(()=> 'A-E')});
  m.sections.forEach((section,i)=>{section.order=restoreOutOfOrder?counts.length-i-1:i});
  const grants={institutionId:'salta-hml-20261119',classId:'turma-sintetica-ab',periodId:'2026-11-piloto'};
- const records=new Map(),selections=new Map(),requestById=new Map(),writeCalls=[];let currentEditor=m.editor,selected=null,nominalCleared=0,appliedExact=null,modelBuilds=0,snapshotOverride=null;
+ const records=new Map(),selections=new Map(),requestById=new Map(),writeCalls=[],requests=[];let currentEditor=m.editor,selected=null,nominalCleared=0,appliedExact=null,modelBuilds=0,snapshotOverride=null;
  const fetchFn=async(url,init)=>{
   const route=new URL(url).pathname.slice('/assessments/v1'.length),q=new URL(url).searchParams;
+  requests.push({route,method:init.method});const override=await onRequest(route,init);if(override)return override;
   if(route==='/session'&&init.method==='GET')return Response.json({authenticated:true,principalId:'teacher-a',epoch:1,assessmentLifecycleVersion:'salta-assessment-lifecycle-v1',editorSnapshotVersion:'salta-editor-snapshot-v1',...(scoreFormatVersion?{scoreFormatVersion}:{})});
   if(route==='/grants'&&init.method==='GET')return Response.json({grants:[grants]});
   if(route==='/assessments'&&init.method==='GET'){
@@ -400,7 +401,7 @@ async function mountedRaceFixture({onPut=async()=>{},onSelection=async()=>{},onO
   else throw Error('Unknown native button '+kind);
   await tick();
  };
- return {mounted,m,host,top,scoring,records,selections,writeCalls,button,fill,editTitle,silentClick,formatField,formatSelect,
+ return {mounted,m,host,top,scoring,records,selections,writeCalls,requests,button,fill,editTitle,silentClick,formatField,formatSelect,
   freezeSnapshot:()=>{snapshotOverride=structuredClone(currentEditor)},
   getSelected:()=>selected,getEditor:()=>currentEditor,getPending:()=>mounted.controller.view().pending};
 }
@@ -1846,4 +1847,61 @@ test('catalog switch preserves unsaved warning and does not bind the discarded r
  assert.match(messages[0],/alterações não salvas/i);
  allow=true;catalog.value=first.id;await catalog.onchange();
  assert.equal(f.getSelected()?.assessmentId,first.id);assert.equal(f.getSelected()?.revision,1);assert.equal(messages.length,2);
+});
+
+// Execute the actual official scoring wrapper and presentation against the
+// already verified private selection from the real mounted client/controller.
+// No optical research: fixture observations start at reading completion.
+test('CORRECTION-LOCAL-01: 400 sequential private results, no requests per grade or manual recalculation',async()=>{
+ const events=new Map(),navigator={onLine:true};
+ let behavior='ok',held=null;
+ const f=await mountedRaceFixture({counts:[2,1],scoreFormatVersion:'salta-score-format-v1',
+  windowOverrides:{navigator,addEventListener:(name,fn)=>events.set(name,fn)},
+  onRequest:async(route,init)=>{
+   if(behavior==='offline')throw Error('offline');
+   if(behavior==='slow'&&route==='/session'){held=deferred();return held.promise;}
+   if(typeof behavior==='number')return Response.json({code:'synthetic'},{status:behavior});
+   return null;
+  }});
+ await f.fill();await f.button('Salvar avaliação').handlers.click();
+ const selection=f.getSelected();assert.ok(selection);assert.ok(Object.isFrozen(selection.plan));assert.ok(Object.isFrozen(selection.manifest));
+ const initial=f.requests.length;assert.equal(f.requests.filter(x=>x.route.startsWith('/selections/')&&x.method==='GET').length,1);
+ const html=read('plataforma/corretor-v2.html');
+ const source=html.slice(html.indexOf('const scoreWithoutPrivateSelection=calculateScore;'),html.indexOf('\nfunction renderAnswers('));
+ const showSource=html.slice(html.indexOf('function showCameraGrade('),html.indexOf('\nfunction markLastReadingPending('));
+ const {scoreIntegratedPlan}=await import('../../corretor/v2/assessments/block-scoring.mjs');
+ const {scorePlanPreview,scoreIntegratedPages}=await import('../../corretor/v2/scan-safe/score-preview.mjs');
+ const {createCaptureSession}=await import('../../corretor/v2/scan-safe/session.mjs');
+ const fields=new Map(),$=id=>{if(!fields.has(id)){const node=new SurfaceNode('div');node.dataset={};node.querySelector=()=>({textContent:''});fields.set(id,node);}return fields.get(id);};
+ const build=new Function('$','document','privateLibrary','selection','scoreIntegratedPlan','scorePlanPreview','scoreIntegratedPages','createCaptureSession',`
+  let privateSelection=selection,template=selection.template,activeManifest=selection.manifest,scoreGeneration=0,activeObservations=[],activeHistoryEntry=null,currentReading=null,rawRaster=null;
+  const scanContext=createCaptureSession(),pageReadings=new Map();
+  const history=[];function renderHistory(){}function calculateScore(){throw Error('private key fallback');}
+  function clearPrivateCorrection(){privateSelection=null;scanContext.invalidate();}
+  ${showSource}
+  ${source}
+  return {run(answers){const token=scanContext.begin(template,activeManifest,1);activeObservations=template.questions.map((q,i)=>({questionId:q.questionId,number:q.number,state:'read',answer:answers[i],reviewed:true,recognition:'strong',marks:[answers[i]],page:1}));
+   $('scanScore').dataset.identity='read';$('scanScore').dataset.stale='false';activeHistoryEntry={id:token.captureId};history.push(activeHistoryEntry);
+   const before=performance.now();const returned=calculateScore();return {id:token.captureId,grade:$('cameraGradeValue').textContent,elapsed:performance.now()-before,returned};},
+   recalculate:calculateScore,history:()=>history};
+ `);
+ const scorer=build($,{createElement:tag=>new SurfaceNode(tag)},f.mounted,selection,scoreIntegratedPlan,scorePlanPreview,scoreIntegratedPages,createCaptureSession);
+ const samples=[],expected=['10,00','7,00','4,00','0,00'],patterns=[['A','B','A'],['A','A','A'],['B','A','A'],['B','A','B']];
+ navigator.onLine=false;behavior='offline';events.get('focus')();assert.equal(f.requests.length,initial);
+ for(let i=0;i<400;i++){
+  if(i===100){navigator.onLine=true;behavior=503;events.get('online')();await tick();await tick();navigator.onLine=false;}
+  if(i===200){navigator.onLine=true;behavior='slow';events.get('online')();await tick();assert.ok(held);events.get('focus')();}
+  if(i===300){held.resolve(Response.json({code:'temporary'},{status:429}));await tick();await tick();behavior='ok';events.get('online')();await tick();await tick();}
+  const count=f.requests.length,actual=scorer.run(patterns[i%4]);assert.equal(actual.id,i+1);assert.equal(actual.grade,expected[i%4]);
+  assert.equal(actual.returned,undefined,'grade synchronous');assert.equal(scorer.recalculate(),undefined);
+  assert.equal(f.requests.length,count,'no request initiated by card or manual recalculation');
+  assert.equal(f.getSelected(),selection,'same installed immutable selection');samples.push(actual.elapsed);
+ }
+ assert.equal(scorer.history().length,400);assert.equal(new Set(scorer.history().map(x=>x.id)).size,400);
+ assert.ok(scorer.history().every(x=>x.binding.assessmentId===selection.assessmentId&&x.binding.manifestHash===selection.manifestHash));
+ assert.equal(f.requests.filter(x=>x.route.startsWith('/selections/')&&x.method==='GET').length,1);
+ const sorted=samples.sort((a,b)=>a-b);
+ console.log('CORRECTION_LOCAL_01 '+JSON.stringify({corrections:400,requestsPerCorrection:0,requestsInitial:initial,background:f.requests.slice(initial),selectionLoads:1,medianDomMs:sorted[199],p95DomMs:sorted[379]}));
+ behavior=401;events.get('online')();await tick();await tick();
+ assert.equal(f.getSelected(),null);assert.equal(f.mounted.controller.view().session,null);assert.equal(f.mounted.localCorrectionBinding(selection),null);
 });

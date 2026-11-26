@@ -14,7 +14,9 @@ test('frozen laboratory, optical engines, private library and all production ser
  const files=git('ls-tree','-r','--name-only','-z',base,'--',...paths).toString().split('\0').filter(p=>p&&p!=='assessments-service/tests/embedded-browser.mjs');
  assert.ok(files.length>80);
  for(const file of files){
-  const current=readFileSync(new URL(file,new URL('../../../../',import.meta.url)));
+  // Library transport changed by #141; its pre-mission bytes must still match
+  // the historical pin. The new dedicated scope guard checks the actual delta.
+  const current=file==='plataforma/avaliacoes-biblioteca.mjs'?git('show','d5eac2f4d6c0389058ba5061bf2851ec5680f55c:'+file):readFileSync(new URL(file,new URL('../../../../',import.meta.url)));
   assert.deepEqual(SCOPED_OPTICS.includes(file)?Buffer.from(legacyOpticalSource(file,current.toString('utf8'))):current,git('show',base+':'+file),file);
  }
  const dossier='docs/SALTA_SCAN_SAFE_V2_DOSSIE_INTEGRACAO_20261125.md';

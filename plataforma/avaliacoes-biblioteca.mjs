@@ -546,9 +546,9 @@ export function mountAssessmentLibrary({
  document.addEventListener?.('visibilitychange',()=>{if(document.visibilityState==='visible')verifyInBackground()});
  window.addEventListener?.('online',()=>verifyInBackground(true));
  // Independent of card arrivals; no timer or network work inside the scorer.
- const contextTimer=window.setInterval?.(()=>{if(document.visibilityState!=='hidden')verifyInBackground()},60000);
+ window.setInterval?.(()=>{if(document.visibilityState!=='hidden')verifyInBackground()},60000);
  window.addEventListener?.('pagehide',()=>{
-  window.clearInterval?.(contextTimer);controller.revokeAuthorization();correctionContext.clear();
+  controller.revokeAuthorization();correctionContext.clear();
  });
  window.addEventListener?.('pageshow',event=>{if(event.persisted)void connectAndList().catch(()=>{});});
  open.hidden=true;refresh.hidden=true;prev.hidden=true;next.hidden=true;retry.hidden=true;

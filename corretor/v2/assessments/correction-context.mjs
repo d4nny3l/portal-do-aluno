@@ -6,6 +6,7 @@ const sameScope=(a,b)=>Boolean(a&&b&&scopeKeys.every(k=>a[k]===b[k]));
 const temporary=e=>e?.status===429||e?.status>=500&&e?.status<=599||
  (e?.status===0&&['network','aborted','invalid_response'].includes(e?.code));
 const frozen=value=>Object.freeze(value);
+const canonical=value=>Array.isArray(value)?value.map(canonical):value&&typeof value==='object'?Object.fromEntries(Object.keys(value).sort().map(k=>[k,canonical(value[k])])):value;
 export function createCorrectionContext({client,view,revoke,invalidate,report=()=>{},online=()=>true,now=()=>Date.now(),interval=30000,timeout=10000}){
  let selected=null,metadata=null,checkedAt=-Infinity,flight=null;
  const clear=()=>{selected=null;metadata=null;checkedAt=-Infinity;flight?.abort.abort();flight=null;};
@@ -64,7 +65,7 @@ export function createCorrectionContext({client,view,revoke,invalidate,report=()
     }
     // Exact same immutable record, not a replacement key. Check entire
     // definition as a defense against a same-revision incompatible response.
-    if(JSON.stringify(latest.definition)!==JSON.stringify(start.record.definition)){
+    if(JSON.stringify(canonical(latest.definition))!==JSON.stringify(canonical(start.record.definition))){
      invalidate();report(Error('A definição da avaliação mudou. Reabra a avaliação.'));return false;
     }
     return true;

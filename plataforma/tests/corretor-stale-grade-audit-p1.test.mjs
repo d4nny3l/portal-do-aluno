@@ -53,8 +53,8 @@ function fixture({privatePlan=false,places=2,validateSelection=false}={}){
  const selection=privatePlan?{plan,manifestHash:manifest.contentHash,template}:null;
  let key=new Map([['q1','A'],['q2','A'],['q3','A']]),valid=true,cancelCount=0,verifyResolve;
  let workerProcess=async()=>{throw Error('Nenhum marcador localizado')};
- const privateLibrary={requiresSelectionValidation:()=>validateSelection,
-  verifySelection:()=>new Promise(resolve=>{verifyResolve=resolve})};
+ const privateLibrary={localCorrectionBinding:()=>({assessmentId:'synthetic',revision:1}),requiresSelectionValidation:()=>validateSelection,
+  verifySelection:()=>{throw Error('Score must not request network')}};
  const handlers=['setScanMessage','setCameraProgress','showCameraGrade','markLastReadingPending','invalidateScan',
   'scanPage','beginPhoto','processPhoto','loadPhoto','calculateScore','renderAnswers','renderHistory','readNormalized'].map(production).join('\n');
  const build=new Function('$','document','initialTemplate','initialManifest','initialSelection','privateLibrary','helpers',
@@ -199,11 +199,11 @@ test('result acceptance rejects old captures, sessions, model/hash/revision/page
  assert.equal(h.editor.current().identity.code,'0001123');
 });
 
-test('private selection validation resolving after the next shutter cannot revive the preceding capture grade',async()=>{
+test('local private note is immediate and the next shutter cannot revive the preceding capture grade',async()=>{
  const h=fixture({privatePlan:true,validateSelection:true});h.accept(h.page(undefined,'review'));
- assert.match(h.fields.scanScore.innerHTML,/Conferindo avaliação/);assert.equal(h.fields.cameraGrade.hidden,true);
- h.editor.begin();h.resolveValidation(true);await flush();hiddenGrade(h.fields);
- assert.equal(h.editor.history()[0].grade,undefined);
+ assert.equal(h.fields.cameraGrade.hidden,false);
+ h.editor.begin();await flush();hiddenGrade(h.fields);
+ assert.notEqual(h.editor.history()[0].grade,undefined);
 });
 
 test('a Worker result finishing after a newer shutter is discarded before raster, history or grade presentation',async()=>{
@@ -228,10 +228,9 @@ test('private hash mismatch blocks even a complete pending-identity response',()
 });
 
 
-test('live camera capture remains in flight until private score validation renders the original grade overlay',async()=>{
+test('live camera capture finishes with local grade without calling remote selection validation',async()=>{
  const h=fixture({privatePlan:true,validateSelection:true});
  h.setWorker(async input=>({token:input.token,document:null,sourceOptical:{gray:new Uint8Array(1),width:1,height:1},optical:null,reading:h.page(['A','A','A'])}));
  let done=false;const pending=h.editor.capture({data:new Uint8ClampedArray(4),w:1,h:1}).then(()=>{done=true});
- await flush();assert.equal(done,false);assert.equal(h.fields.cameraGrade.hidden,true);
- h.resolveValidation(true);await pending;assert.equal(done,true);assert.equal(h.fields.cameraGrade.hidden,false);assert.equal(h.fields.cameraGradeValue.textContent,'10,00');
+ await pending;assert.equal(done,true);assert.equal(h.fields.cameraGrade.hidden,false);assert.equal(h.fields.cameraGradeValue.textContent,'10,00');
 });

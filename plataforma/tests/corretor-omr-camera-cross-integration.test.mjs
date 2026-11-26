@@ -54,8 +54,8 @@ function integrationHarness({privatePlan=false,validateSelection=false,places=2}
  $('scanMaxScore').value='10';$('scanPage').value='1';$('read').disabled=true;$('cameraStage').hidden=true;
  let key=new Map([['q1','A']]),keyValid=true,identity='read',answer='A',state='read',recognition='partial';
  let verifyResolve;
- const privateLibrary={requiresSelectionValidation:()=>validateSelection,
-  verifySelection:()=>new Promise(resolve=>{verifyResolve=resolve})};
+ const privateLibrary={localCorrectionBinding:()=>({assessmentId:'synthetic',revision:1}),requiresSelectionValidation:()=>validateSelection,
+  verifySelection:()=>{throw Error('Score must not request network')}};
  const reading=(t=template,options={manifest,page:1})=>({templateId:t.templateId,templateRevision:t.revision,
   contentHash:options.manifest.contentHash,page:options.page,pageCount:t.pageCount,needsReview:identity==='review'||state==='review',
   identity:{state:identity,code:identity==='read'?'0001123':null},observations:[{number:1,questionId:'q1',page:options.page,
@@ -227,8 +227,7 @@ test('identity pending permits only a local provisional grade after strong or ma
 
 test('private selection verification and revocation clear private state while keeping only completed numeric session history',async()=>{
  const h=integrationHarness({privatePlan:true,validateSelection:true});h.$('read').disabled=false;
- const pending=h.editor.capture(h.photo);await flush();assert.match(h.$('scanScore').innerHTML,/Conferindo avaliação/);
- assert.equal(h.$('cameraGrade').hidden,true);assert.equal(h.editor.suspended(),true);h.resolveValidation(true);await pending;
+ await h.editor.capture(h.photo);assert.equal(h.editor.suspended(),false);
  assert.equal(h.$('cameraGradeValue').textContent,'10,00');
  h.editor.clear();assert.equal(h.editor.selection(),null);assert.equal(h.editor.model(),null);assert.equal(h.editor.token(),null);
  assert.equal(h.$('cameraGrade').hidden,true);assert.equal(h.$('scanScore').children.length,0);
