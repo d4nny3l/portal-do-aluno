@@ -137,3 +137,7 @@
 #scanFlash{position:absolute;inset:0;background:white;opacity:0;pointer-events:none;z-index:3}
 #scanFlash.go{animation:scan-flash .35s ease-out}
 @keyframes scan-flash{0%{opacity:.9}100%{opacity:0}}
+
+/* Live correction: keep the original grade card above both native and canvas previews. */
+#corrigir #cameraStage{isolation:isolate}
+#corrigir #cameraGrade:not([hidden]){z-index:10;transform:translate3d(-50%,0,0)}

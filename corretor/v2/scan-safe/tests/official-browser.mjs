@@ -98,6 +98,7 @@ try{
    await p.waitForFunction(n=>document.querySelectorAll('#captureHistory li').length===n,importedCount+1,{timeout:15000});
    await p.waitForFunction(()=>!document.querySelector('#cameraGrade').hidden);
    assert.equal(await p.locator('#cameraGradeValue').innerText(),'1,00');
+   await p.evaluate(()=>window.__scanFixture.show(null));
    // Original DOM/CSS are used ONLY as a visual baseline, never as an app/test fallback.
    const before=await c.newPage();await before.goto(origin+'/plataforma/__scan_visual_baseline');
    await before.evaluate(async src=>{
@@ -122,16 +123,14 @@ try{
     report.results.push({name,width,geometry});
    }
    await before.close();
-   const count=await p.locator('#captureHistory li').count();
-   await p.waitForTimeout(1000);assert.equal(await p.locator('#captureHistory li').count(),count,'same paper cannot duplicate');
-   await p.evaluate(()=>window.__scanFixture.cover(true));await p.waitForTimeout(900);
-   await p.evaluate(()=>window.__scanFixture.cover(false));await p.waitForTimeout(1000);
-   assert.equal(await p.locator('#captureHistory li').count(),count,'fresh black obstruction must not recapture the same sheet');
-   assert.equal(await p.locator('#cameraLiveBadge').getAttribute('data-phase'),'locked');
-   await p.evaluate(()=>window.__scanFixture.withdraw());await p.waitForFunction(()=>document.getElementById('cameraLiveBadge').dataset.phase==='vacant',null,{timeout:10000});
-   assert.equal(await p.locator('#cameraGradeValue').innerText(),'1,00','grade persists during withdrawal');
+   const first=await p.locator('#captureHistory li').first().textContent();
+   await p.evaluate(src=>window.__scanFixture.show(src),origin+'/corretor/v2/scan-safe/validation/moderate-A.png');
+   await p.waitForFunction(old=>document.querySelector('#captureHistory li').textContent!==old&&!document.getElementById('cameraGrade').hidden,first,{timeout:15000});
+   const previous=await p.locator('#captureHistory li').first().textContent();
+   // Direct replacement: no desk observation, movement proof or withdrawal wait.
    await p.evaluate(src=>window.__scanFixture.show(src),origin+'/corretor/v2/scan-safe/validation/moderate-AB.png');
-   await p.waitForFunction(n=>document.querySelectorAll('#captureHistory li').length===n,count+1,{timeout:15000});
+   await p.waitForFunction(old=>document.querySelector('#captureHistory li').textContent!==old&&!document.getElementById('cameraGrade').hidden&&document.getElementById('cameraGradeValue').textContent==='0,00',previous,{timeout:15000});
+   await p.evaluate(()=>window.__scanFixture.show(null));
    if(name==='chromium'&&Number(process.env.SALTA_SCAN_CYCLES)>=100){
     await p.evaluate(()=>{
      const f=window.__scanFixture;f.performance={latencies:[],frames:0,maxFrameGapMs:0};let last=null,start=null;
@@ -145,20 +144,19 @@ try{
     const cdp=await c.newCDPSession(p),memory=[];
     for(let cycle=1;cycle<=Number(process.env.SALTA_SCAN_CYCLES);cycle++){
      const previous=await p.locator('#captureHistory li').first().textContent();
-     await p.evaluate(()=>window.__scanFixture.withdraw());
-     await p.waitForFunction(()=>document.getElementById('cameraLiveBadge').dataset.phase==='vacant',null,{timeout:10000});
      await p.evaluate(src=>window.__scanFixture.show(src),origin+'/corretor/v2/scan-safe/validation/moderate-A.png');
      await p.waitForFunction(old=>document.querySelector('#captureHistory li').textContent!==old&&!document.getElementById('cameraGrade').hidden,previous,{timeout:15000});
+     await p.evaluate(()=>window.__scanFixture.show(null));
      memory.push({cycle,...await cdp.send('Runtime.getHeapUsage')});
      if(cycle%20===0)console.log('Actual camera → grade cycles '+cycle);
     }
     const performance=await p.evaluate(()=>window.__scanFixture.performance),sorted=[...performance.latencies].sort((a,b)=>a-b);
     assert.equal(sorted.length,Number(process.env.SALTA_SCAN_CYCLES));
-    report.performance={scope:'Synthetic native MediaStream, repeated labelled moderate-A sheet with proven removal between every capture. Real Worker and grade DOM. No physical sensor or temperature measurement.',count:sorted.length,medianMs:sorted[Math.ceil(sorted.length*.5)-1],p95Ms:sorted[Math.ceil(sorted.length*.95)-1],...performance,memory};
+    report.performance={scope:'Synthetic native MediaStream, repeated labelled moderate-A sheet, no withdrawal gate. Real Worker and grade DOM. No physical sensor or temperature measurement.',count:sorted.length,medianMs:sorted[Math.ceil(sorted.length*.5)-1],p95Ms:sorted[Math.ceil(sorted.length*.95)-1],...performance,memory};
     console.log('Camera → grade median/p95',report.performance.medianMs,report.performance.p95Ms);
    }
    await p.locator('#camera').click();assert.equal(await p.locator('#video').evaluate(v=>v.srcObject),null);
-   report.results.push({name,photoGrade,native,continuousSamePaperSuppressed:true,blackObstructionSuppressed:true,automaticWithdrawalRearmed:true});
+   report.results.push({name,photoGrade,native,directReplacementAccepted:true,withdrawalGateRemoved:true});
    await c.close();
   }finally{await browser.close();}
  }

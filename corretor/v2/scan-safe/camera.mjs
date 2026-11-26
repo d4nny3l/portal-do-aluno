@@ -5,64 +5,27 @@ import {experimentalPaperDetector} from '../../../laboratorio/salta-omr-scan-saf
 import {createCameraPresentation} from '../../../laboratorio/salta-omr-scan-safe-02/js/camera-presentation.mjs';
 import {fullPaperVisible,addPaperMargin} from '../../../laboratorio/salta-omr-scan-safe-02/js/paper-geometry.js';
 import {frameFresh} from '../../../laboratorio/salta-omr-scan-safe-02/js/safe-scan.mjs';
-import {createCardFlow,cardCaptured,cardReadFinished,cardDetected} from '../../../laboratorio/salta-omr-scan-safe-02/js/card-flow-safe.mjs';
-
-import {withdrawalFrame,withdrawalReference,withdrawalMotion,withdrawalSurface,usableWithdrawalFrame,withdrawalContinuity} from './withdrawal.mjs';
 
 export const CAMERA_POLICY=Object.freeze({STEADY_FRAMES:10,DET_W:384,LOOP_MS:66,MIN_SCORE:.22,SMOOTH:.45,MAX_SIDE:2600});
 export const isWebKit=ua=>/iPhone|iPad|iPod/i.test(ua)||(/AppleWebKit/i.test(ua)&&!/Chrome|Chromium|CriOS|FxiOS|Edg|OPR|SamsungBrowser/i.test(ua));
 export const cameraConstraints=ua=>({video:{facingMode:'environment',width:{ideal:isWebKit(ua)?1920:3840},height:{ideal:isWebKit(ua)?1080:2160}},audio:false});
 
-/** Pure frame state: no elapsed-time-only rearm, and no reset on transient loss. */
+/** Continuous reading: no withdrawal gate. Lock only while a capture is in flight. */
 export function createPaperTracker(){
- let flow=createCardFlow(),smooth=null,stable=0,misses=99,sequence=0,moved=false;
- function resetGeometry({preserveReference=false}={}){smooth=null;stable=0;misses=99;flow.absentSince=null;flow.absentFrames=0;moved=false;
-  // Old orientation/picker pixels cannot prove withdrawal in the new geometry.
-  if(flow.phase==='locked'&&!preserveReference)flow.reference=null;
- }
+ let pending=null,sequence=0,smooth=null,stable=0,misses=99;
+ function resetGeometry(){smooth=null;stable=0;misses=99;}
  return {
-  resetGeometry,finish:id=>cardReadFinished(flow,id),
-  snapshot:()=>({phase:flow.phase,readDone:flow.readDone,cardId:flow.cardId,stable,misses}),
-  observe(q,w,h,scene,now){
+  resetGeometry,
+  finish(id){if(pending===null||pending!==id)return false;pending=null;resetGeometry();return true;},
+  snapshot:()=>({phase:pending===null?'ready':'locked',readDone:pending===null,cardId:sequence||null,stable,misses}),
+  observe(q,w,h){
    const paper=!!(q&&q.score>=CAMERA_POLICY.MIN_SCORE&&q.corners?.length===4);
    const entire=paper&&fullPaperVisible(q.corners,w,h);
-   const frame=()=>typeof scene==='function'?scene():scene;
-   if(flow.phase==='locked'){
-    // The frozen structural signature alone cannot prove a sheet was removed.
-    // Require a coherent translation of the observed sheet AND its original
-    // surroundings to be visibly exposed. No contour, darkness or time alone
-    // is never a withdrawal. Unknown frames break the evidence sequence.
-    const evidence=frame();
-    if(!usableWithdrawalFrame(evidence,w,h)){
-     moved=false;flow.absentSince=null;flow.absentFrames=0;
-    }else if(!flow.reference||flow.reference.w!==w||flow.reference.h!==h){
-     flow.reference=entire?withdrawalReference(evidence,q.corners):null;
-     moved=false;flow.absentSince=null;flow.absentFrames=0;
-    }else if(entire){
-     moved=withdrawalMotion(flow.reference,evidence,q.corners);
-     flow.absentSince=null;flow.absentFrames=0;
-    }else if(q||!moved||!withdrawalSurface(flow.reference,evidence)){
-     if(!withdrawalContinuity(flow.reference,evidence))moved=false;
-     flow.absentSince=null;flow.absentFrames=0;
-    }else{
-     // Exactly the original four fresh observations spanning >=650 ms.
-     if(flow.absentSince===null)flow.absentSince=now;
-     flow.absentFrames++;
-     if(flow.absentFrames>=4&&now-flow.absentSince>=650)flow.phase='vacant';
-    }
-    if(!entire){misses++;if(misses>3){smooth=null;stable=0;}}
-    return {corners:entire?smooth:null,stable:0,phase:flow.phase,
-     message:flow.phase==='vacant'?'Retirada confirmada. Apresente a próxima folha.':!flow.readDone?'Lendo as respostas…':
-      !flow.reference?'Retirada não comprovada. Mostre a folha inteira e referências da mesa.':'Retire a folha mantendo a mesa visível.'};
-   }
+   if(pending!==null)return {corners:entire?smooth:null,stable:0,phase:'locked',message:'Lendo as respostas…'};
    if(!entire){
     misses++;if(misses>3){smooth=null;stable=0;}
-    return {corners:misses>3?null:smooth,stable,phase:flow.phase,
-     message:paper?'Mostre a folha inteira, com os quatro cantos visíveis.':'Procurando a folha inteira…'};
+    return {corners:misses>3?null:smooth,stable,phase:'ready',message:paper?'Mostre a folha inteira, com os quatro cantos visíveis.':'Procurando a folha inteira…'};
    }
-   const prior=flow.phase;
-   if(!cardDetected(flow))return {corners:smooth,stable:0,phase:flow.phase,message:flow.readDone?'Cartão lido. Troque a folha para continuar.':'Lendo as respostas…'};
-   if(prior==='vacant'){smooth=null;stable=0;}
    misses=0;
    if(!smooth){smooth=q.corners.map(p=>[...p]);stable=0;}
    else{
@@ -70,13 +33,10 @@ export function createPaperTracker(){
     smooth=smooth.map((p,i)=>p.map((n,j)=>n+(q.corners[i][j]-n)*CAMERA_POLICY.SMOOTH));
     stable=shift<.02*w?stable+1:0;
    }
-   const result={corners:smooth.map(p=>[...p]),stable,phase:flow.phase,message:'Mantenha a folha estável…'};
-   if(stable>=CAMERA_POLICY.STEADY_FRAMES){
-    const id=++sequence;cardCaptured(flow,{scene:withdrawalReference(frame(),q.corners),cardId:id});moved=false;stable=0;
-    result.captureId=id;result.message='Capturando cartão…';result.phase='locked';
-   }
+   const result={corners:smooth.map(p=>[...p]),stable,phase:'ready',message:'Mantenha a folha estável…'};
+   if(stable>=CAMERA_POLICY.STEADY_FRAMES){pending=++sequence;stable=0;result.captureId=pending;result.message='Capturando cartão…';result.phase='locked';}
    return result;
-  },
+  }
  };
 }
 
@@ -128,21 +88,21 @@ export function createSafeCamera({video,preview,onCapture,onStatus=()=>{},onCont
   try{
    ctx.drawImage(video,0,0,w,h);const image=ctx.getImageData(0,0,w,h);
    const q=experimentalPaperDetector(image.data,w,h,{mode:'edge',misses:tracker.snapshot().misses});
-   const observation=tracker.observe(q,w,h,()=>withdrawalFrame(image.data,w,h,q?.corners),ts);
+   const observation=tracker.observe(q,w,h);
    onContour(observation.corners,w,h);onStatus(observation.message,observation);
    if(!observation.captureId)return;
    const request=epoch,id=observation.captureId;
-   if(video.videoWidth!==vw||video.videoHeight!==vh){tracker.finish(id);tracker.resetGeometry();onStatus('A orientação mudou. Retire a folha e reenquadre.');return;}
+   if(video.videoWidth!==vw||video.videoHeight!==vh){tracker.finish(id);tracker.resetGeometry();onStatus('A orientação mudou. Reenquadre o cartão.');return;}
    busy=true;full.width=vw;full.height=vh;fullCtx.drawImage(video,0,0,vw,vh);
-   if(video.videoWidth!==vw||video.videoHeight!==vh)throw Error('A orientação mudou durante a fotografia. Retire a folha e reenquadre.');
+   if(video.videoWidth!==vw||video.videoHeight!==vh)throw Error('A orientação mudou durante a fotografia. Reenquadre o cartão.');
    const photo=fullCtx.getImageData(0,0,vw,vh);
    const corners=addPaperMargin(observation.corners.map(([x,y])=>[x*vw/w,y*vh/h]),vw,vh);
    Promise.resolve(onCapture({data:photo.data,w:vw,h:vh,corners})).catch(error=>{
-    if(epoch===request)onStatus(error.message||'Falha na captura. Retire a folha e tente novamente.');
+    if(epoch===request)onStatus(error.message||'Falha na captura. Tente novamente.');
    }).finally(()=>{if(epoch===request){tracker.finish(id);busy=false;full.width=full.height=0;}});
   }catch(error){
    // Failure after locking a capture must not leave readDone=false forever.
-   // It also must not turn failure into permission to capture the same paper.
+   // Retry automatically on the next stable frame; no withdrawal proof.
    if(busy){tracker.finish(tracker.snapshot().cardId);busy=false;}
    tracker.resetGeometry({preserveReference:video.videoWidth===vw&&video.videoHeight===vh});onStatus(error.message||'Quadro indisponível. Aguarde o vídeo.');
   }
