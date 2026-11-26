@@ -14,9 +14,9 @@ import {renderTemplateSvg} from '../../corretor/v2/omr/render.mjs';
 const root=path.resolve(path.dirname(fileURLToPath(import.meta.url)),'../..');
 const text=rel=>fs.readFileSync(path.join(root,rel),'utf8');
 const gitBlob=rel=>{const body=fs.readFileSync(path.join(root,rel));return createHash('sha1').update('blob '+body.length+'\0').update(body).digest('hex')};
-// Keep optical/controller/client pins unchanged. Only the #118 adapter allowlist now includes embedded V2.
+// Optical/controller/client pins remain unchanged. Scan candidate adds guarded local-score entry points only.
 const original={
- 'corretor/v2/assessments/block-scoring.mjs':'42a3ec7bfd2a10495f74c103a792bf1d65f6d264',
+ 'corretor/v2/assessments/block-scoring.mjs':'ff2346b8f50e48dcd59e5ee25798977552284ea7',
  'corretor/v2/assessments/private-contract-adapter.mjs':'ac042fbf6d448ebdd296d8ef4f9ebffbd8da94de',
  'corretor/v2/assessments/private-client.mjs':'5402c5eafe808a3cf86ee201b2c1a29721265f24',
  'corretor/v2/assessments/private-library.mjs':'94cb6a98698e8e8938f8fbe12288cc7c907da1e8',

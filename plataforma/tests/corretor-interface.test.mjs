@@ -26,6 +26,6 @@ test("Corretor: retira mensagens decorativas sem apagar status operacional", () 
   assert.match(html, /id="preview"/);
   assert.match(html, /<input id="read" type="hidden" aria-hidden="true">/);
   assert.doesNotMatch(html, /<button[^>]+id="read"/);
-  assert.match(html, /readNormalized\(\)/);
+  assert.match(html, /readNormalized\(result\.reading/);
   assert.match(html, /id="printCard"/);
 });

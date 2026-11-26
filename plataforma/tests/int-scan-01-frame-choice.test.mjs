@@ -1,126 +1,165 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
-import vm from 'node:vm';
+import {gunzipSync} from 'node:zlib';
+import {createSafeCamera,CAMERA_POLICY} from '../../corretor/v2/scan-safe/camera.mjs';
+import {processCapture} from '../../corretor/v2/scan-safe/processor.mjs';
+import {readRaster} from '../../corretor/v2/omr/reader.mjs';
+import {detectFiducials} from '../../corretor/v2/omr/normalize.mjs';
+import {CASES,modelFor} from '../../corretor/v2/scan-safe/validation/optical-corpus.mjs';
+import {rotate} from '../../laboratorio/salta-omr-scan-safe-02/js/vision.js';
+import {addPaperMargin} from '../../laboratorio/salta-omr-scan-safe-02/js/paper-geometry.js';
 
-// Regression of the INT-SCAN-01 removal. One final full-resolution capture,
-// never a preliminary sample or "best of multiple captures" buffer.
-const html=readFileSync(new URL('../corretor-v2.html',import.meta.url),'utf8');
-const start=html.indexOf('function scanCameraFrame(){');
-const end=html.indexOf('function updateCameraInfo(){',start);
-assert.ok(start>0&&end>start);
-const scanner=html.slice(start,end);
-const samePosition=html.match(/^function samePosition\(.*$/m)?.[0];
-const progress=html.match(/^function setCameraProgress\(.*$/m)?.[0];
-assert.ok(samePosition&&progress,'production stability and progress functions must be present');
-const source=[samePosition,progress,scanner].join('\n');
-const corners=[{x:100,y:100},{x:800,y:100},{x:800,y:900},{x:100,y:900}];
-const fullCorners=corners.map(p=>({x:p.x*2,y:p.y*2}));
-
-function harness(){
- const elements=new Map(),messages=[];
- const $=id=>{
-  if(!elements.has(id))elements.set(id,{hidden:['cameraGrade','photoGrade','cameraStableStatus','cameraCaptureStatus','cameraReadStatus'].includes(id),disabled:false,
-   textContent:'',dataset:{review:'false'},checked:false});
-  return elements.get(id);
- };
- const preview={gray:new Uint8Array([1]),width:900,height:1000};
- const final={gray:new Uint8Array([2]),width:1800,height:2000};
- Object.assign($('video'),{videoWidth:900,videoHeight:1000,readyState:4});
- let captures=0,processed=0,blurFinal=false,moveFinal=false,found=true,movePreview=false,now=10000;
- const state={
-  $,Date:{now:()=>now},cameraStream:{},cameraScratch:{},cameraFrameDimensions:'',stableFrames:0,
-  previousCorners:null,previousCameraFrame:null,waitingForRemoval:false,
-  absentFrames:0,lastCaptureAt:0,captureBusy:false,
-  drawVideoFrame:()=>preview,
-  detectFiducials:(gray,width)=>{
-   if(!found)return {found:false,confidence:0,corners:[]};
-   return {found:true,confidence:.96,corners:width===1800
-    ?fullCorners.map(p=>({x:p.x+(moveFinal?150:0),y:p.y}))
-    :corners.map((p,i)=>({x:p.x+(movePreview&&i===0?100:0),y:p.y}))};
-  },
-  captureQuality:frame=>({ok:frame!==final||!blurFinal,
-   message:frame===final&&blurFinal?'Aguarde o foco.':'Folha nítida.',sharpness:80}),
-  positionGuides(){},updateCameraInfo(){},markLastReadingPending(){},
-  setScanMessage:m=>{messages.push(m);$('cameraGuideStatus').textContent=m;},
-  captureFrameGray:()=>{captures++;return final;},
-  mapFramePoints:(points,source,target)=>points.map(p=>({
-   x:p.x*target.width/source.width,y:p.y*target.height/source.height})),
-  prepareImage:(gray,width,height,{manualCorners})=>{
-   processed++;
-   assert.equal(gray,final.gray);
-   assert.deepEqual([...manualCorners.map(p=>p.x)],fullCorners.map(p=>p.x));
-   return {pixels:gray,width,height};
-  },
- };
- vm.createContext(state);
- vm.runInContext(source,state,{timeout:3000});
- return {state,messages,$,advance(ms){now+=ms},
-  scan(n){for(let i=0;i<n;i++)state.scanCameraFrame()},
-  get captures(){return captures},
-  get processed(){return processed},
-  blur(v){blurFinal=v},move(v){moveFinal=v},movePreview(v){movePreview=v},present(v){found=v}};
+const target=()=>({addEventListener(){},removeEventListener(){}});
+function paperFrame(w,h,{paper=true}={}){
+ const data=new Uint8ClampedArray(w*h*4),pw=w*.76,ph=Math.min(h*.88,pw*1.414);
+ for(let y=0;y<h;y++)for(let x=0;x<w;x++){
+  const px=x-w/2,py=y-h/2,inside=paper&&Math.abs(px)<pw/2&&Math.abs(py)<ph/2;
+  let v=inside?225:42;
+  if(inside&&py>-ph*.35&&py<ph*.35&&Math.floor(py+ph*.35)%24<2&&Math.abs(px)<pw*.25)v=190;
+  data.set([v,v,v,255],(y*w+x)*4);
+ }
+ return data;
 }
-test('INT-SCAN-01 removed: no extra full-resolution captures or retained candidate',()=>{
- assert.doesNotMatch(html,/scanBestFrame|scanSelectionEnabled|scanOpticalRank|sampleScanFrame|scanValidFrame|clearScanFrameChoice/);
- assert.match(scanner,/stableFrames>=2/);
- assert.doesNotMatch(scanner,/stableFrames>=3/);
- assert.match(scanner,/captureQuality\(capture,actual,capture\)/);
- assert.match(scanner,/manualCorners:actual\.corners/);
- const h=harness();h.scan(1);
- assert.equal(h.state.stableFrames,0,'first preview is the reference, not a confirmation');
- assert.equal(h.captures,0);
- h.scan(1);
- assert.equal(h.state.stableFrames,1);
- assert.equal(h.captures,0,'first confirmation never draws a full capture');
- h.scan(1);
- assert.equal(h.state.stableFrames,2);
- assert.equal(h.captures,1,'second valid confirmation draws only one capture');
- assert.equal(h.processed,1);
- h.scan(4);
- assert.equal(h.captures,1,'sheet removal is required before another capture');
-});
-test('single-shot rejects blurred final frame and retries cleanly',()=>{
- const h=harness();h.blur(true);h.scan(3);
- assert.equal(h.captures,1);assert.equal(h.processed,0);
- assert.equal(h.state.waitingForRemoval,false);
- assert.match(h.messages.at(-1),/foco/);
- h.blur(false);h.advance(2000);h.scan(3);
- assert.equal(h.captures,2);assert.equal(h.processed,1);
-});
-test('single-shot rejects drift of a final fiducial; no stale-frame substitution',()=>{
- const h=harness();h.move(true);h.scan(3);
- assert.equal(h.captures,1);assert.equal(h.processed,0);
- assert.match(h.messages.at(-1),/folha se moveu/);
+
+// Only DOM/decoded-frame scheduling is simulated. EDGE detection, camera
+// policy, tracking, native capture and contour projection remain production code.
+function harness({nativeWidth=1152,nativeHeight=1620,onCapture=()=>{}}={}){
+ let frameCount=0,now=0,rafId=0,fullReads=0,encodes=0;
+ const callbacks=new Map(),captures=[],statuses=[],contours=[],draws=[];
+ let native=paperFrame(nativeWidth,nativeHeight),present=true;
+ const video={...target(),videoWidth:nativeWidth,videoHeight:nativeHeight,readyState:4,paused:false,
+  parentElement:{classList:{add(){},remove(){}}},
+  play(){this.paused=false;return Promise.resolve();},pause(){this.paused=true;},
+  getVideoPlaybackQuality:()=>({totalVideoFrames:frameCount})};
+ const canvas=role=>({width:0,height:0,hidden:true,
+  toDataURL(){encodes++;throw Error('Capture must not encode JPEG.');},toBlob(){encodes++;throw Error('Capture must not encode JPEG.');},
+  getContext(){return {
+   drawImage(source,x,y,w,h){assert.equal(source,video);draws.push({role,x,y,w,h});},
+   getImageData(x,y,w,h){
+    if(role==='full'){fullReads++;assert.equal(w,nativeWidth);assert.equal(h,nativeHeight);return {data:native};}
+    assert.equal(w,CAMERA_POLICY.DET_W);
+    return {data:paperFrame(w,h,{paper:present})};
+   },
+  };},
+ });
+ let canvases=0;
+ const doc={...target(),hidden:false,querySelectorAll:()=>[],createElement:name=>{assert.equal(name,'canvas');return canvas(canvases++===0?'detection':'full');}};
+ const win={...target(),visualViewport:target(),requestAnimationFrame:callback=>{callbacks.set(++rafId,callback);return rafId;},cancelAnimationFrame:id=>callbacks.delete(id)};
+ const track={...target(),muted:false,stop(){},getCapabilities:()=>({}),getSettings:()=>({width:nativeWidth,height:nativeHeight})};
+ const stream={getVideoTracks:()=>[track],getTracks:()=>[track]};
+ const camera=createSafeCamera({video,preview:canvas('presentation'),window:win,document:doc,userAgent:'Chrome AppleWebKit',mediaDevices:{getUserMedia:async()=>stream},
+  onCapture:payload=>{captures.push(payload);return onCapture(payload);},onStatus:(message,observation)=>statuses.push({message,observation}),
+  onContour:(corners,w,h)=>contours.push({corners,w,h})});
+ return {camera,captures,statuses,contours,video,draws,
+  tick({fresh=true}={}){now+=CAMERA_POLICY.LOOP_MS;if(fresh)frameCount++;const current=[...callbacks.values()];callbacks.clear();for(const callback of current)callback(now);},
+  setNative:data=>{native=data;},present:value=>{present=value;},
+  get native(){return native;},get fullReads(){return fullReads;},get encodes(){return encodes;}};
+}
+async function settle(){await Promise.resolve();await Promise.resolve();await Promise.resolve();}
+
+test('INT-SCAN-01: ten stable decoded observations produce one native frame, projected corners and external margin without JPEG',async()=>{
+ const h=harness();await h.camera.start();
+ try{
+  for(let i=0;i<CAMERA_POLICY.STEADY_FRAMES;i++){h.tick();assert.equal(h.captures.length,0);}
+  h.tick();await settle();
+  assert.equal(h.captures.length,1);assert.equal(h.fullReads,1);assert.equal(h.encodes,0);
+  const capture=h.captures[0],last=h.contours.filter(c=>c.corners).at(-1);
+  assert.equal(capture.data,h.native,'final native pixels are used, never the 384 px detector raster');
+  assert.deepEqual([capture.w,capture.h],[1152,1620]);assert.equal(capture.data.length,1152*1620*4);
+  assert.equal(last.w,384);assert.equal(last.h,540);
+  const projected=last.corners.map(([x,y])=>[x*capture.w/last.w,y*capture.h/last.h]);
+  assert.deepEqual(capture.corners,addPaperMargin(projected,capture.w,capture.h));
+  for(let i=0;i<4;i++){
+   const c=capture.corners[i],p=projected[i];
+   assert.ok(Math.hypot(c[0]-capture.w/2,c[1]-capture.h/2)>Math.hypot(p[0]-capture.w/2,p[1]-capture.h/2),'margin expands outward rather than cropping inside paper');
+  }
+  assert.deepEqual(h.draws.filter(d=>d.role==='full'),[{role:'full',x:0,y:0,w:1152,h:1620}]);
+  for(let i=0;i<20;i++)h.tick();await settle();
+  assert.equal(h.fullReads,1,'stationary paper is not recaptured or ranked against another full frame');
+ }finally{h.camera.stop();}
 });
 
-test('single-shot shows stable indicator during cooldown, resets on drift, and never captures early',()=>{
- const h=harness();h.state.lastCaptureAt=10000;
- const indicators=()=>['cameraStableStatus','cameraCaptureStatus','cameraReadStatus'].map(id=>h.$(id).hidden);
- h.scan(1);
- assert.equal(h.state.stableFrames,0);
- assert.deepEqual(indicators(),[true,true,true]);
- assert.match(h.$('cameraGuideStatus').textContent,/0\/2/);
- h.scan(1);
- assert.equal(h.state.stableFrames,1);
- assert.deepEqual(indicators(),[true,true,true]);
- assert.match(h.$('cameraGuideStatus').textContent,/1\/2/);
- h.scan(1);
- assert.equal(h.state.stableFrames,2);
- assert.equal(h.$('cameraGuideStatus').textContent,'Validando captura…');
- assert.deepEqual(indicators(),[false,true,true],'stable visible before any final capture');
- assert.equal(h.captures,0);assert.equal(h.processed,0);
- h.movePreview(true);h.scan(1);
- assert.equal(h.state.stableFrames,0,'one drifting marker invalidates stability');
- assert.deepEqual(indicators(),[true,true,true]);
- h.movePreview(false);h.scan(3);
- assert.equal(h.state.stableFrames,2);
- assert.deepEqual(indicators(),[false,true,true]);
- h.advance(1999);h.scan(1);
- assert.equal(h.captures,0,'cooldown still enforced at 1999 ms');
- assert.deepEqual(indicators(),[false,true,true]);
- h.advance(1);h.scan(1);
- assert.equal(h.captures,1);assert.equal(h.processed,1);
- assert.deepEqual(indicators(),[false,false,false],'all indicators visible only after validated capture');
- h.scan(3);assert.equal(h.captures,1,'no duplicate before removal');
+test('INT-SCAN-01: repeated decoded frame cannot supply stability and missing paper cannot trigger native capture',async()=>{
+ const h=harness();await h.camera.start();
+ try{
+  h.tick();for(let i=0;i<20;i++)h.tick({fresh:false});
+  assert.equal(h.fullReads,0,'elapsed time cannot turn one decoded preview into ten observations');
+  h.present(false);for(let i=0;i<15;i++)h.tick();
+  assert.equal(h.captures.length,0);
+  h.present(true);for(let i=0;i<11;i++)h.tick();await settle();
+  assert.equal(h.captures.length,1);
+ }finally{h.camera.stop();}
+});
+
+const spec=CASES.find(c=>c.id==='moderate-A'),model=modelFor(spec);
+const fixture=new Uint8ClampedArray(gunzipSync(readFileSync(new URL('../../corretor/v2/scan-safe/validation/moderate-A.rgba.gz',import.meta.url))));
+const fixtureWidth=900,fixtureHeight=fixture.length/(fixtureWidth*4);
+function payload(data,w,h,captureId=1){return {data,w,h,corners:[[0,0],[w,0],[w,h],[0,h]],...model,page:1,showCode:true,
+ token:{captureId,sessionId:1,templateId:model.template.templateId,templateRevision:model.template.revision,contentHash:model.manifest.contentHash,page:1}};}
+
+test('INT-SCAN-01: one production processor reads the real final raster in portrait and rotated landscape',()=>{
+ let reads=0;
+ const dependencies={read:(...args)=>{reads++;return readRaster(...args);}};
+ for(const quarterTurns of [0,1]){
+  const rotated=rotate(fixture,fixtureWidth,fixtureHeight,quarterTurns);
+  const result=processCapture(payload(rotated.data,rotated.w,rotated.h,quarterTurns+1),dependencies);
+  assert.equal(result.error,undefined);assert.equal(result.metrics.readCalls,1);
+  assert.equal(result.reading.contentHash,model.manifest.contentHash);
+  assert.equal(result.reading.identity.code,'0001123');
+  assert.equal(result.reading.observations[0].answer,'A');
+ }
+ assert.equal(reads,2,'exactly one real reader call per final photo; no second path');
+});
+
+test('INT-SCAN-01: a malformed three-corner detector result is rejected before reading and a valid photo recovers',()=>{
+ let reads=0;const dependencies={read:(...args)=>{reads++;return readRaster(...args);}};
+ // Explicit fault injection at the detector contract; raster/warp/reader remain real.
+ const rejected=processCapture(payload(fixture,fixtureWidth,fixtureHeight),{...dependencies,detect:(...args)=>{
+  const actual=detectFiducials(...args);assert.equal(actual.found,true);
+  return {...actual,corners:actual.corners.slice(0,3)};
+ }});
+ assert.equal(rejected.error?.code,'FIDUCIALS_NOT_FOUND');assert.equal(rejected.reading,null);
+ assert.equal(rejected.metrics.readCalls,0);assert.equal(reads,0);
+ const recovered=processCapture(payload(fixture,fixtureWidth,fixtureHeight,2),dependencies);
+ assert.equal(recovered.error,undefined);assert.equal(recovered.metrics.readCalls,1);assert.equal(reads,1);
+ assert.equal(recovered.reading.contentHash,model.manifest.contentHash);assert.equal(recovered.reading.observations[0].answer,'A');
+});
+
+test('INT-SCAN-01 regression: erased A4 marker cannot be replaced by print; zero read and no grade',()=>{
+ const missing=fixture.slice();
+ // Exact original contraprova, not a new artificial failure.
+ for(let y=15;y<55;y++)for(let x=15;x<55;x++)missing.set([255,255,255,255],(y*fixtureWidth+x)*4);
+ let legacy,reads=0;
+ const result=processCapture(payload(missing,fixtureWidth,fixtureHeight),{
+  detect:(gray,w,h,options)=>{
+   legacy=detectFiducials(gray,w,h,{manifest:options.manifest});
+   return detectFiducials(gray,w,h,options);
+  },
+  read:(...args)=>{reads++;return readRaster(...args);},
+ });
+ assert.equal(legacy.found,true);assert.equal(legacy.corners.length,4);
+ assert.ok(Math.hypot(legacy.corners[0].x-8*fixtureWidth/210,legacy.corners[0].y-8*fixtureHeight/297)>100,'historical path substitutes print');
+ assert.ok(['FIDUCIALS_NOT_FOUND','FIDUCIALS_INVALID'].includes(result.error?.code));
+ assert.equal(reads,0);assert.equal(result.metrics.readCalls,0);assert.equal(result.reading,null);
+});
+
+test('INT-SCAN-01: sharp preview never replaces an unusable final photo or causes a second silent capture',async()=>{
+ let reads=0;
+ const h=harness({onCapture:photo=>{
+  const result=processCapture({...payload(photo.data,photo.w,photo.h),corners:photo.corners},{read:(...args)=>{reads++;return readRaster(...args);}});
+  assert.equal(result.error?.code,'FIDUCIALS_NOT_FOUND');assert.equal(result.reading,null);assert.equal(result.metrics.readCalls,0);
+  throw Error(result.error.message);
+ }});
+ // Final-frame defocus/overexposure erased optical detail; earlier low-resolution
+ // observations still show a sheet. The preview must never rescue this photo.
+ const unusable=new Uint8ClampedArray(1152*1620*4).fill(255);h.setNative(unusable);
+ await h.camera.start();
+ try{
+  for(let i=0;i<11;i++)h.tick();await settle();
+  assert.equal(h.captures.length,1);assert.equal(h.captures[0].data,unusable);assert.equal(reads,0);
+  for(let i=0;i<20;i++)h.tick();await settle();
+  assert.equal(h.fullReads,1,'failed optical capture stays locked until proven sheet removal');
+  assert.match(h.statuses.map(s=>s.message).join('\n'),/Marcadores insuficientes/);
+ }finally{h.camera.stop();}
 });

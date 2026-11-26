@@ -1,3 +1,4 @@
 .wrangler/
 node_modules/
+/tmp/
 .dev.vars*

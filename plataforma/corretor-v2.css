@@ -126,3 +126,14 @@
 
 /* Mensagens vazias nao reservam espaco; aria-live continua no DOM para estados reais. */
 .omr-group .status:empty,#scanModelStatus:empty,#economyPrintStatus:empty{margin:0;padding:0}
+
+/* Scan Safe: whole decoded frame owns layout; overlays never resize the grade. */
+#corrigir .camera-stage.canvas-preview #video{position:absolute;inset:0;width:100%;height:100%;z-index:0;pointer-events:none}
+#corrigir #cameraPreview{display:block;position:relative;z-index:1;width:100%;height:auto;aspect-ratio:auto}
+#corrigir #cameraPreview[hidden]{display:none!important}
+#corrigir #scanOverlay{position:absolute;inset:0;width:100%;height:100%;pointer-events:none;z-index:2}
+#scanQuad{stroke:#5ad9a7;stroke-width:3;fill:rgba(72,218,165,.065)}
+#scanDots circle{fill:white;stroke:#46d9ab;stroke-width:2.5;paint-order:stroke;vector-effect:non-scaling-stroke}
+#scanFlash{position:absolute;inset:0;background:white;opacity:0;pointer-events:none;z-index:3}
+#scanFlash.go{animation:scan-flash .35s ease-out}
+@keyframes scan-flash{0%{opacity:.9}100%{opacity:0}}

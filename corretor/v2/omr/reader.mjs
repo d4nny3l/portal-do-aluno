@@ -4,7 +4,7 @@ export const READER_VERSION = "salta-omr-reader-v5";
 
 // Reads a normalized, aligned grayscale raster (0=black, 255=white).
 // The explicitly selected manifest supplies coordinates; uncertain marks need review.
-export function readRaster(template, pixels, width, height, { darkThreshold = 100, ambiguityGap = 18, page = 1, showCode = true, manifest = null } = {}) {
+export function readRaster(template, pixels, width, height, { darkThreshold = 100, ambiguityGap = 18, page = 1, showCode = true, manifest = null, reviewEvidence = null } = {}) {
   if (!Number.isInteger(width) || !Number.isInteger(height) || width < 1 || height < 1 || !pixels || pixels.length !== width * height) {
     throw new TypeError("Raster inválido.");
   }
@@ -21,6 +21,15 @@ export function readRaster(template, pixels, width, height, { darkThreshold = 10
   const samples = [];
   for (const cell of layout.cells) {
     const analysis = analyzeQuestion(cell, pixels, width, height, darkThreshold, ambiguityGap);
+    if (reviewEvidence && (analysis.state === 'read' || analysis.state === 'blank')) {
+      const suspects = cell.bubbles.filter(b => b.choice !== (analysis.state === 'read' ? analysis.winner : null)
+        && reviewEvidence(b, cell.bubbleRadius, pixels, width, height)).map(b => b.choice);
+      if (suspects.length) {
+        analysis.state = 'review';
+        analysis.marks = [...new Set([...analysis.marks, ...suspects])];
+        analysis.recognition = null;
+      }
+    }
     // Never promote weak/partial evidence while the required 7-digit identity
     // is unreadable. Strong marks remain governed by their existing contract.
     const state = identity.state === 'review' && analysis.recognition === 'partial' ? 'review' : analysis.state;

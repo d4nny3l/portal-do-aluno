@@ -14,6 +14,8 @@ on:
       - "plataforma/tests/**"
       - "mostra-cultural.html"
       - "corretor/v2/omr/**"
+      - "corretor/v2/scan-safe/**"
+      - "corretor/v2/assessments/block-scoring.mjs"
       - "corretor/v2/tests/**"
       - "scripts/verify-card-artwork-raster.mjs"
       - "scripts/verify-card-header-raster.mjs"
@@ -31,11 +33,20 @@ jobs:
       - uses: actions/checkout@v4
         with:
           fetch-depth: 0
+          ref: ${{ github.event.pull_request.head.sha }}
+          persist-credentials: false
       - uses: actions/setup-node@v4
         with:
           node-version: 24
+      - name: Confirm exact candidate HEAD
+        run: test "$(git rev-parse HEAD)" = "${{ github.event.pull_request.head.sha }}"
       - run: node --test corretor/v2/tests/*.test.mjs
       - run: node --test plataforma/tests/*.test.mjs stats-worker/tests/*.test.mjs
+      - name: Scan Safe candidate contracts and offline counterexamples (not optical approval)
+        run: |
+          node --test corretor/v2/scan-safe/tests/*.test.mjs
+          node --test laboratorio/salta-omr-scan-safe-02/integration/single-optical.test.mjs
+          echo '::warning::Scan integration remains publication-blocked pending G3 corpus/geometry evidence, G6 ambiguous withdrawal and physical validation. Passing synthetic regressions does not authorize deployment.'
       - name: Check OMR modules and inline scripts
         run: |
           node --check plataforma/admin-shell.mjs
@@ -67,7 +78,11 @@ jobs:
         run: |
           npm install --prefix "$RUNNER_TEMP/salta-camera-browser" --no-save --ignore-scripts --no-audit --no-fund playwright@1.65.1
           node "$RUNNER_TEMP/salta-camera-browser/node_modules/playwright/cli.js" install --with-deps chromium webkit
-          SALTA_PLAYWRIGHT_MODULE="$RUNNER_TEMP/salta-camera-browser/node_modules/playwright/index.mjs" node scripts/verify-camera-focus-browser.mjs
+          if node scripts/verify-scan-integration-scope.mjs; then
+            SALTA_SCAN_CYCLES=100 SALTA_PLAYWRIGHT_MODULE="$RUNNER_TEMP/salta-camera-browser/node_modules/playwright/index.mjs" node corretor/v2/scan-safe/tests/official-browser.mjs
+          else
+            SALTA_PLAYWRIGHT_MODULE="$RUNNER_TEMP/salta-camera-browser/node_modules/playwright/index.mjs" node scripts/verify-camera-focus-browser.mjs
+          fi
       - uses: actions/upload-artifact@v4
         if: always()
         with:
@@ -76,4 +91,35 @@ jobs:
             tmp/card-artwork-evidence/
             tmp/camera-evidence/
             tmp/camera-focus-evidence/
+            tmp/scan-safe-browser/
+      - run: git diff --check HEAD^ HEAD
+  g3-corpus:
+    # Same PR/head as the regression suite, but publish evidence independently
+    # of the long G6 browser cycle. No additional production permissions.
+    if: github.event.pull_request.number == 138
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          ref: ${{ github.event.pull_request.head.sha }}
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+      - name: Confirm exact candidate HEAD and scope
+        run: |
+          test "$(git rev-parse HEAD)" = "${{ github.event.pull_request.head.sha }}"
+          node scripts/verify-scan-integration-scope.mjs
+          git merge-base --is-ancestor d746521be8c9abc7c0027ee4ef75888e9b9688cf HEAD
+          git diff --name-only d746521be8c9abc7c0027ee4ef75888e9b9688cf HEAD -- | python3 -c 'import sys; allowed={".github/workflows/test-corretor-integrated.yml","corretor/v2/scan-safe/validation/run-g3-validation.mjs","corretor/v2/scan-safe/validation/g3-replay-policy.mjs","corretor/v2/scan-safe/validation/README.md","corretor/v2/scan-safe/tests/g3-replay-policy.test.mjs"}; changed=set(sys.stdin.read().splitlines()); assert changed and changed<=allowed, sorted(changed-allowed); print("G3 operational incremental scope PASS; no product delta")'
+      - name: G3 mandatory functional corpus (46 cases), historical provenance and 100 paired captures
+        run: |
+          npm install --prefix "$RUNNER_TEMP/salta-g3" --no-save sharp@0.35.5
+          SALTA_SHARP_MODULE="$RUNNER_TEMP/salta-g3/node_modules/sharp/dist/index.cjs" node --expose-gc corretor/v2/scan-safe/validation/run-g3-validation.mjs --functional
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: salta-g3-corpus-incremental
+          path: tmp/scan-g3-evidence/
       - run: git diff --check HEAD^ HEAD

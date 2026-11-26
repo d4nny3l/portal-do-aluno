@@ -50,19 +50,14 @@ test('UX-READY-01: laboratorios nao viram produto por remover avisos',()=>{
  assert.match(html,/id="camera" type="button">Abrir câmera/);
 });
 
-test('CLEAN UX 01: comparacao curta preserva contexto acessivel e leitura sem falsa confirmacao',()=>{
- assert.match(html,/<details id="captureComparison"[^>]*><summary>Conferir imagem<\/summary>/);
- assert.match(html,/<figcaption>Imagem original \(em cinza\)<\/figcaption>/);
- assert.match(html,/<figcaption>Imagem ajustada<\/figcaption>/);
- assert.match(html,/id="originalCapture" aria-label="Imagem original em tons de cinza, sem correção de lente"/);
- assert.match(html,/id="normalizedCapture" aria-label="Imagem ajustada pela perspectiva dos quatro marcadores"/);
+test('SCAN SAFE: imagem documental usa a área existente sem comparação nem confirmação falsa',()=>{
+ assert.doesNotMatch(html,/id="(?:captureComparison|originalCapture|normalizedCapture)"/);
  assert.match(html,/id="canvas" class="scan-canvas" hidden aria-label="Prévia da imagem ajustada do cartão"/);
- assert.match(html,/\$\('status'\)\.textContent=`Imagem preparada\.`/);
- assert.match(html,/Não foi possível preparar a imagem\. Tente novamente\./);
+ assert.match(html,/currentDocument=result.document/);
+ assert.match(html,/normalizedRaster=result.optical/);
+ assert.match(html,/if\(!result.reading\)/);
+ assert.match(html,/readNormalized\(result.reading,\{token\}\)/);
  assert.doesNotMatch(html,/Folha reconhecida\. Imagem normalizada/);
- assert.match(html,/manifest\.mode!=='embedded'/);
- assert.match(html,/validateLayoutManifest\(manifest\)\.valid/);
- assert.match(html,/Selecione o modelo correspondente ao cartão/);
  assert.match(html,/id="loadManifest" accept="application\/json,.json" aria-label="Importar modelo do cartão em JSON"/);
 });
 
