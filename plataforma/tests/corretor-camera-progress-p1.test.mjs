@@ -115,7 +115,7 @@ test('ten stable observations expose capture progress, and only a matching Worke
   assert.equal(h.tracker.finish(observation.captureId), true);
 });
 
-test('geometric failure and Worker error show recovery without claiming recognition or rearming the stationary sheet', async () => {
+test('geometric failure and Worker error show recovery and allow automatic retry', async () => {
   for (const failure of ['fiducials', 'worker']) {
     const h = setup(), observation = h.ready();
     h.$('scanScore').dataset.stale = 'false';
@@ -137,10 +137,9 @@ test('geometric failure and Worker error show recovery without claiming recognit
       assert.equal(h.$('canvas').hidden, false);
     }
     h.tracker.finish(observation.captureId);
-    const locked = h.observe({at: 100000});
-    assert.equal(locked.captureId, undefined);
-    assert.equal(locked.phase, 'locked');
-    assert.equal(h.jobs.length, 1, 'Failed processing does not authorize another photo of the same sheet');
+    const next = h.ready();
+    assert.equal(next.captureId, 2);
+    assert.equal(h.jobs.length, 1, 'No second processing before its own capture callback');
   }
 });
 
@@ -163,30 +162,12 @@ test('inconclusive or identity-pending reading never claims recognized; a foreig
   }
 });
 
-test('observed withdrawal clears capture progress; brief losses and unchanged desk structure preserve the lock', async () => {
-  const h = setup(), first = h.ready();
-  const pending = h.callbacks.onCapture(photo()); h.resolve(h.jobs[0]); await pending;
-  h.tracker.finish(first.captureId);
-  // Brightness/clock changes with the same edge signature do not prove removal.
-  for (const at of [1000, 5000, 30000, 90000]) {
-    const observation = h.observe({quad: null, signature: scene(0), at});
-    assert.equal(observation.phase, 'locked');
-    assert.equal(h.$('cameraCaptureStatus').hidden, false);
-  }
-  h.observe({quad: null, signature: scene(.1), at: 90100});
-  h.observe({quad: null, signature: scene(.1), at: 90400});
-  assert.equal(h.observe({at: 90450}).phase, 'locked', 'Sheet returning interrupts structural withdrawal proof');
-  h.observe({quad: movedPaper, signature: removal.moved, at: 90800});
-  for (const at of [91000, 91200, 91450, 91700]) h.observe({quad: null, signature: scene(.1), at});
-  assert.equal(h.tracker.snapshot().phase, 'vacant');
-  assert.deepEqual(indicators(h), [false, false, false]);
-  const next = h.ready();
-  assert.ok(next.captureId > first.captureId);
-  assert.deepEqual(indicators(h), [true, true, false]);
-  const nextPending = h.callbacks.onCapture(photo());
-  assert.ok(h.jobs[1].payload.token.captureId > h.jobs[0].payload.token.captureId);
-  h.resolve(h.jobs[1], {review: true}); await nextPending;
-  assert.equal(h.$('cameraReadStatus').hidden, true, 'Recognition of the previous sheet cannot label the next one');
+test('direct next stable sheet after completed reading, without observing withdrawal', async () => {
+ const h=setup(),first=h.ready();const pending=h.callbacks.onCapture(photo());h.resolve(h.jobs[0]);await pending;
+ assert.equal(h.tracker.finish(first.captureId),true);assert.equal(h.tracker.snapshot().phase,'ready');
+ const next=h.ready();assert.ok(next.captureId>first.captureId);assert.deepEqual(indicators(h),[true,true,false]);
+ const nextPending=h.callbacks.onCapture(photo());assert.ok(h.jobs[1].payload.token.captureId>h.jobs[0].payload.token.captureId);
+ h.resolve(h.jobs[1],{review:true});await nextPending;assert.equal(h.$('cameraReadStatus').hidden,true);
 });
 
 test('transient paper loss retains geometric reference but cannot capture; sustained/partial loss resets stability', () => {
@@ -209,7 +190,7 @@ test('transient paper loss retains geometric reference but cannot capture; susta
   assert.equal(h.rendered.length, 0);
 });
 
-test('dimension reset discards old contour coordinates and stability while preserving an already captured-sheet lock', () => {
+test('dimension reset discards old contour coordinates and stability after completion', () => {
   const h = setup();
   h.observe(); h.observe(); h.observe();
   assert.notEqual(h.$('scanQuad').getAttribute('points'), '');
@@ -227,10 +208,10 @@ test('dimension reset discards old contour coordinates and stability while prese
   h.tracker.finish(capture.captureId);
   h.tracker.resetGeometry();
   const changed = h.observe({quad: null, signature: scene(.2), at: 5000});
-  assert.equal(changed.phase, 'locked');
+  assert.equal(changed.phase, 'ready');
   assert.equal(changed.corners, null, 'New geometry cannot retain an obsolete contour');
   assert.equal(h.$('scanQuad').getAttribute('points'), '');
-  for (const at of [6000, 7000, 8000, 9000]) assert.equal(h.observe({quad: null, signature: scene(.2), at}).phase, 'locked');
+  for (const at of [6000, 7000, 8000, 9000]) assert.equal(h.observe({quad: null, signature: scene(.2), at}).phase, 'ready');
   assert.equal(h.observe({at: 10000}).captureId, undefined);
   assert.equal(h.jobs.length, 0, 'Resetting dimensions never directly authorizes a new capture');
 });

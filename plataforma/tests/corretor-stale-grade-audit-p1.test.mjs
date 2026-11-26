@@ -226,3 +226,12 @@ test('private hash mismatch blocks even a complete pending-identity response',()
  assert.match(h.fields.scanScore.innerHTML,/Modelo incompatível/);assert.equal(h.fields.cameraGrade.hidden,true);
  assert.equal(h.editor.history()[0].grade,undefined);
 });
+
+
+test('live camera capture remains in flight until private score validation renders the original grade overlay',async()=>{
+ const h=fixture({privatePlan:true,validateSelection:true});
+ h.setWorker(async input=>({token:input.token,document:null,sourceOptical:{gray:new Uint8Array(1),width:1,height:1},optical:null,reading:h.page(['A','A','A'])}));
+ let done=false;const pending=h.editor.capture({data:new Uint8ClampedArray(4),w:1,h:1}).then(()=>{done=true});
+ await flush();assert.equal(done,false);assert.equal(h.fields.cameraGrade.hidden,true);
+ h.resolveValidation(true);await pending;assert.equal(done,true);assert.equal(h.fields.cameraGrade.hidden,false);assert.equal(h.fields.cameraGradeValue.textContent,'10,00');
+});

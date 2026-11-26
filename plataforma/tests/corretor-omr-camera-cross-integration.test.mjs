@@ -167,27 +167,15 @@ test('one captured RGBA produces independent document and optical products with 
  assert.equal(h.documentCalls[0][3],'color');assert.equal(h.editor.history().length,1);
 });
 
-test('ten stable observations capture once; transient absence and unchanged scenery never rearm; proven withdrawal admits the next sheet',async()=>{
+test('ten stable observations capture; next sheet does not require withdrawal and grade remains until shutter',async()=>{
  const h=integrationHarness();h.$('read').disabled=false;const tracker=createPaperTracker();
  const paper={score:.9,support:.8,corners:[[30,30],[354,30],[354,500],[30,500]]};
- const scene=n=>n===0?removal.still:removal.desk;
- async function frame(p,signature,time){const o=tracker.observe(p,384,540,signature,time);h.editor.frame(o.message,o);
+ async function frame(p){const o=tracker.observe(p,384,540);h.editor.frame(o.message,o);
   if(o.captureId){await h.editor.capture(h.photo);tracker.finish(o.captureId)}return o;}
- for(let i=0;i<10;i++)await frame(paper,scene(0),i*66);
- assert.equal(h.workerCalls.length,0,'initial geometry plus nine stable observations do not capture');
- await frame(paper,scene(0),660);assert.equal(h.readCalls.length,1);assert.equal(h.$('cameraGradeValue').textContent,'10,00');
- for(let i=0;i<20;i++)await frame(paper,scene(0),1000+i*66);
- assert.equal(h.readCalls.length,1,'stationary paper remains locked');
- for(const t of [3000,3300])await frame(null,scene(.5),t);
- assert.equal(tracker.snapshot().phase,'locked');assert.equal(h.$('cameraGradeValue').textContent,'10,00');
- await frame(paper,scene(0),3400);
- for(const t of [4000,5000,10000])await frame(null,scene(0),t);
- assert.equal(tracker.snapshot().phase,'locked','elapsed time cannot prove withdrawal');
- await frame(movedPaper,removal.moved,10800);
- for(const t of [11000,11200,11450,11700])await frame(null,scene(.5),t);
- assert.equal(tracker.snapshot().phase,'vacant');assert.equal(h.$('cameraGradeValue').textContent,'10,00');
- for(let i=0;i<11;i++)await frame(paper,scene(0),12000+i*66);
- assert.equal(h.readCalls.length,2);assert.equal(h.editor.history().length,2);
+ for(let i=0;i<10;i++)await frame(paper);assert.equal(h.workerCalls.length,0);
+ await frame(paper);assert.equal(h.readCalls.length,1);assert.equal(h.$('cameraGradeValue').textContent,'10,00');
+ for(let i=0;i<10;i++){await frame(paper);assert.equal(h.$('cameraGradeValue').textContent,'10,00');}
+ await frame(paper);assert.equal(h.readCalls.length,2);assert.equal(h.editor.history().length,2);
 });
 
 test('max/key/manual changes recalculate the current public card without rereading and keep zero precision',async()=>{
@@ -239,8 +227,8 @@ test('identity pending permits only a local provisional grade after strong or ma
 
 test('private selection verification and revocation clear private state while keeping only completed numeric session history',async()=>{
  const h=integrationHarness({privatePlan:true,validateSelection:true});h.$('read').disabled=false;
- await h.editor.capture(h.photo);assert.match(h.$('scanScore').innerHTML,/Conferindo avaliação/);
- assert.equal(h.$('cameraGrade').hidden,true);h.resolveValidation(true);await flush();
+ const pending=h.editor.capture(h.photo);await flush();assert.match(h.$('scanScore').innerHTML,/Conferindo avaliação/);
+ assert.equal(h.$('cameraGrade').hidden,true);assert.equal(h.editor.suspended(),true);h.resolveValidation(true);await pending;
  assert.equal(h.$('cameraGradeValue').textContent,'10,00');
  h.editor.clear();assert.equal(h.editor.selection(),null);assert.equal(h.editor.model(),null);assert.equal(h.editor.token(),null);
  assert.equal(h.$('cameraGrade').hidden,true);assert.equal(h.$('scanScore').children.length,0);

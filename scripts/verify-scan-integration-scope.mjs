@@ -8,7 +8,27 @@ const base='195585572bdcefee809981aada4ee7614b7e023f',initial='7309f448a48d5e522
 const git=(...args)=>execFileSync('git',args,{cwd:root,encoding:'utf8'}).trim();
 const read=p=>readFileSync(new URL(p,new URL('../',import.meta.url)),'utf8');
 const assert=(ok,message)=>{if(!ok)throw Error(message);};
+const hotfixBase='d499844f98b42f81beb8d66f2519e0d574e4a269',hotfixBranch='fix/scan-live-flow-grade-139';
+function verifyLiveFlowHotfix(){
+ const e=process.env.GITHUB_EVENT_NAME==='pull_request'?JSON.parse(readFileSync(process.env.GITHUB_EVENT_PATH,'utf8')):null;
+ if(e&&!(e.pull_request?.head.ref===hotfixBranch&&e.pull_request.base.ref==='main'&&e.pull_request.base.sha===hotfixBase&&e.repository.full_name==='d4nny3l/portal-do-aluno'))return false;
+ try{git('merge-base','--is-ancestor',hotfixBase,'HEAD');}catch{return false;}
+ const changed=git('diff','--name-only',hotfixBase,'HEAD','--').split('\n').filter(Boolean);
+ if(!changed.length)return false;
+ const allowed=new Set(["corretor/v2/scan-safe/camera.mjs","plataforma/corretor-v2.html","corretor/v2/scan-safe/tests/camera.test.mjs","corretor/v2/scan-safe/tests/rearm-counterexample.test.mjs","corretor/v2/scan-safe/tests/official-browser.mjs","plataforma/tests/corretor-camera-progress-p1.test.mjs","plataforma/tests/corretor-camera-torch-ui.test.mjs","plataforma/tests/corretor-omr-camera-cross-integration.test.mjs","plataforma/tests/corretor-ux-ready-01.test.mjs","plataforma/tests/corretor-stale-grade-audit-p1.test.mjs","plataforma/corretor-v2.css","scripts/verify-scan-integration-scope.mjs"]);
+ assert(changed.every(path=>allowed.has(path)),'Forbidden live-flow delta: '+changed.join(', '));
+ assert(!git('diff','--name-only','HEAD','--')&&!git('ls-files','--others','--exclude-standard'),'Uncommitted live-flow changes');
+ const html=read('plataforma/corretor-v2.html'),auth=s=>s.slice(s.indexOf('<script>'),s.indexOf('<script type="module">'));
+ assert(auth(html)===auth(execFileSync('git',['show',hotfixBase+':plataforma/corretor-v2.html'],{cwd:root,encoding:'utf8'})),'Official authentication block changed');
+ assert(html.includes('createSafeCamera(')&&html.includes('scanWorker.process(')&&html.includes('scanContext.accepts(result.token)'),'Capture binding missing');
+ assert(!/readRaster\(|reconcile\(|new CameraSession|setInterval\(/.test(html),'Old/dual main-thread camera path restored');
+ assert(!/from ['"][^'"]*withdrawal\.mjs/.test(read('corretor/v2/scan-safe/camera.mjs')),'Withdrawal gate must not be imported in production');
+ console.log('SCAN LIVE FLOW #139 scope PASS: only capture/grade presentation and related tests; optical, services, library and frozen lab unchanged.');
+ return true;
+}
+
 export function verifyScanIntegrationScope(){
+ if(verifyLiveFlowHotfix())return true;
  if(process.env.GITHUB_EVENT_NAME==='pull_request'){
   const e=JSON.parse(readFileSync(process.env.GITHUB_EVENT_PATH,'utf8'));
   assert(e.pull_request?.number===138&&e.pull_request.head.ref==='draft/scan-safe-v2-integration'&&

@@ -25,33 +25,17 @@ function compose({x0=30,y0=38,pw=324,ph=458,paper=true,desk=[37,51,67],textured=
 const still=compose(),covered=compose({paper:false,desk:[0,0,0]}),textured=compose({x0:52,y0:50,pw:280,ph:396,textured:true}),desk=compose({paper:false,textured:true}),moved=compose({x0:27,y0:50,pw:280,ph:396,textured:true});
 const observe=(t,p,now)=>t.observe(p.q,w,h,p.frame,now);
 function capture(t,from,frame=still){let result;for(let i=0;i<11;i++)result=observe(t,frame,from+i*66);return result;}
-test('G6 regression: four fresh black frames over 660 ms never rearm the same unchanged sheet',()=>{
+test('historical black-frame counterexample: no capture in darkness or in-flight overlap, but no withdrawal lock after completion',()=>{
  assert.ok(still.q?.score>=.22);assert.equal(covered.q,null);
- assert.equal(structuralChange(sceneSignature(still.rgba,w,h),sceneSignature(covered.rgba,w,h)),true,'exact old gate still accepts this counterexample');
- const t=createPaperTracker(),first=capture(t,0);assert.equal(first.captureId,1);t.finish(1);
- for(const now of [1000,1220,1440,1660])observe(t,covered,now);
- assert.equal(t.snapshot().phase,'locked');
- assert.equal(capture(t,1800).captureId,undefined);
- assert.equal(t.snapshot().cardId,1);
+ assert.equal(structuralChange(sceneSignature(still.rgba,w,h),sceneSignature(covered.rgba,w,h)),true,'historical withdrawal gate could mistake obstruction for removal');
+ const t=createPaperTracker(),first=capture(t,0);assert.equal(first.captureId,1);
+ for(const now of [1000,1220,1440,1660])assert.equal(observe(t,covered,now).captureId,undefined);
+ assert.equal(capture(t,1800).captureId,undefined,'in-flight capture remains exclusive');
+ assert.equal(t.finish(1),true);
+ for(const now of [3000,3220,3440,3660])assert.equal(observe(t,covered,now).captureId,undefined);
+ assert.equal(t.snapshot().phase,'ready');assert.equal(capture(t,3800).captureId,2,'owner explicitly permits rereading without proof of a different physical sheet');
 });
-test('G6 positive control: real detector + observed movement + same visible desk permit another identical sheet',()=>{
- assert.ok(textured.q?.score>=.22,JSON.stringify(textured.q));
- assert.ok(moved.q?.score>=.22,JSON.stringify(moved.q));assert.equal(desk.q,null);
- const ref=withdrawalReference(textured.frame,textured.q.corners);assert.ok(ref,'reference must be valid, not merely locked by lack of reference');
- assert.equal(withdrawalMotion(ref,moved.frame,moved.q.corners),true,JSON.stringify({initial:textured.q.corners,moved:moved.q.corners}));
- assert.equal(withdrawalSurface(ref,desk.frame),true);
- const t=createPaperTracker();assert.equal(capture(t,0,textured).captureId,1);t.finish(1);
- observe(t,moved,1000);
- for(const now of [1100,1320,1540,1760])observe(t,desk,now);
- assert.equal(t.snapshot().phase,'vacant');
- assert.equal(capture(t,2000,textured).captureId,2);
-});
-
-test('G6 obstruction remains blocked even when a valid reference and movement have already been established',()=>{
- const ref=withdrawalReference(textured.frame,textured.q.corners);assert.ok(ref);
- assert.equal(withdrawalMotion(ref,moved.frame,moved.q.corners),true);
- const t=createPaperTracker();assert.equal(capture(t,0,textured).captureId,1);t.finish(1);observe(t,moved,1000);
- for(const now of [1100,1320,1540,1760])observe(t,covered,now);
- for(const now of [1900,2120,2340,2560])observe(t,desk,now);
- assert.equal(t.snapshot().phase,'locked');assert.equal(capture(t,2800,textured).captureId,undefined);
+test('real detector accepts next stable sheet on featureless desk without a removal sequence',()=>{
+ const t=createPaperTracker();assert.equal(capture(t,0,still).captureId,1);t.finish(1);
+ assert.equal(capture(t,1000,still).captureId,2);
 });

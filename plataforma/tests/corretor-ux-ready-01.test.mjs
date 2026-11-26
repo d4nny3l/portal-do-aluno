@@ -56,7 +56,7 @@ test('SCAN SAFE: imagem documental usa a área existente sem comparação nem co
  assert.match(html,/currentDocument=result.document/);
  assert.match(html,/normalizedRaster=result.optical/);
  assert.match(html,/if\(!result.reading\)/);
- assert.match(html,/readNormalized\(result.reading,\{token\}\)/);
+ assert.match(html,/await readNormalized\(result.reading,\{token,waitForScore:true\}\)/);
  assert.doesNotMatch(html,/Folha reconhecida\. Imagem normalizada/);
  assert.match(html,/id="loadManifest" accept="application\/json,.json" aria-label="Importar modelo do cartão em JSON"/);
 });

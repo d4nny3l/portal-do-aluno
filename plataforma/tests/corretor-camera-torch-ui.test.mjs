@@ -110,7 +110,7 @@ function finish(job, label) {
 const settle = () => new Promise(resolve => setImmediate(resolve));
 
 test('current UI wires the safe camera with native preview, accessible torch and no manual lens controls', () => {
-  assert.match(html, /import \{createSafeCamera\} from '\.\.\/corretor\/v2\/scan-safe\/camera\.mjs'/);
+  assert.match(html, /import \{createSafeCamera\} from '\.\.\/corretor\/v2\/scan-safe\/camera\.mjs(?:\?v=20261125scan139)?'/);
   assert.match(html, /<canvas id="cameraPreview" hidden aria-hidden="true"/);
   assert.match(html, /<button id="cameraTorchButton"[^>]*hidden disabled aria-pressed="false" aria-label="Ligar iluminação da câmera"/);
   assert.match(html, /id="cameraTorchButton"[^>]*>\s*<span aria-hidden="true">💡<\/span> Luz/);

@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="pt-BR"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Corretor de avaliações · SALTA</title><meta name="salta-camera-version" content="20261125scan138"><meta name="salta-card-version" content="v2-20261115-assessments-protected"><link rel="icon" href="../favicon.svg"><link rel="stylesheet" href="../salta-theme.css?v=20261110ux1"><link rel="stylesheet" href="./professor-theme.css?v=20261110ux1"><link rel="stylesheet" href="./corretor-v2.css?v=20261125scan138"><link rel="stylesheet" href="./avaliacoes-biblioteca.css?v=20261125auto"><style>#corrigir #scanScore{display:none!important}#corrigir #photoGrade{max-width:660px;margin:8px auto;padding:10px 12px;font-size:18px;font-weight:700}#corrigir #photoGrade[hidden]{display:none!important}#corrigir #cameraGrade[hidden],#corrigir #cameraProgress[hidden],#corrigir #cameraLiveBadge[hidden],#corrigir #cameraReadStatus{display:none!important}
+<html lang="pt-BR"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Corretor de avaliações · SALTA</title><meta name="salta-camera-version" content="20261125scan139"><meta name="salta-card-version" content="v2-20261115-assessments-protected"><link rel="icon" href="../favicon.svg"><link rel="stylesheet" href="../salta-theme.css?v=20261110ux1"><link rel="stylesheet" href="./professor-theme.css?v=20261110ux1"><link rel="stylesheet" href="./corretor-v2.css?v=20261125scan139"><link rel="stylesheet" href="./avaliacoes-biblioteca.css?v=20261125auto"><style>#corrigir #scanScore{display:none!important}#corrigir #photoGrade{max-width:660px;margin:8px auto;padding:10px 12px;font-size:18px;font-weight:700}#corrigir #photoGrade[hidden]{display:none!important}#corrigir #cameraGrade[hidden],#corrigir #cameraProgress[hidden],#corrigir #cameraLiveBadge[hidden],#corrigir #cameraReadStatus{display:none!important}
 /* Safari iPhone: largura estável, independente da barra dinâmica e sem recalcular escala em cada quadro. */
 #corrigir .camera-stage{width:min(100%,660px);aspect-ratio:auto;height:auto;min-height:0;border:0;border-radius:0;background:transparent;box-shadow:none}
 /* A altura acompanha a resolução intrínseca; fill equivale a contain quando os aspectos correspondem e evita o compositor contain do WebKit. */
@@ -41,7 +41,7 @@ import {planEconomySheet} from '../corretor/v2/omr/print-economy.mjs?v=20261124p
 import { importCardManifest } from '../corretor/v2/omr/manifest.mjs?v=20261114v2final';
 import { validateLayoutManifest } from '../corretor/v2/omr/layout.mjs?v=20261114v2final';
 import {createScanWorker} from '../corretor/v2/scan-safe/worker-client.mjs';
-import {createSafeCamera} from '../corretor/v2/scan-safe/camera.mjs';
+import {createSafeCamera} from '../corretor/v2/scan-safe/camera.mjs?v=20261125scan139';
 import {createCaptureSession} from '../corretor/v2/scan-safe/session.mjs';
 import {scorePlanPreview,scoreIntegratedPages} from '../corretor/v2/scan-safe/score-preview.mjs';
 let sections=[],template,activeManifest=null,activeSvg="",nextQuestionNumber=1,nextSectionOrder=0,layoutRevision=8;
@@ -202,7 +202,7 @@ async function processPhoto(photo,{source='camera',token=null}={}){
   currentDocument=result.document;rawRaster={...result.sourceOptical,source};normalizedRaster=result.optical;
   paintDocument();
   if(!result.reading){$('manualAlign').hidden=false;$('status').textContent=result.error?.message||'Confira os quatro marcadores.';return;}
-  readNormalized(result.reading,{token});
+  await readNormalized(result.reading,{token,waitForScore:true});
  }catch(error){if(scanContext.accepts(token)){$('status').textContent=error.message||'Falha ao processar a fotografia.';setScanMessage($('status').textContent);}}
  finally{if(scanContext.accepts(token))captureBusy=false;}
 }
@@ -287,12 +287,12 @@ calculateScore=function(){
  if(privateLibrary?.requiresSelectionValidation()){
   const selected=privateSelection,observed=JSON.stringify(activeObservations);
   blocked('Conferindo avaliação','Validando a seleção no servidor.');
-  void privateLibrary.verifySelection().then(ok=>{
+  return privateLibrary.verifySelection().then(ok=>{
    if(ok&&privateSelection===selected&&JSON.stringify(activeObservations)===observed)present();
   }).catch(()=>{if(privateSelection===selected&&scanContext.accepts(token)&&generation===scoreGeneration)clearPrivateCorrection();});
  }else present();
 };
-function renderAnswers(result){$('scanScore').dataset.identity=result.identity?.state||'disabled';$('scanScore').dataset.provisional='false';$('scanScore').dataset.stale='false';activeObservations=result.observations.map(item=>({...item,reviewed:item.state==='read'||item.state==='double'||item.state==='blank',answer:item.state==='read'?item.answer:null}));const list=$('answers');list.replaceChildren(...activeObservations.map(observation=>{const item=document.createElement('div');item.className=`omr-question ${observation.reviewed?'':'needs-review'}`;const label=document.createElement('label'),select=document.createElement('select'),pending=document.createElement('option'),blank=document.createElement('option');select.id=`omr-answer-${observation.number}`;label.htmlFor=select.id;label.textContent=`Questão ${observation.number} · ${observation.state==='read'?(observation.recognition==='partial'?`${observation.answer} reconhecida · marcação parcial`:'lida'):observation.state==='double'?'Inválida — dupla marcação':observation.state==='blank'?'Sem resposta — inválida':'Leitura inconclusiva — nova captura'}`;pending.value='';pending.textContent=observation.reviewed?'Selecione a resposta…':'Leitura inconclusiva — tente nova captura';blank.value='__blank__';blank.textContent='Sem resposta (confirmar)';const choices=template.questions.find(question=>question.questionId===observation.questionId).choices;select.append(pending);for(const answer of choices){const option=document.createElement('option');option.value=answer;option.textContent=answer;select.append(option)}select.append(blank);const suspects=(observation.state==='review'||observation.state==='double')?choices.filter(choice=>Array.isArray(observation.marks)&&observation.marks.includes(choice)):[];const partialRecognized=observation.state==='read'&&observation.recognition==='partial';const hint=(suspects.length||partialRecognized)?document.createElement('p'):null;if(hint){hint.id=`${select.id}-hint`;hint.className='omr-mark-hint';hint.setAttribute('role','note');hint.textContent=partialRecognized?'Marcação parcial reconhecida automaticamente. Você pode corrigir a resposta.':suspects.length===1?`Possível marcação: ${suspects[0]}. Confira na imagem.`:`Possíveis marcações: ${suspects.slice(0,-1).join(', ')} e ${suspects.at(-1)}. Confira na imagem.`;select.setAttribute('aria-describedby',hint.id)}select.value=observation.reviewed?(observation.answer||'__blank__'):'';select.onchange=()=>{if(!select.value||select.value!=='__blank__'&&!choices.includes(select.value))return;observation.answer=select.value==='__blank__'?null:select.value;observation.reviewed=true;observation.state='reviewed';item.classList.remove('needs-review');label.textContent=`Questão ${observation.number} · conferida`;if(hint){hint.hidden=true;select.removeAttribute('aria-describedby')}const pendingCount=activeObservations.filter(answer=>!answer.reviewed).length;$('status').textContent=pendingCount?`${pendingCount} questão(ões) inconclusiva(s). Faça nova captura.`:'Classificação atualizada. Nenhuma nota foi registrada no Diário.';calculateScore()};item.append(label,select);if(hint)item.append(hint);return item}));calculateScore()}
+function renderAnswers(result){$('scanScore').dataset.identity=result.identity?.state||'disabled';$('scanScore').dataset.provisional='false';$('scanScore').dataset.stale='false';activeObservations=result.observations.map(item=>({...item,reviewed:item.state==='read'||item.state==='double'||item.state==='blank',answer:item.state==='read'?item.answer:null}));const list=$('answers');list.replaceChildren(...activeObservations.map(observation=>{const item=document.createElement('div');item.className=`omr-question ${observation.reviewed?'':'needs-review'}`;const label=document.createElement('label'),select=document.createElement('select'),pending=document.createElement('option'),blank=document.createElement('option');select.id=`omr-answer-${observation.number}`;label.htmlFor=select.id;label.textContent=`Questão ${observation.number} · ${observation.state==='read'?(observation.recognition==='partial'?`${observation.answer} reconhecida · marcação parcial`:'lida'):observation.state==='double'?'Inválida — dupla marcação':observation.state==='blank'?'Sem resposta — inválida':'Leitura inconclusiva — nova captura'}`;pending.value='';pending.textContent=observation.reviewed?'Selecione a resposta…':'Leitura inconclusiva — tente nova captura';blank.value='__blank__';blank.textContent='Sem resposta (confirmar)';const choices=template.questions.find(question=>question.questionId===observation.questionId).choices;select.append(pending);for(const answer of choices){const option=document.createElement('option');option.value=answer;option.textContent=answer;select.append(option)}select.append(blank);const suspects=(observation.state==='review'||observation.state==='double')?choices.filter(choice=>Array.isArray(observation.marks)&&observation.marks.includes(choice)):[];const partialRecognized=observation.state==='read'&&observation.recognition==='partial';const hint=(suspects.length||partialRecognized)?document.createElement('p'):null;if(hint){hint.id=`${select.id}-hint`;hint.className='omr-mark-hint';hint.setAttribute('role','note');hint.textContent=partialRecognized?'Marcação parcial reconhecida automaticamente. Você pode corrigir a resposta.':suspects.length===1?`Possível marcação: ${suspects[0]}. Confira na imagem.`:`Possíveis marcações: ${suspects.slice(0,-1).join(', ')} e ${suspects.at(-1)}. Confira na imagem.`;select.setAttribute('aria-describedby',hint.id)}select.value=observation.reviewed?(observation.answer||'__blank__'):'';select.onchange=()=>{if(!select.value||select.value!=='__blank__'&&!choices.includes(select.value))return;observation.answer=select.value==='__blank__'?null:select.value;observation.reviewed=true;observation.state='reviewed';item.classList.remove('needs-review');label.textContent=`Questão ${observation.number} · conferida`;if(hint){hint.hidden=true;select.removeAttribute('aria-describedby')}const pendingCount=activeObservations.filter(answer=>!answer.reviewed).length;$('status').textContent=pendingCount?`${pendingCount} questão(ões) inconclusiva(s). Faça nova captura.`:'Classificação atualizada. Nenhuma nota foi registrada no Diário.';calculateScore()};item.append(label,select);if(hint)item.append(hint);return item}));return calculateScore()}
 function renderHistory(){
  const list=$('captureHistory');
  list.replaceChildren(...(scanHistory.length?scanHistory.slice(-10).reverse().map(entry=>{
@@ -301,7 +301,7 @@ function renderHistory(){
   return item;
  }):[Object.assign(document.createElement('li'),{textContent:'Nenhuma captura realizada.'})]));
 }
-function readNormalized(result,{token=scanContext.current}={}){
+function readNormalized(result,{token=scanContext.current,waitForScore=false}={}){
  if(!scanContext.accepts(token)||!result||result.templateId!==token.templateId||result.templateRevision!==token.templateRevision||result.contentHash!==token.contentHash||result.page!==token.page||result.pageCount!==template.pageCount)return null;
  currentReading={...result,captureId:token.captureId,sessionId:token.sessionId};
  if(template.pageCount>1&&result.identity?.state==='read'&&/^\d{7}$/.test(result.identity.code)){
@@ -309,9 +309,9 @@ function readNormalized(result,{token=scanContext.current}={}){
   pageReadings.set(result.page,currentReading);
  }
  activeHistoryEntry={id:token.captureId,at:Date.now(),readCount:result.observations.filter(o=>o.state==='read').length,identityPending:result.identity?.state==='review'};
- scanHistory.push(activeHistoryEntry);renderAnswers(result);renderHistory();
+ scanHistory.push(activeHistoryEntry);const scoring=renderAnswers(result);renderHistory();
  $('status').textContent=result.identity?.state==='review'?'Identificação pendente. A nota provisória não está vinculada a um estudante.':result.observations.some(o=>o.state==='review')?'Confira as respostas inconclusivas.':$('scanScore').dataset.review==='true'?$('scanScore').textContent:'';
- setCameraProgress(true,true,!result.needsReview);return result;
+ setCameraProgress(true,true,!result.needsReview);return waitForScore?Promise.resolve(scoring).then(()=>result):result;
 }
 $('manualAlign').onclick=()=>{
  if(!rawRaster||captureBusy)return;manualMode=true;manualPoints=[];paintGray($('canvas'),rawRaster.gray,rawRaster.width,rawRaster.height);
@@ -333,7 +333,7 @@ $('canvas').addEventListener('click',async event=>{
   if(!scanContext.accepts(token))return;
   rawRaster={...result.sourceOptical,source};normalizedRaster=result.optical;paintDocument();
   $('canvas').classList.remove('manual-align');$('manualHelp').hidden=true;
-  if(result.reading){$('manualAlign').hidden=true;readNormalized(result.reading,{token});}else $('status').textContent=result.error.message;
+  if(result.reading){$('manualAlign').hidden=true;await readNormalized(result.reading,{token,waitForScore:true});}else $('status').textContent=result.error.message;
  }catch(error){if(scanContext.accepts(token)){rawRaster=null;$('manualAlign').hidden=true;$('status').textContent=error.message;}}
  finally{if(scanContext.accepts(token))captureBusy=false;}
 });
