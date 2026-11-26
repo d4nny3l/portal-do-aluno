@@ -6,6 +6,7 @@ const sameScope=(a,b)=>Boolean(a&&b&&scopeKeys.every(k=>a[k]===b[k]));
 const temporary=e=>e?.status===429||e?.status>=500&&e?.status<=599||
  (e?.status===0&&['network','aborted','invalid_response'].includes(e?.code));
 const frozen=value=>Object.freeze(value);
+const deepFreeze=value=>{if(value&&typeof value==='object'){for(const item of Object.values(value))deepFreeze(item);Object.freeze(value);}return value;};
 const canonical=value=>Array.isArray(value)?value.map(canonical):value&&typeof value==='object'?Object.fromEntries(Object.keys(value).sort().map(k=>[k,canonical(value[k])])):value;
 export function createCorrectionContext({client,view,revoke,invalidate,report=()=>{},online=()=>true,now=()=>Date.now(),interval=30000,timeout=10000}){
  let selected=null,metadata=null,checkedAt=-Infinity,flight=null;
@@ -17,8 +18,8 @@ export function createCorrectionContext({client,view,revoke,invalidate,report=()
   if(!s.principalId||s.selection!==selection||!s.record||s.record.status!=='issued'||s.record.archived||
    s.record.id!==selection.assessmentId||s.record.revision!==selection.revision||s.record.manifestHash!==selection.manifestHash||
    !sameScope(s.scope,selection.scope))throw Error('Seleção privada sem vínculo autorizado.');
-  // pinnedSelection already deeply freezes manifest, plan, template and scope.
-  selected=selection;
+  // Pin the complete confirmed object, including nested manifest geometry.
+  selected=deepFreeze(selection);
   metadata=frozen({generation:s.generation,principalId:s.principalId,epoch:s.epoch,
    scope:frozen({...s.scope}),assessmentId:selection.assessmentId,revision:selection.revision,
    manifestHash:selection.manifestHash,selectionId:selection.selectionId});
@@ -42,7 +43,7 @@ export function createCorrectionContext({client,view,revoke,invalidate,report=()
   const start=context();
   if(!start.record||!start.principalId||!start.scope)return false;
   if(!online())return false;
-  if(flight&&same(flight.start,start))return flight.promise;
+  if(flight&&same(flight.start,start)&&!remoteOperation)return flight.promise;
   if(!force&&now()-checkedAt<interval)return false;
   if(flight)flight.abort.abort();
   const abort=new AbortController(),pending={start,abort,promise:null};flight=pending;checkedAt=now();
