@@ -7,7 +7,7 @@
  const path=(await import('node:path')).default;
  const root=path.resolve(fileURLToPath(new URL('../',import.meta.url)));
  const dir=path.join(root,'tmp','atelie-v3-interaction-evidence');mkdirSync(dir,{recursive:true});
- const allowed=new Set(['plataforma/atelie-salta.html','plataforma/atelie-salta-v2.css','plataforma/atelie-salta-v2-fidelity.css','plataforma/atelie-salta-v2.mjs','plataforma/atelie-salta-v2-icons.svg','plataforma/atelie-salta-v2-InterVariable.woff2','favicon.svg',...['fixtures.mjs','calendar.mjs','matrix.mjs','controls.mjs','compositions.mjs','favicon-a.svg','favicon-b.svg','favicon-c.svg','favicon-d.svg'].map(s=>'plataforma/atelie-salta-v2-'+s)]);
+ const allowed=new Set(['plataforma/atelie-salta.html','plataforma/atelie-salta-v2.css','plataforma/atelie-salta-v2-fidelity.css','plataforma/atelie-salta-v2.mjs','plataforma/atelie-salta-v2-icons.svg','plataforma/atelie-salta-v2-InterVariable.woff2','favicon.svg',...['fixtures.mjs','calendar.mjs','matrix.mjs','grade-mask.mjs','controls.mjs','compositions.mjs','favicon-a.svg','favicon-b.svg','favicon-c.svg','favicon-d.svg'].map(s=>'plataforma/atelie-salta-v2-'+s)]);
  const types={'.html':'text/html;charset=utf-8','.css':'text/css;charset=utf-8','.mjs':'text/javascript;charset=utf-8','.svg':'image/svg+xml','.woff2':'font/woff2'};
  const server=createServer((req,res)=>{
   const file=new URL(req.url,'http://127.0.0.1').pathname.replace(/^\/+/,'');
