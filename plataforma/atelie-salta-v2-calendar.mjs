@@ -90,7 +90,10 @@
   if(!host)return null;
   closePickerModal();
   const document=host.ownerDocument;
-  const app=host.closest('.f2-app')||host.querySelector('.f2-app')||host;
+  // A aba Ateliê usa animation-fill-mode:both + transform; filhos position:fixed
+  // ficariam presos às dimensões do painel. Portal transitório no body evita o bug.
+  const portal=document.createElement('div');
+  portal.className='f2-app f2-picker-portal';
   const triggerEl=trigger||document.activeElement;
   const overlay=document.createElement('div');
   overlay.className='f2-overlay f2-picker-overlay';
@@ -107,7 +110,7 @@
    controller?.dispose?.();
    overlay.removeEventListener('keydown',keydown);
    document.removeEventListener('focusin',focusin,true);
-   overlay.remove();
+   portal.remove();
    html.style.overflow=originalHTMLOverflow;
    body.style.overflow=originalBodyOverflow;
    if(activePickerModal?.dismiss===dismiss)activePickerModal=null;
@@ -128,7 +131,8 @@
   overlay.addEventListener('keydown',keydown);
   overlay.addEventListener('click',e=>{if(e.target===overlay)dismiss(false)});
   document.addEventListener('focusin',focusin,true);
-  app.appendChild(overlay);
+  portal.appendChild(overlay);
+  body.appendChild(portal);
   html.style.overflow='hidden';
   body.style.overflow='hidden';
   activePickerModal={dismiss};
