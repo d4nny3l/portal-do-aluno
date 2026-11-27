@@ -46,7 +46,7 @@
    assert.equal(await page.locator('[data-v2-icon]').count(),68);
    await page.locator('#tab-cores').click();
    await page.locator('input[name=f2-favicon][value=C]').check();
-   assert.match(await page.locator('#f2-favicon-choice').innerText(),/Alternativa C/);
+   assert.match(await page.locator('#f2-favicon-choice').innerText(),/C selecionado e aprovado/);
    if(name==='chromium-390'||name==='chromium-1440')await screenshot(page,name+'-favicon-c');
    await page.locator('#tab-componentes').click();
    assert.equal(await page.locator('#f2-checkbox-indeterminate').evaluate(el=>el.indeterminate),true);
