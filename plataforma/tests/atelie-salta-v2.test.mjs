@@ -42,7 +42,7 @@ test('Biblioteca: 68 símbolos exatos, cinco famílias e SVG Lucide sem ícone a
  assert.match(sprite,/id="v2-trash-2"/);
  assert.match(lucideLicense,/ISC License/);
  assert.match(lucideLicense,/Copyright \(c\) 2026 Lucide Icons/);
- assert.doesNotMatch(sprite,/<script|onload=|foreignObject|https?:/i);
+ assert.doesNotMatch(sprite,/<script|onload=|foreignObject|https?:\/\/(?!www\.w3\.org\/2000\/svg)/i);
 });
 
 test('22/22 composições A/B/C e preview específico por tipo ficam no próprio Ateliê',()=>{
