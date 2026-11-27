@@ -37,7 +37,8 @@ test('Calendário real: meses, fevereiro bissexto e alinhamento segunda–doming
 test('Matrizes mostram 30 estudantes, duas aulas e estados editáveis sem regra acadêmica',()=>{
  for(const word of ['f2-sheet-group','f2-sheet-subgroup','f2-student-header','f2-sticky','ArrowUp','ArrowDown','ArrowLeft','ArrowRight','matrix-cancel','matrix-apply','matrix-confirm','matrix-lesson-0','matrix-lesson-1','FJ','FA','Isento','◷','—','maxes','f2-active-cell'])assert.ok(matrix.includes(word),'missing '+word);
  assert.match(matrix,/maxes\[j\]/);
- assert.match(matrix,/parsed>maxes\[j\]/);
+ assert.match(matrix,/gradeMask\.external/);
+ assert.doesNotMatch(matrix,/f2-grade-value|f2-grade-max|parsed>maxes\[j\]/);
  assert.match(matrix,/grades\[i\]\.partial/);
  assert.match(matrix,/attendance\.confirmed\[attendance\.lesson\]=true/);
  assert.match(matrix,/checks\.states\[i\]\[j\]=/);
