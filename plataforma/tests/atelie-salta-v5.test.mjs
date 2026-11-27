@@ -65,6 +65,8 @@ test('DESIGN-05: ações têm coluna e ícones distintos sem nova coluna ou popu
  assert.match(src,/bulk\('checks',col,/);
  assert.doesNotMatch(src,/data-f2-activity-select/);
  assert.match(src,/renderTable\(\)/);
+ assert.match(src,/role=\\"tooltip\\"/);
+ assert.match(css,/f2-head-bulk:focus-visible \\.f2-head-tooltip/);
  const css=read('fidelity.css');
  assert.match(css,/f2-head-bulk/);assert.match(css,/min-height:44px/);
  assert.match(src,/const columnCount=kind==='attendance'\?2:kind==='grades'\?4:8/);
@@ -81,6 +83,8 @@ test('DESIGN-05: diálogo modal reutilizável, acessível e cancelável sem alte
  assert.match(calendar,/triggerEl\.focus/);
  assert.match(calendar,/overflow='hidden'/);
  assert.match(controls,/F\.openPickerModal\(root/);
+ assert.match(controls,/data-f2-picker-field/);
+ assert.match(controls,/calendar-days/);
  assert.match(compositions,/F\.openPickerModal\(/);
  assert.match(calendar,/onClear:\(\)=>\{\}/);
  assert.equal((F.monthGrid('2024-02-01',{picker:true,choice:null}).match(/data-f2-picker-date="2024-02-29"/g)||[]).length,1);
