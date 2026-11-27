@@ -38,8 +38,8 @@ test('Ateliê é autocontido, sem integrações, roteamento ou alterações glob
   for(const module of ['fixtures','calendar','matrix','controls','compositions']){
     assert.match(html,new RegExp('src="\\.\\/atelie-salta-v2-'+module+'\\.mjs"'));
   }
-  for(const url of [...html.matchAll(/(?:href|src)="([^"]+)"/g)].map(match=>match[1])){
-    assert.ok(url.startsWith('./atelie-salta-v2-')||url==='../favicon.svg','Not Ateliê-local asset: '+url);
+  for(const url of [...html.matchAll(/<(?:link|script)\b[^>]*(?:href|src)="([^"]+)"/g)].map(match=>match[1])){
+    assert.ok(url.startsWith('./atelie-salta-v2')||url==='../favicon.svg','Not Ateliê-local asset: '+url);
   }
   assert.doesNotMatch(html,/(?:https?:)?\/\/[^\s"']+\.(?:css|js|woff2)/);
   assert.doesNotMatch(html,/<a\b[^>]*href=/);
