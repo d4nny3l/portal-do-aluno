@@ -13,7 +13,7 @@
  function monthGrid(date,{picker=false,choice=null,range=null}={}){
   const x=splitISO(date),grid=monthDays(x.y,x.m);
   return `<div class="f2-calendar-grid ${picker?'f2-picker-grid':''}" role="grid" aria-label="Calendário de ${monthLabel(x.y,x.m)}">${weekday.map(w=>`<span class="f2-weekday" role="columnheader">${w}</span>`).join('')}${grid.map(cell=>{
-   const selected=cell.key===(choice||date),isReference=cell.key===referenceToday;
+   const selected=cell.key===(picker?choice:(choice||date)),isReference=cell.key===referenceToday;
    const insideRange=!!(range?.from&&range?.until&&cell.key>range.from&&cell.key<range.until);
    const boundary=!!(range?.from===cell.key||range?.until===cell.key);
    const amount=dayCount(cell.key);
@@ -63,14 +63,14 @@
    const x=splitISO(state.view);
    host.innerHTML=`<div class="f2-picker" role="group" aria-label="Seletor de data demonstrativo"><header class="f2-picker-header"><strong>${monthLabel(x.y,x.m)}</strong><div>${btn('‹','picker-prev')}${btn('›','picker-next')}</div></header><label class="f2-year-field">Ano <input type="number" min="1900" max="2100" step="1" class="f2-input" data-f2-picker-year value="${x.y}" aria-label="Ano do calendário"></label>${monthGrid(state.view,{picker:true,choice:state.selected,range})}<p class="f2-context-note">Selecionado: ${state.selected?dmy(state.selected):'nenhuma data'} · referência 27/11/2026</p><div class="f2-picker-actions">${btn('Limpar','picker-clear')}${btn('Hoje de referência','picker-today')}${btn('Cancelar','picker-cancel')}${btn('Confirmar','picker-confirm','f2-primary')}</div></div>`;
   };
-  const onChange=e=>{if(e.target.matches('[data-f2-picker-year]')){const year=Number(e.target.value);if(Number.isInteger(year)&&year>=1900&&year<=2100){const x=splitISO(state.view);state.view=iso(year,x.m,Math.min(x.d,new Date(year,x.m+1,0).getDate()));render();}}};
+  const onChange=e=>{if(e.target.matches('[data-f2-picker-year]')){const year=Number(e.target.value);if(Number.isInteger(year)&&year>=1900&&year<=2100){const x=splitISO(state.view);state.view=iso(year,x.m,Math.min(x.d,new Date(year,x.m+1,0).getDate()));render();host.querySelector('[data-f2-picker-year]')?.focus({preventScroll:true});}}};
   const onClick=e=>{
    const b=e.target.closest('button');if(!b||!host.contains(b))return;
-   if(b.dataset.f2PickerDate){state.selected=b.dataset.f2PickerDate;state.view=state.selected;render();return;}
+   if(b.dataset.f2PickerDate){state.selected=b.dataset.f2PickerDate;state.view=state.selected;render();host.querySelector(`[data-f2-picker-date="${state.selected}"]`)?.focus({preventScroll:true});return;}
    const type=b.dataset.f2Action;
-   if(type==='picker-prev'||type==='picker-next'){state.view=shiftMonth(state.view,type==='picker-next'?1:-1);render();}
-   if(type==='picker-today'){state.selected=referenceToday;state.view=referenceToday;render();}
-   if(type==='picker-clear'){state.selected=null;render();onClear(null);}
+   if(type==='picker-prev'||type==='picker-next'){state.view=shiftMonth(state.view,type==='picker-next'?1:-1);render();host.querySelector(`[data-f2-action="${type}"]`)?.focus({preventScroll:true});}
+   if(type==='picker-today'){state.selected=referenceToday;state.view=referenceToday;render();host.querySelector('[data-f2-action="picker-today"]')?.focus({preventScroll:true});}
+   if(type==='picker-clear'){state.selected=null;render();host.querySelector('[data-f2-action="picker-clear"]')?.focus({preventScroll:true});onClear(null);}
    if(type==='picker-cancel'){onCancel(state.value);}
    if(type==='picker-confirm'){state.value=state.selected;onConfirm(state.selected);}
   };
