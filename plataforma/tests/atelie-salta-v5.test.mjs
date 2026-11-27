@@ -76,6 +76,8 @@ test('DESIGN-05: diálogo modal reutilizável, acessível e cancelável sem alte
  assert.equal(typeof F.openPickerModal,'function');
  assert.equal(typeof F.mountCalendar,'function');
  assert.match(calendar,/aria-modal="true"/);
+ assert.match(calendar,/f2-picker-portal/);
+ assert.match(calendar,/body\.appendChild\(portal\)/);
  assert.match(calendar,/aria-label="Selecionar data/);
  assert.match(calendar,/keydown=e=>/);
  assert.match(calendar,/Escape/);
