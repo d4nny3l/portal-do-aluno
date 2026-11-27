@@ -56,7 +56,7 @@
    assert.ok(lineH<60,'body keeps original density');
    const sticky=await page.locator('#f2-matrix-slot .f2-student-header').evaluate(el=>getComputedStyle(el).position);
    assert.equal(sticky,'sticky');
-   await screenshot(page,name+'-attendance-header-before');
+   await capture(page,name+'-attendance-header-before');
    const attendScroll=page.locator('#f2-matrix-slot [data-f2-scroll]');
    await attendScroll.evaluate(el=>el.dataset.identity='attendance-05');
    if(touch)await quick('matrix-att-all-f',1).tap();else await quick('matrix-att-all-f',1).click();
@@ -91,7 +91,7 @@
    await page.locator('[data-f2-action=matrix-lesson-1]').click();
    assert.match(await page.locator('[data-f2-confirmed]').innerText(),/Confirmação local simulada/);
    assert.equal(await page.locator('#f2-matrix-slot [role=dialog]').count(),0);
-   await screenshot(page,name+'-attendance-header-after');
+   await capture(page,name+'-attendance-header-after');
    await page.locator('#v2-screen-choice').selectOption('15.10');
    assert.equal(await page.locator('[data-f2-activity-select]').count(),0,'no intermediate selector');
    assert.equal(await page.locator('[data-f2-action=matrix-check-all-done]').count(),8);
@@ -100,7 +100,7 @@
    assert.equal(await quick('matrix-check-all-not',3).locator('svg use[href$="#v2-x"]').count(),1);
    assert.equal(await cell(0,3).locator('.f2-code').innerText(),'—');
    const untouched=await cell(2,4).locator('.f2-code').innerText();
-   await screenshot(page,name+'-checks-header-before');
+   await capture(page,name+'-checks-header-before');
    if(touch)await quick('matrix-check-all-done',3).tap();else await quick('matrix-check-all-done',3).click();
    assert.equal(await cell(0,3).locator('.f2-code').innerText(),'✓');
    assert.equal(await cell(2,4).locator('.f2-code').innerText(),untouched);
@@ -125,7 +125,7 @@
    await page.locator('[data-f2-search]').fill('');
    assert.equal(await cell(0,0).locator('.f2-code').innerText(),'FJ');
    assert.equal(await page.locator('#f2-matrix-slot [role=dialog]').count(),0);
-   await screenshot(page,name+'-checks-header-after');
+   await capture(page,name+'-checks-header-after');
    // Notes contract from DESIGN-04, including exact mask, is unchanged.
    await page.locator('#v2-screen-choice').selectOption('15.9');
    await page.locator('[data-f2-grade-precision]').selectOption('2');
@@ -163,7 +163,7 @@
    assert.ok(computed.centeredX<3&&computed.centeredY<3,'visually centered');
    assert.ok(computed.height<=height-16,'panel fits viewport');
    assert.equal(computed.overflow,'hidden');
-   await screenshot(page,name+'-picker-open');
+   await capture(page,name+'-picker-open');
    await page.keyboard.press('Tab');
    assert.equal(await dialog.evaluate(el=>el.contains(document.activeElement)),true);
    await overlay.locator('[data-f2-action=picker-next]').click();
@@ -178,7 +178,7 @@
    for(let x=0;x<9;x++)await overlay.locator('[data-f2-action=picker-prev]').click();
    assert.equal(await overlay.locator('[data-f2-picker-date="2024-02-29"]').count(),1);
    await overlay.locator('[data-f2-picker-date="2024-02-29"]').click();
-   if(name==='chromium-390'||name==='webkit-390')await screenshot(page,name+'-picker-leap-year');
+   if(name==='chromium-390'||name==='webkit-390')await capture(page,name+'-picker-leap-year');
    await overlay.locator('[data-f2-action=picker-confirm]').click();
    assert.equal(await overlay.count(),0);
    assert.match(await page.locator('#f2-date-value').innerText(),/29\/02\/2024/);
