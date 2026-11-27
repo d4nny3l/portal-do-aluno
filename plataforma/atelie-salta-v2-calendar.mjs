@@ -10,12 +10,14 @@
   if(!dayLessons.length)return `<p class="f2-empty-mini">Sem aulas fictícias neste período.</p>`;
   return `<div class="f2-agenda-list">${dayLessons.map((lesson,i)=>`<article class="f2-agenda-card" data-next="${i===0}" data-day="${key}"><div class="f2-agenda-hour">${lesson.start}–${lesson.end}</div><div><strong>${lesson.subject} · ${lesson.className}</strong><small>${lesson.institution}</small>${!compact?`<p>${lesson.content} · ${lesson.status}</p>`:''}</div>${compact?'':btn('Acessar exemplo','lesson-open')}</article>`).join('')}</div>`;
  }
- function monthGrid(date,{picker=false,choice=null}={}){
+ function monthGrid(date,{picker=false,choice=null,range=null}={}){
   const x=splitISO(date),grid=monthDays(x.y,x.m);
   return `<div class="f2-calendar-grid ${picker?'f2-picker-grid':''}" role="grid" aria-label="Calendário de ${monthLabel(x.y,x.m)}">${weekday.map(w=>`<span class="f2-weekday" role="columnheader">${w}</span>`).join('')}${grid.map(cell=>{
    const selected=cell.key===(choice||date),isReference=cell.key===referenceToday;
+   const insideRange=!!(range?.from&&range?.until&&cell.key>range.from&&cell.key<range.until);
+   const boundary=!!(range?.from===cell.key||range?.until===cell.key);
    const amount=dayCount(cell.key);
-   return `<button type="button" class="f2-day ${cell.inMonth?'':'f2-outside'}" role="gridcell" data-date="${cell.key}" ${picker?'data-f2-picker-date':'data-f2-cal-date'} aria-selected="${selected}" aria-label="${dmy(cell.key)}${amount?' · '+amount+' aulas fictícias':''}${isReference?' · dia de referência':''}" title="${dmy(cell.key)}"><strong>${cell.day}</strong>${picker?'':`<small>${cell.inMonth?`${amount} ${amount===1?'aula':'aulas'}`:''}</small>${amount&&cell.inMonth?'<i aria-hidden="true"></i>':''}`}${isReference?'<span class="f2-today-dot" aria-hidden="true"></span>':''}</button>`;
+   return `<button type="button" class="f2-day ${cell.inMonth?'':'f2-outside'} ${insideRange?'f2-range-middle':''} ${boundary?'f2-range-edge':''}" role="gridcell" data-date="${cell.key}" ${picker?'data-f2-picker-date':'data-f2-cal-date'} aria-selected="${selected}" aria-label="${dmy(cell.key)}${amount?' · '+amount+' aulas fictícias':''}${isReference?' · dia de referência':''}" title="${dmy(cell.key)}"><strong>${cell.day}</strong>${picker?'':`<small>${cell.inMonth?`${amount} ${amount===1?'aula':'aulas'}`:''}</small>${amount&&cell.inMonth?'<i aria-hidden="true"></i>':''}`}${isReference?'<span class="f2-today-dot" aria-hidden="true"></span>':''}</button>`;
   }).join('')}</div>`;
  }
  function mountCalendar(host,{date=referenceToday,view='month',onAction=null}={}){
@@ -54,12 +56,12 @@
   render();
   return {state,render,dispose:()=>host.removeEventListener('click',onClick)};
  }
- function mountPicker(host,{value=null,onConfirm=()=>{},onCancel=()=>{},onClear=()=>{},start=referenceToday}={}){
+ function mountPicker(host,{value=null,onConfirm=()=>{},onCancel=()=>{},onClear=()=>{},start=referenceToday,range=null}={}){
   if(!host)return;
   const state={value,selected:value,view:value||start,opened:true};
   const render=()=>{
    const x=splitISO(state.view);
-   host.innerHTML=`<div class="f2-picker" role="group" aria-label="Seletor de data demonstrativo"><header class="f2-picker-header"><strong>${monthLabel(x.y,x.m)}</strong><div>${btn('‹','picker-prev')}${btn('›','picker-next')}</div></header><label class="f2-year-field">Ano <input type="number" min="1900" max="2100" step="1" class="f2-input" data-f2-picker-year value="${x.y}" aria-label="Ano do calendário"></label>${monthGrid(state.view,{picker:true,choice:state.selected})}<p class="f2-context-note">Selecionado: ${state.selected?dmy(state.selected):'nenhuma data'} · referência 27/11/2026</p><div class="f2-picker-actions">${btn('Limpar','picker-clear')}${btn('Hoje de referência','picker-today')}${btn('Cancelar','picker-cancel')}${btn('Confirmar','picker-confirm','f2-primary')}</div></div>`;
+   host.innerHTML=`<div class="f2-picker" role="group" aria-label="Seletor de data demonstrativo"><header class="f2-picker-header"><strong>${monthLabel(x.y,x.m)}</strong><div>${btn('‹','picker-prev')}${btn('›','picker-next')}</div></header><label class="f2-year-field">Ano <input type="number" min="1900" max="2100" step="1" class="f2-input" data-f2-picker-year value="${x.y}" aria-label="Ano do calendário"></label>${monthGrid(state.view,{picker:true,choice:state.selected,range})}<p class="f2-context-note">Selecionado: ${state.selected?dmy(state.selected):'nenhuma data'} · referência 27/11/2026</p><div class="f2-picker-actions">${btn('Limpar','picker-clear')}${btn('Hoje de referência','picker-today')}${btn('Cancelar','picker-cancel')}${btn('Confirmar','picker-confirm','f2-primary')}</div></div>`;
   };
   const onChange=e=>{if(e.target.matches('[data-f2-picker-year]')){const year=Number(e.target.value);if(Number.isInteger(year)&&year>=1900&&year<=2100){const x=splitISO(state.view);state.view=iso(year,x.m,Math.min(x.d,new Date(year,x.m+1,0).getDate()));render();}}};
   const onClick=e=>{
