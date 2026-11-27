@@ -34,6 +34,7 @@
    browser=await engine.launch({headless:true});
    const context=await browser.newContext({viewport:{width,height},isMobile:width<=390,deviceScaleFactor:1,reducedMotion:'reduce'});
    const page=await context.newPage(),errors=[],external=[],bad=[];
+   page.setDefaultTimeout(7000);
    page.on('pageerror',e=>errors.push(String(e.stack||e.message)));
    page.on('request',r=>{if(!r.url().startsWith(base))external.push(r.url());});
    page.on('response',r=>{if(r.status()>=400)bad.push(r.status()+' '+r.url());});
