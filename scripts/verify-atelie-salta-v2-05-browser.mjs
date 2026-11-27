@@ -50,6 +50,7 @@
    assert.equal(await quick('matrix-att-all-f',1).locator('svg use[href$="#v2-x"]').count(),1);
    assert.equal(await quick('matrix-att-all-p',0).locator('svg use[href$="#v2-check-circle"]').count(),1);
    assert.equal(await quick('matrix-att-all-p',0).getAttribute('title'),'Todos presentes · Aula 1 · 07:30');
+   assert.equal(await quick('matrix-att-all-p',0).locator('[role=tooltip]').count(),1);
    const headH=await page.locator('#f2-matrix-slot .f2-sheet-subgroup th').first().evaluate(el=>el.getBoundingClientRect().height);
    assert.ok(headH>=80,'header affords two icon actions');
    const lineH=await page.locator('#f2-matrix-slot .f2-sheet tbody td').first().evaluate(el=>el.getBoundingClientRect().height);
@@ -144,6 +145,8 @@
    // Date picker is a single, centered, accessible dialog with backdrop.
    await page.locator('#tab-componentes').click();
    const opener=page.locator('#f2-control-app [data-f2-action=picker-open]');
+   assert.equal(await opener.locator('svg use[href$="#v2-calendar-days"]').count(),1);
+   assert.equal(await page.locator('#f2-date-value').getAttribute('role'),'button');
    await opener.click();
    const overlay=page.locator('[data-f2-picker-modal]');
    const dialog=overlay.locator('[role=dialog][aria-modal=true]');
@@ -172,6 +175,14 @@
    assert.equal(await overlay.count(),0);
    assert.match(await page.locator('#f2-date-value').innerText(),/27\/11\/2026/);
    assert.equal(await opener.evaluate(el=>document.activeElement===el),true);
+   const field=page.locator('#f2-date-value');
+   await field.click();
+   assert.equal(await overlay.count(),1,'clicking date value opens same modal');
+   await page.keyboard.press('Escape');
+   assert.equal(await field.evaluate(el=>document.activeElement===el),true,'focus back to date value');
+   await field.focus();await page.keyboard.press('Enter');
+   assert.equal(await overlay.count(),1,'keyboard Enter on date field');
+   await page.keyboard.press('Escape');
    await opener.click();
    await overlay.locator('[data-f2-picker-year]').fill('2024');
    await overlay.locator('[data-f2-picker-year]').press('Tab');
@@ -196,7 +207,7 @@
    await overlay.locator('[data-f2-action=picker-clear]').click();
    await overlay.locator('[data-f2-action=picker-confirm]').click();
    assert.match(await page.locator('#f2-date-value').innerText(),/Sem data/);
-   await page.locator('[data-f2-action=picker-from]').click();
+   await page.locator('#f2-interval-from').click();
    assert.equal(await overlay.count(),1);
    await overlay.locator('[data-f2-picker-date="2026-11-25"]').click();
    await overlay.locator('[data-f2-action=picker-confirm]').click();
