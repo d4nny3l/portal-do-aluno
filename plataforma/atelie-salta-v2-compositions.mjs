@@ -128,8 +128,8 @@
   if(c.kind==='calendar')mountCalendar(host.querySelector('#f2-calendar-slot'),{onAction:msg=>{s.previewInfo=msg;feedback(msg)}});
   if(['attendance','grades','checks'].includes(c.kind))F.mountMatrix(host.querySelector('#f2-matrix-slot'),c.kind);
   if(c.kind==='home'){const agenda=host.querySelector('#f2-home-agenda');agenda.innerHTML=F.dayCard(referenceToday);}
-  if(c.kind==='diary'&&s.tab==='Notas')F.mountMatrix(host.querySelector('#f2-diary-grade-preview'),'grades',{compact:true});
-  if(c.kind==='record'&&['Notas','Frequência','Vistos'].includes(s.tab))F.mountMatrix(host.querySelector('#f2-record-matrix'),s.tab==='Notas'?'grades':s.tab==='Frequência'?'attendance':'checks',{compact:true});
+  if(c.kind==='diary'&&s.tab==='Notas')F.mountMatrix(host.querySelector('#f2-diary-grade-preview'),'grades',{compact:true,context:{institution:s.institution,className:s.className}});
+  if(c.kind==='record'&&['Notas','Frequência','Vistos'].includes(s.tab))F.mountMatrix(host.querySelector('#f2-record-matrix'),s.tab==='Notas'?'grades':s.tab==='Frequência'?'attendance':'checks',{compact:true,context:{institution:s.institution,className:s.className}});
  }
  const feedback=text=>{const e=host.querySelector('#v2-feedback');if(e)e.textContent=text;get(current.kind).previewInfo=text};
  function navigate(id){
