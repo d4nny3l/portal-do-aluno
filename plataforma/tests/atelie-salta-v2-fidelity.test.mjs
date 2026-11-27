@@ -76,7 +76,7 @@ test('Escopo apenas Ateliê: seis abas, assets locais, ícones aprovados intacto
  assert.match(css,/grid-template-columns:64px/);
  assert.match(css,/grid-template-columns:repeat\(2,minmax\(0,1fr\)\)/);
  assert.match(compositions,/DEMONSTRAÇÃO FICTÍCIA/);
- assert.match(compositions,/Nenhuma autenticação ou API ligada/);
+ assert.match(compositions,/Nenhum vínculo institucional ou integração é realizado/);
  assert.match(compositions,/não abre câmera, Magic Scan/);
 });
 test('Ações das 22 composições: não usar botões genéricos como substitutos de comportamento',()=>{
