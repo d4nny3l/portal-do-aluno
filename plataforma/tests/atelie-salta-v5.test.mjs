@@ -53,7 +53,7 @@ test('DESIGN-05: vistos protegem ◷/FJ/FA/Isento e independem do filtro',()=>{
  const result=m.bulk('checks',2,'×');
  assert.equal(result.total,30);assert.equal(result.preserved,specialCount);
  for(let i=0;i<before.length;i++)if(F.matrixTransitions.isSpecial('checks',before[i]))assert.equal(s.states[i][2],before[i]);
- assert.deepEqual(s.states.slice(0,4).map(x=>x[2]),['◷','FJ','FA','Isento']);
+ assert.deepEqual(Array.from(s.states.slice(0,4),x=>x[2]),['◷','FJ','FA','Isento']);
  assert.equal(s.reasons[1][2],'Justificativa fictícia');
  assert.ok(m.state.feedback.includes('30 estudantes'));
  m.dispose();
