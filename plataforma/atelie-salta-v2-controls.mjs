@@ -70,7 +70,7 @@
    state.pickerTarget=target;
    const start=target==='from'?state.from:target==='until'?state.until:state.date;
    const slot=$('f2-picker-slot');slot.hidden=false;
-   disposePicker=mountPicker(slot,{value:start,onConfirm:next=>{
+   disposePicker=mountPicker(slot,{value:start,range:{from:state.from,until:state.until},onConfirm:next=>{
     if(target==='from')state.from=next;
     else if(target==='until')state.until=next;
     else state.date=next;
