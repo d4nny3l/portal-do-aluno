@@ -17,7 +17,7 @@
    const insideRange=!!(range?.from&&range?.until&&cell.key>range.from&&cell.key<range.until);
    const boundary=!!(range?.from===cell.key||range?.until===cell.key);
    const amount=dayCount(cell.key);
-   return `<button type="button" class="f2-day ${cell.inMonth?'':'f2-outside'} ${insideRange?'f2-range-middle':''} ${boundary?'f2-range-edge':''}" role="gridcell" data-date="${cell.key}" ${picker?'data-f2-picker-date':'data-f2-cal-date'} aria-selected="${selected}" aria-label="${dmy(cell.key)}${amount?' · '+amount+' aulas fictícias':''}${isReference?' · dia de referência':''}" title="${dmy(cell.key)}"><strong>${cell.day}</strong>${picker?'':`<small>${cell.inMonth?`${amount} ${amount===1?'aula':'aulas'}`:''}</small>${amount&&cell.inMonth?'<i aria-hidden="true"></i>':''}`}${isReference?'<span class="f2-today-dot" aria-hidden="true"></span>':''}</button>`;
+   return `<button type="button" class="f2-day ${cell.inMonth?'':'f2-outside'} ${insideRange?'f2-range-middle':''} ${boundary?'f2-range-edge':''}" role="gridcell" data-date="${cell.key}" ${picker?`data-f2-picker-date="${cell.key}"`:`data-f2-cal-date="${cell.key}"`} aria-selected="${selected}" aria-label="${dmy(cell.key)}${amount?' · '+amount+' aulas fictícias':''}${isReference?' · dia de referência':''}" title="${dmy(cell.key)}"><strong>${cell.day}</strong>${picker?'':`<small>${cell.inMonth?`${amount} ${amount===1?'aula':'aulas'}`:''}</small>${amount&&cell.inMonth?'<i aria-hidden="true"></i>':''}`}${isReference?'<span class="f2-today-dot" aria-hidden="true"></span>':''}</button>`;
   }).join('')}</div>`;
  }
  function mountCalendar(host,{date=referenceToday,view='month',onAction=null}={}){
