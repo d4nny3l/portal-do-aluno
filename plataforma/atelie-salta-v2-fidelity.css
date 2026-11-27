@@ -211,3 +211,17 @@ body.v2-ready .hero,body.v2-ready .card,body.v2-ready .v2-panel,body.v2-ready .f
 /* Seleção de período: extremos e interior distinguíveis de foco e dia ativo. */
 .f2-app .f2-day.f2-range-middle:not([aria-selected=true]){background:#EAF3F9;color:#17324D}
 .f2-app .f2-day.f2-range-edge:not([aria-selected=true]){border-color:#166AA6;box-shadow:inset 0 0 0 1px #166AA6}
+
+/* DESIGN-SALTA-03 · ações coletivas sem ampliar planilha ou alterar densidade. */
+.f2-app .f2-bulk-actions{display:flex;align-items:center;gap:9px;flex-wrap:wrap;padding:11px;border:1px solid #D1DBE5;background:#F5F8FB;border-radius:11px;margin:10px 0}
+.f2-app .f2-bulk-actions .f2-field{min-width:min(100%,220px);max-width:300px}
+.f2-app .f2-bulk-actions small{color:#516579;font-size:11px;flex:1 1 100%;line-height:1.45}
+.f2-app .f2-sheet td.f2-bulk-column:not(.f2-active-cell){box-shadow:inset 1px 0 0 #ADC9DF,inset -1px 0 0 #ADC9DF}
+.f2-app .f2-sheet th.f2-bulk-column{background:#D1E5F4!important}
+.f2-app .f2-sheet .f2-activity-head{width:100%;min-height:36px;background:transparent;color:#17324D;border:1px solid transparent;border-radius:5px;padding:3px;font-weight:800;font-size:11px;line-height:1.15;cursor:pointer}
+.f2-app .f2-sheet .f2-activity-head:hover{border-color:#166AA6}
+.f2-app .f2-sheet .f2-activity-head[aria-pressed=true]{background:#D1E5F4;border-color:#166AA6}
+.f2-app .f2-sheet .f2-activity-head:focus-visible{outline:2px solid #166AA6;outline-offset:-2px}
+.f2-app .f2-context-actions{align-items:center}
+.f2-app .f2-context-actions small{font-size:11px;color:#516579}
+@media(max-width:767px){.f2-app .f2-bulk-actions>.f2-btn{flex:1 1 130px}.f2-app .f2-bulk-actions .f2-field{width:100%;max-width:100%}.f2-app .f2-sheet .f2-activity-head{min-height:44px}}
