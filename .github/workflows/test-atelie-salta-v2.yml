@@ -1,4 +1,4 @@
-name: SALTA DESIGN-SALTA-04 — Atelier inline grades exact mask isolated (no deploy)
+name: SALTA DESIGN-SALTA-05 — Atelier header batch & modal date picker (no deploy)
 on:
   pull_request:
     branches: [main]
@@ -32,7 +32,8 @@ jobs:
           node --check scripts/verify-atelie-salta-v2-fidelity-browser.mjs
           node --check scripts/verify-atelie-salta-v2-03-browser.mjs
           node --check scripts/verify-atelie-salta-v2-04-browser.mjs
-          node --test plataforma/tests/atelie-salta.test.mjs plataforma/tests/atelie-salta-v2.test.mjs plataforma/tests/atelie-salta-v2-fidelity.test.mjs plataforma/tests/atelie-salta-v3.test.mjs plataforma/tests/atelie-salta-v4.test.mjs
+          node --check scripts/verify-atelie-salta-v2-05-browser.mjs
+          node --test plataforma/tests/atelie-salta.test.mjs plataforma/tests/atelie-salta-v2.test.mjs plataforma/tests/atelie-salta-v2-fidelity.test.mjs plataforma/tests/atelie-salta-v3.test.mjs plataforma/tests/atelie-salta-v4.test.mjs plataforma/tests/atelie-salta-v5.test.mjs
       - name: Existing academic, OMR, camera and platform regressions (no writes)
         run: |
           node --test corretor/v2/tests/*.test.mjs stats-worker/tests/*.test.mjs plataforma/tests/*.test.mjs
@@ -52,6 +53,9 @@ jobs:
       - name: DESIGN-04 exact grade typing, 0/1/2 precision, silent limits and paste (Chromium/WebKit)
         run: |
           SALTA_PLAYWRIGHT_MODULE="$RUNNER_TEMP/salta-atelie/node_modules/playwright/index.mjs" node scripts/verify-atelie-salta-v2-04-browser.mjs
+      - name: DESIGN-05 per-column header actions and central date dialog, six engines/viewports
+        run: |
+          SALTA_PLAYWRIGHT_MODULE="$RUNNER_TEMP/salta-atelie/node_modules/playwright/index.mjs" node scripts/verify-atelie-salta-v2-05-browser.mjs
       - name: Scope remains limited
         run: |
           node scripts/verify-atelie-salta-v2-scope.mjs
@@ -59,10 +63,11 @@ jobs:
       - uses: actions/upload-artifact@v4
         if: always()
         with:
-          name: design-salta-04-grade-mask-evidence-not-published
+          name: design-salta-05-header-picker-evidence-not-published
           path: |
             tmp/atelie-v2-evidence/
             tmp/atelie-v2-fidelity-evidence/
             tmp/atelie-v3-interaction-evidence/
             tmp/atelie-v4-grade-evidence/
+            tmp/atelie-v5-header-modal-evidence/
           if-no-files-found: warn

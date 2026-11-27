@@ -70,20 +70,21 @@
    assert.match(await page.locator('#f2-upload-status').innerText(),/erro/);
    if(name==='chromium-390'||name==='chromium-1440')await screenshot(page,name+'-components-state');
    await page.locator('[data-f2-action=picker-open]').click();
-   assert.equal(await page.locator('#f2-picker-slot [data-f2-picker-date]').count()>27,true);
-   await page.locator('#f2-picker-slot [data-f2-action=picker-next]').click();
-   await page.locator('#f2-picker-slot [data-f2-picker-date="2026-12-15"]').click();
-   await page.locator('#f2-picker-slot [data-f2-action=picker-cancel]').click();
+   assert.equal(await page.locator('[data-f2-picker-modal][role=dialog]').count(),0);assert.equal(await page.locator('[data-f2-picker-modal] [role=dialog][aria-modal=true]').count(),1);
+    assert.equal(await page.locator('[data-f2-picker-modal] [data-f2-picker-date]').count()>27,true);
+   await page.locator('[data-f2-picker-modal] [data-f2-action=picker-next]').click();
+   await page.locator('[data-f2-picker-modal] [data-f2-picker-date="2026-12-15"]').click();
+   await page.locator('[data-f2-picker-modal] [data-f2-action=picker-cancel]').click();
    assert.match(await page.locator('#f2-date-value').innerText(),/27\/11\/2026/);
    await page.locator('[data-f2-action=picker-open]').click();
-   await page.locator('#f2-picker-slot [data-f2-picker-year]').fill('2024');
-   await page.locator('#f2-picker-slot [data-f2-picker-year]').press('Tab');
-   for(let i=0;i<9;i++)await page.locator('#f2-picker-slot [data-f2-action=picker-prev]').click();
-   const feb29=page.locator('#f2-picker-slot [data-f2-picker-date="2024-02-29"]');
+   await page.locator('[data-f2-picker-modal] [data-f2-picker-year]').fill('2024');
+   await page.locator('[data-f2-picker-modal] [data-f2-picker-year]').press('Tab');
+   for(let i=0;i<9;i++)await page.locator('[data-f2-picker-modal] [data-f2-action=picker-prev]').click();
+   const feb29=page.locator('[data-f2-picker-modal] [data-f2-picker-date="2024-02-29"]');
    assert.equal(await feb29.count(),1,'real leap-day selectable');
    await feb29.click();
    if(name==='chromium-390'||name==='chromium-1440')await screenshot(page,name+'-datepicker-leap');
-   await page.locator('#f2-picker-slot [data-f2-action=picker-confirm]').click();
+   await page.locator('[data-f2-picker-modal] [data-f2-action=picker-confirm]').click();
    assert.match(await page.locator('#f2-date-value').innerText(),/29\/02\/2024/);
    await page.locator('#v2-state-choice').selectOption('conflict');
    assert.match(await page.locator('#v2-state-render').innerText(),/Conflito/);
@@ -134,7 +135,7 @@
     assert.equal(await page.locator('#f2-matrix-slot [role=dialog]').count(),0);
     await page.locator('#f2-matrix-slot [data-f2-cell="0:0"]').click();
     assert.equal(await page.locator('#f2-matrix-slot [data-f2-cell="0:0"] .f2-code').innerText(),'P');
-    await page.locator('#f2-matrix-slot [data-f2-action=matrix-att-all-f]').click();
+    await page.locator('#f2-matrix-slot [data-f2-action=matrix-att-all-f][data-f2-col-target="0"]').click();
     assert.match(await page.locator('#f2-matrix-slot [data-f2-counts]').innerText(),/F 30/);
     await page.locator('#f2-matrix-slot [data-f2-cell="0:0"]').click();
     assert.equal(await page.locator('#f2-matrix-slot [data-f2-cell="0:0"] .f2-code').innerText(),'P');
@@ -143,14 +144,14 @@
     await page.locator('#f2-matrix-slot input[name=f2-reason]').fill('Consulta fictícia');
     await page.locator('#f2-matrix-slot [data-f2-action=matrix-apply]').click();
     assert.equal(await page.locator('#f2-matrix-slot [data-f2-cell="0:0"] .f2-code').innerText(),'FJ');
-    await page.locator('#f2-matrix-slot [data-f2-action=matrix-att-all-p]').click();
+    await page.locator('#f2-matrix-slot [data-f2-action=matrix-att-all-p][data-f2-col-target="0"]').click();
     assert.match(await page.locator('#f2-matrix-slot [data-f2-counts]').innerText(),/P 29 · F 0 · FJ 1/);
     assert.match(await page.locator('#f2-matrix-slot [data-f2-matrix-feedback]').innerText(),/1 exceções preservadas/);
     await page.locator('#f2-matrix-slot [data-f2-action=matrix-confirm]').click();
     assert.match(await page.locator('#f2-matrix-slot [data-f2-confirmed]').innerText(),/Confirmação local simulada/);
     await page.locator('#f2-matrix-slot [data-f2-action=matrix-lesson-1]').click();
     assert.equal(await page.locator('#f2-matrix-slot [data-f2-cell="0:1"] .f2-code').innerText(),'P');
-    await page.locator('#f2-matrix-slot [data-f2-action=matrix-att-all-f]').click();
+    await page.locator('#f2-matrix-slot [data-f2-action=matrix-att-all-f][data-f2-col-target="1"]').click();
     assert.match(await page.locator('#f2-matrix-slot [data-f2-counts]').innerText(),/F 30/);
     await page.locator('#f2-matrix-slot [data-f2-action=matrix-confirm]').click();
     await page.locator('#f2-matrix-slot [data-f2-action=matrix-lesson-0]').click();
@@ -192,7 +193,7 @@
     assert.match(await page.locator('#f2-matrix-slot [data-f2-cell="1:1"]').innerText(),/0,0/);
     if(name==='chromium-390'||name==='chromium-1440')await screenshot(page,name+'-grades-inline-precision');
     await page.locator('#v2-screen-choice').selectOption('15.10');
-    assert.equal(await page.locator('#f2-matrix-slot [data-f2-action=matrix-check-all-done]').isDisabled(),true);
+    assert.equal(await page.locator('#f2-matrix-slot [data-f2-action=matrix-check-all-done][data-f2-col-target="3"]').isDisabled(),false);
     const untouched=await page.locator('#f2-matrix-slot [data-f2-cell="1:3"] .f2-code').innerText();
     assert.equal(await page.locator('#f2-matrix-slot [data-f2-cell="0:3"] .f2-code').innerText(),'—');
     for(const next of ['✓','×','✓']){
@@ -201,13 +202,13 @@
      assert.equal(await page.locator('#f2-matrix-slot [role=dialog]').count(),0);
     }
     assert.equal(await page.locator('#f2-matrix-slot [data-f2-cell="1:3"] .f2-code').innerText(),untouched);
-    await page.locator('#f2-matrix-slot [data-f2-activity-select]').selectOption('3');
-    await page.locator('#f2-matrix-slot [data-f2-action=matrix-check-all-done]').click();
+    assert.equal(await page.locator('#f2-matrix-slot [data-f2-activity-select]').count(),0);
+    await page.locator('#f2-matrix-slot [data-f2-activity="3"]').click();
+    await page.locator('#f2-matrix-slot [data-f2-action=matrix-check-all-done][data-f2-col-target="3"]').click();
     assert.match(await page.locator('#f2-matrix-slot [data-f2-matrix-feedback]').innerText(),/exceções preservadas/);
     await page.locator('#f2-matrix-slot [data-f2-cell="0:3"]').click();
     assert.equal(await page.locator('#f2-matrix-slot [data-f2-cell="0:3"] .f2-code').innerText(),'×');
-    await page.locator('#f2-matrix-slot [data-f2-activity-select]').selectOption('4');
-    await page.locator('#f2-matrix-slot [data-f2-action=matrix-check-all-not]').click();
+    await page.locator('#f2-matrix-slot [data-f2-action=matrix-check-all-not][data-f2-col-target="4"]').click();
     assert.equal(await page.locator('#f2-matrix-slot [data-f2-cell="0:3"] .f2-code').innerText(),'×');
     await page.locator('#f2-matrix-slot [data-f2-cell="0:0"]').click();
     assert.equal(await page.locator('#f2-matrix-slot [data-f2-cell="0:0"] .f2-code').innerText(),'◷');
@@ -253,8 +254,9 @@
     assert.match(await page.locator('#v2-screen-render').innerText(),/Compacto: sim/);
     await page.locator('#v2-screen-choice').selectOption('15.22');
     await page.locator('[data-f2-action=secondary-picker]').click();
-    assert.ok(await page.locator('#f2-secondary-datepicker [data-f2-picker-date]').count()>27);
-    await page.locator('#f2-secondary-datepicker [data-f2-action=picker-cancel]').click();
+    assert.equal(await page.locator('#f2-secondary-datepicker [data-f2-picker-date]').count(),0);
+    assert.ok(await page.locator('[data-f2-picker-modal] [data-f2-picker-date]').count()>27);
+    await page.locator('[data-f2-picker-modal] [data-f2-action=picker-cancel]').click();
    }
    assert.deepEqual(errors,[],'pageerrors in '+name);
    assert.deepEqual(external,[],'external network in '+name);

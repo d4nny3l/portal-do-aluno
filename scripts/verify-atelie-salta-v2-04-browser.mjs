@@ -188,14 +188,14 @@
    await page.locator('#v2-screen-choice').selectOption('15.8');
    await rootCell(0,0).click();
    assert.equal(await rootCell(0,0).locator('.f2-code').innerText(),'F');
-   await page.locator('[data-f2-action=matrix-att-all-p]').click();
+   await page.locator('[data-f2-action=matrix-att-all-p][data-f2-col-target="0"]').click();
    assert.match(await page.locator('[data-f2-counts]').innerText(),/P 30/);
    await page.locator('#v2-screen-choice').selectOption('15.10');
    assert.equal(await rootCell(0,3).locator('.f2-code').innerText(),'—');
    await rootCell(0,3).click();
    assert.equal(await rootCell(0,3).locator('.f2-code').innerText(),'✓');
-   await page.locator('[data-f2-activity-select]').selectOption('3');
-   await page.locator('[data-f2-action=matrix-check-all-not]').click();
+   assert.equal(await page.locator('[data-f2-activity-select]').count(),0);
+   await page.locator('[data-f2-action=matrix-check-all-not][data-f2-col-target="3"]').click();
    assert.match(await page.locator('[data-f2-matrix-feedback]').innerText(),/30 estudantes/);
    assert.deepEqual(errors,[]);
    assert.deepEqual(external,[]);

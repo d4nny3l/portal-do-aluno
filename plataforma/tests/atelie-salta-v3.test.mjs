@@ -54,7 +54,7 @@ test('DESIGN-03: visto —→✓→×→✓ no mesmo local e estados especiais p
 });
 test('DESIGN-03: lote de vistos exige coluna explícita, preserva exceções e outras atividades',()=>{
  const m=checks(),v=m.state.checks.states,copy=v.map(row=>[...row]);
- assert.equal(m.state.selectedActivity,null);assert.equal(m.bulk('checks',0,'✓'),null);
+ assert.equal(m.state.selectedActivity,null);assert.equal(m.bulk('checks',-1,'✓'),null);
  m.selectActivity(3);assert.equal(m.state.selectedActivity,3);assert.deepEqual(JSON.parse(JSON.stringify(v)),JSON.parse(JSON.stringify(copy)));
  const done=m.bulk('checks',3,'✓');assert.equal(done.total,30);assert.ok(done.preserved>0);
  for(let i=0;i<30;i++){for(let j=0;j<8;j++){if(j!==3)assert.equal(v[i][j],copy[i][j]);}}
@@ -75,7 +75,7 @@ test('DESIGN-03: notas seguem editor anterior; 22 composições e 68 símbolos p
  const g=grade();assert.equal(g.state.kind,'grades');assert.equal(g.state.grades.length,30);g.dispose();
  assert.equal(F.choices.length,22);assert.equal(F.students.length,30);
  assert.match(matrix,/data-f2-cell/);
- assert.match(matrix,/data-f2-activity-select/);
+ assert.match(matrix,/data-f2-col-target/);
  assert.match(matrix,/matrix-att-all-p/);
  assert.match(matrix,/matrix-check-all-done/);
  assert.match(matrix,/data-f2-counts/);
