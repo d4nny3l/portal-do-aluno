@@ -163,18 +163,34 @@
     assert.match(await page.locator('#f2-matrix-slot').innerText(),/Histórico de exemplo/);
     if(name==='chromium-390'||name==='chromium-1440')await screenshot(page,name+'-attendance-direct-bulk');
     await page.locator('#v2-screen-choice').selectOption('15.9');
+    assert.equal(await page.locator('#f2-matrix-slot [data-f2-grade-precision]').inputValue(),'1');
     await page.locator('#f2-matrix-slot [data-f2-cell="0:0"]').click();
-    await page.locator('#f2-matrix-slot input[name=f2-grade-value]').fill('11');
-    await page.locator('#f2-matrix-slot [data-f2-action=matrix-apply]').click();
-    assert.match(await page.locator('#f2-matrix-slot [data-f2-error]').innerText(),/acima do máximo/);
-    await page.locator('#f2-matrix-slot input[name=f2-grade-value]').fill('0');
-    await page.locator('#f2-matrix-slot [data-f2-action=matrix-apply]').click();
-    assert.match(await page.locator('#f2-matrix-slot [data-f2-cell="0:0"]').innerText(),/0,0/);
+    assert.equal(await page.locator('#f2-matrix-slot [role=dialog]').count(),0);
+    let inline=page.locator('#f2-matrix-slot [data-f2-grade-input="0:0"]');
+    assert.equal(await inline.inputValue(),'0');
+    await inline.pressSequentially('100');
+    assert.equal(await inline.inputValue(),'10,0');
+    await inline.press('1');
+    assert.equal(await inline.inputValue(),'10,0');
+    await inline.press('Enter');
+    assert.match(await page.locator('#f2-matrix-slot [data-f2-cell="0:0"]').innerText(),/10,0/);
+    inline=page.locator('#f2-matrix-slot [data-f2-grade-input="1:0"]');
+    assert.equal(await inline.count(),1);
+    await inline.press('Escape');
     await page.locator('#f2-matrix-slot [data-f2-cell="1:1"]').click();
-    await page.locator('#f2-matrix-slot input[name=f2-grade-value]').fill('');
-    await page.locator('#f2-matrix-slot [data-f2-action=matrix-apply]').click();
-    assert.match(await page.locator('#f2-matrix-slot [data-f2-cell="1:1"]').innerText(),/—/);
-    if(name==='chromium-390'||name==='chromium-1440')await screenshot(page,name+'-grades-edited');
+    inline=page.locator('#f2-matrix-slot [data-f2-grade-input="1:1"]');
+    await inline.press('0');
+    await inline.press('Enter');
+    assert.match(await page.locator('#f2-matrix-slot [data-f2-cell="1:1"]').innerText(),/0,0/);
+    await page.locator('#f2-matrix-slot [data-f2-grade-input]').press('Escape');
+    await page.locator('#f2-matrix-slot [data-f2-grade-precision]').selectOption('2');
+    await page.locator('#f2-matrix-slot [data-f2-cell="1:1"]').click();
+    inline=page.locator('#f2-matrix-slot [data-f2-grade-input="1:1"]');
+    await inline.pressSequentially('245');
+    assert.equal(await inline.inputValue(),'2,45');
+    await inline.press('Escape');
+    assert.match(await page.locator('#f2-matrix-slot [data-f2-cell="1:1"]').innerText(),/0,0/);
+    if(name==='chromium-390'||name==='chromium-1440')await screenshot(page,name+'-grades-inline-precision');
     await page.locator('#v2-screen-choice').selectOption('15.10');
     assert.equal(await page.locator('#f2-matrix-slot [data-f2-action=matrix-check-all-done]').isDisabled(),true);
     const untouched=await page.locator('#f2-matrix-slot [data-f2-cell="1:3"] .f2-code').innerText();
@@ -244,11 +260,11 @@
    assert.deepEqual(external,[],'external network in '+name);
    assert.deepEqual(bad,[],'HTTP errors in '+name);
    report.scenarios.push({name,width,height,compositions:22,icons:68,components:true,deepBehavior:['chromium-390','chromium-1440','webkit-390'].includes(name),errors:0,externalRequests:0});
-   console.log('DESIGN-SALTA-03 FIDELITY PASS',name,'22 previews, controls, no remote requests');
+   console.log('DESIGN-SALTA-04 FIDELITY PASS',name,'22 previews, controls, no remote requests');
    await context.close();
   }catch(error){
    report.failures.push({name,error:error.stack||String(error)});
-   console.error('DESIGN-SALTA-03 FIDELITY FAIL',name,error.stack||error.message);
+   console.error('DESIGN-SALTA-04 FIDELITY FAIL',name,error.stack||error.message);
    try{
     const pg=browser?.contexts()?.flatMap(c=>c.pages())?.[0];
     if(pg)await screenshot(pg,name+'-FAIL');
@@ -258,7 +274,7 @@
  report.requests=[...new Set(requests)];
  if(report.requests.some(x=>!allowed.has(x)))throw Error('Asset outside Ateliê allowlist attempted');
  if(report.failures.length)throw Error(JSON.stringify(report.failures));
- console.log('DESIGN-SALTA-03 FIDELITY PASS ALL',report.scenarios.length);
+ console.log('DESIGN-SALTA-04 FIDELITY PASS ALL',report.scenarios.length);
  }catch(error){report.error=error.stack||String(error);process.exitCode=1;}
  finally{writeFileSync(path.join(dir,'report.json'),JSON.stringify(report,null,2)+'\n');await new Promise(resolve=>server.close(resolve));}
 })();
