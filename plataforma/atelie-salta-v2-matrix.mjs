@@ -311,8 +311,11 @@
   const onBeforeInput=e=>{
    if(kind!=='grades'||!e.target.matches('[data-f2-grade-input]'))return;
    if(e.cancelable)e.preventDefault();
-   if(e.inputType==='insertText'||e.inputType==='insertCompositionText'||e.inputType==='insertReplacementText'){
-    if(/^[0-9]+$/.test(e.data||''))editGradeDigits(e.data,'insert');
+   if(e.inputType==='insertText'&&/^[0-9]$/.test(e.data||'')){
+    editGradeDigits(e.data,'insert'); // Uma única tecla numérica: máscara posicional.
+   }else if(['insertText','insertCompositionText','insertReplacementText'].includes(e.inputType)){
+    // Autofill, IME e inserções em bloco NÃO são teclas sucessivas: conservar significado convencional.
+    pasteGrade(e.data||'');
    }else if(e.inputType==='deleteContentBackward'||e.inputType==='deleteByCut')editGradeDigits('','backspace');
    else if(e.inputType==='deleteContentForward')editGradeDigits('','delete');
   };
