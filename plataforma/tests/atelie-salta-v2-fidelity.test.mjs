@@ -45,7 +45,7 @@ test('Matrizes mostram 30 estudantes, duas aulas e estados editáveis sem regra 
  assert.match(matrix,/return \{state,render,openCell,assignCommon,bulk,selectActivity,dispose:/);
 });
 test('Componentes com comportamento: checkbox indeterminado, rádio, switch, upload sem bytes, picker e modais',()=>{
- for(const term of ['f2-checkbox-indeterminate','indeterminate=true','f2-checkbox-disabled','f2-radio-demo','f2-switch-disabled','v2-switch-label','aria-checked','f2-upload-zone','dragover','drop','upload-remove','upload-change','upload-cancel','upload-error','mountPicker','picker-from','picker-until','v2-modal-overlay','Escape','aria-modal','f2-tooltip','f2-menu','f2-segment'])assert.ok(controls.includes(term),'missing '+term);
+ for(const term of ['f2-checkbox-indeterminate','indeterminate=true','f2-checkbox-disabled','f2-radio-demo','f2-switch-disabled','v2-switch-label','aria-checked','f2-upload-zone','dragover','drop','upload-remove','upload-change','upload-cancel','upload-error','openPickerModal','picker-from','picker-until','v2-modal-overlay','Escape','aria-modal','f2-tooltip','f2-menu','f2-segment'])assert.ok(controls.includes(term),'missing '+term);
  assert.doesNotMatch(controls,/FileReader|arrayBuffer\(|readAs|fetch\s*\(|localStorage|sessionStorage|XMLHttpRequest/);
 });
 test('Quatro variantes SVG locais e favicon oficial não substituído',()=>{
