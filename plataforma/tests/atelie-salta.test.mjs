@@ -29,8 +29,12 @@ test('Ateliê tem seis abas vinculadas a painéis acessíveis', () => {
 });
 
 test('Ateliê é autocontido, sem integrações, roteamento ou alterações globais', () => {
-  assert.doesNotMatch(html,/<link\b[^>]*rel="stylesheet"/);
-  assert.doesNotMatch(html,/<script\b[^>]*src=/);
+  // V2 carrega apenas ativos locais e exclusivos do Ateliê, nunca CDN ou CSS compartilhado.
+  assert.match(html,/<link rel="stylesheet" href="\.\/atelie-salta-v2\.css">/);
+  assert.match(html,/<script type="module" src="\.\/atelie-salta-v2\.mjs"><\/script>/);
+  assert.equal((html.match(/<link\b[^>]*rel="stylesheet"/g)||[]).length,1);
+  assert.equal((html.match(/<script\b[^>]*src=/g)||[]).length,1);
+  assert.doesNotMatch(html,/(?:https?:)?\/\/[^\s"']+\.(?:css|js|woff2)/);
   assert.doesNotMatch(html,/<a\b[^>]*href=/);
   assert.doesNotMatch(html,/<iframe\b/i);
   assert.doesNotMatch(html,/\bfetch\s*\(/);
