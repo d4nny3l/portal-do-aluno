@@ -16,6 +16,9 @@
   const groupName=String(context.className||'Turma A').replace(/[<>]/g,'');
   const maxes=[10,8,10,null],weights=['Peso visual 2','Peso visual 3','Recuperação','Sem fórmula'];
   const columnCount=kind==='attendance'?2:kind==='grades'?4:8;
+  const gradeMask=F.gradeMask;
+  if(kind==='grades'&&!gradeMask)throw Error('Grade mask module must load before matrix');
+  state.precision=1;state.gradeEdit=null;
  const special={attendance:new Set(['FJ','FA']),checks:new Set(['◷','FJ','FA','Isento'])};
  const isSpecial=(type,value)=>!!special[type]?.has(value);
  const nextCommon=(type,value)=>type==='attendance'?(value==='F'?'P':value==='—'?'P':'F'):(value==='—'?'✓':value==='✓'?'×':'✓');
@@ -54,7 +57,7 @@
  return `<div class="f2-sheet-scroller" tabindex="0" role="region" aria-label="${base.name}, 30 estudantes fictícios; deslize a planilha" data-f2-scroll><table class="f2-sheet" aria-label="${base.name} ilustrativa com 30 estudantes"><colgroup><col style="width:151px">${Array.from({length:columnCount},()=>'<col style="width:119px">').join('')}</colgroup><thead><tr class="f2-sheet-group"><th scope="col" class="f2-student-header f2-sticky" rowspan="2">Estudante</th>${kind==='grades'?'<th scope="colgroup" colspan="2">Avaliações originais</th><th scope="colgroup" colspan="2">Recuperação / resultado</th>':`<th scope="colgroup" colspan="${columnCount}">${kind==='attendance'?'Duas aulas independentes':'Atividades fictícias'}</th>`}</tr><tr class="f2-sheet-subgroup">${base.columns.map((label,j)=>`<th scope="col" data-f2-col="${j}" class="${state.active?.j===j?'f2-active-col':''} ${kind==='checks'&&state.selectedActivity===j?'f2-bulk-column':''}">${kind==='checks'?`<button type="button" class="f2-activity-head" data-f2-activity="${j}" aria-pressed="${state.selectedActivity===j}" aria-label="Selecionar atividade ${esc(label)} para lançamento coletivo">${esc(label)}</button>`:esc(label)}${kind==='grades'?`<small>${maxes[j]===null?'Sem cálculo':'Máx. '+maxes[j]} · ${weights[j]}</small>`:''}</th>`).join('')}</tr></thead><tbody>${allowed.map(({s,i})=>`<tr data-f2-row="${i}" class="${state.active?.i===i?'f2-active-row':''}"><th class="f2-sticky f2-student-cell" scope="row" data-f2-rowheader="${i}">${s.name}</th>${Array.from({length:columnCount},(_,j)=>`<td data-f2-col="${j}" class="${state.active?.j===j?'f2-active-col':''} ${state.active?.i===i&&state.active?.j===j?'f2-active-cell':''} ${kind==='checks'&&state.selectedActivity===j?'f2-bulk-column':''}"><button type="button" class="f2-cell" data-f2-cell="${i}:${j}" aria-label="${s.name}, ${base.columns[j]}: ${meaning(code(i,j),i,j)}" ${kind==='grades'&&j===3?'disabled title="Resultado depende da regra acadêmica oficial"':''}>${output(i,j)}</button></td>`).join('')}</tr>`).join('')}</tbody></table></div>`;
 }
   function popupHTML(){
-   if(!state.popup)return '';
+   if(!state.popup||kind==='grades')return '';
    const {i,j}=state.popup,previous=code(i,j),s=students[i],label=base.columns[j];
    let controls='';
    if(kind==='attendance'){
@@ -78,7 +81,7 @@
  const targetJ=state.selectedActivity;
  const seen=targetJ===null?null:Object.fromEntries(['✓','×','◷','—','FJ','FA','Isento'].map(code=>[code,checks.states.filter(row=>row[targetJ]===code).length]));
  const attHeader=`<div class="f2-matrix-heading"><strong>${schoolName} · ${groupName} · Matemática · ${dmy(state.date)}</strong><span class="f2-chip">Aula ${attendance.lesson+1} · ${attendance.lesson?'08:20–09:10':'07:30–08:20'}</span><span class="f2-chip" data-f2-confirmed>${attendance.confirmed[attendance.lesson]?'Confirmação local simulada':'Rascunho não gravado'}</span></div><div class="f2-actions">${btn('Aula 1','matrix-lesson-0',attendance.lesson===0?'f2-selected':'')}${btn('Aula 2','matrix-lesson-1',attendance.lesson===1?'f2-selected':'')}${btn('Chamada do dia','matrix-tab-matrix',attendance.tab==='today'?'f2-selected':'')}${btn('Histórico','matrix-tab-history',attendance.tab==='history'?'f2-selected':'')}${btn('Confirmar rascunho (simulação)','matrix-confirm','f2-primary')}</div><div class="f2-bulk-actions" role="group" aria-label="Lançamento coletivo da aula selecionada"><span class="f2-chip" data-f2-bulk-target>Aula ${attendance.lesson+1} · ${students.length} estudantes da turma</span>${btn('Todos presentes','matrix-att-all-p')}${btn('Todos ausentes','matrix-att-all-f')}<small>Turma inteira, mesmo com pesquisa ativa. Estados FJ e FA são preservados; confirmação continua explícita.</small></div><p class="f2-inline-status" data-f2-counts>P ${counts.P} · F ${counts.F} · FJ ${counts.FJ} · FA ${counts.FA} · — ${counts['—']} (aula ${attendance.lesson+1}; derivados da amostra)</p>`;
- const gradeHeader=`<div class="f2-matrix-heading"><strong>${schoolName} · ${groupName} · Matemática · 2º bimestre</strong><span class="f2-chip">Avaliações originais e recuperação em grupos separados</span></div><p class="f2-inline-status">0 = lançado · — = não lançado · * = parcial · resultado sem motor de cálculo.</p>`;
+ const gradeHeader=`<div class="f2-matrix-heading"><strong>${schoolName} · ${groupName} · Matemática · 2º bimestre</strong><span class="f2-chip">Avaliações originais e recuperação em grupos separados</span></div><div class="f2-grade-controls"><label class="f2-field">Casas decimais para digitação manual<select class="f2-select" data-f2-grade-precision>${[0,1,2].map(p=>`<option value="${p}" ${state.precision===p?'selected':''}>${p} ${p===1?'casa':'casas'}</option>`).join('')}</select></label><button type="button" class="f2-btn f2-small" data-f2-action="matrix-grade-partial" ${state.active?.j===0?'':'disabled'}>Alternar parcial da Avaliação A selecionada</button><small>Precisão muda só a entrada nova. Notas existentes preservadas. Máximos A=10 · B=8 · Recuperação=10; resultado não calculado.</small></div><p class="f2-inline-status">Digitação por dígitos com vírgula automática. Colagem mantém o número convencional. 0 ≠ vazio · * = parcial. Rascunho local; sem motor de cálculo.</p>`;
  const checkedHeader=`<div class="f2-matrix-heading"><strong>${schoolName} · ${groupName} · Vistos por atividade</strong><span class="f2-chip">Mesma célula · estados distintos</span></div><div class="f2-actions">${btn('Planilha','matrix-tab-matrix',checks.mode==='matrix'?'f2-selected':'')}${btn('Registro individual','matrix-tab-single',checks.mode==='single'?'f2-selected':'')}</div><div class="f2-bulk-actions" role="group" aria-label="Lançamento coletivo da atividade selecionada"><label class="f2-field">Atividade para ${students.length} estudantes<select class="f2-select" data-f2-activity-select><option value="" ${targetJ===null?'selected':''}>Selecione uma atividade</option>${checks.activities.map((name,j)=>`<option value="${j}" ${targetJ===j?'selected':''}>${esc(name)}</option>`).join('')}</select></label><span class="f2-chip" data-f2-bulk-target>${targetJ===null?'Nenhuma atividade escolhida':'Atividade: '+esc(checks.activities[targetJ])+' · 30 estudantes'}</span><button type="button" class="f2-btn" data-f2-action="matrix-check-all-done" ${targetJ===null?'disabled':''}>Todos realizados</button><button type="button" class="f2-btn" data-f2-action="matrix-check-all-not" ${targetJ===null?'disabled':''}>Todos não realizados</button><small>Somente a atividade escolhida, turma inteira mesmo com filtro. ◷/FJ/FA/Isento são preservados.</small></div><p class="f2-inline-status" data-f2-check-counts>${seen?`Atividade ${esc(checks.activities[targetJ])} · ✓ ${seen['✓']} · × ${seen['×']} · — ${seen['—']} · ◷ ${seen['◷']} · FJ ${seen.FJ} · FA ${seen.FA} · Isento ${seen.Isento} (total 30)`:'Selecione uma atividade para consultar os contadores.'}</p><p class="f2-inline-status">✓ visto · × sem visto · ◷ pendente · — não lançado · FJ/FA/Isento: exceções, sem denominador inventado.</p>`;
  const single=`<div class="f2-fields"><label class="f2-field">Estudante<select class="f2-select" id="f2-single-student">${students.map(s=>`<option value="${s.id-1}">${s.name}</option>`).join('')}</select></label><label class="f2-field">Atividade<select class="f2-select" id="f2-single-activity">${checks.activities.map((name,j)=>`<option value="${j}">${esc(name)}</option>`).join('')}</select></label></div>${btn('Alternar visto individual','matrix-single-edit','f2-primary')}${btn('Estado especial / limpar registro','matrix-single-special')}`;
  const header=kind==='attendance'?attHeader:kind==='grades'?gradeHeader:checkedHeader;
@@ -134,7 +137,7 @@
 }
   function assignCommon(i,j){
  if(i<0||i>=students.length||j<0||j>=columnCount)return;
- if(kind==='grades'){openCell(i,j);return;}
+ if(kind==='grades'){openGrade(i,j);return;}
  markActive(i,j);
  const before=code(i,j);
  if(isSpecial(kind,before)){
@@ -171,7 +174,8 @@
  updateSummary();
 }
   function openCell(i,j){
-   if(i<0||i>=30||j<0||j>=columnCount||(kind==='grades'&&j===3))return;
+   if(i<0||i>=30||j<0||j>=columnCount)return;
+   if(kind==='grades'){openGrade(i,j);return;}
    state.active={i,j};state.popup={i,j};state.feedback=`Edição deliberada de estado especial: ${students[i].name} · ${base.columns[j]} (amostra local).`;render();
    host.querySelector('.f2-inline-dialog input:not([disabled])')?.focus({preventScroll:true});
   }
@@ -208,6 +212,7 @@
    if(a==='matrix-check-all-done'||a==='matrix-check-all-not'){if(kind==='checks'&&state.selectedActivity!==null)bulk('checks',state.selectedActivity,a==='matrix-check-all-done'?'✓':'×');return;}
    if(a==='matrix-special'&&state.active){openCell(state.active.i,state.active.j);return;}
    if(a==='matrix-single-special'&&kind==='checks'){openCell(Number(host.querySelector('#f2-single-student').value),Number(host.querySelector('#f2-single-activity').value));return;}
+   if(a==='matrix-grade-partial'&&kind==='grades'&&state.active?.j===0){const i=state.active.i;grades[i].partial=!grades[i].partial;paint(i,0);state.feedback='Marcador parcial alterado apenas no rascunho sintético.';updateSummary();return;}
    if(a==='matrix-apply'){apply();return}
    if(a==='matrix-cancel'){state.popup=null;state.feedback='Edição cancelada: nenhuma célula modificada.';render();return}
    if(a==='matrix-reset'){const fresh=makeAttendance(),c=makeChecks();attendance.students=fresh.students;attendance.confirmed=[false,false];checks.states=c.states;checks.reasons=students.map(()=>Array.from({length:checks.activities.length},()=>''));state.selectedActivity=null;for(let i=0;i<30;i++){grades[i]={...sampleGrades[i],original:[...sampleGrades[i].original]};}state.popup=null;state.active=null;state.feedback='Amostra restaurada.';render();return}
@@ -217,7 +222,7 @@
    if(a==='matrix-lesson-0'||a==='matrix-lesson-1'){attendance.lesson=a==='matrix-lesson-1'?1:0;state.popup=null;render();return}
    if(a==='matrix-confirm'){attendance.confirmed[attendance.lesson]=true;state.popup=null;state.feedback=`Aula ${attendance.lesson+1}: confirmação apenas no estado sintético desta página. Sem servidor ou recibo.`;render();return}
   };
-  const onChange=e=>{if(e.target.matches('[data-f2-activity-select]'))selectActivity(e.target.value===''?null:Number(e.target.value));};
+  const onChange=e=>{if(e.target.matches('[data-f2-activity-select]'))selectActivity(e.target.value===''?null:Number(e.target.value));if(kind==='grades'&&e.target.matches('[data-f2-grade-precision]')){if(state.gradeEdit)finishGrade(false);state.precision=Number(e.target.value);render();}};
   const onInput=e=>{if(e.target.matches('[data-f2-search]')){const pos=e.target.selectionStart;state.query=e.target.value;render();const input=host.querySelector('[data-f2-search]');input?.focus({preventScroll:true});if(typeof pos==='number')input?.setSelectionRange(pos,pos);}};
   const onKey=e=>{
    const b=e.target.closest('[data-f2-cell]');if(!b||!host.contains(b))return;
