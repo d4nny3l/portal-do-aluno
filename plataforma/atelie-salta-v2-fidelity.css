@@ -268,3 +268,10 @@ body.v2-ready .hero,body.v2-ready .card,body.v2-ready .v2-panel,body.v2-ready .f
 .f2-app .f2-head-bulk .f2-head-tooltip{display:none;position:absolute;top:calc(100% + 5px);left:50%;transform:translateX(-50%);z-index:15;min-width:106px;max-width:150px;white-space:normal;padding:7px 8px;border-radius:7px;background:#17324D;color:white;box-shadow:0 5px 12px rgba(23,50,77,.18);font:600 11px/1.35 sans-serif;text-align:center;pointer-events:none}
 .f2-app .f2-head-bulk:focus-visible .f2-head-tooltip{display:block}
 @media(hover:hover){.f2-app .f2-head-bulk:hover .f2-head-tooltip{display:block}}
+
+/* O próprio campo e o botão com ícone de calendário abrem o modal pelo mesmo fluxo. */
+.f2-app [data-f2-picker-field]{display:inline-flex;align-items:center;min-height:32px;padding:4px 10px;border:1px solid #9FBDD4;border-radius:8px;background:#FFF;color:#17324D;cursor:pointer;font-size:12px;font-weight:750}
+.f2-app [data-f2-picker-field]:hover{background:#E5EFF8}
+.f2-app [data-f2-picker-field]:focus-visible{outline:2px solid #166AA6;outline-offset:2px}
+.f2-app .f2-date-action{display:inline-flex;align-items:center;gap:6px}
+.f2-app .f2-date-action .v2-glyph{display:inline-block;width:16px;height:16px}
