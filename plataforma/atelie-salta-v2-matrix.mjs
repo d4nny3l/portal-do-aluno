@@ -110,7 +110,6 @@
   if(line)line.textContent=n?`Atividade ${checks.activities[j]} · ✓ ${n['✓']} · × ${n['×']} · — ${n['—']} · ◷ ${n['◷']} · FJ ${n.FJ} · FA ${n.FA} · Isento ${n.Isento} (total 30)`:'Selecione uma atividade para consultar os contadores.';
   const chip=host.querySelector('[data-f2-bulk-target]');
   if(chip)chip.textContent=j===null?'Nenhuma atividade escolhida':'Atividade: '+checks.activities[j]+' · 30 estudantes';
-  const select=host.querySelector('[data-f2-activity-select]');if(select)select.value=j===null?'':String(j);
   // Atalhos dos cabeçalhos sempre ativos: cada botão contém explicitamente a sua coluna.
   for(const button of host.querySelectorAll('[data-f2-activity]'))button.setAttribute('aria-pressed',String(Number(button.dataset.f2Activity)===j));
   for(const cell of host.querySelectorAll('.f2-sheet [data-f2-col]'))cell.classList.toggle('f2-bulk-column',j!==null&&Number(cell.dataset.f2Col)===j);
@@ -312,7 +311,7 @@
    if(a==='matrix-lesson-0'||a==='matrix-lesson-1'){attendance.lesson=a==='matrix-lesson-1'?1:0;state.popup=null;render();return}
    if(a==='matrix-confirm'){attendance.confirmed[attendance.lesson]=true;state.popup=null;state.feedback=`Aula ${attendance.lesson+1}: confirmação apenas no estado sintético desta página. Sem servidor ou recibo.`;render();return}
   };
-  const onChange=e=>{if(e.target.matches('[data-f2-activity-select]'))selectActivity(e.target.value===''?null:Number(e.target.value));if(kind==='grades'&&e.target.matches('[data-f2-grade-precision]')){if(state.gradeEdit)finishGrade(false);state.precision=Number(e.target.value);render();}};
+  const onChange=e=>{if(kind==='grades'&&e.target.matches('[data-f2-grade-precision]')){if(state.gradeEdit)finishGrade(false);state.precision=Number(e.target.value);render();}};
   const onBeforeInput=e=>{
    if(kind!=='grades'||!e.target.matches('[data-f2-grade-input]'))return;
    if(e.cancelable)e.preventDefault();
