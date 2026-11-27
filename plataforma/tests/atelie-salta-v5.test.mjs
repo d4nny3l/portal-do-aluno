@@ -65,10 +65,10 @@ test('DESIGN-05: ações têm coluna e ícones distintos sem nova coluna ou popu
  assert.match(src,/bulk\('checks',col,/);
  assert.doesNotMatch(src,/data-f2-activity-select/);
  assert.match(src,/renderTable\(\)/);
- assert.match(src,/role=\\"tooltip\\"/);
- assert.match(css,/f2-head-bulk:focus-visible \\.f2-head-tooltip/);
+ assert.match(src,/role="tooltip"/);
  const css=read('fidelity.css');
  assert.match(css,/f2-head-bulk/);assert.match(css,/min-height:44px/);
+ assert.match(css,/\.f2-head-bulk:focus-visible \.f2-head-tooltip/);
  assert.match(src,/const columnCount=kind==='attendance'\?2:kind==='grades'\?4:8/);
 });
 test('DESIGN-05: diálogo modal reutilizável, acessível e cancelável sem alterar agenda',()=>{
