@@ -73,6 +73,7 @@ try{
  assert(css.includes('f2-grade-edit')&&css.includes('height:27px')&&css.includes('height:44px')&&css.includes('f2-picker-overlay'),'Original density + modal CSS');
  assert(controls.includes('F.openPickerModal(root')&&composition.includes('F.openPickerModal('),'Every demonstrated date picker must share a modal');
  assert(calendar.includes('aria-modal="true"')&&calendar.includes('role="dialog"')&&calendar.includes("document.addEventListener('focusin',focusin,true)"),'Modal aria semantics and focus trap required');
+ assert(calendar.includes("portal.className='f2-app f2-picker-portal'")&&calendar.includes('body.appendChild(portal)')&&calendar.includes('portal.remove()'),'Modal must use ephemeral root portal outside transformed tab panels');
  assert(calendar.includes("overlay.addEventListener('keydown',keydown)")&&calendar.includes("e.key==='Escape'")&&calendar.includes('triggerEl.focus'),'Escape and focus restoration required');
  assert(calendar.includes("onClear:()=>{}")&&calendar.includes('onConfirm:next=>dismiss(true,next)'),'Draft clear / explicit confirm required');
  const baseCalendar=git('show',main+':plataforma/atelie-salta-v2-calendar.mjs');
