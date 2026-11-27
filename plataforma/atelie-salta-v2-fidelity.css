@@ -225,3 +225,11 @@ body.v2-ready .hero,body.v2-ready .card,body.v2-ready .v2-panel,body.v2-ready .f
 .f2-app .f2-context-actions{align-items:center}
 .f2-app .f2-context-actions small{font-size:11px;color:#516579}
 @media(max-width:767px){.f2-app .f2-bulk-actions>.f2-btn{flex:1 1 130px}.f2-app .f2-bulk-actions .f2-field{width:100%;max-width:100%}.f2-app .f2-sheet .f2-activity-head{min-height:44px}}
+
+/* DESIGN-SALTA-04: notas com input na própria célula, densidade e rolagem intactas. */
+.f2-app .f2-grade-controls{display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin:9px 0}
+.f2-app .f2-grade-controls .f2-field{width:min(100%,230px)}
+.f2-app .f2-grade-controls small{font-size:11px;color:#516579;flex:1 1 220px;line-height:1.4}
+.f2-app .f2-sheet .f2-grade-edit{display:block;width:100%;height:27px;min-height:0;padding:0 3px;margin:0;border:0;border-radius:0;background:#FFF;color:#17324D;text-align:center;outline:none;font:inherit;font-size:11px;font-variant-numeric:tabular-nums;appearance:none;-webkit-appearance:none;box-shadow:inset 0 0 0 2px #166AA6}
+.f2-app .f2-sheet .f2-grade-edit:focus-visible{outline:2px solid #166AA6;outline-offset:-2px;box-shadow:inset 0 0 0 2px #166AA6}
+@media(max-width:767px){.f2-app .f2-sheet .f2-grade-edit{height:44px;font-size:13px}}
