@@ -1,4 +1,4 @@
-// DESIGN-SALTA-01: Browser QA, localhost only. No production requests.
+// DESIGN-SALTA-02: Browser QA, localhost only. No production requests.
 (async function verify(){
  const assert=(await import('node:assert/strict')).default;
  const {createServer}=await import('node:http');
@@ -7,7 +7,7 @@
  const path=(await import('node:path')).default;
  const root=path.resolve(fileURLToPath(new URL('../',import.meta.url))),output=path.join(root,'tmp','atelie-v2-evidence');
  mkdirSync(output,{recursive:true});
- const allowed=new Set(['plataforma/atelie-salta.html','plataforma/atelie-salta-v2.css','plataforma/atelie-salta-v2.mjs','plataforma/atelie-salta-v2-icons.svg','plataforma/atelie-salta-v2-InterVariable.woff2','favicon.svg']);
+ const allowed=new Set(['plataforma/atelie-salta.html','plataforma/atelie-salta-v2.css','plataforma/atelie-salta-v2.mjs','plataforma/atelie-salta-v2-icons.svg','plataforma/atelie-salta-v2-InterVariable.woff2','favicon.svg',...['fidelity.css','fixtures.mjs','calendar.mjs','matrix.mjs','controls.mjs','compositions.mjs','favicon-a.svg','favicon-b.svg','favicon-c.svg','favicon-d.svg'].map(n=>'plataforma/atelie-salta-v2-'+n)]);
  const types={'.html':'text/html;charset=utf-8','.css':'text/css;charset=utf-8','.mjs':'text/javascript;charset=utf-8','.svg':'image/svg+xml','.woff2':'font/woff2'};
  const requests=[];
  const server=createServer((req,res)=>{
@@ -24,7 +24,7 @@
  if(!mod)throw Error('SALTA_PLAYWRIGHT_MODULE required');
  const {chromium,webkit}=await import(pathToFileURL(mod).href);
  const cases=[['chromium-320',chromium,320,700],['chromium-390',chromium,390,844],['chromium-768',chromium,768,1024],['chromium-1440',chromium,1440,900],['chromium-1920',chromium,1920,1080],['webkit-390',webkit,390,844]];
- const report={baseMain:'b8968b70b7eebbe4d34b29acdb0336ba5e568f20',scenarios:[],physicalDeviceTested:false,noProductionAccess:true,requests:[],failures:[]};
+ const report={baseMain:'f8319e05506861b15589e22aa2a4436df336581a',scenarios:[],physicalDeviceTested:false,noProductionAccess:true,requests:[],failures:[]};
  try{
   for(const [name,engine,width,height] of cases){
    let browser;
