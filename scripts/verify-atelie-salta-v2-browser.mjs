@@ -53,7 +53,7 @@
     await page.locator('#tab-componentes').click();
     await page.locator('#v2-state-choice').selectOption('conflict');
     assert.match(await page.locator('#v2-state-render').innerText(),/Conflito/);
-    await page.locator('[data-v2-action="confirm"]').click();
+    await page.locator('[data-f2-action="confirm"]').click();
     assert.equal(await page.locator('#v2-modal-overlay').isVisible(),true);
     await page.keyboard.press('Escape');
     assert.equal(await page.locator('#v2-modal-overlay').isVisible(),false);
