@@ -1,69 +1,52 @@
-// DESIGN-SALTA-02: escopo fixado na Issue #147 e ata #143, retificação #7206977286.
-// Não altera código: prova que toda a delta está restrita ao Ateliê V2.
+// DESIGN-SALTA-03 · escopo fechado Issue #149 + adendo #7224525896.
+// Verifica o diff real contra a main que já contém DESIGN-SALTA-02.
 import {execFileSync} from 'node:child_process';
 import {readFileSync} from 'node:fs';
 import {fileURLToPath} from 'node:url';
 const root=fileURLToPath(new URL('../',import.meta.url));
-const main='f8319e05506861b15589e22aa2a4436df336581a';
-const branch='feat/design-salta-02-atelie-fidelidade';
+const main='e9ed27f75eeb9f747a78c240c8766e8db5fee748';
+const branch='feat/design-salta-03-direct-bulk-matrix';
 const allowed=new Set([
  'plataforma/atelie-salta.html',
- 'plataforma/atelie-salta-v2-fidelity.css',
- 'plataforma/atelie-salta-v2-fixtures.mjs',
- 'plataforma/atelie-salta-v2-calendar.mjs',
- 'plataforma/atelie-salta-v2-matrix.mjs',
  'plataforma/atelie-salta-v2-controls.mjs',
- 'plataforma/atelie-salta-v2-compositions.mjs',
- 'plataforma/atelie-salta-v2-favicon-a.svg',
- 'plataforma/atelie-salta-v2-favicon-b.svg',
- 'plataforma/atelie-salta-v2-favicon-c.svg',
- 'plataforma/atelie-salta-v2-favicon-d.svg',
- 'plataforma/atelie-salta-v2-fidelity-matrix.md',
+ 'plataforma/atelie-salta-v2-matrix.mjs',
+ 'plataforma/atelie-salta-v2-fidelity.css',
  'plataforma/tests/atelie-salta-v2-fidelity.test.mjs',
+ 'plataforma/tests/atelie-salta-v3.test.mjs',
  'scripts/verify-atelie-salta-v2-fidelity-browser.mjs',
-
- 'plataforma/atelie-salta-v2.css',
- 'plataforma/atelie-salta-v2.mjs',
- 'plataforma/atelie-salta-v2-icons.svg',
- 'plataforma/atelie-salta-v2-ICONS-LICENSE.txt',
- 'plataforma/atelie-salta-v2-InterVariable.woff2',
- 'plataforma/atelie-salta-v2-font-OFL.txt',
- 'plataforma/atelie-salta-v2-inventario.md',
- 'plataforma/tests/atelie-salta.test.mjs',
- 'plataforma/tests/atelie-salta-v2.test.mjs',
- 'scripts/verify-atelie-salta-v2-browser.mjs',
+ 'scripts/verify-atelie-salta-v2-03-browser.mjs',
  'scripts/verify-atelie-salta-v2-scope.mjs',
+ 'plataforma/atelie-salta-v3-audit.md',
  '.github/workflows/test-atelie-salta-v2.yml'
 ]);
 const git=(...args)=>execFileSync('git',args,{cwd:root,encoding:'utf8'}).trim();
-const assert=(condition,message)=>{if(!condition)throw Error(message)};
+const assert=(ok,msg)=>{if(!ok)throw Error(msg)};
 try{
  if(process.env.GITHUB_EVENT_NAME==='pull_request'){
   const ev=JSON.parse(readFileSync(process.env.GITHUB_EVENT_PATH,'utf8'));
-  assert(ev.pull_request?.head?.ref===branch,'Expected only branch '+branch);
+  assert(ev.pull_request?.head?.ref===branch,'Expected branch '+branch);
   assert(ev.pull_request?.base?.ref==='main','PR must target main');
-  assert(ev.pull_request?.draft===true,'Design PR must remain DRAFT');
-  assert(ev.pull_request?.head?.sha===git('rev-parse','HEAD'),'Must inspect actual PR HEAD, not synthetic merge');
+  assert(ev.pull_request?.draft===true,'PR must remain DRAFT');
+  assert(ev.pull_request?.head?.sha===git('rev-parse','HEAD'),'PR head changed or synthetic merge checked out');
  }
  git('merge-base','--is-ancestor',main,'HEAD');
  const diff=git('diff','--name-only',main,'HEAD','--').split('\n').filter(Boolean);
- const forbidden=diff.filter(p=>!allowed.has(p));
- assert(diff.length>=12,'Ateliê DESIGN-SALTA-02 delivery is incomplete');
- assert(!forbidden.length,'Forbidden scope outside Ateliê: '+forbidden.join(', '));
- for(const s of ['plataforma/atelie-salta.html','plataforma/atelie-salta-v2-fixtures.mjs','plataforma/atelie-salta-v2-calendar.mjs','plataforma/atelie-salta-v2-matrix.mjs','plataforma/atelie-salta-v2-controls.mjs','plataforma/atelie-salta-v2-compositions.mjs','plataforma/atelie-salta-v2-fidelity.css'])assert(diff.includes(s),'Required missing artifact '+s);
- assert(!git('diff','--name-only','HEAD','--'),'Tracked worktree modified');
+ assert(!diff.some(p=>!allowed.has(p)),'Forbidden changes: '+diff.filter(p=>!allowed.has(p)).join(', '));
+ for(const p of ['plataforma/atelie-salta.html','plataforma/atelie-salta-v2-controls.mjs','plataforma/atelie-salta-v2-matrix.mjs','plataforma/atelie-salta-v2-fidelity.css','plataforma/tests/atelie-salta-v3.test.mjs','scripts/verify-atelie-salta-v2-03-browser.mjs']){
+  assert(diff.includes(p),'Required DESIGN-SALTA-03 path absent: '+p);
+ }
+ assert(!git('diff','--name-only','HEAD','--'),'Dirty tracked working tree');
  git('diff','--check',main,'HEAD','--');
- const html=readFileSync(root+'/plataforma/atelie-salta.html','utf8');
- const src=readFileSync(root+'/plataforma/atelie-salta-v2.mjs','utf8');
- const sprite=readFileSync(root+'/plataforma/atelie-salta-v2-icons.svg','utf8');
- assert((html.match(/role="tabpanel"/g)||[]).length===6,'Six Ateliê panels must remain intact');
- assert((sprite.match(/<symbol id="v2-/g)||[]).length===68,'Exactly 68 icon symbols required');
- assert(src.includes('15.22')&&src.includes('15.1'),'Existing 22 decision metadata required');
-const added=readFileSync(root+'/plataforma/atelie-salta-v2-fixtures.mjs','utf8');
-assert(added.includes('15.22')&&added.includes('15.1'),'22 fidelity decisions required');
-const ui=readFileSync(root+'/plataforma/atelie-salta-v2-compositions.mjs','utf8');
-assert(!/\bfetch\s*\(|\blocalStorage\b|\bsessionStorage\b/.test(ui),'No network or storage in demos');
- assert(!/<iframe\b/i.test(html),'No parallel apps or iframes');
- assert(!/\bfetch\s*\(|\blocalStorage\b|\bsessionStorage\b/.test(src),'No network or stored data');
- console.log('DESIGN-SALTA-02 SCOPE PASS: only Ateliê 02 test/assets, no product/OMR/Auth/Workers/D1.');
-}catch(error){console.error('DESIGN-SALTA-02 SCOPE BLOCKED:',error.message);process.exitCode=1;}
+ const read=p=>readFileSync(root+'/'+p,'utf8');
+ const html=read('plataforma/atelie-salta.html'),matrix=read('plataforma/atelie-salta-v2-matrix.mjs'),controls=read('plataforma/atelie-salta-v2-controls.mjs'),svg=read('plataforma/atelie-salta-v2-favicon-c.svg'),sprite=read('plataforma/atelie-salta-v2-icons.svg');
+ assert((html.match(/role="tabpanel"/g)||[]).length===6,'Six original Ateliê tabs changed');
+ assert((sprite.match(/<symbol id="v2-/g)||[]).length===68,'68 original icons changed');
+ assert(html.includes('<link rel="icon" type="image/svg+xml" href="./atelie-salta-v2-favicon-c.svg">'),'Ateliê favicon must be C');
+ assert(/#17324D/.test(svg)&&/#166AA6/.test(svg)&&/>S<\/text>/.test(svg),'Approved favicon C must be original gradient');
+ assert(controls.includes("id==='C'?'checked'"),'C not selected by default');
+ assert(matrix.includes("Todos presentes")&&matrix.includes("Todos ausentes")&&matrix.includes("Todos realizados")&&matrix.includes("Todos não realizados"),'Bulk controls absent');
+ assert(matrix.includes('assignCommon')&&matrix.includes('isSpecial')&&matrix.includes('updateSummary'),'Direct interactions absent');
+ for(const src of [matrix,controls])assert(!/\bfetch\s*\(|\blocalStorage\b|\bsessionStorage\b|XMLHttpRequest|indexedDB/.test(src),'Network or persistence forbidden');
+ assert(!/<iframe\b/.test(html),'No new parallel lab');
+ console.log('DESIGN-SALTA-03 SCOPE PASS — Ateliê-only diff, 22 compositions/68 icons retained, approved favicon C.');
+}catch(e){console.error('DESIGN-SALTA-03 SCOPE BLOCKED:',e.message);process.exitCode=1;}
