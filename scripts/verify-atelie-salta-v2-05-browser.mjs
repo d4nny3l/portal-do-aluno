@@ -173,6 +173,7 @@
    await overlay.locator('[data-f2-picker-date="2026-12-15"]').click();
    await overlay.locator('[data-f2-action=picker-cancel]').click();
    assert.equal(await overlay.count(),0);
+   assert.equal(await page.locator('.f2-picker-portal').count(),0,'transient portal destroyed after cancel');
    assert.match(await page.locator('#f2-date-value').innerText(),/27\/11\/2026/);
    assert.equal(await opener.evaluate(el=>document.activeElement===el),true);
    const field=page.locator('#f2-date-value');
