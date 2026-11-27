@@ -173,6 +173,97 @@
  state.feedback=j===null?'Nenhuma atividade selecionada; nenhuma alteração aplicada.':`Atividade ${checks.activities[j]} selecionada para 30 estudantes. Nenhum lançamento automático.`;
  updateSummary();
 }
+  function openGrade(i,j){
+ if(kind!=='grades'||j>=3||j<0||i<0||i>=students.length)return;
+ if(state.gradeEdit)finishGrade(true);
+ markActive(i,j);
+ const button=host.querySelector(`[data-f2-cell="${i}:${j}"]`);
+ if(!button)return;
+ const original=code(i,j);
+ const edit={i,j,original,text:original===''?'':String(original),digits:null,dirty:false,composing:false};
+ state.gradeEdit=edit;
+ const input=host.ownerDocument.createElement('input');
+ input.type='text';input.className='f2-grade-edit';input.dataset.f2GradeInput=i+':'+j;
+ input.inputMode='numeric';input.autocomplete='off';input.spellcheck=false;
+ input.setAttribute('aria-label',`Editar nota de ${students[i].name}, ${base.columns[j]}; máximo ${maxes[j]}; ${state.precision} casas decimais. Enter confirma, Escape cancela.`);
+ input.value=edit.text;
+ button.replaceWith(input);
+ input.focus({preventScroll:true});
+ input.select();
+}
+  function editGradeDigits(insertion,operation){
+ const edit=state.gradeEdit,input=host.querySelector('[data-f2-grade-input]');
+ if(!edit||!input)return false;
+ const p=state.precision,max=maxes[edit.j];
+ const existing=edit.digits===null?gradeMask.previous(edit.text,p,max):{ok:true,digits:edit.digits};
+ const start=input.selectionStart??0,end=input.selectionEnd??start;
+ const all=start===0&&end===input.value.length;
+ if(!existing.ok&&!all)return false;
+ const raw=all?'':existing.digits,visual=gradeMask.manual(raw,p,max);
+ if(!visual.ok)return false;
+ const padding=Math.max(0,(visual.text.match(/[0-9]/g)||[]).length-raw.length);
+ const countDigits=value=>(value.match(/[0-9]/g)||[]).length;
+ const left=all?0:Math.max(0,Math.min(raw.length,countDigits(input.value.slice(0,start))-padding));
+ const right=all?raw.length:Math.max(left,Math.min(raw.length,countDigits(input.value.slice(0,end))-padding));
+ let candidate='';
+ if(operation==='insert')candidate=raw.slice(0,left)+insertion+raw.slice(right);
+ else if(operation==='backspace')candidate=left!==right?raw.slice(0,left)+raw.slice(right):raw.slice(0,Math.max(0,left-1))+raw.slice(right);
+ else if(operation==='delete')candidate=left!==right?raw.slice(0,left)+raw.slice(right):raw.slice(0,left)+raw.slice(Math.min(raw.length,left+1));
+ else candidate='';
+ const next=gradeMask.manual(candidate,p,max);
+ if(!next.ok)return false; // silencioso, inclusive seleção/cursor intactos
+ edit.digits=next.digits;edit.text=next.text;edit.dirty=true;
+ input.value=next.text;input.setSelectionRange(next.text.length,next.text.length);
+ return true;
+}
+  function pasteGrade(clipboard){
+ const edit=state.gradeEdit,input=host.querySelector('[data-f2-grade-input]');
+ if(!edit||!input||typeof clipboard!=='string'||/[\t\r\n]/.test(clipboard))return false;
+ const next=gradeMask.external(clipboard.trim(),state.precision,maxes[edit.j]);
+ if(!next.ok)return false;
+ edit.digits=next.digits;edit.text=next.text;edit.dirty=true;
+ input.value=next.text;input.setSelectionRange(next.text.length,next.text.length);
+ return true;
+}
+  function finishGrade(cancel=false){
+ const edit=state.gradeEdit;if(!edit)return;
+ const input=host.querySelector('[data-f2-grade-input]');
+ if(!cancel&&edit.dirty){
+  const check=gradeMask.external(edit.text,state.precision,maxes[edit.j]);
+  if(check.ok){
+   const value=check.text;
+   if(edit.j<2)grades[edit.i].original[edit.j]=value;
+   else grades[edit.i].recovery=value;
+  }
+ }
+ state.gradeEdit=null;
+ if(input){
+  const b=host.ownerDocument.createElement('button');
+  b.type='button';b.className='f2-cell';b.dataset.f2Cell=edit.i+':'+edit.j;
+  b.setAttribute('aria-label',`${students[edit.i].name}, ${base.columns[edit.j]}: ${meaning(code(edit.i,edit.j),edit.i,edit.j)}`);
+  b.innerHTML=output(edit.i,edit.j);
+  input.replaceWith(b);
+  b.focus({preventScroll:true});
+ }
+}
+  function nextGradeCell(i,j,mode){
+ const visible=students.map((s,n)=>({s,n})).filter(x=>x.s.name.toLocaleLowerCase('pt-BR').includes(state.query.toLocaleLowerCase('pt-BR'))).map(x=>x.n);
+ if(!visible.length)return null;
+ const pos=visible.indexOf(i);
+ if(mode==='enter'){
+  if(pos>=0&&pos<visible.length-1)return {i:visible[pos+1],j};
+  return {i:visible[0],j:(j+1)%3};
+ }
+ if(mode==='tab'){
+  if(j<2)return {i,j:j+1};
+  return {i:visible[(pos+1+visible.length)%visible.length],j:0};
+ }
+ if(mode==='backtab'){
+  if(j>0)return {i,j:j-1};
+  return {i:visible[(pos-1+visible.length)%visible.length],j:2};
+ }
+ return null;
+}
   function openCell(i,j){
    if(i<0||i>=30||j<0||j>=columnCount)return;
    if(kind==='grades'){openGrade(i,j);return;}
