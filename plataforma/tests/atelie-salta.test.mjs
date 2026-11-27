@@ -32,8 +32,15 @@ test('Ateliê é autocontido, sem integrações, roteamento ou alterações glob
   // V2 carrega apenas ativos locais e exclusivos do Ateliê, nunca CDN ou CSS compartilhado.
   assert.match(html,/<link rel="stylesheet" href="\.\/atelie-salta-v2\.css">/);
   assert.match(html,/<script type="module" src="\.\/atelie-salta-v2\.mjs"><\/script>/);
-  assert.equal((html.match(/<link\b[^>]*rel="stylesheet"/g)||[]).length,1);
-  assert.equal((html.match(/<script\b[^>]*src=/g)||[]).length,1);
+  assert.equal((html.match(/<link\b[^>]*rel="stylesheet"/g)||[]).length,2);
+  assert.equal((html.match(/<script\b[^>]*src=/g)||[]).length,6);
+  assert.match(html, /<link rel="stylesheet" href="\.\/atelie-salta-v2-fidelity\.css">/);
+  for(const module of ['fixtures','calendar','matrix','controls','compositions']){
+    assert.match(html,new RegExp('src="\\.\\/atelie-salta-v2-'+module+'\\.mjs"'));
+  }
+  for(const url of [...html.matchAll(/(?:href|src)="([^"]+)"/g)].map(match=>match[1])){
+    assert.ok(url.startsWith('./atelie-salta-v2-')||url==='../favicon.svg','Not Ateliê-local asset: '+url);
+  }
   assert.doesNotMatch(html,/(?:https?:)?\/\/[^\s"']+\.(?:css|js|woff2)/);
   assert.doesNotMatch(html,/<a\b[^>]*href=/);
   assert.doesNotMatch(html,/<iframe\b/i);
