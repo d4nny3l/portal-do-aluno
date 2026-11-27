@@ -79,5 +79,68 @@
   render();
   return {state,render,dispose:()=>{host.removeEventListener('click',onClick);host.removeEventListener('change',onChange)}};
  }
- Object.assign(F,{mountCalendar,mountPicker,shiftMonth,monthGrid,dayCard});
+
+ // DESIGN-SALTA-05: todas as demonstrações de escolha de data usam este diálogo modal.
+ // Não altera o calendário de agenda (mountCalendar) nem o estado original (mountPicker).
+ let activePickerModal=null;
+ function closePickerModal(){
+  activePickerModal?.dismiss?.(false);
+ }
+ function openPickerModal(host,{trigger=null,value=null,range=null,onConfirm=()=>{},onCancel=()=>{}}={}){
+  if(!host)return null;
+  closePickerModal();
+  const document=host.ownerDocument;
+  const app=host.closest('.f2-app')||host.querySelector('.f2-app')||host;
+  const triggerEl=trigger||document.activeElement;
+  const overlay=document.createElement('div');
+  overlay.className='f2-overlay f2-picker-overlay';
+  overlay.setAttribute('data-f2-picker-modal','');
+  overlay.innerHTML='<div class="f2-dialog f2-picker-dialog" role="dialog" aria-modal="true" tabindex="-1" aria-label="Selecionar data (prévia local)"><div data-f2-picker-content></div></div>';
+  const dialog=overlay.querySelector('[role=dialog]');
+  const slot=overlay.querySelector('[data-f2-picker-content]');
+  const html=document.documentElement,body=document.body;
+  const originalHTMLOverflow=html.style.overflow,originalBodyOverflow=body.style.overflow;
+  let closed=false,controller=null,keydown=null,focusin=null;
+  const dismiss=(confirmed,next)=>{
+   if(closed)return;
+   closed=true;
+   controller?.dispose?.();
+   overlay.removeEventListener('keydown',keydown);
+   document.removeEventListener('focusin',focusin,true);
+   overlay.remove();
+   html.style.overflow=originalHTMLOverflow;
+   body.style.overflow=originalBodyOverflow;
+   if(activePickerModal?.dismiss===dismiss)activePickerModal=null;
+   if(confirmed)onConfirm(next);
+   else onCancel();
+   if(triggerEl?.isConnected)triggerEl.focus({preventScroll:true});
+  };
+  keydown=e=>{
+   if(e.key==='Escape'){e.preventDefault();e.stopPropagation();dismiss(false);return;}
+   if(e.key!=='Tab')return;
+   const focusables=[...dialog.querySelectorAll('button:not([disabled]),input:not([disabled]),select:not([disabled]),[tabindex="0"]')].filter(el=>el.getClientRects().length>0);
+   if(!focusables.length){e.preventDefault();dialog.focus();return;}
+   const first=focusables[0],last=focusables[focusables.length-1];
+   if(e.shiftKey&&(document.activeElement===first||document.activeElement===dialog)){e.preventDefault();last.focus();}
+   else if(!e.shiftKey&&(document.activeElement===last||document.activeElement===dialog)){e.preventDefault();first.focus();}
+  };
+  focusin=e=>{if(!closed&&!dialog.contains(e.target))dialog.focus({preventScroll:true})};
+  overlay.addEventListener('keydown',keydown);
+  overlay.addEventListener('click',e=>{if(e.target===overlay)dismiss(false)});
+  document.addEventListener('focusin',focusin,true);
+  app.appendChild(overlay);
+  html.style.overflow='hidden';
+  body.style.overflow='hidden';
+  activePickerModal={dismiss};
+  controller=mountPicker(slot,{
+   value,range,
+   onConfirm:next=>dismiss(true,next),
+   onCancel:()=>dismiss(false),
+   onClear:()=>{} // limpar é rascunho até Confirmar
+  });
+  dialog.focus({preventScroll:true});
+  return {dismiss,close:()=>dismiss(false),state:controller?.state};
+ }
+
+ Object.assign(F,{mountCalendar,mountPicker,openPickerModal,closePickerModal,shiftMonth,monthGrid,dayCard});
 })();
