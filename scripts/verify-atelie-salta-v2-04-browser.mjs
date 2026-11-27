@@ -151,6 +151,23 @@
     assert.equal(await editor(9,0).inputValue(),snap,badValue);
     assert.equal(await feedback.innerText(),fback);
    }
+   // Autofill/composição e inserção de vários caracteres não passam pela máscara manual.
+   for(const [kind,insert] of [['insertReplacementText','12'],['insertCompositionText','2,345'],['insertText','25']]){
+    const previous=await editor(9,0).inputValue();
+    const message=await feedback.innerText();
+    await editor(9,0).evaluate((el,data)=>{
+     const event=new InputEvent('beforeinput',{inputType:data[0],data:data[1],bubbles:true,cancelable:true});
+     el.dispatchEvent(event);
+    },[kind,insert]);
+    assert.equal(await editor(9,0).inputValue(),previous,kind);
+    assert.equal(await feedback.innerText(),message,kind);
+   }
+   // Fallback do navegador/autofill ao emitir input diretamente também bloqueia sem aviso.
+   await editor(9,0).evaluate(el=>{
+    el.value='12,2222';
+    el.dispatchEvent(new InputEvent('input',{inputType:'insertReplacementText',data:'12,2222',bubbles:true}));
+   });
+   assert.equal(await editor(9,0).inputValue(),'2,45');
    await paste(editor(9,0),'10');
    assert.equal(await editor(9,0).inputValue(),'10,00','Inteiro colado significa dez, não 0,10');
    await editor(9,0).press('Escape');
