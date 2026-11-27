@@ -1,0 +1,226 @@
+// DESIGN-SALTA-02 · Playwright localhost, nenhum acesso produtivo.
+(async function runFidelityQA(){
+ const assert=(await import('node:assert/strict')).default;
+ const {createServer}=await import('node:http');
+ const {readFileSync,mkdirSync,writeFileSync}=await import('node:fs');
+ const {fileURLToPath,pathToFileURL}=await import('node:url');
+ const path=(await import('node:path')).default;
+ const root=path.resolve(fileURLToPath(new URL('../',import.meta.url)));
+ const dir=path.join(root,'tmp','atelie-v2-fidelity-evidence');mkdirSync(dir,{recursive:true});
+ const allowed=new Set(['plataforma/atelie-salta.html','plataforma/atelie-salta-v2.css','plataforma/atelie-salta-v2.mjs','plataforma/atelie-salta-v2-icons.svg','plataforma/atelie-salta-v2-InterVariable.woff2','favicon.svg',
+ ...['fidelity.css','fixtures.mjs','calendar.mjs','matrix.mjs','controls.mjs','compositions.mjs','favicon-a.svg','favicon-b.svg','favicon-c.svg','favicon-d.svg'].map(n=>'plataforma/atelie-salta-v2-'+n)]);
+ const types={'.html':'text/html;charset=utf-8','.css':'text/css;charset=utf-8','.mjs':'text/javascript;charset=utf-8','.svg':'image/svg+xml','.woff2':'font/woff2'};
+ const requests=[];
+ const server=createServer((req,res)=>{
+  const rel=decodeURIComponent(new URL(req.url,'http://127.0.0.1').pathname).replace(/^\/+/,'');requests.push(rel);
+  if(!allowed.has(rel)){res.writeHead(404);res.end('Asset forbidden');return;}
+  const file=path.resolve(root,rel);
+  if(!file.startsWith(root+path.sep)){res.writeHead(403);res.end('Forbidden');return;}
+  try{res.writeHead(200,{'content-type':types[path.extname(file)]||'application/octet-stream','cache-control':'no-store'});res.end(readFileSync(file))}
+  catch{res.writeHead(404);res.end('Missing asset')}
+ });
+ await new Promise(resolve=>server.listen(0,'127.0.0.1',resolve));
+ const base='http://127.0.0.1:'+server.address().port;
+ const mod=process.env.SALTA_PLAYWRIGHT_MODULE;
+ if(!mod)throw Error('SALTA_PLAYWRIGHT_MODULE is required for isolated browser CI');
+ const {chromium,webkit}=await import(pathToFileURL(mod).href);
+ const cases=[['chromium-320',chromium,320,700],['chromium-390',chromium,390,844],['chromium-768',chromium,768,1024],['chromium-1440',chromium,1440,900],['chromium-1920',chromium,1920,1080],['webkit-390',webkit,390,844]];
+ const report={mission:'DESIGN-SALTA-02',baseMain:'f8319e05506861b15589e22aa2a4436df336581a',physicalSafariTested:false,allDataSynthetic:true,scenarios:[],failures:[],requests:[]};
+ const screenshot=async(page,name)=>page.screenshot({path:path.join(dir,name+'.png'),fullPage:false});
+ try{
+ for(const [name,engine,width,height] of cases){
+  let browser;
+  try{
+   browser=await engine.launch({headless:true});
+   const context=await browser.newContext({viewport:{width,height},isMobile:width<=390,deviceScaleFactor:1,reducedMotion:'reduce'});
+   const page=await context.newPage(),errors=[],external=[],bad=[];
+   page.on('pageerror',e=>errors.push(String(e.stack||e.message)));
+   page.on('request',r=>{if(!r.url().startsWith(base))external.push(r.url());});
+   page.on('response',r=>{if(r.status()>=400)bad.push(r.status()+' '+r.url());});
+   await page.goto(base+'/plataforma/atelie-salta.html',{waitUntil:'networkidle'});
+   await page.waitForFunction(()=>document.querySelector('#f2-control-app')&&document.querySelector('#f2-compositions'),null,{timeout:15000});
+   assert.equal(await page.locator('[role=tab]').count(),6);
+   assert.equal(await page.locator('input[name=f2-favicon]').count(),5);
+   await page.locator('#tab-simbolos').click();
+   assert.equal(await page.locator('[data-v2-icon]').count(),68);
+   await page.locator('#tab-cores').click();
+   await page.locator('input[name=f2-favicon][value=C]').check();
+   assert.match(await page.locator('#f2-favicon-choice').innerText(),/Alternativa C/);
+   if(name==='chromium-390'||name==='chromium-1440')await screenshot(page,name+'-favicon-c');
+   await page.locator('#tab-componentes').click();
+   assert.equal(await page.locator('#f2-checkbox-indeterminate').evaluate(el=>el.indeterminate),true);
+   assert.equal(await page.locator('#f2-checkbox-disabled').isDisabled(),true);
+   await page.locator('#f2-checkbox-indeterminate').check();
+   assert.equal(await page.locator('#f2-checkbox-indeterminate').isChecked(),true);
+   await page.locator('input[name=f2-radio-demo][value=B]').check();
+   assert.equal(await page.locator('input[name=f2-radio-demo][value=A]').isChecked(),false);
+   const beforeSwitch=await page.locator('#v2-switch').evaluate(el=>getComputedStyle(el,'::before').transform);
+   await page.locator('#v2-switch').check();
+   assert.equal(await page.locator('#v2-switch-label').innerText(),'Ativado');
+   assert.equal(await page.locator('#v2-switch').getAttribute('aria-checked'),'true');
+   const afterSwitch=await page.locator('#v2-switch').evaluate(el=>getComputedStyle(el,'::before').transform);
+   assert.notEqual(beforeSwitch,afterSwitch,'switch knob must move');
+   await page.locator('#f2-upload').setInputFiles({name:'arquivo-sintetico.txt',mimeType:'text/plain',buffer:Buffer.from('sintetico')});
+   assert.match(await page.locator('#f2-upload-status').innerText(),/não foi aberto nem transmitido/);
+   assert.match(await page.locator('#f2-upload-file').innerText(),/arquivo-sintetico\.txt/);
+   await page.locator('[data-f2-action=upload-remove]').first().click();
+   assert.equal((await page.locator('#f2-upload-file').innerText()).trim(),'');
+   await page.locator('[data-f2-action=upload-error]').click();
+   assert.match(await page.locator('#f2-upload-status').innerText(),/erro/);
+   if(name==='chromium-390'||name==='chromium-1440')await screenshot(page,name+'-components-state');
+   await page.locator('[data-f2-action=picker-open]').click();
+   assert.equal(await page.locator('#f2-picker-slot [data-f2-picker-date]').count()>27,true);
+   await page.locator('#f2-picker-slot [data-f2-action=picker-next]').click();
+   await page.locator('#f2-picker-slot [data-f2-picker-date="2026-12-15"]').click();
+   await page.locator('#f2-picker-slot [data-f2-action=picker-cancel]').click();
+   assert.match(await page.locator('#f2-date-value').innerText(),/27\/11\/2026/);
+   await page.locator('[data-f2-action=picker-open]').click();
+   await page.locator('#f2-picker-slot [data-f2-picker-year]').fill('2024');
+   await page.locator('#f2-picker-slot [data-f2-picker-year]').press('Tab');
+   for(let i=0;i<9;i++)await page.locator('#f2-picker-slot [data-f2-action=picker-prev]').click();
+   const feb29=page.locator('#f2-picker-slot [data-f2-picker-date="2024-02-29"]');
+   assert.equal(await feb29.count(),1,'real leap-day selectable');
+   await feb29.click();
+   if(name==='chromium-390'||name==='chromium-1440')await screenshot(page,name+'-datepicker-leap');
+   await page.locator('#f2-picker-slot [data-f2-action=picker-confirm]').click();
+   assert.match(await page.locator('#f2-date-value').innerText(),/29\/02\/2024/);
+   await page.locator('#v2-state-choice').selectOption('conflict');
+   assert.match(await page.locator('#v2-state-render').innerText(),/Conflito/);
+   await page.locator('[data-v2-action=confirm]').click();
+   assert.equal(await page.locator('#v2-modal-overlay').isVisible(),true);
+   await page.keyboard.press('Escape');
+   assert.equal(await page.locator('#v2-modal-overlay').isVisible(),false);
+   await page.locator('#tab-telas').click();
+   assert.equal(await page.locator('#v2-screen-choice option').count(),22);
+   for(let i=1;i<=22;i++){
+    const id='15.'+i;
+    await page.locator('#v2-screen-choice').selectOption(id);
+    assert.ok((await page.locator('#v2-screen-title').innerText()).startsWith(id+' ·'));
+    assert.ok(await page.locator('#v2-screen-render .v2-shell').count());
+    const overflow=await page.evaluate(()=>document.documentElement.scrollWidth-window.innerWidth);
+    assert.ok(overflow<=2,'Horizontal body overflow '+name+' '+id+': '+overflow);
+   }
+   // Full behavior on mobile Chromium, desktop and synthetic WebKit.
+   if(name==='chromium-390'||name==='chromium-1440'||name==='webkit-390'){
+    await page.locator('#v2-screen-choice').selectOption('15.3');
+    const order=await page.locator('#f2-home-shortcuts').evaluate(e=>!!(e.compareDocumentPosition(document.querySelector('.f2-kpis'))&Node.DOCUMENT_POSITION_FOLLOWING));
+    assert.ok(order,'Professor shortcuts must precede KPIs');
+    await page.locator('#v2-screen-choice').selectOption('15.4');
+    await page.locator('[data-f2-tab-type=diary][data-f2-tab="Notas"]').click();
+    assert.equal(await page.locator('#f2-diary-grade-preview .f2-sheet tbody tr').count(),30);
+    await page.locator('[data-f2-context=className]').selectOption('Turma B');
+    assert.match(await page.locator('#v2-screen-render').innerText(),/Turma B/);
+    await page.locator('#v2-screen-choice').selectOption('15.6');
+    await page.locator('[data-f2-tab-type=record][data-f2-tab="Vistos"]').click();
+    assert.equal(await page.locator('#f2-record-matrix .f2-sheet tbody tr').count(),30);
+    await page.locator('[data-f2-tab-type=record][data-f2-tab="Cadastro"]').click();
+    assert.match(await page.locator('#v2-screen-render').innerText(),/Cadastro fictício/);
+    await page.locator('#v2-screen-choice').selectOption('15.7');
+    assert.equal(await page.locator('#f2-calendar-slot [data-f2-cal-date="2026-11-01"]').count(),1);
+    await page.locator('#f2-calendar-slot [data-f2-action=cal-next]').click();
+    assert.match(await page.locator('#f2-calendar-slot').innerText(),/dezembro 2026/i);
+    await page.locator('#f2-calendar-slot [data-f2-cal-date="2026-12-03"]').click();
+    assert.match(await page.locator('#f2-calendar-slot [role=status]').innerText(),/03\/12\/2026/);
+    if(name==='chromium-390'||name==='chromium-1440')await screenshot(page,name+'-calendar-after');
+    await page.locator('#f2-calendar-slot [data-f2-cal-view=week]').click();
+    assert.equal(await page.locator('.f2-week-column').count(),7);
+    await page.locator('#f2-calendar-slot [data-f2-cal-view=day]').click();
+    assert.equal(await page.locator('.f2-day-band').count(),3);
+    await page.locator('#v2-screen-choice').selectOption('15.8');
+    assert.equal(await page.locator('#f2-matrix-slot .f2-sheet tbody tr').count(),30);
+    await page.locator('#f2-matrix-slot [data-f2-cell="0:0"]').click();
+    await page.locator('#f2-matrix-slot [data-f2-action=matrix-cancel]').click();
+    assert.equal(await page.locator('#f2-matrix-slot [data-f2-cell="0:0"] .f2-code').innerText(),'F');
+    await page.locator('#f2-matrix-slot [data-f2-cell="0:0"]').click();
+    await page.locator('#f2-matrix-slot input[name=f2-att-state][value=FJ]').check();
+    await page.locator('#f2-matrix-slot [data-f2-action=matrix-apply]').click();
+    assert.equal(await page.locator('#f2-matrix-slot [data-f2-cell="0:0"] .f2-code').innerText(),'FJ');
+    await page.locator('#f2-matrix-slot [data-f2-action=matrix-lesson-1]').click();
+    assert.equal(await page.locator('#f2-matrix-slot [data-f2-cell="0:1"] .f2-code').innerText(),'F');
+    await page.locator('#f2-matrix-slot [data-f2-action=matrix-confirm]').click();
+    assert.match(await page.locator('#f2-matrix-slot').innerText(),/Confirmação local simulada/);
+    await page.locator('#f2-matrix-slot [data-f2-action=matrix-tab-history]').click();
+    assert.match(await page.locator('#f2-matrix-slot').innerText(),/Histórico de exemplo/);
+    if(name==='chromium-390'||name==='chromium-1440')await screenshot(page,name+'-attendance-history');
+    await page.locator('#v2-screen-choice').selectOption('15.9');
+    await page.locator('#f2-matrix-slot [data-f2-cell="0:0"]').click();
+    await page.locator('#f2-matrix-slot input[name=f2-grade-value]').fill('11');
+    await page.locator('#f2-matrix-slot [data-f2-action=matrix-apply]').click();
+    assert.match(await page.locator('#f2-matrix-slot [data-f2-error]').innerText(),/acima do máximo/);
+    await page.locator('#f2-matrix-slot input[name=f2-grade-value]').fill('0');
+    await page.locator('#f2-matrix-slot [data-f2-action=matrix-apply]').click();
+    assert.match(await page.locator('#f2-matrix-slot [data-f2-cell="0:0"]').innerText(),/0,0/);
+    await page.locator('#f2-matrix-slot [data-f2-cell="1:1"]').click();
+    await page.locator('#f2-matrix-slot input[name=f2-grade-value]').fill('');
+    await page.locator('#f2-matrix-slot [data-f2-action=matrix-apply]').click();
+    assert.match(await page.locator('#f2-matrix-slot [data-f2-cell="1:1"]').innerText(),/—/);
+    if(name==='chromium-390'||name==='chromium-1440')await screenshot(page,name+'-grades-edited');
+    await page.locator('#v2-screen-choice').selectOption('15.10');
+    await page.locator('#f2-matrix-slot [data-f2-cell="0:0"]').click();
+    await page.locator('#f2-matrix-slot input[name=f2-check-state][value="✓"]').check();
+    await page.locator('#f2-matrix-slot [data-f2-action=matrix-apply]').click();
+    assert.equal(await page.locator('#f2-matrix-slot [data-f2-cell="0:0"] .f2-code').innerText(),'✓');
+    await page.locator('#f2-matrix-slot [data-f2-cell="0:0"]').click();
+    await page.locator('#f2-matrix-slot input[name=f2-check-state][value="×"]').check();
+    await page.locator('#f2-matrix-slot [data-f2-action=matrix-apply]').click();
+    assert.equal(await page.locator('#f2-matrix-slot [data-f2-cell="0:0"] .f2-code').innerText(),'×');
+    await page.locator('#f2-matrix-slot [data-f2-action=matrix-tab-single]').click();
+    await page.locator('#f2-matrix-slot [data-f2-action=matrix-single-edit]').click();
+    assert.equal(await page.locator('#f2-matrix-slot [role=dialog]').count(),1);
+    if(name==='chromium-390'||name==='chromium-1440')await screenshot(page,name+'-checks-single');
+    await page.locator('#v2-screen-choice').selectOption('15.11');
+    await page.locator('[data-f2-action=plan-use-0]').click();
+    assert.equal(await page.locator('[data-f2-plan=planTitle]').inputValue(),'Frações no cotidiano');
+    await page.locator('[data-f2-action=plan-review]').click();
+    assert.match(await page.locator('#f2-plan-feedback').innerText(),/Prévia local completa/);
+    await page.locator('#v2-screen-choice').selectOption('15.13');
+    await page.locator('[data-f2-gen=questionCount]').fill('15');
+    await page.locator('[data-f2-gen=questionCount]').press('Tab');
+    assert.match(await page.locator('#f2-gen-preview').innerText(),/15 questões/);
+    await page.locator('#v2-screen-choice').selectOption('15.14');
+    await page.locator('[data-f2-tab-type=chart][data-f2-tab="Frequência"]').click();
+    assert.match(await page.locator('#v2-screen-render').innerText(),/Presentes/);
+    await page.locator('#v2-screen-choice').selectOption('15.16');
+    await page.locator('[data-f2-project="1"]').click();
+    assert.match(await page.locator('#v2-screen-render').innerText(),/Grupo B/);
+    await page.locator('#v2-screen-choice').selectOption('15.17');
+    await page.locator('[data-f2-connect="Sistema B"]').click();
+    await page.locator('[data-f2-tab-type=connect][data-f2-tab="Histórico"]').click();
+    assert.match(await page.locator('#v2-screen-render').innerText(),/Sistema B · Histórico/);
+    await page.locator('#v2-screen-choice').selectOption('15.18');
+    await page.locator('[data-f2-action=notice-0]').click();
+    await page.locator('#f2-notice-filter').selectOption('Lidos');
+    assert.match(await page.locator('#v2-screen-render').innerText(),/Lido, não resolvido/);
+    await page.locator('#v2-screen-choice').selectOption('15.19');
+    await page.locator('[data-f2-doc=documentType]').selectOption('Declaração');
+    assert.match(await page.locator('#f2-doc-preview').innerText(),/DECLARAÇÃO/);
+    await page.locator('#v2-screen-choice').selectOption('15.20');
+    await page.locator('[data-f2-setting=compact]').check();
+    assert.match(await page.locator('#v2-screen-render').innerText(),/Compacto: sim/);
+    await page.locator('#v2-screen-choice').selectOption('15.22');
+    await page.locator('[data-f2-action=secondary-picker]').click();
+    assert.ok(await page.locator('#f2-secondary-datepicker [data-f2-picker-date]').count()>27);
+    await page.locator('#f2-secondary-datepicker [data-f2-action=picker-cancel]').click();
+   }
+   assert.deepEqual(errors,[],'pageerrors in '+name);
+   assert.deepEqual(external,[],'external network in '+name);
+   assert.deepEqual(bad,[],'HTTP errors in '+name);
+   report.scenarios.push({name,width,height,compositions:22,icons:68,components:true,deepBehavior:['chromium-390','chromium-1440','webkit-390'].includes(name),errors:0,externalRequests:0});
+   console.log('DESIGN-SALTA-02 FIDELITY PASS',name,'22 previews, controls, no remote requests');
+   await context.close();
+  }catch(error){
+   report.failures.push({name,error:error.stack||String(error)});
+   console.error('DESIGN-SALTA-02 FIDELITY FAIL',name,error.stack||error.message);
+   try{
+    const pg=browser?.contexts()?.flatMap(c=>c.pages())?.[0];
+    if(pg)await screenshot(pg,name+'-FAIL');
+   }catch{}
+  }finally{await browser?.close();}
+ }
+ report.requests=[...new Set(requests)];
+ if(report.requests.some(x=>!allowed.has(x)))throw Error('Asset outside Ateliê allowlist attempted');
+ if(report.failures.length)throw Error(JSON.stringify(report.failures));
+ console.log('DESIGN-SALTA-02 FIDELITY PASS ALL',report.scenarios.length);
+ }catch(error){report.error=error.stack||String(error);process.exitCode=1;}
+ finally{writeFileSync(path.join(dir,'report.json'),JSON.stringify(report,null,2)+'\n');await new Promise(resolve=>server.close(resolve));}
+})();
