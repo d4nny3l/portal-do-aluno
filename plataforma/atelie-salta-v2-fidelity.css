@@ -207,3 +207,7 @@ body.v2-ready .hero,body.v2-ready .card,body.v2-ready .v2-panel,body.v2-ready .f
 .f2-app .f2-sheet-scroller:hover{scrollbar-color:#166AA6 transparent}
 .f2-app .f2-sheet-scroller:active{scrollbar-color:#17324D transparent}
 @media(max-width:480px){.f2-app .f2-entry{padding:18px 12px}.f2-app .f2-entry-shell{min-height:0}}
+
+/* Seleção de período: extremos e interior distinguíveis de foco e dia ativo. */
+.f2-app .f2-day.f2-range-middle:not([aria-selected=true]){background:#EAF3F9;color:#17324D}
+.f2-app .f2-day.f2-range-edge:not([aria-selected=true]){border-color:#166AA6;box-shadow:inset 0 0 0 1px #166AA6}
