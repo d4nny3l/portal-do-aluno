@@ -42,7 +42,7 @@
    'Notas':`<div id="f2-record-matrix"></div>`,
    'Frequência':`<div id="f2-record-matrix"></div>`,
    'Vistos':`<div id="f2-record-matrix"></div>`,
-   'Observações':piece('Observações ilustrativas','Sem registros sensíveis ou estudantes reais.',actions([['Nova observação local','record-add']])),
+   'Observações':piece('Observações ilustrativas','Sem registros sensíveis ou estudantes reais.',`<label class="f2-field">Anotação apenas sintética<textarea class="f2-textarea" id="f2-record-note" placeholder="Ex.: acompanhamento de aprendizagem"></textarea></label>${actions([['Adicionar observação local','record-add','f2-primary']])}<div class="f2-grid">${s.recordNotes.map((note,i)=>`<div class="f2-page-feedback">${i+1}. ${esc(note)}</div>`).join('')}</div>`),
    'Habilidades':piece('Habilidades e descritores','A associação curricular depende de referência validada.',table(['Habilidade','Situação'],[['A conferir','Não homologada'],['Objetivo de aula','Planejado']])),
    'Avisos':piece('Avisos da ficha', 'Não encaminhados ao estudante.',actions([['Ver central','go-notices']])),
    'Cadastro':piece('Cadastro fictício', 'Somente dados da amostra.',table(['Campo','Exemplo'],[['Código sintético','0000001'],['Turma',s.className],['Instituição',s.institution]]))
@@ -170,7 +170,7 @@
    s.state=identifier?'Identificação fictícia digitada. Acesso NÃO executado.':'Identificação ilustrativa ausente.';
    feedback(s.state);return;
   }
-  if(action==='record-add'){feedback('Observação fictícia pronta para revisão; nenhum registro real criado.');return;}
+  if(action==='record-add'){const note=host.querySelector('#f2-record-note')?.value.trim()||'';if(note.length<3){feedback('Informe ao menos três caracteres para a anotação fictícia.');return;}s.recordNotes.push(note);draw();feedback('Observação incluída somente na ficha sintética.');return;}
   if(action.startsWith('plan-use-')){const p=plans[Number(action.slice(-1))];Object.assign(s,{tab:'Editor',planTitle:p.name,planSeries:p.series,planDuration:p.duration,planSkills:p.skills,planContent:p.content,planMethod:p.method,planAssessment:p.assessment});draw();return;}
   if(action==='plan-clear'){Object.assign(s,{planTitle:'',planSkills:'',planContent:'',planMethod:'',planAssessment:''});draw();return;}
   if(action==='plan-review'){const empty=['planTitle','planSeries','planDuration','planSkills','planContent','planMethod','planAssessment'].filter(k=>!s[k]?.trim());host.querySelector('#f2-plan-feedback').textContent=empty.length?'Campos ausentes: '+empty.join(', ')+'. Revisão humana obrigatória.':'Prévia local completa; nenhum planejamento foi publicado ou enviado.';return;}
