@@ -63,7 +63,7 @@
    assert.ok((await scroll.evaluate(e=>e.scrollTop))>=scrollerRef);
    await clickCell.focus();await page.keyboard.press('Enter');
    assert.equal(await clickCell.locator('.f2-code').innerText(),'P');
-   await page.locator('#f2-matrix-slot [data-f2-action=matrix-att-all-f]').click();
+   await page.locator('#f2-matrix-slot [data-f2-action=matrix-att-all-f][data-f2-col-target="0"]').click();
    assert.match(await page.locator('[data-f2-counts]').innerText(),/F 30/);
    assert.equal(await page.locator('[data-f2-scroll]').getAttribute('data-identity'),'kept');
    if(touch){await cell(page,24,0).tap();}else await cell(page,24,0).click();
@@ -75,14 +75,14 @@
    await page.locator('#f2-matrix-slot input[name=f2-reason]').fill('Consulta fictícia');
    await page.locator('#f2-matrix-slot [data-f2-action=matrix-apply]').click();
    assert.equal(await cell(page,0,0).locator('.f2-code').innerText(),'FJ');
-   await page.locator('#f2-matrix-slot [data-f2-action=matrix-att-all-p]').click();
+   await page.locator('#f2-matrix-slot [data-f2-action=matrix-att-all-p][data-f2-col-target="0"]').click();
    assert.equal(await cell(page,0,0).locator('.f2-code').innerText(),'FJ');
    assert.match(await page.locator('[data-f2-matrix-feedback]').innerText(),/exceções preservadas/);
    await page.locator('#f2-matrix-slot [data-f2-action=matrix-confirm]').click();
    assert.match(await page.locator('[data-f2-confirmed]').innerText(),/Confirmação local simulada/);
    await page.locator('#f2-matrix-slot [data-f2-action=matrix-lesson-1]').click();
    assert.equal(await cell(page,0,1).locator('.f2-code').innerText(),'P');
-   await page.locator('#f2-matrix-slot [data-f2-action=matrix-att-all-f]').click();
+   await page.locator('#f2-matrix-slot [data-f2-action=matrix-att-all-f][data-f2-col-target="1"]').click();
    await page.locator('#f2-matrix-slot [data-f2-action=matrix-confirm]').click();
    await page.locator('#f2-matrix-slot [data-f2-action=matrix-lesson-0]').click();
    assert.equal(await cell(page,0,0).locator('.f2-code').innerText(),'FJ');
@@ -93,7 +93,7 @@
    await capture(page,name+'-attendance-after');
    await page.locator('#v2-screen-choice').selectOption('15.10');
    await capture(page,name+'-checks-before');
-   assert.equal(await page.locator('[data-f2-action=matrix-check-all-done]').isDisabled(),true);
+   assert.equal(await page.locator('[data-f2-action=matrix-check-all-done][data-f2-col-target="3"]').isDisabled(),false);
    assert.equal(await cell(page,0,3).locator('.f2-code').innerText(),'—');
    for(const expected of ['✓','×','✓']){
     if(touch)await cell(page,0,3).tap();else await cell(page,0,3).click();
@@ -101,28 +101,28 @@
     assert.equal(await page.locator('#f2-matrix-slot [role=dialog]').count(),0);
    }
    const other=await cell(page,0,4).locator('.f2-code').innerText();
-   await page.locator('[data-f2-activity-select]').selectOption('3');
+   assert.equal(await page.locator('[data-f2-activity-select]').count(),0);
+   await page.locator('[data-f2-activity="3"]').click();
    const selected=page.locator('[data-f2-activity="3"]');assert.equal(await selected.getAttribute('aria-pressed'),'true');
    const beforeAll=await page.locator('[data-f2-check-counts]').innerText();
    assert.match(beforeAll,/total 30/);
    await page.locator('[data-f2-search]').fill('Estudante 07');
    assert.equal(await page.locator('.f2-sheet tbody tr').count(),1);
-   await page.locator('[data-f2-action=matrix-check-all-not]').click();
+   await page.locator('[data-f2-action=matrix-check-all-not][data-f2-col-target="3"]').click();
    assert.match(await page.locator('[data-f2-matrix-feedback]').innerText(),/Turma inteira: 30 estudantes, mesmo com pesquisa/);
    assert.equal(await page.locator('[data-f2-scroll]').count(),1);
    await page.locator('[data-f2-search]').fill('');
    assert.equal(await page.locator('.f2-sheet tbody tr').count(),30);
    assert.equal(await cell(page,0,4).locator('.f2-code').innerText(),other);
    await cell(page,0,3).click();assert.equal(await cell(page,0,3).locator('.f2-code').innerText(),'✓');
-   await page.locator('[data-f2-activity-select]').selectOption('4');
-   await page.locator('[data-f2-action=matrix-check-all-done]').click();
+   await page.locator('[data-f2-action=matrix-check-all-done][data-f2-col-target="4"]').click();
    assert.equal(await cell(page,0,3).locator('.f2-code').innerText(),'✓');
    await cell(page,0,0).click();assert.equal(await cell(page,0,0).locator('.f2-code').innerText(),'◷');
    await page.locator('[data-f2-action=matrix-special]').click();
    await page.locator('input[name=f2-check-state][value="—"]').check();
    await page.locator('[data-f2-action=matrix-apply]').click();
    await cell(page,0,0).click();assert.equal(await cell(page,0,0).locator('.f2-code').innerText(),'✓');
-   await page.locator('[data-f2-activity-select]').selectOption('7');
+   await page.locator('[data-f2-activity="7"]').click();
    await scroll.evaluate(e=>{e.scrollLeft=420;e.scrollTop=380;e.dataset.identity='kept-checks';});
    const far=cell(page,25,7);
    await far.click();
