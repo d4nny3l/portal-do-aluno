@@ -41,4 +41,3 @@ Abrir localmente `plataforma/atelie-salta.html` da branch do PR #150 por um serv
 - **Auditoria independente**: conferir logicamente cada item da tabela, capturas e HEAD final, inclusive o impacto limitado em Notas e no editor de exceções.
 - **Homologação do proprietário**: testar fisicamente no iPhone/Safari; especialmente disparos rápidos, atalhos, seleção de atividade, foco, rolagem, conteúdo dos contadores e ausência de popup comum.
 - **Próximo passo condicionado**: somente com parecer independente e nova autorização poderão ser considerados merge/deploy; a aplicação visual às interfaces oficiais será missão posterior e separada.
-
