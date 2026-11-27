@@ -1,7 +1,7 @@
 (function registerControls(){
  'use strict';
  const F=window.SALTA_ATELIE_02; if(!F)throw Error('Missing DESIGN-SALTA-02 fixtures');
- const {esc,btn,icon,referenceToday,dmy,mountPicker}=F;
+ const {esc,btn,icon,referenceToday,dmy}=F;
  const host=document.getElementById('v2-component-playground');
  const colors=document.getElementById('v2-colors');
  const faviconOptions=[
@@ -60,17 +60,17 @@
   let previousFocus=null,disposePicker=null;
   const closeModal=()=>{const overlay=$('v2-modal-overlay');overlay.hidden=true;overlay.setAttribute('aria-hidden','true');previousFocus?.focus?.({preventScroll:true});};
   const openModal=(kind,trigger)=>{
+   disposePicker?.close?.();
    const overlay=$('v2-modal-overlay'),dialog=$('f2-control-dialog');previousFocus=trigger;dialog.dataset.kind=kind;dialog.dataset.size=kind==='confirm'?'small':kind==='details'?'large':'normal';
    $('f2-dialog-title').textContent=kind==='edit'?'Edição demonstrativa':kind==='details'?'Ficha extensa do exemplo':'Confirmar exemplo';
    $('f2-dialog-text').textContent=kind==='details'?'Ficha sintética de grande largura, sem consulta a estudantes.':kind==='edit'?'Painel inferior em telas pequenas; nenhuma edição produtiva.':'Confirme para experimentar somente a resposta visual.';
    overlay.hidden=false;overlay.setAttribute('aria-hidden','false');dialog.focus();
   };
-  function openPicker(target){
-   disposePicker?.dispose?.();
+  function openPicker(target,trigger){
+   if(!$('v2-modal-overlay').hidden)closeModal();
    state.pickerTarget=target;
    const start=target==='from'?state.from:target==='until'?state.until:state.date;
-   const slot=$('f2-picker-slot');slot.hidden=false;
-   disposePicker=mountPicker(slot,{value:start,range:{from:state.from,until:state.until},onConfirm:next=>{
+   disposePicker=F.openPickerModal(root,{trigger,value:start,range:{from:state.from,until:state.until},onConfirm:next=>{
     if(target==='from')state.from=next;
     else if(target==='until')state.until=next;
     else state.date=next;
@@ -78,8 +78,8 @@
     $('f2-interval-from').textContent=state.from?dmy(state.from):'Sem data';
     $('f2-interval-until').textContent=state.until?dmy(state.until):'Sem data';
     $('f2-interval-status').textContent=state.from&&state.until&&state.from>state.until?'Intervalo inválido (início depois do fim). Rever seleção.':'Intervalo sintético: '+(state.from?dmy(state.from):'—')+' a '+(state.until?dmy(state.until):'—');
-    disposePicker?.dispose?.();slot.hidden=true;show('Data confirmada somente na prévia.');
-   },onCancel:()=>{disposePicker?.dispose?.();slot.hidden=true;show('Date picker cancelado; valor anterior preservado.');},onClear:()=>{}});
+    disposePicker=null;show('Data confirmada somente na prévia.');
+   },onCancel:()=>{disposePicker=null;show('Date picker cancelado; valor anterior preservado.');}});
   }
   root.addEventListener('change',e=>{
    const t=e.target;
@@ -94,7 +94,7 @@
   root.addEventListener('click',e=>{
    const b=e.target.closest('button');if(!b||!root.contains(b))return;const type=b.dataset.f2Action||b.dataset.v2Action;
    if(b.dataset.f2ComponentTab){state.tab=b.dataset.f2ComponentTab;root.querySelectorAll('[data-f2-component-tab]').forEach(n=>n.setAttribute('aria-pressed',String(n===b)));$('f2-tab-output').textContent='Aba '+state.tab+' · conteúdo de exemplo selecionado.';return;}
-   if(type==='picker-open'||type==='picker-from'||type==='picker-until'){openPicker(type==='picker-from'?'from':type==='picker-until'?'until':'date');return;}
+   if(type==='picker-open'||type==='picker-from'||type==='picker-until'){openPicker(type==='picker-from'?'from':type==='picker-until'?'until':'date',b);return;}
    if(type==='upload-remove'||type==='upload-cancel'){setUpload(null);$('f2-upload').value='';return;}
    if(type==='upload-change'){$('f2-upload').click();return;}
    if(type==='upload-error'){setUpload(state.selectedFile,'Exemplo de erro: formato não aceito. Selecione outro arquivo.');return;}
