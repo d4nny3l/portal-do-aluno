@@ -172,7 +172,7 @@
 }
   function openCell(i,j){
    if(i<0||i>=30||j<0||j>=columnCount||(kind==='grades'&&j===3))return;
-   state.active={i,j};state.popup={i,j};state.feedback=`Editando ${students[i].name}: ${base.columns[j]} (amostra local).`;render();
+   state.active={i,j};state.popup={i,j};state.feedback=`Edição deliberada de estado especial: ${students[i].name} · ${base.columns[j]} (amostra local).`;render();
    host.querySelector('.f2-inline-dialog input:not([disabled])')?.focus({preventScroll:true});
   }
   function apply(){
@@ -182,11 +182,13 @@
     const selected=val('f2-att-state');if(!selected)return;
     const reason=host.querySelector('[name="f2-reason"]')?.value.trim()||'';
     if((selected==='FJ'||selected==='FA')&&reason.length<3){error.textContent='Informe um motivo ilustrativo com ao menos três caracteres para FJ/FA; nenhuma regra legal foi inferida.';return;}
+    const old=attendance.students[i].states[j],oldReason=attendance.students[i].reasons[j];
     attendance.students[i].states[j]=selected;
     attendance.students[i].reasons[j]=reason;
-    attendance.confirmed[j]=false;
+    if(old!==selected||oldReason!==reason)attendance.confirmed[j]=false;
    }else if(kind==='checks'){
     checks.states[i][j]=val('f2-check-state')||'—';
+    checks.reasons[i][j]=host.querySelector('[name="f2-reason"]')?.value.trim()||'';
    }else{
     const raw=host.querySelector('[name="f2-grade-value"]')?.value.trim()||'',parsed=Number(raw.replace(',','.'));
     if(raw&&!/^\d+(?:[,.]\d{1,2})?$/.test(raw)){error.textContent='Digite um número válido de exemplo, com até duas casas decimais.';return;}
@@ -195,31 +197,37 @@
     else grades[i].recovery=raw?parsed.toFixed(1).replace('.',','):'';
     if(j===0)grades[i].partial=!!host.querySelector('[name="f2-partial"]')?.checked;
    }
-   state.popup=null;state.active={i,j};state.feedback=`Alteração local aplicada a ${students[i].name}, coluna ${base.columns[j]}. Não houve salvamento remoto.`;render({focus:{i,j}});
+   state.popup=null;state.active={i,j};state.feedback=`Alteração deliberada aplicada a ${students[i].name}, coluna ${base.columns[j]}. Não houve salvamento remoto.`;render({focus:{i,j}});updateSummary();
   }
   const onClick=e=>{
    const b=e.target.closest('button');if(!b||!host.contains(b))return;
-   if(b.dataset.f2Cell){const [i,j]=b.dataset.f2Cell.split(':').map(Number);openCell(i,j);return;}
+   if(b.dataset.f2Activity!==undefined){selectActivity(Number(b.dataset.f2Activity));return;}
+   if(b.dataset.f2Cell){const [i,j]=b.dataset.f2Cell.split(':').map(Number);assignCommon(i,j);return;}
    const a=b.dataset.f2Action;
+   if(a==='matrix-att-all-p'||a==='matrix-att-all-f'){if(kind==='attendance')bulk('attendance',attendance.lesson,a==='matrix-att-all-p'?'P':'F');return;}
+   if(a==='matrix-check-all-done'||a==='matrix-check-all-not'){if(kind==='checks'&&state.selectedActivity!==null)bulk('checks',state.selectedActivity,a==='matrix-check-all-done'?'✓':'×');return;}
+   if(a==='matrix-special'&&state.active){openCell(state.active.i,state.active.j);return;}
+   if(a==='matrix-single-special'&&kind==='checks'){openCell(Number(host.querySelector('#f2-single-student').value),Number(host.querySelector('#f2-single-activity').value));return;}
    if(a==='matrix-apply'){apply();return}
    if(a==='matrix-cancel'){state.popup=null;state.feedback='Edição cancelada: nenhuma célula modificada.';render();return}
-   if(a==='matrix-reset'){const fresh=makeAttendance(),c=makeChecks();attendance.students=fresh.students;attendance.confirmed=[false,false];checks.states=c.states;for(let i=0;i<30;i++){grades[i]={...sampleGrades[i],original:[...sampleGrades[i].original]};}state.popup=null;state.active=null;state.feedback='Amostra restaurada.';render();return}
+   if(a==='matrix-reset'){const fresh=makeAttendance(),c=makeChecks();attendance.students=fresh.students;attendance.confirmed=[false,false];checks.states=c.states;checks.reasons=students.map(()=>Array.from({length:checks.activities.length},()=>''));state.selectedActivity=null;for(let i=0;i<30;i++){grades[i]={...sampleGrades[i],original:[...sampleGrades[i].original]};}state.popup=null;state.active=null;state.feedback='Amostra restaurada.';render();return}
    if(a==='matrix-tab-history'||a==='matrix-tab-matrix'){if(kind==='attendance')attendance.tab=a==='matrix-tab-history'?'history':'today';else checks.mode='matrix';state.popup=null;render();return}
    if(a==='matrix-tab-single'){checks.mode='single';state.popup=null;render();return}
-   if(a==='matrix-single-edit'){openCell(Number(host.querySelector('#f2-single-student').value),Number(host.querySelector('#f2-single-activity').value));return}
+   if(a==='matrix-single-edit'){assignCommon(Number(host.querySelector('#f2-single-student').value),Number(host.querySelector('#f2-single-activity').value));return}
    if(a==='matrix-lesson-0'||a==='matrix-lesson-1'){attendance.lesson=a==='matrix-lesson-1'?1:0;state.popup=null;render();return}
    if(a==='matrix-confirm'){attendance.confirmed[attendance.lesson]=true;state.popup=null;state.feedback=`Aula ${attendance.lesson+1}: confirmação apenas no estado sintético desta página. Sem servidor ou recibo.`;render();return}
   };
+  const onChange=e=>{if(e.target.matches('[data-f2-activity-select]'))selectActivity(e.target.value===''?null:Number(e.target.value));};
   const onInput=e=>{if(e.target.matches('[data-f2-search]')){const pos=e.target.selectionStart;state.query=e.target.value;render();const input=host.querySelector('[data-f2-search]');input?.focus({preventScroll:true});if(typeof pos==='number')input?.setSelectionRange(pos,pos);}};
   const onKey=e=>{
    const b=e.target.closest('[data-f2-cell]');if(!b||!host.contains(b))return;
    const [i,j]=b.dataset.f2Cell.split(':').map(Number),moves={ArrowUp:[-1,0],ArrowDown:[1,0],ArrowLeft:[0,-1],ArrowRight:[0,1]};
-   if(e.key in moves){e.preventDefault();const [di,dj]=moves[e.key];const ni=Math.max(0,Math.min(29,i+di)),nj=Math.max(0,Math.min(columnCount-1,j+dj));state.active={i:ni,j:nj};state.popup=null;render({focus:{i:ni,j:nj}});}
+   if(e.key in moves){e.preventDefault();const [di,dj]=moves[e.key];const ni=Math.max(0,Math.min(29,i+di)),nj=Math.max(0,Math.min(columnCount-1,j+dj));state.popup=null;markActive(ni,nj,{focus:true});}
    if(e.key==='Escape'&&state.popup){e.preventDefault();state.popup=null;render({focus:{i,j}});}
   };
-  host.addEventListener('click',onClick);host.addEventListener('input',onInput);host.addEventListener('keydown',onKey);
+  host.addEventListener('click',onClick);host.addEventListener('change',onChange);host.addEventListener('input',onInput);host.addEventListener('keydown',onKey);
   render();
-  return {state,render,openCell,dispose:()=>{host.removeEventListener('click',onClick);host.removeEventListener('input',onInput);host.removeEventListener('keydown',onKey)}};
+  return {state,render,openCell,assignCommon,bulk,selectActivity,dispose:()=>{host.removeEventListener('click',onClick);host.removeEventListener('change',onChange);host.removeEventListener('input',onInput);host.removeEventListener('keydown',onKey)}};
  }
  Object.assign(F,{mountMatrix});
 })();
