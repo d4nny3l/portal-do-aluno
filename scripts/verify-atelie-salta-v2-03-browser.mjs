@@ -137,8 +137,9 @@
    assert.equal(await page.locator('#f2-matrix-slot [role=dialog]').count(),0);
    await page.locator('#v2-screen-choice').selectOption('15.9');
    await cell(page,0,0).click();
-   assert.equal(await page.locator('#f2-matrix-slot [role=dialog]').count(),1,'Grades unchanged: deliberate editor');
-   await page.locator('[data-f2-action=matrix-cancel]').click();
+   assert.equal(await page.locator('#f2-matrix-slot [role=dialog]').count(),0,'Grades now edit in-place without modal');
+   assert.equal(await page.locator('#f2-matrix-slot [data-f2-grade-input="0:0"]').count(),1);
+   await page.locator('#f2-matrix-slot [data-f2-grade-input="0:0"]').press('Escape');
    assert.deepEqual(errors,[]);
    assert.deepEqual(external,[]);
    assert.deepEqual(bad,[]);
