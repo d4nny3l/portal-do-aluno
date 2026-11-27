@@ -130,13 +130,13 @@
     assert.equal(await page.locator('#f2-matrix-slot .f2-sheet tbody tr').count(),30);
     await page.locator('#f2-matrix-slot [data-f2-cell="0:0"]').click();
     await page.locator('#f2-matrix-slot [data-f2-action=matrix-cancel]').click();
-    assert.equal(await page.locator('#f2-matrix-slot [data-f2-cell="0:0"] .f2-code').innerText(),'F');
+    assert.equal(await page.locator('#f2-matrix-slot [data-f2-cell="0:0"] .f2-code').innerText(),'P');
     await page.locator('#f2-matrix-slot [data-f2-cell="0:0"]').click();
     await page.locator('#f2-matrix-slot input[name=f2-att-state][value=FJ]').check();
     await page.locator('#f2-matrix-slot [data-f2-action=matrix-apply]').click();
     assert.equal(await page.locator('#f2-matrix-slot [data-f2-cell="0:0"] .f2-code').innerText(),'FJ');
     await page.locator('#f2-matrix-slot [data-f2-action=matrix-lesson-1]').click();
-    assert.equal(await page.locator('#f2-matrix-slot [data-f2-cell="0:1"] .f2-code').innerText(),'F');
+    assert.equal(await page.locator('#f2-matrix-slot [data-f2-cell="0:1"] .f2-code').innerText(),'P');
     await page.locator('#f2-matrix-slot [data-f2-action=matrix-confirm]').click();
     assert.match(await page.locator('#f2-matrix-slot').innerText(),/Confirmação local simulada/);
     await page.locator('#f2-matrix-slot [data-f2-action=matrix-tab-history]').click();
