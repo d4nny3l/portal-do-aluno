@@ -10,11 +10,27 @@
  function mountMatrix(host,kind,{compact=false,onSignal=()=>{},context={}}={}){
   if(!host||!defs[kind])return null;
   const base=defs[kind],attendance=makeAttendance(),checks=makeChecks(),grades=sampleGrades.map(g=>({id:g.id,original:[...g.original],recovery:g.recovery,partial:g.partial}));
-  const state={kind,attendance,checks,grades,active:null,popup:null,tab:'matrix',date:referenceToday,feedback:'Nenhum dado real foi modificado.',query:'',mode:compact?'short':'full',confirmedSaves:0};
+  const state={kind,attendance,checks,grades,active:null,popup:null,selectedActivity:null,tab:'matrix',date:referenceToday,feedback:'Nenhum dado real foi modificado.',query:'',mode:compact?'short':'full',confirmedSaves:0};
+  checks.reasons=students.map(()=>Array.from({length:checks.activities.length},()=>''));
   const schoolName=String(context.institution||'Escola Exemplo A').replace(/[<>]/g,'');
   const groupName=String(context.className||'Turma A').replace(/[<>]/g,'');
   const maxes=[10,8,10,null],weights=['Peso visual 2','Peso visual 3','Recuperação','Sem fórmula'];
   const columnCount=kind==='attendance'?2:kind==='grades'?4:8;
+ const special={attendance:new Set(['FJ','FA']),checks:new Set(['◷','FJ','FA','Isento'])};
+ const isSpecial=(type,value)=>!!special[type]?.has(value);
+ const nextCommon=(type,value)=>type==='attendance'?(value==='F'?'P':value==='—'?'P':'F'):(value==='—'?'✓':value==='✓'?'×':'✓');
+ function applyBulk(type,rows,j,target){
+  let changed=0,preserved=0,unchanged=0;
+  for(const row of rows){
+   const existing=type==='attendance'?row.states[j]:row[j];
+   if(isSpecial(type,existing)){preserved++;continue;}
+   if(existing===target){unchanged++;continue;}
+   if(type==='attendance'){row.states[j]=target;row.reasons[j]='';}else row[j]=target;
+   changed++;
+  }
+  return {changed,preserved,unchanged,total:rows.length};
+ }
+ Object.assign(F,{matrixTransitions:{isSpecial,nextCommon,applyBulk}});
   function code(i,j){
    if(kind==='attendance')return attendance.students[i].states[j];
    if(kind==='checks')return checks.states[i][j];
