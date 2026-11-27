@@ -127,6 +127,7 @@
   }
  }
  const action=host.querySelector('[data-f2-action=matrix-special]');if(action)action.disabled=false;
+ if(kind==='grades'){const partial=host.querySelector('[data-f2-action=matrix-grade-partial]');if(partial)partial.disabled=j!==0;}
  if(focus)host.querySelector(`[data-f2-cell="${i}:${j}"]`)?.focus({preventScroll:true});
 }
   function paint(i,j){
@@ -314,16 +315,53 @@
    if(a==='matrix-confirm'){attendance.confirmed[attendance.lesson]=true;state.popup=null;state.feedback=`Aula ${attendance.lesson+1}: confirmação apenas no estado sintético desta página. Sem servidor ou recibo.`;render();return}
   };
   const onChange=e=>{if(e.target.matches('[data-f2-activity-select]'))selectActivity(e.target.value===''?null:Number(e.target.value));if(kind==='grades'&&e.target.matches('[data-f2-grade-precision]')){if(state.gradeEdit)finishGrade(false);state.precision=Number(e.target.value);render();}};
-  const onInput=e=>{if(e.target.matches('[data-f2-search]')){const pos=e.target.selectionStart;state.query=e.target.value;render();const input=host.querySelector('[data-f2-search]');input?.focus({preventScroll:true});if(typeof pos==='number')input?.setSelectionRange(pos,pos);}};
+  const onBeforeInput=e=>{
+   if(kind!=='grades'||!e.target.matches('[data-f2-grade-input]'))return;
+   if(e.cancelable)e.preventDefault();
+   if(e.inputType==='insertText'||e.inputType==='insertCompositionText'||e.inputType==='insertReplacementText'){
+    if(/^[0-9]+$/.test(e.data||''))editGradeDigits(e.data,'insert');
+   }else if(e.inputType==='deleteContentBackward'||e.inputType==='deleteByCut')editGradeDigits('','backspace');
+   else if(e.inputType==='deleteContentForward')editGradeDigits('','delete');
+  };
+  const onPaste=e=>{
+   if(kind!=='grades'||!e.target.matches('[data-f2-grade-input]'))return;
+   e.preventDefault();pasteGrade(e.clipboardData?.getData('text/plain')||'');
+  };
+  const onFocusOut=e=>{if(kind==='grades'&&e.target.matches('[data-f2-grade-input]'))finishGrade(false);};
+  const onInput=e=>{if(kind==='grades'&&e.target.matches('[data-f2-grade-input]')){
+    const edit=state.gradeEdit;if(!edit)return;
+    const input=e.target,oldStart=input.selectionStart??0,oldEnd=input.selectionEnd??0;
+    if(input.value!==edit.text){
+     const candidate=gradeMask.external(input.value,state.precision,maxes[edit.j]);
+     if(candidate.ok){edit.text=candidate.text;edit.digits=candidate.digits;edit.dirty=true;input.value=candidate.text;}
+     else{input.value=edit.text;input.setSelectionRange(Math.min(oldStart,input.value.length),Math.min(oldEnd,input.value.length));}
+    }
+    return;
+  }
+  if(e.target.matches('[data-f2-search]')){const pos=e.target.selectionStart;state.query=e.target.value;render();const input=host.querySelector('[data-f2-search]');input?.focus({preventScroll:true});if(typeof pos==='number')input?.setSelectionRange(pos,pos);}};
   const onKey=e=>{
+   if(kind==='grades'&&e.target.matches('[data-f2-grade-input]')){
+    if(e.ctrlKey||e.metaKey||e.altKey)return;
+    if(/^[0-9]$/.test(e.key)){e.preventDefault();editGradeDigits(e.key,'insert');return;}
+    if(e.key==='Backspace'||e.key==='Delete'){e.preventDefault();editGradeDigits('',e.key==='Backspace'?'backspace':'delete');return;}
+    if(e.key==='Escape'){e.preventDefault();const {i,j}=state.gradeEdit;finishGrade(true);host.querySelector(`[data-f2-cell="${i}:${j}"]`)?.focus({preventScroll:true});return;}
+    if(e.key==='Enter'||e.key==='Tab'){
+     e.preventDefault();const {i,j}=state.gradeEdit,next=nextGradeCell(i,j,e.key==='Enter'?'enter':e.shiftKey?'backtab':'tab');
+     finishGrade(false);
+     if(next)openGrade(next.i,next.j);
+     return;
+    }
+    if(e.key.length===1){e.preventDefault();return;}
+    return;
+   }
    const b=e.target.closest('[data-f2-cell]');if(!b||!host.contains(b))return;
    const [i,j]=b.dataset.f2Cell.split(':').map(Number),moves={ArrowUp:[-1,0],ArrowDown:[1,0],ArrowLeft:[0,-1],ArrowRight:[0,1]};
    if(e.key in moves){e.preventDefault();const [di,dj]=moves[e.key];const ni=Math.max(0,Math.min(29,i+di)),nj=Math.max(0,Math.min(columnCount-1,j+dj));state.popup=null;markActive(ni,nj,{focus:true});}
    if(e.key==='Escape'&&state.popup){e.preventDefault();state.popup=null;render({focus:{i,j}});}
   };
-  host.addEventListener('click',onClick);host.addEventListener('change',onChange);host.addEventListener('input',onInput);host.addEventListener('keydown',onKey);
+  host.addEventListener('click',onClick);host.addEventListener('change',onChange);host.addEventListener('beforeinput',onBeforeInput);host.addEventListener('paste',onPaste);host.addEventListener('input',onInput);host.addEventListener('keydown',onKey);host.addEventListener('focusout',onFocusOut);
   render();
-  return {state,render,openCell,assignCommon,bulk,selectActivity,dispose:()=>{host.removeEventListener('click',onClick);host.removeEventListener('change',onChange);host.removeEventListener('input',onInput);host.removeEventListener('keydown',onKey)}};
+  return {state,render,openCell,assignCommon,bulk,selectActivity,dispose:()=>{host.removeEventListener('click',onClick);host.removeEventListener('change',onChange);host.removeEventListener('beforeinput',onBeforeInput);host.removeEventListener('paste',onPaste);host.removeEventListener('input',onInput);host.removeEventListener('keydown',onKey);host.removeEventListener('focusout',onFocusOut)}};
  }
  Object.assign(F,{mountMatrix});
 })();
