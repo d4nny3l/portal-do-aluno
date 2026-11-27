@@ -41,7 +41,7 @@
    return day===2?[items[0],items[2]]:day===4?[items[1],items[2]]:items;
   }
   const dayCount=value=>lessons(value).length;
-  const sampleGrades=students.map((st,i)=>({id:st.id,original:[i===0?'0':String((5+(i%5)).toFixed(1)),i===1?'':String((4+(i%6)).toFixed(1))],recovery:i%4===0?'':String((6+i%4).toFixed(1)),partial:i%7===0}));
+  const sampleGrades=students.map((st,i)=>({id:st.id,original:[i===0?'0':String((5+(i%5)).toFixed(1)),i===1?'':String((4+(i%5)).toFixed(1))],recovery:i%4===0?'':String((6+i%4).toFixed(1)),partial:i%7===0}));
   const makeAttendance=()=>({lesson:0,tab:'today',draft:true,confirmed:[false,false],students:students.map((s,i)=>({id:s.id,states:[i%8===0?'F':'P',i%7===0?'F':'P'],reasons:['','']})),selected:null});
   const attendanceCodes=['P','F','FJ','FA','—'],seenCodes=['✓','×','◷','—','FJ','FA','Isento'];
   const makeChecks=()=>({activities:['Frações','Expressões','Geometria','Revisão','Estatística','Problemas','Leitura','Recuperação'],states:students.map((s,i)=>Array.from({length:8},(_,j)=>(i+j)%5===0?'◷':(i+j)%4===0?'×':(i+j)%3===0?'—':'✓')),selected:null,mode:'matrix'});
