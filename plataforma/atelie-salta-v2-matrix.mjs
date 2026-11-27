@@ -64,8 +64,7 @@
     controls=`<fieldset class="f2-choice-list"><legend>Marcação da mesma célula</legend>${['P','F','FJ','FA','—'].map(v=>`<label><input type="radio" name="f2-att-state" value="${v}" ${v===previous?'checked':''}><span>${v} · ${meaning(v,i,j)}</span></label>`).join('')}</fieldset><label class="f2-field">Motivo ilustrativo para FJ/FA <input class="f2-input" name="f2-reason" maxlength="90" placeholder="Opcional, sem regra legal"></label>`;
    }else if(kind==='checks'){
     controls=`<fieldset class="f2-choice-list"><legend>Estado do mesmo visto</legend>${['✓','×','◷','—','FJ','FA','Isento'].map(v=>`<label><input type="radio" name="f2-check-state" value="${v}" ${v===previous?'checked':''}><span>${v} · ${meaning(v,i,j)}</span></label>`).join('')}</fieldset><label class="f2-field">Observação ilustrativa <input class="f2-input" name="f2-reason" maxlength="90" placeholder="Opcional"></label>`;
-   }else{
-    controls=`<label class="f2-field">Valor da amostra <input class="f2-input" name="f2-grade-value" inputmode="decimal" autocomplete="off" value="${esc(previous)}" aria-describedby="f2-grade-max" placeholder="Vazio = não lançado"></label><small id="f2-grade-max">Máximo sintético desta coluna: ${maxes[j]}. Zero é lançamento, vazio é ausência; parcial é um estado distinto.</small><label class="f2-inline-check"><input type="checkbox" name="f2-partial" ${grades[i].partial&&j===0?'checked':''}> Marcador parcial (somente coluna A)</label>`;
+
    }
    return `<div class="f2-inline-dialog" role="dialog" aria-label="Editar ${base.name} da mesma célula" aria-modal="false"><h4>${base.name}: ${s.name}</h4><p>${esc(label)} · valor anterior: ${esc(previous||'—')}</p>${controls}<p class="f2-inline-error" data-f2-error role="alert"></p><div class="f2-actions">${btn('Cancelar','matrix-cancel')}${btn('Aplicar ao rascunho local','matrix-apply','f2-primary')}</div></div>`;
   }
@@ -285,13 +284,7 @@
    }else if(kind==='checks'){
     checks.states[i][j]=val('f2-check-state')||'—';
     checks.reasons[i][j]=host.querySelector('[name="f2-reason"]')?.value.trim()||'';
-   }else{
-    const raw=host.querySelector('[name="f2-grade-value"]')?.value.trim()||'',parsed=Number(raw.replace(',','.'));
-    if(raw&&!/^\d+(?:[,.]\d{1,2})?$/.test(raw)){error.textContent='Digite um número válido de exemplo, com até duas casas decimais.';return;}
-    if(raw&&(!Number.isFinite(parsed)||parsed>maxes[j])){error.textContent=`Valor acima do máximo sintético ${maxes[j]}. Não ajustado automaticamente.`;return;}
-    if(j<2)grades[i].original[j]=raw?parsed.toFixed(1).replace('.',','):'';
-    else grades[i].recovery=raw?parsed.toFixed(1).replace('.',','):'';
-    if(j===0)grades[i].partial=!!host.querySelector('[name="f2-partial"]')?.checked;
+
    }
    state.popup=null;state.active={i,j};state.feedback=`Alteração deliberada aplicada a ${students[i].name}, coluna ${base.columns[j]}. Não houve salvamento remoto.`;render({focus:{i,j}});updateSummary();
   }
