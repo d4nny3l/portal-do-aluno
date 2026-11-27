@@ -72,8 +72,10 @@
    const error=host.querySelector('[data-f2-error]');const val=name=>host.querySelector(`[name="${name}"]:checked`)?.value;
    if(kind==='attendance'){
     const selected=val('f2-att-state');if(!selected)return;
+    const reason=host.querySelector('[name="f2-reason"]')?.value.trim()||'';
+    if((selected==='FJ'||selected==='FA')&&reason.length<3){error.textContent='Informe um motivo ilustrativo com ao menos três caracteres para FJ/FA; nenhuma regra legal foi inferida.';return;}
     attendance.students[i].states[j]=selected;
-    attendance.students[i].reasons[j]=host.querySelector('[name="f2-reason"]')?.value.trim()||'';
+    attendance.students[i].reasons[j]=reason;
     attendance.confirmed[j]=false;
    }else if(kind==='checks'){
     checks.states[i][j]=val('f2-check-state')||'—';
