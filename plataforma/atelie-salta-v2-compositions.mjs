@@ -7,7 +7,7 @@
  let current=choices.find(c=>c.id==='15.7');
  const get=kind=>{
   if(!store.has(kind))store.set(kind,{
-   tab:kind==='record'?'Notas':kind==='diary'?'Aula':'Visão geral',
+   tab:({record:'Notas',diary:'Aula',planning:'Biblioteca',connect:'Prévia',settings:'Aparência'})[kind]||'Visão geral',
    institution:'Escola Exemplo A',className:'Turma A',
    selected:0,filter:'Todos',noticeRead:new Set(),localNotices:[],
    documentType:'Relatório de turma',documentFormat:'Resumo',
