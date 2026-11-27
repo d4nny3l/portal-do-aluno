@@ -5,7 +5,7 @@
  const {readFileSync,mkdirSync,writeFileSync}=await import('node:fs');
  const {fileURLToPath,pathToFileURL}=await import('node:url');
  const path=(await import('node:path')).default;
- const root=fileURLToPath(new URL('../',import.meta.url)),output=path.join(root,'tmp','atelie-v2-evidence');
+ const root=path.resolve(fileURLToPath(new URL('../',import.meta.url))),output=path.join(root,'tmp','atelie-v2-evidence');
  mkdirSync(output,{recursive:true});
  const allowed=new Set(['plataforma/atelie-salta.html','plataforma/atelie-salta-v2.css','plataforma/atelie-salta-v2.mjs','plataforma/atelie-salta-v2-icons.svg','plataforma/atelie-salta-v2-InterVariable.woff2','favicon.svg']);
  const types={'.html':'text/html;charset=utf-8','.css':'text/css;charset=utf-8','.mjs':'text/javascript;charset=utf-8','.svg':'image/svg+xml','.woff2':'font/woff2'};
@@ -36,7 +36,7 @@
     page.on('request',r=>{if(!r.url().startsWith(base))external.push(r.url());});
     page.on('response',r=>{if(r.status()>=400)bad.push({url:r.url(),status:r.status()});});
     await page.goto(base+'/plataforma/atelie-salta.html',{waitUntil:'networkidle'});
-    await page.waitForFunction(()=>document.body.classList.contains('v2-ready')&&document.getElementById('v2-screen-choice'));
+    await page.waitForFunction(()=>document.body.classList.contains('v2-ready')&&document.getElementById('v2-screen-choice'),null,{timeout:10000});
     assert.equal(await page.locator('[role=tab]').count(),6);
     assert.equal(await page.locator('#v2-screen-choice option').count(),22);
     await page.screenshot({path:path.join(output,name+'-cores.png'),fullPage:true});
@@ -81,7 +81,7 @@
     report.scenarios.push({name,width,height,compositions:22,symbols:68,localFont:true,errors:0,externalRequests:0});
     await context.close();
     console.log('ATELIE V2 PASS',name,'22 compositions, 68 icons, responsive');
-   }catch(e){report.failures.push({name,error:e.stack||String(e)});console.error('ATELIE V2 FAIL',name,e.stack||e.message);}
+   }catch(e){report.failures.push({name,error:e.stack||String(e)});console.error('ATELIE V2 FAIL',name,e.stack||e.message);if(browser){for(const pg of browser.contexts().flatMap(ctx=>ctx.pages())){try{console.error('ATELIE DEBUG',name,JSON.stringify({errors:await pg.evaluate(()=>({ready:document.body?.classList.contains('v2-ready'),title:document.title,choices:document.querySelectorAll('#v2-screen-choice').length})),location:pg.url()}));}catch{}}}}
    finally{await browser?.close();}
   }
   report.requests=[...new Set(requests)];
