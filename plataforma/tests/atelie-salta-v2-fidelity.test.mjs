@@ -41,7 +41,7 @@ test('Matrizes mostram 30 estudantes, duas aulas e estados editáveis sem regra 
  assert.match(matrix,/grades\[i\]\.partial/);
  assert.match(matrix,/attendance\.confirmed\[attendance\.lesson\]=true/);
  assert.match(matrix,/checks\.states\[i\]\[j\]=/);
- assert.match(matrix,/return \{state,render,openCell,dispose:/);
+ assert.match(matrix,/return \{state,render,openCell,assignCommon,bulk,selectActivity,dispose:/);
 });
 test('Componentes com comportamento: checkbox indeterminado, rádio, switch, upload sem bytes, picker e modais',()=>{
  for(const term of ['f2-checkbox-indeterminate','indeterminate=true','f2-checkbox-disabled','f2-radio-demo','f2-switch-disabled','v2-switch-label','aria-checked','f2-upload-zone','dragover','drop','upload-remove','upload-change','upload-cancel','upload-error','mountPicker','picker-from','picker-until','v2-modal-overlay','Escape','aria-modal','f2-tooltip','f2-menu','f2-segment'])assert.ok(controls.includes(term),'missing '+term);
@@ -58,7 +58,7 @@ test('Quatro variantes SVG locais e favicon oficial não substituído',()=>{
  }
  assert.match(controls,/\.\.\/favicon\.svg/);
  assert.match(controls,/16,32,48,64/);
- assert.match(controls,/Ainda não aprovada nem publicada/);
+ assert.match(controls,/C selecionado e aprovado/);
 });
 test('Escopo apenas Ateliê: seis abas, assets locais, ícones aprovados intactos',()=>{
  assert.equal((html.match(/<button[^>]*role="tab"/g)||[]).length,6);

@@ -25,7 +25,7 @@
  if(!mod)throw Error('SALTA_PLAYWRIGHT_MODULE is required for isolated browser CI');
  const {chromium,webkit}=await import(pathToFileURL(mod).href);
  const cases=[['chromium-320',chromium,320,700],['chromium-390',chromium,390,844],['chromium-768',chromium,768,1024],['chromium-1440',chromium,1440,900],['chromium-1920',chromium,1920,1080],['webkit-390',webkit,390,844]];
- const report={mission:'DESIGN-SALTA-02',baseMain:'f8319e05506861b15589e22aa2a4436df336581a',physicalSafariTested:false,allDataSynthetic:true,scenarios:[],failures:[],requests:[]};
+ const report={mission:'DESIGN-SALTA-03',baseMain:'e9ed27f75eeb9f747a78c240c8766e8db5fee748',physicalSafariTested:false,allDataSynthetic:true,scenarios:[],failures:[],requests:[]};
  const screenshot=async(page,name)=>page.screenshot({path:path.join(dir,name+'.png'),fullPage:false});
  try{
  for(const [name,engine,width,height] of cases){
@@ -46,7 +46,7 @@
    assert.equal(await page.locator('[data-v2-icon]').count(),68);
    await page.locator('#tab-cores').click();
    await page.locator('input[name=f2-favicon][value=C]').check();
-   assert.match(await page.locator('#f2-favicon-choice').innerText(),/Alternativa C/);
+   assert.match(await page.locator('#f2-favicon-choice').innerText(),/C selecionado e aprovado/);
    if(name==='chromium-390'||name==='chromium-1440')await screenshot(page,name+'-favicon-c');
    await page.locator('#tab-componentes').click();
    assert.equal(await page.locator('#f2-checkbox-indeterminate').evaluate(el=>el.indeterminate),true);
@@ -130,20 +130,38 @@
     await page.locator('#v2-screen-choice').selectOption('15.8');
     assert.equal(await page.locator('#f2-matrix-slot .f2-sheet tbody tr').count(),30);
     await page.locator('#f2-matrix-slot [data-f2-cell="0:0"]').click();
-    await page.locator('#f2-matrix-slot [data-f2-action=matrix-cancel]').click();
-    assert.equal(await page.locator('#f2-matrix-slot [data-f2-cell="0:0"] .f2-code').innerText(),'P');
+    assert.equal(await page.locator('#f2-matrix-slot [data-f2-cell="0:0"] .f2-code').innerText(),'F');
+    assert.equal(await page.locator('#f2-matrix-slot [role=dialog]').count(),0);
     await page.locator('#f2-matrix-slot [data-f2-cell="0:0"]').click();
+    assert.equal(await page.locator('#f2-matrix-slot [data-f2-cell="0:0"] .f2-code').innerText(),'P');
+    await page.locator('#f2-matrix-slot [data-f2-action=matrix-att-all-f]').click();
+    assert.match(await page.locator('#f2-matrix-slot [data-f2-counts]').innerText(),/F 30/);
+    await page.locator('#f2-matrix-slot [data-f2-cell="0:0"]').click();
+    assert.equal(await page.locator('#f2-matrix-slot [data-f2-cell="0:0"] .f2-code').innerText(),'P');
+    await page.locator('#f2-matrix-slot [data-f2-action=matrix-special]').click();
     await page.locator('#f2-matrix-slot input[name=f2-att-state][value=FJ]').check();
     await page.locator('#f2-matrix-slot input[name=f2-reason]').fill('Consulta fictícia');
     await page.locator('#f2-matrix-slot [data-f2-action=matrix-apply]').click();
     assert.equal(await page.locator('#f2-matrix-slot [data-f2-cell="0:0"] .f2-code').innerText(),'FJ');
+    await page.locator('#f2-matrix-slot [data-f2-action=matrix-att-all-p]').click();
+    assert.match(await page.locator('#f2-matrix-slot [data-f2-counts]').innerText(),/P 29 · F 0 · FJ 1/);
+    assert.match(await page.locator('#f2-matrix-slot [data-f2-matrix-feedback]').innerText(),/1 exceções preservadas/);
+    await page.locator('#f2-matrix-slot [data-f2-action=matrix-confirm]').click();
+    assert.match(await page.locator('#f2-matrix-slot [data-f2-confirmed]').innerText(),/Confirmação local simulada/);
     await page.locator('#f2-matrix-slot [data-f2-action=matrix-lesson-1]').click();
     assert.equal(await page.locator('#f2-matrix-slot [data-f2-cell="0:1"] .f2-code').innerText(),'P');
+    await page.locator('#f2-matrix-slot [data-f2-action=matrix-att-all-f]').click();
+    assert.match(await page.locator('#f2-matrix-slot [data-f2-counts]').innerText(),/F 30/);
     await page.locator('#f2-matrix-slot [data-f2-action=matrix-confirm]').click();
-    assert.match(await page.locator('#f2-matrix-slot').innerText(),/Confirmação local simulada/);
+    await page.locator('#f2-matrix-slot [data-f2-action=matrix-lesson-0]').click();
+    assert.equal(await page.locator('#f2-matrix-slot [data-f2-cell="0:0"] .f2-code').innerText(),'FJ');
+    await page.locator('#f2-matrix-slot [data-f2-cell="2:0"]').click();
+    assert.match(await page.locator('#f2-matrix-slot [data-f2-confirmed]').innerText(),/Rascunho não gravado/);
+    await page.locator('#f2-matrix-slot [data-f2-action=matrix-lesson-1]').click();
+    assert.match(await page.locator('#f2-matrix-slot [data-f2-confirmed]').innerText(),/Confirmação local simulada/);
     await page.locator('#f2-matrix-slot [data-f2-action=matrix-tab-history]').click();
     assert.match(await page.locator('#f2-matrix-slot').innerText(),/Histórico de exemplo/);
-    if(name==='chromium-390'||name==='chromium-1440')await screenshot(page,name+'-attendance-history');
+    if(name==='chromium-390'||name==='chromium-1440')await screenshot(page,name+'-attendance-direct-bulk');
     await page.locator('#v2-screen-choice').selectOption('15.9');
     await page.locator('#f2-matrix-slot [data-f2-cell="0:0"]').click();
     await page.locator('#f2-matrix-slot input[name=f2-grade-value]').fill('11');
@@ -158,17 +176,35 @@
     assert.match(await page.locator('#f2-matrix-slot [data-f2-cell="1:1"]').innerText(),/—/);
     if(name==='chromium-390'||name==='chromium-1440')await screenshot(page,name+'-grades-edited');
     await page.locator('#v2-screen-choice').selectOption('15.10');
+    assert.equal(await page.locator('#f2-matrix-slot [data-f2-action=matrix-check-all-done]').isDisabled(),true);
+    const untouched=await page.locator('#f2-matrix-slot [data-f2-cell="1:3"] .f2-code').innerText();
+    assert.equal(await page.locator('#f2-matrix-slot [data-f2-cell="0:3"] .f2-code').innerText(),'—');
+    for(const next of ['✓','×','✓']){
+     await page.locator('#f2-matrix-slot [data-f2-cell="0:3"]').click();
+     assert.equal(await page.locator('#f2-matrix-slot [data-f2-cell="0:3"] .f2-code').innerText(),next);
+     assert.equal(await page.locator('#f2-matrix-slot [role=dialog]').count(),0);
+    }
+    assert.equal(await page.locator('#f2-matrix-slot [data-f2-cell="1:3"] .f2-code').innerText(),untouched);
+    await page.locator('#f2-matrix-slot [data-f2-activity-select]').selectOption('3');
+    await page.locator('#f2-matrix-slot [data-f2-action=matrix-check-all-done]').click();
+    assert.match(await page.locator('#f2-matrix-slot [data-f2-matrix-feedback]').innerText(),/exceções preservadas/);
+    await page.locator('#f2-matrix-slot [data-f2-cell="0:3"]').click();
+    assert.equal(await page.locator('#f2-matrix-slot [data-f2-cell="0:3"] .f2-code').innerText(),'×');
+    await page.locator('#f2-matrix-slot [data-f2-activity-select]').selectOption('4');
+    await page.locator('#f2-matrix-slot [data-f2-action=matrix-check-all-not]').click();
+    assert.equal(await page.locator('#f2-matrix-slot [data-f2-cell="0:3"] .f2-code').innerText(),'×');
     await page.locator('#f2-matrix-slot [data-f2-cell="0:0"]').click();
-    await page.locator('#f2-matrix-slot input[name=f2-check-state][value="✓"]').check();
+    assert.equal(await page.locator('#f2-matrix-slot [data-f2-cell="0:0"] .f2-code').innerText(),'◷');
+    await page.locator('#f2-matrix-slot [data-f2-action=matrix-special]').click();
+    await page.locator('#f2-matrix-slot input[name=f2-check-state][value="—"]').check();
     await page.locator('#f2-matrix-slot [data-f2-action=matrix-apply]').click();
+    assert.equal(await page.locator('#f2-matrix-slot [data-f2-cell="0:0"] .f2-code').innerText(),'—');
+    await page.locator('#f2-matrix-slot [data-f2-cell="0:0"]').click();
     assert.equal(await page.locator('#f2-matrix-slot [data-f2-cell="0:0"] .f2-code').innerText(),'✓');
-    await page.locator('#f2-matrix-slot [data-f2-cell="0:0"]').click();
-    await page.locator('#f2-matrix-slot input[name=f2-check-state][value="×"]').check();
-    await page.locator('#f2-matrix-slot [data-f2-action=matrix-apply]').click();
-    assert.equal(await page.locator('#f2-matrix-slot [data-f2-cell="0:0"] .f2-code').innerText(),'×');
+    if(name==='chromium-390'||name==='chromium-1440')await screenshot(page,name+'-checks-direct-bulk');
     await page.locator('#f2-matrix-slot [data-f2-action=matrix-tab-single]').click();
     await page.locator('#f2-matrix-slot [data-f2-action=matrix-single-edit]').click();
-    assert.equal(await page.locator('#f2-matrix-slot [role=dialog]').count(),1);
+    assert.equal(await page.locator('#f2-matrix-slot [role=dialog]').count(),0);
     if(name==='chromium-390'||name==='chromium-1440')await screenshot(page,name+'-checks-single');
     await page.locator('#v2-screen-choice').selectOption('15.11');
     await page.locator('[data-f2-action=plan-use-0]').click();
@@ -208,11 +244,11 @@
    assert.deepEqual(external,[],'external network in '+name);
    assert.deepEqual(bad,[],'HTTP errors in '+name);
    report.scenarios.push({name,width,height,compositions:22,icons:68,components:true,deepBehavior:['chromium-390','chromium-1440','webkit-390'].includes(name),errors:0,externalRequests:0});
-   console.log('DESIGN-SALTA-02 FIDELITY PASS',name,'22 previews, controls, no remote requests');
+   console.log('DESIGN-SALTA-03 FIDELITY PASS',name,'22 previews, controls, no remote requests');
    await context.close();
   }catch(error){
    report.failures.push({name,error:error.stack||String(error)});
-   console.error('DESIGN-SALTA-02 FIDELITY FAIL',name,error.stack||error.message);
+   console.error('DESIGN-SALTA-03 FIDELITY FAIL',name,error.stack||error.message);
    try{
     const pg=browser?.contexts()?.flatMap(c=>c.pages())?.[0];
     if(pg)await screenshot(pg,name+'-FAIL');
@@ -222,7 +258,7 @@
  report.requests=[...new Set(requests)];
  if(report.requests.some(x=>!allowed.has(x)))throw Error('Asset outside Ateliê allowlist attempted');
  if(report.failures.length)throw Error(JSON.stringify(report.failures));
- console.log('DESIGN-SALTA-02 FIDELITY PASS ALL',report.scenarios.length);
+ console.log('DESIGN-SALTA-03 FIDELITY PASS ALL',report.scenarios.length);
  }catch(error){report.error=error.stack||String(error);process.exitCode=1;}
  finally{writeFileSync(path.join(dir,'report.json'),JSON.stringify(report,null,2)+'\n');await new Promise(resolve=>server.close(resolve));}
 })();

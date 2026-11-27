@@ -21,7 +21,7 @@ test('Ateliê V2 é extensão do laboratório existente, com seis abas originais
   assert.match(html,new RegExp('id="painel-'+id+'"[^>]+aria-labelledby="tab-'+id+'"'));
  }
  for(const id of ['v2-colors','v2-icon-library','v2-component-playground','v2-screen-library','v2-inventory-container','v2-motion-tokens'])assert.equal(html.split('id="'+id+'"').length,2,id);
- assert.match(html,/<link rel="icon" href="\.\.\/favicon\.svg">/);
+ assert.match(html,/<link rel="icon" type="image\/svg\+xml" href="\.\/atelie-salta-v2-favicon-c\.svg">/);
  assert.match(html,/<link rel="stylesheet" href="\.\/atelie-salta-v2\.css">/);
  assert.match(html,/<script type="module" src="\.\/atelie-salta-v2\.mjs"><\/script>/);
  assert.doesNotMatch(html,/<iframe\b|(?:https?:)?\/\/.*(?:\.js|\.css|\.woff2)/);

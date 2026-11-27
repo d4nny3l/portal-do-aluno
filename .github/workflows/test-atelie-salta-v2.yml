@@ -1,4 +1,4 @@
-name: SALTA DESIGN-SALTA-02 — Atelier V2 fidelity isolated (no deploy)
+name: SALTA DESIGN-SALTA-03 — Atelier direct/bulk fidelity isolated (no deploy)
 on:
   pull_request:
     branches: [main]
@@ -29,7 +29,8 @@ jobs:
           for file in plataforma/atelie-salta-v2-{fixtures,calendar,matrix,controls,compositions}.mjs; do node --check "$file"; done
           node --check scripts/verify-atelie-salta-v2-browser.mjs
           node --check scripts/verify-atelie-salta-v2-fidelity-browser.mjs
-          node --test plataforma/tests/atelie-salta.test.mjs plataforma/tests/atelie-salta-v2.test.mjs plataforma/tests/atelie-salta-v2-fidelity.test.mjs
+          node --check scripts/verify-atelie-salta-v2-03-browser.mjs
+          node --test plataforma/tests/atelie-salta.test.mjs plataforma/tests/atelie-salta-v2.test.mjs plataforma/tests/atelie-salta-v2-fidelity.test.mjs plataforma/tests/atelie-salta-v3.test.mjs
       - name: Existing academic, OMR, camera and platform regressions (no writes)
         run: |
           node --test corretor/v2/tests/*.test.mjs stats-worker/tests/*.test.mjs plataforma/tests/*.test.mjs
@@ -43,6 +44,9 @@ jobs:
       - name: Fidelity functional tests — calendar, date picker, matrices, inputs and 22 decisions
         run: |
           SALTA_PLAYWRIGHT_MODULE="$RUNNER_TEMP/salta-atelie/node_modules/playwright/index.mjs" node scripts/verify-atelie-salta-v2-fidelity-browser.mjs
+      - name: DESIGN-03 actual direct/bulk interaction — keyboard, touch, scroll, 3 engines
+        run: |
+          SALTA_PLAYWRIGHT_MODULE="$RUNNER_TEMP/salta-atelie/node_modules/playwright/index.mjs" node scripts/verify-atelie-salta-v2-03-browser.mjs
       - name: Scope remains limited
         run: |
           node scripts/verify-atelie-salta-v2-scope.mjs
@@ -50,8 +54,9 @@ jobs:
       - uses: actions/upload-artifact@v4
         if: always()
         with:
-          name: design-salta-02-atelie-v2-fidelity-evidence-not-published
+          name: design-salta-03-direct-bulk-evidence-not-published
           path: |
             tmp/atelie-v2-evidence/
             tmp/atelie-v2-fidelity-evidence/
+            tmp/atelie-v3-interaction-evidence/
           if-no-files-found: warn
