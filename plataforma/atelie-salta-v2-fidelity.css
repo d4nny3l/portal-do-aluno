@@ -200,3 +200,10 @@ body.v2-ready .hero,body.v2-ready .card,body.v2-ready .v2-panel,body.v2-ready .f
 @media(max-width:479px){.f2-app .f2-week-agenda{grid-template-columns:1fr}.f2-app .f2-calendar-top{align-items:stretch}.f2-app .f2-calendar-top .f2-cal-arrows{justify-content:space-between}.f2-app .f2-calendar-grid{gap:2px}.f2-app .f2-weekday{font-size:10px}.f2-app .f2-picker{padding:10px}}
 @media(prefers-reduced-motion:reduce){.f2-app .f2-dialog{animation:none!important}.f2-app .f2-btn,.f2-app input[role=switch],.f2-app input[role=switch]::before{transition:none!important}}
 @media print{.f2-app .f2-doc-preview{background:#fff!important;box-shadow:none!important;border:1px solid #000}.f2-app .f2-overlay,.f2-app .f2-shell-nav{display:none!important}}
+
+/* Entrada e login são superfícies autônomas, sem sidebar genérica. */
+.f2-app .f2-entry-shell{display:block;min-height:490px;background:#F5F8FB;grid-template-columns:none}
+.f2-app .f2-entry-shell .f2-entry{max-width:760px}
+.f2-app .f2-sheet-scroller:hover{scrollbar-color:#166AA6 transparent}
+.f2-app .f2-sheet-scroller:active{scrollbar-color:#17324D transparent}
+@media(max-width:480px){.f2-app .f2-entry{padding:18px 12px}.f2-app .f2-entry-shell{min-height:0}}
