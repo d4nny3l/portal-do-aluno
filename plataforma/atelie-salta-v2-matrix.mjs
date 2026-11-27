@@ -89,6 +89,87 @@
  if(after&&saved){after.scrollLeft=saved.left;after.scrollTop=saved.top;}
  if(focus)host.querySelector(`[data-f2-cell="${focus.i}:${focus.j}"]`)?.focus({preventScroll:true});
 }
+  function countCodes(type,j){
+ const values=type==='attendance'?attendance.students.map(s=>s.states[j]):checks.states.map(s=>s[j]);
+ const codes=type==='attendance'?['P','F','FJ','FA','—']:['✓','×','◷','—','FJ','FA','Isento'];
+ return Object.fromEntries(codes.map(value=>[value,values.filter(x=>x===value).length]));
+}
+  function updateSummary(){
+ if(kind==='attendance'){
+  const n=countCodes('attendance',attendance.lesson),line=host.querySelector('[data-f2-counts]');
+  if(line)line.textContent=`P ${n.P} · F ${n.F} · FJ ${n.FJ} · FA ${n.FA} · — ${n['—']} (aula ${attendance.lesson+1}; derivados da amostra)`;
+  const chip=host.querySelector('[data-f2-confirmed]');
+  if(chip)chip.textContent=attendance.confirmed[attendance.lesson]?'Confirmação local simulada':'Rascunho não gravado';
+ }else if(kind==='checks'){
+  const j=state.selectedActivity,n=j===null?null:countCodes('checks',j);
+  const line=host.querySelector('[data-f2-check-counts]');
+  if(line)line.textContent=n?`Atividade ${checks.activities[j]} · ✓ ${n['✓']} · × ${n['×']} · — ${n['—']} · ◷ ${n['◷']} · FJ ${n.FJ} · FA ${n.FA} · Isento ${n.Isento} (total 30)`:'Selecione uma atividade para consultar os contadores.';
+  const chip=host.querySelector('[data-f2-bulk-target]');
+  if(chip)chip.textContent=j===null?'Nenhuma atividade escolhida':'Atividade: '+checks.activities[j]+' · 30 estudantes';
+  const select=host.querySelector('[data-f2-activity-select]');if(select)select.value=j===null?'':String(j);
+  for(const button of host.querySelectorAll('[data-f2-action^="matrix-check-all-"]'))button.disabled=j===null;
+  for(const button of host.querySelectorAll('[data-f2-activity]'))button.setAttribute('aria-pressed',String(Number(button.dataset.f2Activity)===j));
+  for(const cell of host.querySelectorAll('.f2-sheet [data-f2-col]'))cell.classList.toggle('f2-bulk-column',j!==null&&Number(cell.dataset.f2Col)===j);
+ }
+ const feedback=host.querySelector('[data-f2-matrix-feedback]');if(feedback)feedback.textContent=state.feedback;
+}
+  function markActive(i,j,{focus=false}={}){
+ state.active={i,j};
+ const sheet=host.querySelector('.f2-sheet');
+ if(sheet){
+  for(const row of sheet.querySelectorAll('tbody [data-f2-row]'))row.classList.toggle('f2-active-row',Number(row.dataset.f2Row)===i);
+  for(const el of sheet.querySelectorAll('[data-f2-col]')){
+   el.classList.toggle('f2-active-col',Number(el.dataset.f2Col)===j);
+   if(el.tagName==='TD')el.classList.toggle('f2-active-cell',!!el.querySelector(`[data-f2-cell="${i}:${j}"]`));
+  }
+ }
+ const action=host.querySelector('[data-f2-action=matrix-special]');if(action)action.disabled=false;
+ if(focus)host.querySelector(`[data-f2-cell="${i}:${j}"]`)?.focus({preventScroll:true});
+}
+  function paint(i,j){
+ const button=host.querySelector(`[data-f2-cell="${i}:${j}"]`);
+ if(!button)return;
+ button.innerHTML=output(i,j);
+ button.setAttribute('aria-label',`${students[i].name}, ${base.columns[j]}: ${meaning(code(i,j),i,j)}`);
+}
+  function assignCommon(i,j){
+ if(i<0||i>=students.length||j<0||j>=columnCount)return;
+ if(kind==='grades'){openCell(i,j);return;}
+ markActive(i,j);
+ const before=code(i,j);
+ if(isSpecial(kind,before)){
+  state.feedback=`${students[i].name}: estado especial ${before} preservado. Para editar, use “Estado especial / limpar célula selecionada”.`;
+  updateSummary();return;
+ }
+ const after=nextCommon(kind,before);
+ if(kind==='attendance'){
+  attendance.students[i].states[j]=after;
+  attendance.students[i].reasons[j]='';
+  attendance.confirmed[j]=false;
+ }else{
+  checks.states[i][j]=after;
+  checks.reasons[i][j]='';
+ }
+ paint(i,j);
+ state.feedback=`${students[i].name}, ${base.columns[j]}: ${before} → ${after}. Rascunho local; sem confirmação ou envio.`;
+ updateSummary();
+}
+  function bulk(type,j,target){
+ if(type==='checks'&&state.selectedActivity===null)return null;
+ const rows=type==='attendance'?attendance.students:checks.states;
+ const result=applyBulk(type,rows,j,target);
+ if(type==='attendance'&&result.changed>0)attendance.confirmed[j]=false;
+ for(let i=0;i<students.length;i++)paint(i,j);
+ state.feedback=`${type==='attendance'?'Aula '+(j+1):'Atividade '+checks.activities[j]}: ${result.changed} alterados, ${result.preserved} exceções preservadas, ${result.unchanged} já estavam em ${target}. Turma inteira: ${result.total} estudantes, mesmo com pesquisa. Rascunho local.`;
+ updateSummary();
+ return result;
+}
+  function selectActivity(j){
+ if(kind!=='checks'||(j!==null&&(!Number.isInteger(j)||j<0||j>=checks.activities.length)))return;
+ state.selectedActivity=j;
+ state.feedback=j===null?'Nenhuma atividade selecionada; nenhuma alteração aplicada.':`Atividade ${checks.activities[j]} selecionada para 30 estudantes. Nenhum lançamento automático.`;
+ updateSummary();
+}
   function openCell(i,j){
    if(i<0||i>=30||j<0||j>=columnCount||(kind==='grades'&&j===3))return;
    state.active={i,j};state.popup={i,j};state.feedback=`Editando ${students[i].name}: ${base.columns[j]} (amostra local).`;render();
