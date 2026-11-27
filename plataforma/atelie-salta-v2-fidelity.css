@@ -233,3 +233,33 @@ body.v2-ready .hero,body.v2-ready .card,body.v2-ready .v2-panel,body.v2-ready .f
 .f2-app .f2-sheet .f2-grade-edit{display:block;width:100%;height:27px;min-height:0;padding:0 3px;margin:0;border:0;border-radius:0;background:#FFF;color:#17324D;text-align:center;outline:none;font:inherit;font-size:11px;font-variant-numeric:tabular-nums;appearance:none;-webkit-appearance:none;box-shadow:inset 0 0 0 2px #166AA6}
 .f2-app .f2-sheet .f2-grade-edit:focus-visible{outline:2px solid #166AA6;outline-offset:-2px;box-shadow:inset 0 0 0 2px #166AA6}
 @media(max-width:767px){.f2-app .f2-sheet .f2-grade-edit{height:44px;font-size:13px}}
+
+/* DESIGN-SALTA-05 · a ação coletiva pertence ao cabeçalho de cada coluna; células preservam densidade. */
+.f2-app [data-f2-matrix=attendance] .f2-sheet-subgroup th,
+.f2-app [data-f2-matrix=checks] .f2-sheet-subgroup th{height:91px!important;max-height:none!important;top:30px;overflow:visible;vertical-align:top;padding:4px 3px}
+.f2-app .f2-head-stack{display:flex;flex-direction:column;align-items:center;gap:4px;width:100%;min-height:80px}
+.f2-app .f2-head-name{display:block;white-space:normal;text-align:center;font-size:10px;line-height:1.25;min-height:16px}
+.f2-app .f2-head-date{display:block;margin-top:-2px;font-size:9px;color:#516579;font-weight:600}
+.f2-app .f2-head-stack .f2-activity-head{height:28px;min-height:28px;width:100%;padding:2px;white-space:normal;line-height:1.2;font-size:10px;flex-shrink:0}
+.f2-app .f2-head-quick{display:flex;align-items:center;justify-content:center;gap:5px;width:100%}
+.f2-app .f2-head-bulk{display:flex;flex:0 0 38px;min-width:38px;min-height:35px;flex-direction:column;align-items:center;justify-content:center;gap:0;border:1px solid #9FBDD4;border-radius:7px;background:#FFF;color:#17324D;font:700 10px/1.1 inherit;cursor:pointer;padding:3px}
+.f2-app .f2-head-bulk .v2-glyph{display:block;width:15px;height:15px;stroke:currentColor}
+.f2-app .f2-head-bulk:hover{background:#E5EFF8;border-color:#166AA6}
+.f2-app .f2-head-bulk:focus-visible{outline:2px solid #166AA6;outline-offset:1px}
+.f2-app .f2-head-short{font:800 10px/1.1 sans-serif}
+@media(max-width:767px){
+ .f2-app [data-f2-matrix=attendance] .f2-sheet-subgroup th,
+ .f2-app [data-f2-matrix=checks] .f2-sheet-subgroup th{height:102px!important;top:36px!important}
+ .f2-app .f2-head-stack{min-height:94px;gap:5px}
+ .f2-app .f2-head-bulk{flex-basis:44px;min-width:44px;min-height:44px}
+ .f2-app .f2-head-stack .f2-activity-head{min-height:35px;height:35px}
+}
+/* A agenda mensal/semanal/diária permanece uma tela, não usa esta camada. */
+.f2-app .f2-picker-overlay{position:fixed;z-index:10020;inset:0;display:grid;place-items:center;padding:16px;background:rgba(23,50,77,.24);backdrop-filter:blur(2px);-webkit-backdrop-filter:blur(2px)}
+.f2-app .f2-picker-overlay[hidden]{display:none}
+.f2-app .f2-picker-dialog{width:min(100%,390px);max-height:calc(100dvh - 32px);overflow:auto;overscroll-behavior:contain;background:#fff;border:1px solid #D1DBE5;border-radius:14px;padding:14px;box-shadow:0 25px 70px rgba(23,50,77,.19);color:#17324D;outline:none}
+.f2-app .f2-picker-dialog .f2-picker{border:0;box-shadow:none;padding:0}
+.f2-app .f2-picker-dialog:focus-visible{outline:2px solid #166AA6;outline-offset:3px}
+@supports not (backdrop-filter:blur(2px)){.f2-app .f2-picker-overlay{background:rgba(23,50,77,.32)}}
+@media(max-width:479px){.f2-app .f2-picker-overlay{padding:10px}.f2-app .f2-picker-dialog{max-height:calc(100dvh - 20px);padding:11px}}
+@media(prefers-reduced-motion:reduce){.f2-app .f2-picker-dialog{animation:none!important}}
