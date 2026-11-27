@@ -35,7 +35,7 @@ test('Biblioteca: 68 símbolos exatos, cinco famílias e SVG Lucide sem ícone a
  const ids=[...sprite.matchAll(/<symbol id="v2-([^"]+)"/g)].map(x=>x[1]);
  assert.equal(ids.length,68);
  assert.equal(new Set(ids).size,68);
- assert.deepEqual([...ids].sort(),all.map(x=>x.slug).sort());
+ assert.deepEqual([...ids].sort(),Array.from(all,x=>x.slug).sort());
  for(const symbol of all){assert.ok(symbol.label&&symbol.category);assert.match(source,new RegExp('data-v2-icon'));assert.ok(!/^\s+$/.test(symbol.label));}
  assert.match(sprite,/data-lucide-source="circle-check"/);
  assert.match(sprite,/id="v2-check-circle"/);
@@ -104,8 +104,8 @@ test('Isolamento: nenhum cliente remoto, storage, credencial real, câmera ou OM
  assert.doesNotMatch(source,/https?:\/\/[^\s'"]+/);
  assert.doesNotMatch(html,/<iframe/);
  assert.match(source,/nenhuma chamada de rede/);
- assert.match(source,/SEM geometria/);
- assert.match(source,/não contém geometria OMR/);
+ assert.match(source,/Sem bolhas, marcadores, coordenadas ou folha imprimível/);
+ assert.match(source,/A geometria real permanece protegida/);
  assert.match(inventory,/468 entradas/);
  assert.match(inventory,/25 HTML/);
  assert.match(inventory,/14 CSS/);
