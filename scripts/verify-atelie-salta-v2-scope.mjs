@@ -11,6 +11,7 @@ const allowed=new Set([
  'plataforma/atelie-salta-v2-grade-mask.mjs',
  'plataforma/atelie-salta-v2-matrix.mjs',
  'plataforma/atelie-salta-v2-fidelity.css',
+ 'plataforma/tests/atelie-salta.test.mjs',
  'plataforma/tests/atelie-salta-v2-fidelity.test.mjs',
  'plataforma/tests/atelie-salta-v3.test.mjs',
  'plataforma/tests/atelie-salta-v4.test.mjs',
