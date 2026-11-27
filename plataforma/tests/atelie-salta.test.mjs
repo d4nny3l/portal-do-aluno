@@ -33,9 +33,9 @@ test('Ateliê é autocontido, sem integrações, roteamento ou alterações glob
   assert.match(html,/<link rel="stylesheet" href="\.\/atelie-salta-v2\.css">/);
   assert.match(html,/<script type="module" src="\.\/atelie-salta-v2\.mjs"><\/script>/);
   assert.equal((html.match(/<link\b[^>]*rel="stylesheet"/g)||[]).length,2);
-  assert.equal((html.match(/<script\b[^>]*src=/g)||[]).length,6);
+  assert.equal((html.match(/<script\b[^>]*src=/g)||[]).length,7);
   assert.match(html, /<link rel="stylesheet" href="\.\/atelie-salta-v2-fidelity\.css">/);
-  for(const module of ['fixtures','calendar','matrix','controls','compositions']){
+  for(const module of ['fixtures','calendar','grade-mask','matrix','controls','compositions']){
     assert.match(html,new RegExp('src="\\.\\/atelie-salta-v2-'+module+'\\.mjs"'));
   }
   for(const url of [...html.matchAll(/<(?:link|script)\b[^>]*(?:href|src)="([^"]+)"/g)].map(match=>match[1])){

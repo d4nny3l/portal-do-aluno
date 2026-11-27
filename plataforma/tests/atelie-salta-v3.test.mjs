@@ -6,6 +6,7 @@ const file=name=>readFileSync(new URL('../atelie-salta-v2-'+name,import.meta.url
 const fixtures=file('fixtures.mjs'),matrix=file('matrix.mjs');
 const ctx={window:{},Date};
 vm.runInNewContext(fixtures,ctx,{timeout:1000});
+vm.runInNewContext(file('grade-mask.mjs'),ctx,{timeout:1000});
 vm.runInNewContext(matrix,ctx,{timeout:1000});
 const F=ctx.window.SALTA_ATELIE_02;
 const host=()=>({innerHTML:'',querySelector:()=>null,querySelectorAll:()=>[],addEventListener(){},removeEventListener(){}});
