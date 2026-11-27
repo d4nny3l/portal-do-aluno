@@ -1,3 +1,4 @@
+@font-face{font-family:'Inter';src:url('./atelie-salta-v2-InterVariable.woff2') format('woff2');font-style:normal;font-weight:100 900;font-display:swap}
 /* DESIGN-SALTA-01 · ATELIÊ V2. Arquivo exclusivo da galeria, nunca importar em produto. */
 :root{--v2-navy:#17324D;--v2-blue:#166AA6;--v2-amber:#E7AA45;--v2-ice:#F5F8FB;--v2-silver:#BBC7D2;--v2-white:#FFFFFF;--v2-line:#D1DBE5;--v2-text:#17324D;--v2-muted:#516579;--v2-good:#287A53;--v2-good-bg:#EAF6EF;--v2-info:#166AA6;--v2-info-bg:#E5EFF8;--v2-warn:#946515;--v2-warn-bg:#FFF3DF;--v2-error:#B34444;--v2-error-bg:#FBEDED;--v2-neutral:#516579;--v2-neutral-bg:#EDF1F5;--v2-radius:14px;--v2-control-radius:11px;--v2-shadow:0 8px 24px rgba(23,50,77,.075);--v2-speed:200ms}
 body.v2-ready{--radius:var(--v2-radius);--shadow:var(--v2-shadow);font-family:Inter,ui-sans-serif,system-ui,-apple-system,"Segoe UI",sans-serif}
