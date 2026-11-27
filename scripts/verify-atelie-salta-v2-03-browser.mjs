@@ -129,7 +129,7 @@
    assert.equal(await page.locator('[data-f2-scroll]').getAttribute('data-identity'),'kept-checks');
    assert.ok(await scroll.evaluate(e=>e.scrollLeft)>0);
    assert.equal(await page.locator('.f2-sheet td.f2-active-cell').count(),1);
-   await far.focus();await page.keyboard.press(' ');
+   await far.focus();await page.keyboard.press('Space');
    assert.equal(await page.locator('#f2-matrix-slot [role=dialog]').count(),0);
    await capture(page,name+'-checks-after');
    await page.locator('#f2-matrix-slot [data-f2-action=matrix-tab-single]').click();
