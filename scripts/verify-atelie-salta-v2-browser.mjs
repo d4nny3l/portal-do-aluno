@@ -58,7 +58,7 @@
     await page.keyboard.press('Escape');
     assert.equal(await page.locator('#v2-modal-overlay').isVisible(),false);
     await page.locator('#v2-switch').check();
-    assert.match(await page.locator('#v2-switch-label').innerText(),/Ligado/);
+    assert.match(await page.locator('#v2-switch-label').innerText(),/Ativado/);
     await page.screenshot({path:path.join(output,name+'-componentes.png'),fullPage:true});
     await page.locator('#tab-telas').click();
     for(let i=1;i<=22;i++){
