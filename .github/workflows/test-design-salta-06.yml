@@ -41,7 +41,7 @@ jobs:
           mkdir -p "$RUNNER_TEMP/salta-before"
           git archive 470865018b46335e3e5838f1312cc2d8f0490fcc | tar -x -C "$RUNNER_TEMP/salta-before"
           SALTA_BASE_DIR="$RUNNER_TEMP/salta-before" node scripts/verify-design-salta-06-browser.mjs
-      - name: AV-06-01 native zoom and protected render comparison
+      - name: AV-06-02 native zoom and protected render comparison (blocking)
         if: always()
         run: SALTA_BASE_DIR="$RUNNER_TEMP/salta-before" node scripts/verify-design-salta-06-acceptance.mjs
       - uses: actions/upload-artifact@v4

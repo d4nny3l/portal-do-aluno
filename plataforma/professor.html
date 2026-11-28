@@ -78,8 +78,8 @@ h1{margin:0;color:#303451;font-size:25px;letter-spacing:-.8px;font-weight:800}.p
 <div class="session-loading" id="sessionLoading" role="status" aria-live="polite"><span class="session-spinner" aria-hidden="true"></span><span>Verificando acesso…</span></div>
 <section class="login-screen" id="loginScreen">
   <header class="login-topbar">
-    <a class="brand" href="./" aria-label="SALTA — voltar à plataforma">
-      <span class="brand-mark">S</span>
+    <a class="brand" href="./" aria-label="SALTA PORTAL EDUCACIONAL">
+      <span class="brand-mark" aria-hidden="true">S</span>
       <span class="brand-copy"><span class="brand-name">SALTA</span><span class="brand-sub">PORTAL EDUCACIONAL</span></span>
     </a>
     <a class="platform-link" href="./" aria-label="Voltar à plataforma SALTA">
@@ -103,6 +103,15 @@ h1{margin:0;color:#303451;font-size:25px;letter-spacing:-.8px;font-weight:800}.p
 
 <div class="app-shell" id="appShell" hidden>
   <div data-salta-admin-shell></div><script type="module" src="./admin-shell.mjs?v=20261110ux1"></script>
+  <script type="module">
+    import "./admin-shell.mjs?v=20261110ux1";
+    // AV-06-02: only this official professor page; shared shell stays unchanged.
+    const brand = document.querySelector("body.salta6.salta6-professor .teacher-shell-brand");
+    if (brand) {
+      brand.setAttribute("aria-label", "SALTA PORTAL EDUCACIONAL");
+      brand.querySelector(".teacher-shell-brand-mark")?.setAttribute("aria-hidden", "true");
+    }
+  </script>
 <main class="main" id="inicio">
     <div class="page-wrap">
       <div class="breadcrumb"><span>SALTA</span><svg viewBox="0 0 24 24" fill="none" stroke-width="2"><path d="m9 18 6-6-6-6"/></svg><strong>Área do Professor</strong></div>
