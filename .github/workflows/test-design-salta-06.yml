@@ -1,0 +1,51 @@
+name: SALTA DESIGN-SALTA-06 — official foundation (no deploy)
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - 'plataforma/index.html'
+      - 'plataforma/professor.html'
+      - 'plataforma/salta-visual/**'
+      - 'favicon.svg'
+      - 'scripts/verify-design-salta-06*.mjs'
+      - 'plataforma/tests/design-salta-06.test.mjs'
+      - 'docs/DESIGN_SALTA_06.md'
+      - '.github/workflows/test-design-salta-06.yml'
+permissions:
+  contents: read
+jobs:
+  design06:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Scope and baseline inventory
+        run: |
+          node --check scripts/verify-design-salta-06.mjs
+          node --check scripts/verify-design-salta-06-browser.mjs
+          node --check scripts/verify-design-salta-06-acceptance.mjs
+          node scripts/verify-design-salta-06.mjs
+      - name: Existing regression suite and design contracts
+        run: node --test corretor/v2/tests/*.test.mjs stats-worker/tests/*.test.mjs plataforma/tests/*.test.mjs
+      - name: Install browsers in CI only
+        run: |
+          npm install --no-save --no-package-lock playwright axe-core
+          npx playwright install --with-deps chromium webkit
+      - name: Before and after isolated browser evidence
+        run: |
+          mkdir -p "$RUNNER_TEMP/salta-before"
+          git archive 470865018b46335e3e5838f1312cc2d8f0490fcc | tar -x -C "$RUNNER_TEMP/salta-before"
+          SALTA_BASE_DIR="$RUNNER_TEMP/salta-before" node scripts/verify-design-salta-06-browser.mjs
+      - name: AV-06-02 native zoom and protected render comparison (blocking)
+        if: always()
+        run: SALTA_BASE_DIR="$RUNNER_TEMP/salta-before" node scripts/verify-design-salta-06-acceptance.mjs
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: design-salta-06-evidence
+          path: design-salta-06-evidence/

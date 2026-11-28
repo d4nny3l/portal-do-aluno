@@ -1,0 +1,73 @@
+/* DESIGN-SALTA-06: independent, opt-in foundation; no shared global stylesheet edits. */
+@font-face{font-family:SaltaInter;src:url('./InterVariable.woff2') format('woff2');font-style:normal;font-weight:100 900;font-display:swap}
+body.salta6{--s6-navy:#17324D;--s6-blue:#166AA6;--s6-gold:#E7AA45;--s6-bg:#F5F8FB;--s6-line:#BBC7D2;--s6-white:#FFFFFF;--s6-muted:#516579;--s6-soft:#E5EFF8;--s6-radius:14px;--s6-control:11px;--s6-shadow:0 8px 28px rgba(23,50,77,.08);margin:0;min-height:100vh;isolation:isolate;background:var(--s6-bg);color:var(--s6-navy);font:400 16px/1.5 SaltaInter,Arial,sans-serif;--salta-bg:var(--s6-bg);--salta-ink:var(--s6-navy);--salta-primary:var(--s6-blue);--salta-primary-dark:var(--s6-navy);--salta-muted:var(--s6-muted);--salta-line:var(--s6-line);--salta-soft:var(--s6-soft);--salta-shadow:var(--s6-shadow);--teacher-primary:var(--s6-blue);--teacher-ink:var(--s6-navy);--teacher-muted:var(--s6-muted);--teacher-line:var(--s6-line);--teacher-sidebar-width:240px}
+body.salta6::before{content:"";position:fixed;inset:0;pointer-events:none;z-index:-1;background-image:linear-gradient(rgba(23,50,77,.045) 1px,transparent 1px),linear-gradient(90deg,rgba(23,50,77,.045) 1px,transparent 1px);background-size:32px 32px}
+.salta6 *, .salta6 *::before,.salta6 *::after{box-sizing:border-box}
+.salta6 a{color:inherit;text-decoration:none}
+.salta6 :is(a,button,input):focus-visible{outline:3px solid var(--s6-blue);outline-offset:3px}
+.salta6 :is(button,input){font-family:inherit}
+.salta6 .salta6-icon{width:24px;height:24px;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round;flex:none}
+.salta6 .salta6-wrap{width:min(1100px,calc(100% - 36px));margin-inline:auto}
+.salta6 .salta6-header,.salta6 .login-topbar,.salta6.professor-layout .teacher-shell-topbar{background:var(--s6-navy);color:white;border:0;box-shadow:0 3px 12px #17324d18;backdrop-filter:none}
+.salta6 .salta6-header .salta6-wrap{min-height:68px;display:flex;align-items:center}
+.salta6 .salta6-brand{display:inline-flex;align-items:center;gap:12px;font-weight:800;line-height:1.15;min-height:44px}
+.salta6 .salta6-brand small{display:block;font-size:12px;font-weight:500;margin-top:4px}
+.salta6 .salta6-intro{padding:clamp(32px,6vw,76px) 0 28px}
+.salta6 .salta6-intro h1{font-size:clamp(28px,4vw,44px);line-height:1.15;margin:0 0 8px;letter-spacing:-.035em}
+.salta6 .salta6-intro p,.salta6 .salta6-tile p{color:var(--s6-muted);margin:0}
+.salta6 .salta6-entry-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:16px}
+.salta6 .salta6-tile{display:flex;flex-direction:column;align-items:flex-start;gap:12px;padding:24px;min-width:0;background:white;border:1px solid var(--s6-line);border-radius:var(--s6-radius);box-shadow:var(--s6-shadow);transition:transform .18s ease,border-color .18s ease}
+.salta6 .salta6-tile>svg{color:var(--s6-blue);width:32px;height:32px}
+.salta6 .salta6-tile h2{font-size:clamp(18px,2vw,23px);line-height:1.25;margin:0;overflow-wrap:anywhere}
+.salta6 .salta6-tile>span{display:flex;justify-content:space-between;align-items:center;gap:8px;width:100%;margin-top:auto;padding-top:12px;color:var(--s6-blue);font-weight:700}
+.salta6 .salta6-tools{margin-top:32px}
+.salta6 .salta6-tools>h2{font-size:20px;margin:0 0 14px}
+.salta6 .salta6-footer{padding:32px 0;color:var(--s6-muted);font-size:13px}
+.salta6 .brand-mark,.salta6 .teacher-shell-brand-mark{background:linear-gradient(135deg,var(--s6-navy),var(--s6-blue));box-shadow:none;border:1px solid #ffffff80}
+.salta6 .brand,.salta6 .brand-sub,.salta6 .teacher-shell-brand,.salta6 .teacher-shell-brand-copy small,.salta6 .teacher-shell-context{color:white}
+.salta6 .login-topbar .platform-link,.salta6 .teacher-shell-home{background:white;color:var(--s6-navy);border:1px solid var(--s6-line);border-radius:var(--s6-control);min-height:44px;font-size:13px}
+.salta6 .login-screen{padding-top:calc(var(--header-height) + 28px)}
+.salta6 .login-card{width:min(445px,100%);padding:32px;background:white;border:1px solid var(--s6-line);border-radius:var(--s6-radius);box-shadow:var(--s6-shadow)}
+.salta6 .login-card h1,.salta6 .page-heading h1{color:var(--s6-navy);font-size:clamp(23px,3vw,32px);line-height:1.2}
+.salta6 .login-eyebrow,.salta6 .eyebrow{color:var(--s6-blue);font-size:12px}
+.salta6 .login-card>p,.salta6 .field label,.salta6 .login-back{color:var(--s6-muted);font-size:14px}
+.salta6 .field{box-shadow:none;border:0}
+.salta6 .field input{font-size:16px;min-height:48px;border:1px solid #8195A8;background:white;color:var(--s6-navy);border-radius:var(--s6-control)}
+.salta6 .field input::placeholder{color:var(--s6-muted)}
+.salta6 .field input:focus{border-color:var(--s6-blue);box-shadow:none}
+.salta6 #loginForm .login-submit{background:var(--s6-blue);color:white;border:1px solid var(--s6-blue);font-size:15px;min-height:48px;border-radius:var(--s6-control);box-shadow:none}
+.salta6 #loginForm .login-submit:hover{background:var(--s6-navy)}
+.salta6 .error{color:#9C3030;background:#FBEDED;font-size:14px;border-color:#B34444}
+.salta6 .login-back{min-height:44px;color:var(--s6-blue)}
+.salta6 .session-loading{background:var(--s6-bg);color:var(--s6-navy);font-size:15px}
+.salta6 .session-spinner{border-color:var(--s6-line);border-top-color:var(--s6-blue)}
+.salta6.professor-layout .teacher-shell-sidebar{background:white;border-color:var(--s6-line);padding:16px 10px}
+.salta6 .teacher-shell-brandzone{border-color:#ffffff40}
+.salta6 .teacher-shell-context{border-color:#ffffff40}
+.salta6 .teacher-shell-link{color:var(--s6-muted);font-size:13px;border-radius:var(--s6-control)}
+.salta6 .teacher-shell-link.active,.salta6 .teacher-shell-link:hover{color:var(--s6-navy);background:var(--s6-soft)}
+.salta6 .teacher-shell-caption{color:var(--s6-muted);font-size:11px}
+.salta6 .teacher-shell-toggle{min-width:44px;min-height:44px;background:white!important;color:var(--s6-navy)!important;border-radius:var(--s6-control)}
+.salta6 :is(.teacher-shell-home,.teacher-shell-toggle,.brand,.salta6-brand,.platform-link):focus-visible{outline-color:var(--s6-gold)}
+.salta6 .main{padding-inline:clamp(16px,3vw,32px)}
+.salta6 .breadcrumb,.salta6 .breadcrumb strong,.salta6 .footer{color:var(--s6-muted);font-size:13px}
+.salta6 .section-head h2,.salta6 #modulesTitle{color:var(--s6-navy);font-size:20px;margin:0 0 12px}
+.salta6 .modules-grid{grid-template-columns:repeat(3,minmax(0,1fr));gap:16px}
+.salta6 .module-card{background:white;border:1px solid var(--s6-line);border-radius:var(--s6-radius);box-shadow:var(--s6-shadow);padding:20px;min-height:172px}
+.salta6 .module-icon{background:none!important;color:var(--s6-blue)!important;place-items:start;width:32px;height:32px;flex-basis:32px}
+.salta6 .module-icon svg{width:28px;height:28px}
+.salta6 .module-tag{color:var(--s6-muted);font-size:10px;letter-spacing:.02em}
+.salta6 .module-card h3{font-size:16px;line-height:1.3;color:var(--s6-navy)}
+.salta6 .module-card p{font-size:14px;color:var(--s6-muted)}
+.salta6 .module-action{color:var(--s6-blue);border-color:var(--s6-line);font-size:13px}
+.salta6 .logout{color:var(--s6-navy);background:white;border:1px solid var(--s6-line);border-radius:var(--s6-control);font-size:13px;min-height:44px}
+@media(hover:hover){.salta6 .salta6-tile:hover,.salta6 .module-card:hover{transform:translateY(-3px);border-color:var(--s6-blue)}}
+@media(max-width:1100px){.salta6 .modules-grid{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media(max-width:760px){.salta6 .main{max-width:100%;margin-left:0}.salta6 .teacher-shell-actions{padding:0 12px}.salta6 .teacher-shell-brandzone{padding:0 10px;gap:8px}.salta6 .teacher-shell-context{display:none}.salta6 .teacher-shell-home{font-size:12px}.salta6 .module-card{padding:14px}.salta6 .module-head{align-items:flex-start;flex-wrap:wrap}}
+@media(max-width:479px){.salta6 .salta6-entry-grid{grid-template-columns:1fr;gap:12px}.salta6 .modules-grid{grid-template-columns:1fr;gap:12px}.salta6 .login-card{padding:18px}.salta6 .login-topbar{padding-inline:12px}.salta6 .teacher-shell-home svg{display:none}.salta6 .teacher-shell-brand-copy small{display:none}.salta6 .teacher-shell-brandzone{min-width:0}.salta6 .teacher-shell-actions{padding-inline:8px}}
+@media(max-width:340px){.salta6 .login-screen{padding-inline:4px}.salta6 .login-card{padding-inline:8px}.salta6 .teacher-shell-brand-mark{display:none}}
+@media(prefers-reduced-motion:reduce){.salta6 *,.salta6 *::before,.salta6 *::after{transition:none!important;animation:none!important;scroll-behavior:auto!important}}
+
+/* AV-06-01: neutralize the legacy generic button background, including hover.
+   Only the opted-in professor shell; preserve shared positioning and handlers. */
+body.salta6.professor-layout .teacher-shell-overlay{background-color:rgba(23,50,77,.24)!important}
