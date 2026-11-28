@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <link rel="icon" type="image/svg+xml" href="../favicon.svg">
-<meta name="theme-color" content="#f4f5fb">
+<meta name="theme-color" content="#17324D">
 <title>Área do Professor — Prof. Dannyel Moisés</title>
 <link rel="stylesheet" href="../salta-theme.css?v=20261110ux1">
 <link rel="stylesheet" href="./professor-theme.css?v=20261110ux1">
@@ -72,8 +72,9 @@ h1{margin:0;color:#303451;font-size:25px;letter-spacing:-.8px;font-weight:800}.p
 @media(max-width:520px){.brand-sub{font-size:8px}.topbar-right{gap:5px}.platform-link{padding:8px 9px;font-size:9px}.platform-link svg{display:none}.page-heading{align-items:flex-start;flex-direction:column;gap:12px}.page-heading .logout{align-self:flex-start}.overview-grid{grid-template-columns:1fr}.overview-card{min-height:72px;padding:10px 13px}.section-head{align-items:flex-start}.footer{flex-direction:column;gap:5px}.login-card{padding:28px 23px 23px;border-radius:15px}.login-screen{padding-left:14px;padding-right:14px}}
 @media(prefers-reduced-motion:reduce){html{scroll-behavior:auto}*,*::before,*::after{transition-duration:.01ms!important;animation-duration:.01ms!important;animation-iteration-count:1!important}}
 </style>
+<link rel="stylesheet" href="./salta-visual/foundation.css?v=20261128">
 </head>
-<body>
+<body class="salta6 salta6-professor">
 <div class="session-loading" id="sessionLoading" role="status" aria-live="polite"><span class="session-spinner" aria-hidden="true"></span><span>Verificando acesso…</span></div>
 <section class="login-screen" id="loginScreen">
   <header class="login-topbar">
@@ -86,7 +87,6 @@ h1{margin:0;color:#303451;font-size:25px;letter-spacing:-.8px;font-weight:800}.p
     </a>
   </header>
   <section class="login-card" aria-labelledby="loginTitle">
-    <div class="login-brand"><span class="brand-mark">S</span><span class="brand-copy"><span class="brand-name">SALTA</span><span class="brand-sub">ÁREA ADMINISTRATIVA</span></span></div>
     <div class="login-eyebrow">ACESSO RESTRITO</div>
     <h1 id="loginTitle">Área do Professor</h1>
     <p>Entre para acessar as ferramentas administrativas e pedagógicas da plataforma.</p>
@@ -97,7 +97,6 @@ h1{margin:0;color:#303451;font-size:25px;letter-spacing:-.8px;font-weight:800}.p
       <button class="login-submit" type="submit">Entrar na área do professor</button>
       <div class="error" id="erro" role="alert">Usuário ou senha incorretos.</div>
     </form>
-    <div class="login-hint">Ambiente administrativo protegido da Plataforma Educacional SALTA.</div>
     <a class="login-back" href="./"><svg viewBox="0 0 24 24" fill="none" stroke-width="1.8"><path d="M15 18l-6-6 6-6M9 12h12"/></svg> Voltar à plataforma</a>
   </section>
 </section>
@@ -108,27 +107,21 @@ h1{margin:0;color:#303451;font-size:25px;letter-spacing:-.8px;font-weight:800}.p
     <div class="page-wrap">
       <div class="breadcrumb"><span>SALTA</span><svg viewBox="0 0 24 24" fill="none" stroke-width="2"><path d="m9 18 6-6-6-6"/></svg><strong>Área do Professor</strong></div>
       <section class="page-heading">
-        <div><div class="eyebrow">AMBIENTE ADMINISTRATIVO</div><h1>Olá, Professor.</h1><p class="page-subtitle">Acesse suas ferramentas e acompanhe os recursos disponíveis na plataforma.</p></div>
+        <div><h1>Área do Professor</h1></div>
         <button class="logout" id="sair" type="button"><svg viewBox="0 0 24 24" fill="none" stroke-width="1.8"><path d="M10 17l5-5-5-5M15 12H3M21 4v16"/></svg> Sair da conta</button>
       </section>
-      <section class="overview-grid" aria-label="Resumo do ambiente">
-        <article class="overview-card"><span class="overview-icon"><svg viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="3" width="7" height="7" rx="1.5"/><rect x="3" y="14" width="7" height="7" rx="1.5"/><rect x="14" y="14" width="7" height="7" rx="1.5"/></svg></span><span class="overview-info"><span>Ferramentas</span><strong>07 módulos</strong><small>Recursos disponíveis nesta área</small></span></article>
-        <article class="overview-card"><span class="overview-icon green"><svg viewBox="0 0 24 24"><path d="M12 22s8-4 8-11V5l-8-3-8 3v6c0 7 8 11 8 11Z"/><path d="m9 12 2 2 4-4"/></svg></span><span class="overview-info"><span>Autenticação</span><strong>Sessão protegida</strong><small>Acesso validado pelo SALTA</small></span></article>
-        <article class="overview-card"><span class="overview-icon blue"><svg viewBox="0 0 24 24"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2Z"/><path d="M8 7h8M8 11h8"/></svg></span><span class="overview-info"><span>Plataforma</span><strong>Portal Educacional</strong><small>Ambiente administrativo SALTA</small></span></article>
-      </section>
       <section aria-labelledby="modulesTitle">
-        <div class="section-head"><div><h2 id="modulesTitle">Ferramentas do professor</h2><p>Selecione um módulo para continuar seu trabalho.</p></div><span class="count-pill">7 MÓDULOS</span></div>
+        <div class="section-head"><h2 id="modulesTitle">Ferramentas prioritárias</h2></div>
         <div class="modules-grid">
-          <a class="module-card" href="./estatistica.html"><div class="module-head"><span class="module-icon"><svg viewBox="0 0 24 24"><path d="M4 19V5M4 19h17"/><rect x="7" y="11" width="3" height="6" rx=".5"/><rect x="13" y="7" width="3" height="10" rx=".5"/><rect x="19" y="4" width="2" height="13" rx=".5"/></svg></span><span class="module-tag">Relatórios</span></div><h3>Relatórios acadêmicos</h3><p>Consulte relatórios individuais e acompanhe o desempenho por turma e no conjunto.</p><span class="module-action">Acessar módulo <svg viewBox="0 0 24 24"><path d="M5 12h14M13 6l6 6-6 6"/></svg></span></a>
-          <a class="module-card" href="./diario-teste.html"><div class="module-head"><span class="module-icon purple"><svg viewBox="0 0 24 24"><path d="M5 3h14v18H5z"/><path d="M8 7h8M8 11h8M8 15h5"/></svg></span><span class="module-tag">Gestão acadêmica</span></div><h3>Diário de classe</h3><p>Cadastre turmas e alunos, organize avaliações, atividades e vistos, lance notas, acompanhe médias e exporte relatórios.</p><span class="module-action">Acessar diário de classe <svg viewBox="0 0 24 24"><path d="M5 12h14M13 6l6 6-6 6"/></svg></span></a>
-          <a class="module-card" href="./corretor-v2.html?v=20261115assess2"><div class="module-head"><span class="module-icon teal"><svg viewBox="0 0 24 24"><path d="M7 3h8l4 4v14H7a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2Z"/><path d="M14 3v5h5M9 13h7M9 17h5"/></svg></span><span class="module-tag">Avaliações</span></div><h3>Corretor de avaliações</h3><p>Abra o corretor de avaliações e faça a leitura dos cartões de respostas por foto.</p><span class="module-action">Acessar módulo <svg viewBox="0 0 24 24"><path d="M5 12h14M13 6l6 6-6 6"/></svg></span></a>
-          <a class="module-card" href="./mensagens.html"><div class="module-head"><span class="module-icon orange"><svg viewBox="0 0 24 24"><path d="M18 9a6 6 0 0 0-12 0c0 7-3 7-3 9h18c0-2-3-2-3-9ZM10 21h4"/></svg></span><span class="module-tag">Comunicação</span></div><h3>Central de avisos</h3><p>Publique comunicados globais ou escolha um aluno pela turma.</p><span class="module-action">Acessar módulo <svg viewBox="0 0 24 24"><path d="M5 12h14M13 6l6 6-6 6"/></svg></span></a>
-          <a class="module-card" href="./fechamento-bimestre.html"><div class="module-head"><span class="module-icon green"><svg viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="17" rx="2"/><path d="M8 2v4M16 2v4M3 9h18M8 13h3M8 17h8"/></svg></span><span class="module-tag">Organização acadêmica</span></div><h3>Fechamento de bimestre</h3><p>Arquive notas e atividades antes de atualizar os dados com a próxima planilha.</p><span class="module-action">Acessar módulo <svg viewBox="0 0 24 24"><path d="M5 12h14M13 6l6 6-6 6"/></svg></span></a>
-          <a class="module-card" href="./festival-consciencia-negra-admin.html"><div class="module-head"><span class="module-icon purple"><svg viewBox="0 0 24 24"><path d="M12 3v3M5.6 5.6l2.1 2.1M3 12h3M18 12h3M16.3 7.7l2.1-2.1M8 14.5a4 4 0 1 1 8 0c0 1.6-.8 2.4-1.7 3.3-.6.6-.8 1.1-.8 2.2h-3c0-1.1-.2-1.6-.8-2.2C8.8 16.9 8 16.1 8 14.5Z"/></svg></span><span class="module-tag">Eventos escolares</span></div><h3>Festival da Consciência Negra</h3><p>Configure critérios, gere códigos individuais para os avaliadores e acompanhe os resultados.</p><span class="module-action">Acessar módulo <svg viewBox="0 0 24 24"><path d="M5 12h14M13 6l6 6-6 6"/></svg></span></a>
-          <a class="module-card" href="../mostra-cultural.html?admin=1"><div class="module-head"><span class="module-icon red"><svg viewBox="0 0 24 24"><path d="M4 19V5l8-3 8 3v14l-8 3-8-3Z"/><path d="m4 5 8 3 8-3M12 8v14"/></svg></span><span class="module-tag">Avaliações escolares</span></div><h3>Avaliação da Mostra Cultural</h3><p>Libere a avaliação dos estudantes, atualize questões e gabarito, consulte as reflexões registradas e exporte os resultados.</p><span class="module-action">Acessar módulo <svg viewBox="0 0 24 24"><path d="M5 12h14M13 6l6 6-6 6"/></svg></span></a>
-        </div>
-      </section>
-      <section class="bottom-note"><div class="bottom-note-copy"><svg viewBox="0 0 24 24" fill="none" stroke-width="1.8"><circle cx="12" cy="12" r="9"/><path d="M12 11v5M12 8h.01"/></svg><div><strong>Seu ambiente de trabalho está reunido aqui.</strong><p>Use o menu lateral ou os cartões para acessar os módulos. Para encerrar o acesso com segurança, utilize o botão “Sair da conta”.</p></div></div><a class="platform-link" href="./"><svg viewBox="0 0 24 24" fill="none" stroke-width="1.8"><path d="M3 10.5L12 3l9 7.5M5.5 9v11h13V9M9 20v-6h6v6"/></svg> Voltar à plataforma</a></section>
+<a class="module-card" href="./diario-teste.html"><div class="module-head"><span class="module-icon purple"><svg viewBox="0 0 24 24" class="salta6-icon" aria-hidden="true" focusable="false"><use href="./salta-visual/icons.svg#v2-book-open"></use></svg></span><span class="module-tag">Gestão acadêmica</span></div><h3>Diário de classe</h3><p>Cadastre turmas e alunos, organize avaliações, atividades e vistos, lance notas, acompanhe médias e exporte relatórios.</p><span class="module-action">Acessar diário de classe <svg viewBox="0 0 24 24" class="salta6-icon" aria-hidden="true" focusable="false"><use href="./salta-visual/icons.svg#v2-chevron-right"></use></svg></span></a>
+<a class="module-card" href="./corretor-v2.html?v=20261115assess2"><div class="module-head"><span class="module-icon teal"><svg viewBox="0 0 24 24" class="salta6-icon" aria-hidden="true" focusable="false"><use href="./salta-visual/icons.svg#v2-scan-line"></use></svg></span><span class="module-tag">Avaliações</span></div><h3>Corretor de avaliações</h3><p>Abra o corretor de avaliações e faça a leitura dos cartões de respostas por foto.</p><span class="module-action">Acessar módulo <svg viewBox="0 0 24 24" class="salta6-icon" aria-hidden="true" focusable="false"><use href="./salta-visual/icons.svg#v2-chevron-right"></use></svg></span></a>
+<a class="module-card" href="./mensagens.html"><div class="module-head"><span class="module-icon orange"><svg viewBox="0 0 24 24" class="salta6-icon" aria-hidden="true" focusable="false"><use href="./salta-visual/icons.svg#v2-megaphone"></use></svg></span><span class="module-tag">Comunicação</span></div><h3>Central de avisos</h3><p>Publique comunicados globais ou escolha um aluno pela turma.</p><span class="module-action">Acessar módulo <svg viewBox="0 0 24 24" class="salta6-icon" aria-hidden="true" focusable="false"><use href="./salta-visual/icons.svg#v2-chevron-right"></use></svg></span></a>
+<a class="module-card" href="./estatistica.html"><div class="module-head"><span class="module-icon"><svg viewBox="0 0 24 24" class="salta6-icon" aria-hidden="true" focusable="false"><use href="./salta-visual/icons.svg#v2-chart-no-axes-column"></use></svg></span><span class="module-tag">Relatórios</span></div><h3>Relatórios acadêmicos</h3><p>Consulte relatórios individuais e acompanhe o desempenho por turma e no conjunto.</p><span class="module-action">Acessar módulo <svg viewBox="0 0 24 24" class="salta6-icon" aria-hidden="true" focusable="false"><use href="./salta-visual/icons.svg#v2-chevron-right"></use></svg></span></a>
+<a class="module-card" href="./fechamento-bimestre.html"><div class="module-head"><span class="module-icon green"><svg viewBox="0 0 24 24" class="salta6-icon" aria-hidden="true" focusable="false"><use href="./salta-visual/icons.svg#v2-calendar-days"></use></svg></span><span class="module-tag">Organização acadêmica</span></div><h3>Fechamento de bimestre</h3><p>Arquive notas e atividades antes de atualizar os dados com a próxima planilha.</p><span class="module-action">Acessar módulo <svg viewBox="0 0 24 24" class="salta6-icon" aria-hidden="true" focusable="false"><use href="./salta-visual/icons.svg#v2-chevron-right"></use></svg></span></a>
+<a class="module-card" href="./festival-consciencia-negra-admin.html"><div class="module-head"><span class="module-icon purple"><svg viewBox="0 0 24 24" class="salta6-icon" aria-hidden="true" focusable="false"><use href="./salta-visual/icons.svg#v2-folder-open"></use></svg></span><span class="module-tag">Eventos escolares</span></div><h3>Festival da Consciência Negra</h3><p>Configure critérios, gere códigos individuais para os avaliadores e acompanhe os resultados.</p><span class="module-action">Acessar módulo <svg viewBox="0 0 24 24" class="salta6-icon" aria-hidden="true" focusable="false"><use href="./salta-visual/icons.svg#v2-chevron-right"></use></svg></span></a>
+<a class="module-card" href="../mostra-cultural.html?admin=1"><div class="module-head"><span class="module-icon red"><svg viewBox="0 0 24 24" class="salta6-icon" aria-hidden="true" focusable="false"><use href="./salta-visual/icons.svg#v2-clipboard-list"></use></svg></span><span class="module-tag">Avaliações escolares</span></div><h3>Avaliação da Mostra Cultural</h3><p>Libere a avaliação dos estudantes, atualize questões e gabarito, consulte as reflexões registradas e exporte os resultados.</p><span class="module-action">Acessar módulo <svg viewBox="0 0 24 24" class="salta6-icon" aria-hidden="true" focusable="false"><use href="./salta-visual/icons.svg#v2-chevron-right"></use></svg></span></a>
+</div>
+</section>
       <footer class="footer"><span>© 2026 SALTA — Portal Educacional</span><span>Desenvolvido por Prof. Dannyel Moisés</span></footer>
     </div>
   </main>
