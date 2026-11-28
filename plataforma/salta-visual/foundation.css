@@ -67,3 +67,7 @@ body.salta6::before{content:"";position:fixed;inset:0;pointer-events:none;z-inde
 @media(max-width:479px){.salta6 .salta6-entry-grid{grid-template-columns:1fr;gap:12px}.salta6 .modules-grid{grid-template-columns:1fr;gap:12px}.salta6 .login-card{padding:18px}.salta6 .login-topbar{padding-inline:12px}.salta6 .teacher-shell-home svg{display:none}.salta6 .teacher-shell-brand-copy small{display:none}.salta6 .teacher-shell-brandzone{min-width:0}.salta6 .teacher-shell-actions{padding-inline:8px}}
 @media(max-width:340px){.salta6 .login-screen{padding-inline:4px}.salta6 .login-card{padding-inline:8px}.salta6 .teacher-shell-brand-mark{display:none}}
 @media(prefers-reduced-motion:reduce){.salta6 *,.salta6 *::before,.salta6 *::after{transition:none!important;animation:none!important;scroll-behavior:auto!important}}
+
+/* AV-06-01: neutralize the legacy generic button background, including hover.
+   Only the opted-in professor shell; preserve shared positioning and handlers. */
+body.salta6.professor-layout .teacher-shell-overlay{background-color:rgba(23,50,77,.24)!important}
