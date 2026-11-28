@@ -78,7 +78,7 @@ h1{margin:0;color:#303451;font-size:25px;letter-spacing:-.8px;font-weight:800}.p
 <div class="session-loading" id="sessionLoading" role="status" aria-live="polite"><span class="session-spinner" aria-hidden="true"></span><span>Verificando acesso…</span></div>
 <section class="login-screen" id="loginScreen">
   <header class="login-topbar">
-    <a class="brand" href="./" aria-label="SALTA PORTAL EDUCACIONAL">
+    <a class="brand" href="./">
       <span class="brand-mark" aria-hidden="true">S</span>
       <span class="brand-copy"><span class="brand-name">SALTA</span><span class="brand-sub">PORTAL EDUCACIONAL</span></span>
     </a>
@@ -108,7 +108,7 @@ h1{margin:0;color:#303451;font-size:25px;letter-spacing:-.8px;font-weight:800}.p
     // AV-06-02: only this official professor page; shared shell stays unchanged.
     const brand = document.querySelector("body.salta6.salta6-professor .teacher-shell-brand");
     if (brand) {
-      brand.setAttribute("aria-label", "SALTA PORTAL EDUCACIONAL");
+      brand.removeAttribute("aria-label");
       brand.querySelector(".teacher-shell-brand-mark")?.setAttribute("aria-hidden", "true");
     }
   </script>
