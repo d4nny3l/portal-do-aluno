@@ -30,11 +30,11 @@ Classificação inicial por árvore e destinos confirmados no código da entrada
 | laboratorio/salta-scan/index.html | Laboratório protegido | fora |
 | plataforma/atelie-salta.html | Referência congelada 22 composições | fora |
 F: revisão transversal das lacunas; 15.17 CONNECT e módulos inexistentes não implementados.
-## CSS base (15)
+## CSS base (16 — correção factual da contagem 15 da issue)
 - salta-theme.css e plataforma/professor-theme.css: compartilhados, intocados, consumidores identificados no inventário.
 - plataforma/atelie-salta-v2.css e plataforma/atelie-salta-v2-fidelity.css: Ateliê.
 - plataforma/avaliacao-excluir-dialog.css, plataforma/avaliacoes-biblioteca.css, plataforma/corretor-v2.css, plataforma/piloto-avaliacoes.css: avaliações/OMR protegidos.
-- laboratorio/salta-omr-capture-lab/css/{omr-lab,salta-scan,style}.css; laboratorio/salta-omr-scan-safe-02/css/{omr-lab,salta-scan,style}.css; laboratorio/salta-scan/css/{salta-scan,style}.css: protegidos. (Contagem conferida automaticamente; lista inclui todos os nomes observados, sem modificar nenhum.)
+- laboratorio/salta-omr-capture-lab/css/{omr-lab,salta-scan,style}.css; laboratorio/salta-omr-scan-safe-02/css/{omr-lab,salta-scan,style}.css; laboratorio/salta-scan/css/{salta-scan,style}.css: protegidos. (16 CSS na árvore base consultada sem truncamento; a issue indicava 15. Lista inclui todos os nomes observados, sem modificar nenhum.)
 ## Matriz decisão → recurso → rota → evidência
 | Decisão | Implementação | Rota | Evidência prevista |
 |---|---|---|---|
